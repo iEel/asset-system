@@ -71,8 +71,9 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
   [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
-  // Group 3: the frame of ส่งมอบ, รับคืน and โอนย้าย (plan 2 added /th/asset-management/checkin, plan 3 Task 6 /th/asset-management/transfer).
-  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer"],
+  // Group 3: the frame of ส่งมอบ, รับคืน and โอนย้าย (plan 2 added /th/asset-management/checkin, plan 3 Task 6 /th/asset-management/transfer);
+  // group 5 plan 2 Task 3: บันทึกซ่อม.
+  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer", "/th/maintenance/new"],
   // Group 3 plan 1 Task 7: the phone steps' own bar (P1-R4).
   [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
 }

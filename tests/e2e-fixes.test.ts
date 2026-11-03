@@ -395,7 +395,8 @@ test("the PM form test waits for the asset select's answer to the choice and end
   const select = read("src/components/maintenance/maintenance-option-select.tsx")
   assert.match(select, /\}, 250\)/)
   assert.match(select, /if \(query\.trim\(\)\.length >= 2\) params\.set\("q", query\.trim\(\)\)\n\s*else if \(value\) params\.set\("id", value\)/)
-  assert.match(select, /\}, \[initialOption, query, type, value\]\)/)
+  // Group 5 plan 2 (G5P2-R1): no read by id when the value's option is already known; a search still asks.
+  assert.match(select, /\}, \[initialOption, knownValue, query, type, value\]\)/)
   const spec = read("e2e/cross-cutting/field-errors.spec.ts")
   const pm = spec.slice(spec.indexOf(`test("PM plan: `), spec.indexOf(`test("disposal request: `))
   // The wait is set after the search's answer shows the option and before the choice, and the second save awaits it.

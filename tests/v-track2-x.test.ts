@@ -176,6 +176,8 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
   const rulesOf: Record<string, string> = {
     [`${C}assets/asset-form-purchase.tsx`]: "src/lib/asset-form-rules.ts",
     [`${C}assets/asset-form-documents.tsx`]: "src/lib/asset-form-rules.ts",
+    // Group 5 plan 2: the repair form's checks live in its rules file.
+    [`${C}maintenance/repair-record-form.tsx`]: "src/lib/repair-record-form-rules.ts",
   }
   for (const [path, values] of Object.entries(money)) {
     const rulesPath = rulesOf[path] ?? path

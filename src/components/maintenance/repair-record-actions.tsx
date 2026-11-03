@@ -310,7 +310,7 @@ export function RepairRecordActions({
                     accept="image/*,application/pdf"
                     multiple
                     title={t("dropFilesTitle")}
-                    description={t("filesHelp")}
+                    description={t("filesHelpDone")}
                     browseLabel={t("dropFilesHint")}
                   />
                   <FileQueueList items={files.map((file, index) => ({ id: String(index), name: file.name }))} disabled={saving} onRemove={removeFile} />

@@ -182,9 +182,14 @@ test("PM plan: errors under the field, the asset select checked, whole days from
 })
 
 test("repair record: errors under the field, the asset and reporter selects checked, the two questions as groups, and more details opened for an error inside (v-track2 M4)", () => {
-  const source = read(`${C}maintenance/repair-record-form.tsx`)
+  // Group 5 plan 2: the field table, the checks and the field order moved to the pure rules file
+  // (src/lib/repair-record-form-rules.ts); the form keeps a local validate() over them and section 3 is open.
+  const form = read(`${C}maintenance/repair-record-form.tsx`)
+  const rulesFile = read("src/lib/repair-record-form-rules.ts")
+  const source = `${form}\n${rulesFile}`
   const uploadToast = 'toast.warning(t("uploadFailed", { count: failed }))'
   assertMigratedForm(source, {
+    table: "repairFieldIds",
     ids: {
       assetId: "repair-record-asset",
       reportedDate: "repair-record-date",
@@ -201,32 +206,34 @@ test("repair record: errors under the field, the asset and reporter selects chec
     messages: ["assetId", "reportedDate", "problem", "done", "outcome", "conditionId", "reportedById", "vendorId", "invoiceNo", "remark"],
     resultToast: uploadToast,
   })
-  assert.match(source, /^function validate\(values: RepairValues, needsReporter: boolean\) \{$/m)
-  const rules = validateBody(source)
+  assert.ok(form.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey })"))
+  const rules = rulesFile.slice(rulesFile.indexOf("export function validateRepairForm("), rulesFile.indexOf("\n}\n", rulesFile.indexOf("export function validateRepairForm(")))
   for (const rule of [
     'check("assetId", required(values.assetId))',
-    'check("reportedDate", required(values.reportedDate))',
+    'check("reportedDate", required(values.reportedDate) ?? (values.reportedDate > options.todayKey ? "repairDateInFuture" : null))',
     'check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
+    'check("done", values.done === null ? "repairDoneRequired" : null)',
+    'check("outcome", values.done === true && values.outcome === null ? "repairOutcomeRequired" : null)',
     'check("conditionId", isUsableDone(values) && !values.conditionId ? "conditionAfterRepairRequired" : null)',
-    'check("reportedById", needsReporter ? required(values.reportedById) : null)',
+    'check("reportedById", options.needsReporter ? required(values.reportedById) : null)',
     'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',
     'check("invoiceNo", maxLength(values.invoiceNo, 100))',
     'check("remark", maxLength(values.remark, 4000))',
   ]) assert.ok(rules.includes(rule), rule)
-  assert.match(source, /fieldErrors\.setErrors\(validate\(values, needsReporter\)\)/)
+  assert.match(form, /fieldErrors\.setErrors\(validate\(\)\)/)
   assert.ok(source.includes("error={fieldErrors.errors.repairCost ? validationMessage(fieldErrors.errors.repairCost, { min: 0 }) : undefined}"), "the cost says its floor")
   // The two selects were asterisks nothing checked (spec §5): each has an id for focus and shows its error.
   assert.match(source, /<MaintenanceOptionSelect\n\s+id="repair-record-asset"\n\s+type="asset"\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("assetId"\)\}\n/)
   assert.match(source, /<MaintenanceOptionSelect\n\s+id="repair-record-reporter"\n\s+type="employee"\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("reportedById"\)\}\n/)
   // The two questions are FieldGroups (spec §7.3): the star, and an error tied to the group.
-  // The outcome group's hint says ซาก for ซ่อมไม่ได้ (final review M9).
-  for (const [key, hint] of [["done", ""], ["outcome", 'hint={values.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} ']]) {
+  // The outcome group's hint says ซาก for ซ่อมไม่ได้ (final review M9); the done group's says ระบบไม่เลือกไว้ให้ off the PM path.
+  for (const [key, hint] of [["done", 'hint={plan ? undefined : t("createForm.noDefault")} '], ["outcome", 'hint={values.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} ']]) {
     assert.ok(source.includes(`<FieldGroup legend={t("${key}Question")} id="repair-record-${key}" required ${hint}error={fieldErrors.message("${key}")}>`), key)
   }
-  // Focus only goes to a field on screen; a field inside "more details" opens it first (spec §4.2).
-  assert.match(source, /^const DETAIL_FIELDS: readonly RepairField\[\] = \["vendorId", "repairCost", "invoiceNo", "remark"\]$/m)
-  assert.match(source, /return FIELD_ORDER\.filter\(\(key\) =>\n\s+\(key !== "outcome" \|\| values\.done\)\n\s+&& \(key !== "conditionId" \|\| isUsableDone\(values\)\)\n\s+&& \(key !== "reportedById" \|\| needsReporter\)\)/)
-  assert.match(source, /reveal: \(key\) => \{\n\s+if \(DETAIL_FIELDS\.includes\(key\)\) setShowDetails\(true\)\n\s+\},/)
+  // Focus only goes to a field on screen (section 3 is open now, so nothing opens first).
+  assert.match(rulesFile, /return fieldOrder\.filter\(\(key\) =>\n\s+\(key !== "outcome" \|\| values\.done === true\)\n\s+&& \(key !== "conditionId" \|\| isUsableDone\(values\)\)\n\s+&& \(key !== "reportedById" \|\| needsReporter\)\)/)
+  assert.ok(form.includes("fieldErrors.focusFirst(repairFieldOrder(values, needsReporter), { idFor: (key) => repairFieldIds[key] })"))
+  assert.doesNotMatch(form, /DETAIL_FIELDS|setShowDetails/)
   // The open record keeps its Notice with the link; a refusal with a field lands under it; the rest keeps the toast.
   assert.match(source, /if \(payload\?\.code === "MAINTENANCE_OPEN_RECORD_EXISTS"\) setOpenRecordAssetId\(values\.assetId\)\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
   assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+fieldErrors\.clear\(field\)/)

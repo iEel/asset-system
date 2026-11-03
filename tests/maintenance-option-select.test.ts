@@ -12,6 +12,12 @@ test("maintenance option select debounces, aborts stale requests, and announces 
   assert.match(source, /onSearchChange/)
 })
 
+test("maintenance option select reads by id only when the value's option is not known yet (G5P2-R1, group 5 spec call 7)", () => {
+  const source = readFileSync("src/components/maintenance/maintenance-option-select.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.ok(source.includes("const knownValue = Boolean(value) && (initialOption?.id === value || options.some((option) => option.id === value))"))
+  assert.ok(source.includes("if (query.trim().length < 2 && (!value || knownValue)) return"))
+})
+
 test("maintenance forms use bounded option selects instead of embedded option arrays", () => {
   const source = [
     readFileSync("src/components/maintenance/repair-record-form.tsx", "utf8"),

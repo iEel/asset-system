@@ -31,7 +31,7 @@ test("repair records: an unfinished record sends an asset in use to Under Mainte
   assert.ok(spec.includes(`await expect(page.locator("#repair-record-problem-error")).toHaveText("${th.common.validation.required}")`))
   assert.ok(spec.includes(`await expect(dialog.locator("#repair-complete-return-date-error")).toHaveText("${th.repairRecord.returnDateBeforeReported}")`))
   // The Thai copy the walk reads is the app's own (messages/th.json).
-  for (const text of [th.repairRecord.createTitle, th.repairRecord.doneNo, th.repairRecord.complete, th.repairRecord.completeTitle, th.repairRecord.status.in_progress, th.repairRecord.status.closed, th.repairRecord.outcome.usable, th.repairRecord.assetStatusEffect.toMaintenance]) {
+  for (const text of [th.repairRecord.createTitle, th.repairRecord.doneNo, th.repairRecord.complete, th.repairRecord.completeTitle, th.repairRecord.status.in_progress, th.repairRecord.status.closed, th.repairRecord.outcome.usable]) {
     assert.ok(spec.includes(text), text)
   }
   // The outcomes the test asserts are the app's rules (src/lib/repair-record-policy.ts): an asset in use with an active

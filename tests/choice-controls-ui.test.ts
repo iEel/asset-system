@@ -58,8 +58,9 @@ test("the repair form asks its two questions with ChoiceCard radios under a fiel
   assert.equal(source.match(/<ChoiceCard type="radio" name="done" /g)?.length, 2)
   assert.equal(source.match(/<ChoiceCard type="radio" name="outcome" /g)?.length, 2)
   // The two questions are FieldGroups with the star and one error each (v-track plan 2 M4).
-  // The outcome group's hint says ซาก for ซ่อมไม่ได้ (final review M9).
-  assert.equal(source.match(/<FieldGroup legend=\{t\("(?:done|outcome)Question"\)\} id="repair-record-(?:done|outcome)" required (?:hint=\{values\.outcome === "beyond_repair" \? t\("conditionBecomesSalvage"\) : undefined\} )?error=\{fieldErrors\.message\("(?:done|outcome)"\)\}>/g)?.length, 2)
+  // The outcome group's hint says ซาก for ซ่อมไม่ได้ (final review M9); the done group's says ระบบไม่เลือกไว้ให้ off the PM
+  // path (group 5 spec §7.3). Each card has its line under the label (description).
+  assert.equal(source.match(/<FieldGroup legend=\{t\("(?:done|outcome)Question"\)\} id="repair-record-(?:done|outcome)" required (?:hint=\{values\.outcome === "beyond_repair" \? t\("conditionBecomesSalvage"\) : undefined\} |hint=\{plan \? undefined : t\("createForm\.noDefault"\)\} )?error=\{fieldErrors\.message\("(?:done|outcome)"\)\}>/g)?.length, 2)
   assert.doesNotMatch(source, /<fieldset\b|<FieldRequiredMark \/>/)
 })
 

@@ -85,11 +85,12 @@ test("the repair form picks receipts with FileDropzone and lists them with FileQ
   const source = readFileSync("src/components/maintenance/repair-record-form.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /type="file"/, "the raw file input is gone")
   assert.doesNotMatch(source, /capture=/, "no capture attribute: a receipt can be a PDF")
-  assert.match(source, /<Field label=\{t\("files"\)\} className="md:col-span-2">\n\s+\{\(control\) => \(/)
+  assert.match(source, /<Field label=\{t\("files"\)\}>\n\s+\{\(control\) => \(/)
   assert.match(source, /<FileDropzone\n\s+\{\.\.\.control\}\n\s+file=\{null\}/)
   assert.match(source, /\n\s+multiple\n/)
   assert.match(source, /onFilesChange=\{addFiles\}/)
-  assert.match(source, /title=\{t\("dropFilesTitle"\)\}\n\s+description=\{t\("filesHelp"\)\}\n\s+browseLabel=\{t\("dropFilesHint"\)\}/)
+  // The hint says before or after repair by the answer (group 5 spec §7.4).
+  assert.match(source, /title=\{t\("dropFilesTitle"\)\}\n\s+description=\{t\(values\.done === true \? "filesHelpDone" : "filesHelp"\)\}\n\s+browseLabel=\{t\("dropFilesHint"\)\}/)
   assert.match(source, /<FileQueueList items=\{files\.map\(\(file, index\) => \(\{ id: String\(index\), name: file\.name \}\)\)\} disabled=\{saving\} onRemove=\{removeFile\} \/>/)
   assert.match(source, /setFiles\(\(current\) => \[\.\.\.current, \.\.\.next\]\)/, "a second pick adds to the list instead of replacing it")
   assert.match(source, /uploadRepairFiles\(payload\.id, files/)
@@ -98,7 +99,7 @@ test("the repair form picks receipts with FileDropzone and lists them with FileQ
 test("the repair file picker copy exists in Thai and English (2C batch 1a)", () => {
   for (const locale of ["th", "en"]) {
     const repairRecord = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).repairRecord as Record<string, string>
-    for (const key of ["dropFilesTitle", "dropFilesHint", "files", "filesHelp"]) {
+    for (const key of ["dropFilesTitle", "dropFilesHint", "files", "filesHelp", "filesHelpDone"]) {
       assert.ok(repairRecord[key]?.trim(), `${locale}.repairRecord.${key}`)
     }
   }
@@ -109,7 +110,8 @@ test("the finish-repair dialog picks files the same way, and src has no raw file
   assert.match(source, /<Field label=\{t\("files"\)\}>\n\s+\{\(control\) => \(/)
   assert.match(source, /<FileDropzone\n\s+\{\.\.\.control\}\n\s+file=\{null\}/)
   assert.match(source, /\n\s+multiple\n/)
-  assert.match(source, /title=\{t\("dropFilesTitle"\)\}\n\s+description=\{t\("filesHelp"\)\}\n\s+browseLabel=\{t\("dropFilesHint"\)\}/)
+  // Files of a finished repair are after-repair photos (group 5 plan 2: filesHelp now names the before-repair case).
+  assert.match(source, /title=\{t\("dropFilesTitle"\)\}\n\s+description=\{t\("filesHelpDone"\)\}\n\s+browseLabel=\{t\("dropFilesHint"\)\}/)
   assert.match(source, /<FileQueueList items=\{files\.map\(\(file, index\) => \(\{ id: String\(index\), name: file\.name \}\)\)\} disabled=\{saving\} onRemove=\{removeFile\} \/>/)
   assert.match(source, /setFiles\(\(current\) => \[\.\.\.current, \.\.\.next\]\)/)
   assert.match(source, /uploadRepairFiles\(recordId, files, "after_repair"\)/)

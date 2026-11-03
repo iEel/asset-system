@@ -1,121 +1,105 @@
 "use client"
 
 import Link from "next/link"
-import { useId, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ChevronDown, Save } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
+import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
+import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"
+import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { RepairAssetCard } from "@/components/maintenance/repair-asset-card"
+import { RepairCreateSummary, withNode, NODE } from "@/components/maintenance/repair-create-summary"
+import { RepairHeldNotice } from "@/components/maintenance/repair-held-notice"
+import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
+import type { BreadcrumbItem } from "@/components/ui/breadcrumbs"
 import { linkVariants } from "@/components/ui/button-variants"
 import { ChoiceCard } from "@/components/ui/choice-card"
-import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
 import { FieldGroup } from "@/components/ui/field-group"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { FormSection } from "@/components/ui/form-section"
 import { Input } from "@/components/ui/input"
 import { Notice } from "@/components/ui/notice"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Textarea } from "@/components/ui/textarea"
-import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
-import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
-import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { repairConditionDefault } from "@/lib/asset-lifecycle-policy"
+import { getAssetStateTone } from "@/lib/design-system"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
-import { toLocalDateInputValue } from "@/lib/local-date"
+import type { MaintenanceOption } from "@/lib/maintenance-options"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import type { MaintenancePlanFrequency } from "@/lib/preventive-maintenance"
+import { getRepairCreateOutlook, type RepairAssetFacts } from "@/lib/repair-record-outlook"
+import {
+  buildRepairCreatePayload,
+  repairFieldIds,
+  repairFieldOrder,
+  repairFooterAnswerKey,
+  validateRepairForm,
+  type RepairFormValues,
+} from "@/lib/repair-record-form-rules"
 import { cn } from "@/lib/utils"
-import { decimals, maxLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string }
-type Outcome = "usable" | "beyond_repair"
-type RepairValues = {
-  assetId: string
-  reportedDate: string
-  problem: string
-  done: boolean
-  outcome: Outcome
-  conditionId: string
-  reportedById: string
-  vendorId: string
-  repairCost: string
-  invoiceNo: string
-  remark: string
+export type RepairFormPlan = {
+  id: string
+  label: string
+  title: string
+  vendor: Option | null
+  /** The plan's due day, a Bangkok ISO day, and its rhythm: the summary's แผน PM row (G5P2-R6). */
+  nextDueDate: string
+  frequency: MaintenancePlanFrequency
+  intervalDays: number | null
 }
 
-// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The two
-// questions and the condition after repair are radio groups: their id is the FieldGroup's.
-const FIELD_IDS = {
-  assetId: "repair-record-asset",
-  reportedDate: "repair-record-date",
-  problem: "repair-record-problem",
-  done: "repair-record-done",
-  outcome: "repair-record-outcome",
-  conditionId: "repair-create-condition",
-  reportedById: "repair-record-reporter",
-  vendorId: "repair-record-vendor",
-  repairCost: "repair-record-cost",
-  invoiceNo: "repair-record-invoice-no",
-  remark: "repair-record-remark",
-} as const
-type RepairField = keyof typeof FIELD_IDS
-const FIELD_ORDER = Object.keys(FIELD_IDS) as RepairField[]
-// The fields inside "more details", which opens before focus moves there (spec §4.2).
-const DETAIL_FIELDS: readonly RepairField[] = ["vendorId", "repairCost", "invoiceNo", "remark"]
+// The form's id: the frame's footer submit names it (group 3 spec §5).
+const REPAIR_FORM_ID = "repair-record-form"
 
-// The fields on screen: the outcome only when the repair is done, the condition after repair only when it is done and
-// usable, the reporter only for an account without an employee.
-function fieldOrder(values: RepairValues, needsReporter: boolean) {
-  return FIELD_ORDER.filter((key) =>
-    (key !== "outcome" || values.done)
-    && (key !== "conditionId" || isUsableDone(values))
-    && (key !== "reportedById" || needsReporter))
-}
-
-function isUsableDone(values: RepairValues) {
-  return values.done && values.outcome === "usable"
-}
-
-// noValidate turns the browser's check off, so this restates the controls' required, maxLength, min and step, and the
-// reporter the server needs from an account without a linked employee (MAINTENANCE_REPORTER_REQUIRED) (v-track M-R2).
-function validate(values: RepairValues, needsReporter: boolean) {
-  const errors: Partial<Record<RepairField, string>> = {}
-  const check = (key: RepairField, code: string | null) => {
-    if (code) errors[key] = code
-  }
-  check("assetId", required(values.assetId))
-  check("reportedDate", required(values.reportedDate))
-  check("problem", required(values.problem) ?? maxLength(values.problem, 4000))
-  // A repair already done and usable names the condition after it (group 3 spec §19.4).
-  check("conditionId", isUsableDone(values) && !values.conditionId ? "conditionAfterRepairRequired" : null)
-  check("reportedById", needsReporter ? required(values.reportedById) : null)
-  check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
-  check("invoiceNo", maxLength(values.invoiceNo, 100))
-  check("remark", maxLength(values.remark, 4000))
-  return errors
-}
-
+// บันทึกซ่อม (MT-New, group 5 spec §7) on the operation frame: three numbered sections, the summary column and the sticky
+// footer. The done question has no default answer (spec §5), except ซ่อมเสร็จแล้ว on the PM path (G5P2-R6). The asset's
+// facts come from the page's read, or after a pick from the picker's by-id read (G5P2-R1); the status line, the early
+// refusal and the summary all read them through the one outlook helper.
 export function RepairRecordForm({
+  breadcrumbs,
+  back,
   locale,
   returnTo,
   initialAsset,
+  initialFacts,
   plan,
   needsReporter,
+  reporterName,
+  canReturn,
+  todayKey,
+  statusLabels,
   conditionOptions,
+  salvageLabel,
   initialConditionId,
 }: {
+  breadcrumbs: BreadcrumbItem[]
+  back: ReactNode
   locale: string
   returnTo: string
-  initialAsset?: Option
-  plan?: { id: string; label: string; title: string; vendor: Option | null }
+  initialAsset?: Option & { conditionId?: string }
+  initialFacts: RepairAssetFacts | null
+  plan?: RepairFormPlan
   needsReporter: boolean
+  reporterName: string
+  /** asset:edit, the check-in page's permission: the held notice's รับคืน link (Review Focus 5). */
+  canReturn: boolean
+  /** Bangkok today (getBangkokDateKey): the date's default and its max. */
+  todayKey: string
+  /** Every active status, name → Thai name (G5P2-R7). */
+  statusLabels: Record<string, string>
   // ดี and พอใช้ (getRepairConditionOptions), and initialAsset's own when offered (repairConditionDefault), else "".
   // An asset picked here gets the same default from the condition its option carries (final review M1).
   conditionOptions: Option[]
   initialConditionId: string
+  salvageLabel: string
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -124,15 +108,14 @@ export function RepairRecordForm({
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [openRecordAssetId, setOpenRecordAssetId] = useState<string | null>(null)
-  const [showDetails, setShowDetails] = useState(Boolean(plan?.vendor))
-  const detailsId = useId()
   const [files, setFiles] = useState<File[]>([])
-  const [values, setValues] = useState<RepairValues>({
+  const [facts, setFacts] = useState<RepairAssetFacts | null>(initialFacts)
+  const [values, setValues] = useState<RepairFormValues>({
     assetId: initialAsset?.id ?? "",
-    reportedDate: toLocalDateInputValue(),
+    reportedDate: todayKey,
     problem: plan?.title ?? "",
-    done: true,
-    outcome: "usable" as Outcome,
+    done: plan ? true : null,
+    outcome: null,
     conditionId: initialConditionId,
     reportedById: "",
     vendorId: plan?.vendor?.id ?? "",
@@ -140,20 +123,41 @@ export function RepairRecordForm({
     invoiceNo: "",
     remark: "",
   })
-  const effectKey = !values.done ? "toMaintenance" : values.outcome === "beyond_repair" ? "toDisposal" : null
-  const fieldErrors = useFieldErrors<RepairField>()
+  // Facts of another asset (the one before a change) are never shown: only the current asset's count (Review Focus 2).
+  const currentFacts = facts?.id === values.assetId ? facts : null
+  const outlook = currentFacts ? getRepairCreateOutlook(currentFacts, { done: values.done, outcome: values.outcome }) : null
+  const fieldErrors = useFieldErrors<keyof typeof repairFieldIds>()
   const validationMessage = useValidationMessage()
-  const focusFirstError = () =>
-    fieldErrors.focusFirst(fieldOrder(values, needsReporter), {
-      idFor: (key) => FIELD_IDS[key],
-      reveal: (key) => {
-        if (DETAIL_FIELDS.includes(key)) setShowDetails(true)
-      },
-    })
+  // The form checks itself with the rules file's checks (V2), and focus goes to the first wrong field on screen.
+  const validate = () => validateRepairForm(values, { needsReporter, todayKey })
+  const focusFirstError = () => fieldErrors.focusFirst(repairFieldOrder(values, needsReporter), { idFor: (key) => repairFieldIds[key] })
 
-  function setField<K extends keyof typeof values>(field: K, value: (typeof values)[K]) {
+  // After a pick, the by-id read brings the asset's facts once. A change aborts the read in flight, and an answer for
+  // another asset is ignored, so a slow answer never overwrites the current asset (Review Focus 2).
+  useEffect(() => {
+    const assetId = values.assetId
+    if (!assetId || facts?.id === assetId) return
+    const controller = new AbortController()
+    fetch(`/api/maintenance-options?type=asset&id=${encodeURIComponent(assetId)}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() as Promise<{ data?: MaintenanceOption[] }> : null))
+      .then((payload) => {
+        const option = payload?.data?.find((candidate) => candidate.id === assetId)
+        if (controller.signal.aborted || option?.facts?.id !== assetId) return
+        setFacts(option.facts)
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [facts?.id, values.assetId])
+
+  function setField<K extends keyof RepairFormValues>(field: K, value: RepairFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
     fieldErrors.clear(field)
+  }
+
+  // "เปลี่ยน" (G5P2-R8): the asset and its condition default go, and the picker comes back with focus.
+  function clearAsset() {
+    setValues((current) => ({ ...current, assetId: "", conditionId: "" }))
+    window.requestAnimationFrame(() => document.getElementById(repairFieldIds.assetId)?.focus())
   }
 
   // New picks append to the list; each file can be taken out before saving.
@@ -167,28 +171,16 @@ export function RepairRecordForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    fieldErrors.setErrors(validate(values, needsReporter))
+    fieldErrors.setErrors(validate())
     if (focusFirstError()) return
     setSaving(true)
     setOpenRecordAssetId(null)
     try {
+      // The save stays enabled through a refusal shown early: the server answers it (G5P2-R4).
       const response = await fetch("/api/maintenance-tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assetId: values.assetId,
-          maintenancePlanId: plan?.id ?? null,
-          problem: values.problem,
-          reportedDate: values.reportedDate,
-          done: values.done,
-          outcome: values.outcome,
-          conditionId: isUsableDone(values) ? values.conditionId || null : null,
-          reportedById: needsReporter ? values.reportedById || null : null,
-          vendorId: values.vendorId || null,
-          repairCost: values.repairCost || null,
-          invoiceNo: values.invoiceNo || null,
-          remark: values.remark || null,
-        }),
+        body: JSON.stringify(buildRepairCreatePayload(values, { planId: plan?.id ?? null, needsReporter })),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
@@ -208,116 +200,191 @@ export function RepairRecordForm({
     }
   }
 
+  const badge = (name: string) => (
+    <StatusBadge label={statusLabels[name] ?? (name === currentFacts?.statusName ? currentFacts.statusLabel : name)} tone={getAssetStateTone(name)} />
+  )
+
+  // The status line under the answers (spec §7.3), or the refusal that replaces it. An open record or a written-off asset
+  // shows no line: the card's eligibility line already says it.
+  function statusLine(): ReactNode {
+    if (!currentFacts || !outlook) return null
+    if (outlook.kind === "refused") {
+      if (outlook.error === "MAINTENANCE_ASSET_ON_LOAN") {
+        return outlook.held ? (
+          <RepairHeldNotice held={outlook.held} assetId={currentFacts.id} locale={locale} canReturn={canReturn} hint={t("createForm.heldHint")} />
+        ) : (
+          <Notice tone="warning" data-repair-held>
+            {tMaintenance("errors.MAINTENANCE_ASSET_ON_LOAN")}
+            <span className="mt-1 block text-meta text-muted-foreground">{t("createForm.heldHint")}</span>
+          </Notice>
+        )
+      }
+      if (outlook.error === "MAINTENANCE_ASSET_INELIGIBLE") {
+        return <Notice tone="warning" data-repair-ineligible>{t("createForm.statusIneligible", { status: currentFacts.statusLabel })}</Notice>
+      }
+      return null
+    }
+    if (outlook.kind !== "status") return null
+    return (
+      <p data-repair-status-line className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-foreground">
+        {outlook.changes ? (
+          <>
+            <span>{t("createForm.statusLine")}</span>
+            {badge(currentFacts.statusName)}
+            <span>→</span>
+            {badge(outlook.nextStatusName)}
+            {values.done === false ? <span>{t("createForm.untilDone")}</span> : null}
+          </>
+        ) : withNode(t("createForm.statusStays", { status: NODE }), badge(currentFacts.statusName))}
+      </p>
+    )
+  }
+
+  const answerKey = repairFooterAnswerKey(values)
+  const answer = {
+    unanswered: t("createForm.unanswered"),
+    doneNo: t("doneNo"),
+    doneUsable: `${t("doneYes")} · ${t("outcome.usable")}`,
+    doneBeyond: `${t("doneYes")} · ${t("outcome.beyond_repair")}`,
+    doneNoOutcome: t("doneYes"),
+  }[answerKey]
+  const footerLine = currentFacts ? (
+    <>
+      {withNode(t("createForm.footer", { name: NODE }), <strong className="font-semibold text-foreground">{currentFacts.name}</strong>)}{" "}
+      <span className="tag">{currentFacts.assetTag}</span> · {answer}
+    </>
+  ) : answer
+
   return (
-    <ContentPanel>
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        {plan ? <FormContextBanner label={t("planLabel")} value={plan.label} /> : null}
-        <MaintenanceOptionSelect
-          id="repair-record-asset"
-          type="asset"
-          label={t("asset")}
-          value={values.assetId}
-          required
-          disabled={Boolean(plan)}
-          initialOption={initialAsset}
-          placeholder={t("selectAsset")}
-          searchPlaceholder={tCommon("searchSelectPlaceholder")}
-          emptyLabel={tCommon("searchSelectNoResults")}
-          loadingLabel={tCommon("loading")}
-          formatReason={(code) => getMaintenanceErrorMessage(code, tMaintenance, code)}
-          error={fieldErrors.message("assetId")}
-          onChange={(value, option) => {
-            setField("assetId", value)
-            // The picked asset's own condition when it is ดี or พอใช้, else none (group 3 spec §19.4, final review M1).
-            setField("conditionId", repairConditionDefault(option?.conditionId ?? null, conditionOptions))
-          }}
-        />
-        {openRecordAssetId ? (
-          <Notice tone="danger" role="alert">
-            {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
-            <Link
-              href={`/${locale}/maintenance?assetId=${encodeURIComponent(openRecordAssetId)}&status=in_progress`}
-              className={cn(linkVariants({ size: "inherit" }), "decoration-current")}
-            >
-              {t("openExistingRecord")}
-            </Link>
-          </Notice>
-        ) : null}
-        <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
-          <Field label={t("date")} id="repair-record-date" required error={fieldErrors.message("reportedDate")}>
-            <Input type="date" required value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
-          </Field>
-          <Field label={t("problem")} id="repair-record-problem" required error={fieldErrors.message("problem")}>
-            <Textarea
-              required
-              rows={3}
-              maxLength={4000}
-              value={values.problem}
-              placeholder={t("problemPlaceholder")}
-              onChange={(event) => setField("problem", event.target.value)}
-            />
-          </Field>
-        </div>
-        <FieldGroup legend={t("doneQuestion")} id="repair-record-done" required error={fieldErrors.message("done")}>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <ChoiceCard type="radio" name="done" checked={values.done} label={t("doneYes")} onChange={() => setField("done", true)} />
-            <ChoiceCard type="radio" name="done" checked={!values.done} label={t("doneNo")} onChange={() => setField("done", false)} />
+    <form onSubmit={handleSubmit} noValidate id={REPAIR_FORM_ID}>
+      <OperationFormFrame
+        title={t("createTitle")}
+        description={plan ? t("pmCreateSubtitle") : t("createSubtitle")}
+        breadcrumbs={breadcrumbs}
+        back={back}
+        summary={<RepairCreateSummary
+          facts={currentFacts}
+          values={values}
+          plan={plan ?? null}
+          statusLabels={statusLabels}
+          conditionOptions={conditionOptions}
+          salvageLabel={salvageLabel}
+          footnote={needsReporter ? t("createForm.footnotePicked") : t("createForm.footnote", { name: reporterName })}
+        />}
+        footer={{
+          description: <span data-repair-footer>{footerLine}</span>,
+          cancelHref: returnTo,
+          cancelLabel: tCommon("cancel"),
+          submitLabel: t("save"),
+          busy: saving,
+          formId: REPAIR_FORM_ID,
+        }}
+      >
+        <FormSection number={1} title={t("createForm.sectionAsset")}>
+          <div className="grid gap-4">
+            {plan ? <FormContextBanner label={t("planLabel")} value={plan.label} /> : null}
+            {currentFacts ? (
+              <RepairAssetCard facts={currentFacts} locale={locale} returnTo={returnTo} onChange={plan ? undefined : clearAsset} fieldId={repairFieldIds.assetId} />
+            ) : (
+              <MaintenanceOptionSelect
+                id="repair-record-asset"
+                type="asset"
+                label={t("asset")}
+                value={values.assetId}
+                required
+                disabled={Boolean(plan)}
+                initialOption={initialAsset}
+                placeholder={t("selectAsset")}
+                searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                emptyLabel={tCommon("searchSelectNoResults")}
+                loadingLabel={tCommon("loading")}
+                formatReason={(code) => getMaintenanceErrorMessage(code, tMaintenance, code)}
+                error={fieldErrors.message("assetId")}
+                onChange={(value, option) => {
+                  setField("assetId", value)
+                  // The picked asset's own condition when it is ดี or พอใช้, else none (group 3 spec §19.4, final review M1).
+                  setField("conditionId", repairConditionDefault(option?.conditionId ?? null, conditionOptions))
+                }}
+              />
+            )}
+            {openRecordAssetId ? (
+              <Notice tone="danger" role="alert">
+                {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
+                <Link
+                  href={`/${locale}/maintenance?assetId=${encodeURIComponent(openRecordAssetId)}&status=in_progress`}
+                  className={cn(linkVariants({ size: "inherit" }), "decoration-current")}
+                >
+                  {t("openExistingRecord")}
+                </Link>
+              </Notice>
+            ) : null}
           </div>
-        </FieldGroup>
-        {values.done ? (
-          // ซ่อมไม่ได้: the ซาก line is the group's hint, read with it by aria-describedby (final review M9).
-          <FieldGroup legend={t("outcomeQuestion")} id="repair-record-outcome" required hint={values.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} error={fieldErrors.message("outcome")}>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ChoiceCard type="radio" name="outcome" checked={values.outcome === "usable"} label={t("outcome.usable")} onChange={() => setField("outcome", "usable")} />
-              <ChoiceCard type="radio" name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onChange={() => setField("outcome", "beyond_repair")} />
+        </FormSection>
+        <FormSection number={2} title={t("createForm.sectionProgress")}>
+          <div className="grid gap-5">
+            <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
+              <Field label={t("date")} id="repair-record-date" required error={fieldErrors.message("reportedDate")}>
+                <Input type="date" required max={todayKey} value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
+              </Field>
+              <Field label={t("problem")} id="repair-record-problem" required error={fieldErrors.message("problem")}>
+                <Textarea
+                  required
+                  rows={3}
+                  maxLength={4000}
+                  value={values.problem}
+                  placeholder={t("problemPlaceholder")}
+                  onChange={(event) => setField("problem", event.target.value)}
+                />
+              </Field>
             </div>
-          </FieldGroup>
-        ) : null}
-        {isUsableDone(values) ? (
-          <AssetConditionChoice
-            id="repair-create-condition"
-            legend={t("conditionAfterRepair")}
-            options={conditionOptions}
-            value={values.conditionId}
-            required
-            error={fieldErrors.message("conditionId")}
-            onChange={(value) => setField("conditionId", value)}
-          />
-        ) : null}
-        {effectKey ? (
-          <Notice tone="warning">
-            {t(`assetStatusEffect.${effectKey}`)}
-          </Notice>
-        ) : null}
-        {needsReporter ? (
-          <MaintenanceOptionSelect
-            id="repair-record-reporter"
-            type="employee"
-            label={t("reporter")}
-            value={values.reportedById}
-            required
-            placeholder={t("selectReporter")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            loadingLabel={tCommon("loading")}
-            hint={t("reporterHelp")}
-            error={fieldErrors.message("reportedById")}
-            onChange={(value) => setField("reportedById", value)}
-          />
-        ) : null}
-        <div>
-          <Button
-            variant="outline"
-            aria-expanded={showDetails}
-            aria-controls={showDetails ? detailsId : undefined}
-            onClick={() => setShowDetails((open) => !open)}
-            className="w-full justify-between"
-          >
-            {t("moreDetails")}
-            <ChevronDown aria-hidden="true" className={showDetails ? "rotate-180" : undefined} />
-          </Button>
-          {showDetails ? (
-            <div id={detailsId} className="mt-3 grid gap-4 rounded-md border border-border bg-background p-4 md:grid-cols-2">
+            {needsReporter ? (
+              <MaintenanceOptionSelect
+                id="repair-record-reporter"
+                type="employee"
+                label={t("reporter")}
+                value={values.reportedById}
+                required
+                placeholder={t("selectReporter")}
+                searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                emptyLabel={tCommon("searchSelectNoResults")}
+                loadingLabel={tCommon("loading")}
+                hint={t("reporterHelp")}
+                error={fieldErrors.message("reportedById")}
+                onChange={(value) => setField("reportedById", value)}
+              />
+            ) : null}
+            <FieldGroup legend={t("doneQuestion")} id="repair-record-done" required hint={plan ? undefined : t("createForm.noDefault")} error={fieldErrors.message("done")}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <ChoiceCard type="radio" name="done" checked={values.done === true} label={t("doneYes")} description={t("doneYesHelp")} onChange={() => setField("done", true)} />
+                <ChoiceCard type="radio" name="done" checked={values.done === false} label={t("doneNo")} description={t("doneNoHelp")} onChange={() => setField("done", false)} />
+              </div>
+            </FieldGroup>
+            {values.done === true ? (
+              // ซ่อมไม่ได้: the ซาก line is the group's hint, read with it by aria-describedby (final review M9).
+              <FieldGroup legend={t("outcomeQuestion")} id="repair-record-outcome" required hint={values.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} error={fieldErrors.message("outcome")}>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <ChoiceCard type="radio" name="outcome" checked={values.outcome === "usable"} label={t("outcome.usable")} onChange={() => setField("outcome", "usable")} />
+                  <ChoiceCard type="radio" name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onChange={() => setField("outcome", "beyond_repair")} />
+                </div>
+              </FieldGroup>
+            ) : null}
+            {values.done === true && values.outcome === "usable" ? (
+              <AssetConditionChoice
+                id="repair-create-condition"
+                legend={t("conditionAfterRepair")}
+                options={conditionOptions}
+                value={values.conditionId}
+                required
+                error={fieldErrors.message("conditionId")}
+                onChange={(value) => setField("conditionId", value)}
+              />
+            ) : null}
+            {statusLine()}
+          </div>
+        </FormSection>
+        <FormSection number={3} title={<>{t("createForm.sectionDetails")} <span className="font-normal text-muted-foreground">{t("createForm.optional")}</span></>}>
+          <div className="grid gap-4">
+            <div className="grid gap-4 md:grid-cols-3">
               <MaintenanceOptionSelect
                 id="repair-record-vendor"
                 type="supplier"
@@ -336,12 +403,14 @@ export function RepairRecordForm({
                 id="repair-record-cost"
                 error={fieldErrors.errors.repairCost ? validationMessage(fieldErrors.errors.repairCost, { min: 0 }) : undefined}
               >
-                <Input type="number" min="0" step="0.01" inputMode="decimal" value={values.repairCost} onChange={(event) => setField("repairCost", event.target.value)} />
+                <Input type="number" min="0" step="0.01" inputMode="decimal" placeholder={t("createForm.costPlaceholder")} value={values.repairCost} onChange={(event) => setField("repairCost", event.target.value)} />
               </Field>
               <Field label={t("invoiceNo")} id="repair-record-invoice-no" error={fieldErrors.message("invoiceNo")}>
-                <Input maxLength={100} value={values.invoiceNo} onChange={(event) => setField("invoiceNo", event.target.value)} />
+                <Input maxLength={100} placeholder={t("createForm.invoicePlaceholder")} value={values.invoiceNo} onChange={(event) => setField("invoiceNo", event.target.value)} />
               </Field>
-              <Field label={t("files")} className="md:col-span-2">
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label={t("files")}>
                 {(control) => (
                   <div className="grid gap-2">
                     <FileDropzone
@@ -355,28 +424,20 @@ export function RepairRecordForm({
                       accept="image/*,application/pdf"
                       multiple
                       title={t("dropFilesTitle")}
-                      description={t("filesHelp")}
+                      description={t(values.done === true ? "filesHelpDone" : "filesHelp")}
                       browseLabel={t("dropFilesHint")}
                     />
                     <FileQueueList items={files.map((file, index) => ({ id: String(index), name: file.name }))} disabled={saving} onRemove={removeFile} />
                   </div>
                 )}
               </Field>
-              <div className="md:col-span-2">
-                <Field label={t("remark")} id="repair-record-remark" error={fieldErrors.message("remark")}>
-                  <Textarea rows={2} maxLength={4000} value={values.remark} onChange={(event) => setField("remark", event.target.value)} className="min-h-16" />
-                </Field>
-              </div>
+              <Field label={t("remark")} id="repair-record-remark" error={fieldErrors.message("remark")}>
+                <Textarea rows={4} maxLength={4000} value={values.remark} onChange={(event) => setField("remark", event.target.value)} className="min-h-24" />
+              </Field>
             </div>
-          ) : null}
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" busy={saving} className="w-full sm:w-auto">
-            <Save />
-            {t("save")}
-          </Button>
-        </div>
-      </form>
-    </ContentPanel>
+          </div>
+        </FormSection>
+      </OperationFormFrame>
+    </form>
   )
 }

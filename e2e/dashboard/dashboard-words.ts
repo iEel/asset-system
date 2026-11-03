@@ -9,7 +9,7 @@ export const DASHBOARD_WORDS = {
   auditRoundKpi: "รอบตรวจนับ {code}", auditFoot: "ตรวจแล้ว {processed} / {expected} · ควรถึง {pace}",
   branchBarLabel: "{branch} ตรวจแล้ว {percent} ควรถึงวันนี้ {pace}", branchBehind: "ช้ากว่าที่ควร",
   // The approvals page's total cell (approvalInboxPage.total) and the repair form's "not finished" choice (doneNo).
-  approvalsTotal: "ทั้งหมด", repairNotDone: "ยังซ่อมไม่เสร็จ (ส่งซ่อม / รออะไหล่)",
+  approvalsTotal: "ทั้งหมด", repairNotDone: "ยังซ่อมไม่เสร็จ",
 } as const
 
 // The kinds of งานที่รอคุณ in the shared order (src/lib/waiting-work-rules.ts WAITING_WORK_KEYS), each with the title

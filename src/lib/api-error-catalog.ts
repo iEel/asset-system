@@ -259,8 +259,10 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Recipient, buyer, or destination is required": "recipientRequired",
   "Reference document number is required": "referenceDocumentRequired",
   "Rejection reason is required": "rejectionReasonRequired",
-  // The repair record's field codes: a date after Bangkok today (G5P1-R6) and a done record without its result (G5P1-R7).
+  // The repair record's field codes: a date after Bangkok today (G5P1-R6), a done record without its result (G5P1-R7)
+  // and, from the form only, the done question left unanswered (group 5 plan 2).
   "repairDateInFuture": "repairDateInFuture",
+  "repairDoneRequired": "repairDoneRequired",
   "repairOutcomeRequired": "repairOutcomeRequired",
   "Repair record not found": "repairRecordNotFound",
   "Reporter not found or inactive": "reporterNotFound",

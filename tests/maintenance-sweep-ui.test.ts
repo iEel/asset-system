@@ -25,15 +25,15 @@ test("repair attachments: a ContentPanel, a warning Notice, a plain count, Empty
   assert.doesNotMatch(source, /Loader2|disabled:opacity|border-dashed|rounded-full|rounded-lg|hover:bg-accent|sm:h-8|sm:min-h-0|\btext-xs\b|\btext-lg\b|text-(?:info|danger|warning|primary)\b|bg-warning-soft|closeLabel=/)
 })
 
-test("repair form: a ContentPanel, the open-record error and the status effect as Notices, the reporter hint on its select, and an outline disclosure over a quiet grouping (spec 2D D7, D9, M29)", () => {
+// Group 5 plan 2 Task 3: the form moved onto the operation frame; section 3 is open (spec call 10) and the status effect
+// became the status line, whose refusals are warning Notices (group 5 spec §7.3).
+test("repair form: the operation frame, the open-record error and the refusals as Notices, the reporter hint on its select, and section 3 open with no disclosure (spec 2D D7, D9, M29; group 5 spec §7)", () => {
   const source = read(`${C}maintenance/repair-record-form.tsx`)
-  assert.match(source, /<ContentPanel>\s*<form onSubmit=\{handleSubmit\} noValidate className="space-y-5">/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{REPAIR_FORM_ID\}>\s*<OperationFormFrame/)
   assert.match(source, /<Notice tone="danger" role="alert">\s*\{tMaintenance\("errors\.MAINTENANCE_OPEN_RECORD_EXISTS"\)\}/)
-  assert.match(source, /<Notice tone="warning">\s*\{t\(`assetStatusEffect\.\$\{effectKey\}`\)\}\s*<\/Notice>/)
+  assert.match(source, /<Notice tone="warning" data-repair-ineligible>/)
   assert.match(source, /hint=\{t\("reporterHelp"\)\}/)
-  assert.match(source, /const detailsId = useId\(\)/)
-  assert.match(source, /<Button\s+variant="outline"\s+aria-expanded=\{showDetails\}\s+aria-controls=\{showDetails \? detailsId : undefined\}\s+onClick=\{\(\) => setShowDetails\(\(open\) => !open\)\}\s+className="w-full justify-between"\s*>/)
-  assert.match(source, /<div id=\{detailsId\} className="mt-3 grid gap-4 rounded-md border border-border bg-background p-4 md:grid-cols-2">/)
+  assert.doesNotMatch(source, /assetStatusEffect|showDetails|aria-expanded|ContentPanel/)
   assert.doesNotMatch(source, /<button\b|<section\b|rounded-lg|bg-warning-soft|border-warning-border|text-warning|hover:bg-accent|\btext-xs\b|transition-transform|\bh-4 w-4\b/)
   const select = read(`${C}maintenance/maintenance-option-select.tsx`)
   assert.match(select, /\n\s+hint\?: React\.ReactNode\n/)

@@ -47,9 +47,11 @@ export function MaintenanceOptionSelect({
   const [query, setQuery] = useState("")
   const [options, setOptions] = useState<MaintenanceOption[]>(initialOption ? [initialOption] : [])
   const [loading, setLoading] = useState(false)
+  // A picked or passed-in option is already known: no read by id after a pick (G5P2-R1, group 5 spec call 7).
+  const knownValue = Boolean(value) && (initialOption?.id === value || options.some((option) => option.id === value))
 
   useEffect(() => {
-    if (query.trim().length < 2 && !value) return
+    if (query.trim().length < 2 && (!value || knownValue)) return
 
     const controller = new AbortController()
     const timeout = window.setTimeout(async () => {
@@ -73,7 +75,7 @@ export function MaintenanceOptionSelect({
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [initialOption, query, type, value])
+  }, [initialOption, knownValue, query, type, value])
 
   const displayOptions = useMemo(() => {
     const visibleOptions = query.trim().length < 2 && !value

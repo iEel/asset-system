@@ -268,7 +268,8 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
     ["src/components/asset-operations/checkout-form.tsx", `if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")`, "checkout-handover-mode"],
     ["src/components/asset-operations/checkin-form.tsx", `check("conditionAfter", required(values.conditionAfter))`, "checkin-condition-after"],
     ["src/components/asset-operations/transfer-form.tsx", `check("reason", required(values.reason) ?? maxLength(values.reason, 500))`, "transfer-reason"],
-    ["src/components/maintenance/repair-record-form.tsx", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
+    // Group 5 plan 2: the repair form's checks and its field ids live in its rules file.
+    ["src/lib/repair-record-form-rules.ts", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
     ["src/components/maintenance/maintenance-plan-form.tsx", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title"],
     ["src/components/disposal/disposal-request-form.tsx", `check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))`, "disposal-request-reason"],
     ["src/components/audit/audit-round-form.tsx", `check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))`, "audit-round-end-date"],
