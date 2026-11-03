@@ -3,7 +3,7 @@
 // month-end clamp (31 Jan + 1 month = 28 Feb), then pause, resume and end it. The asset's status does not change. The
 // create starts with one wrong entry that shows under its field (§6.7).
 import { asUser, expect, test } from "../support/fixtures.ts"
-import { PM_LIST, answerRepair, areaTag, chooseAsset, createAsset, headerBadge, planAction, readAsset, readAssetMasters, saveRepairForm, valueBeside, visitPlanRow } from "./repair-data.ts"
+import { PM_LIST, answerRepair, areaTag, chooseAsset, createAsset, headerBadge, nextStepCard, planAction, readAsset, readAssetMasters, saveRepairForm, valueBeside, visitPlanRow } from "./repair-data.ts"
 
 asUser("itStaff")
 
@@ -65,6 +65,9 @@ test("a monthly PM plan is created, recorded done on 31 Jan with its next due da
   await page.locator("#repair-record-date").fill("2026-01-31")
   const record = await saveRepairForm(page, measure, "save the PM done")
   await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  // The record page's next-step card says what the close left (group 5 plan 3): ใช้งานได้, the asset's status now.
+  await expect(nextStepCard(page, "closedUsable")).toBeVisible()
+  await expect(nextStepCard(page, "closedUsable")).toContainText("ใช้งานได้")
   await expect(valueBeside(page, "แผน PM")).toContainText(plan.planNo)
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("พร้อมใช้งาน")
   await measure.recordPage("PM done record")

@@ -3,8 +3,10 @@
 // "cannot repair, propose disposal" sends it to Pending Disposal, a mistaken record is cancelled, a second open record
 // is refused, and the repair print opens. Each workflow starts with one wrong entry that shows under its field (§6.7).
 import { asUser, expect, test } from "../support/fixtures.ts"
-import { readRunData } from "../support/state.ts"
+import { runRecords } from "../support/run-plan.ts"
+import { readRunData, readRunState } from "../support/state.ts"
 import { recordSettled } from "../audit/settle.ts"
+import { conditionChip, pickedAsset, pickSearchable, record as recordTxPage, saveReturnForm, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
 import {
   answerRepair,
   areaTag,
@@ -17,8 +19,13 @@ import {
   endPlan,
   handOverPermanently,
   headerBadge,
+  nextStepCard,
+  openRecordMenu,
+  outcomeRow,
   readAsset,
   readAssetMasters,
+  recordCompleteButton,
+  recordMenuItem,
   repairSaveButton,
   saveRepairForm,
   valueBeside,
@@ -26,13 +33,13 @@ import {
 
 asUser("itStaff")
 
-test("an unfinished repair sends an asset in use to Under Maintenance, and repaired brings it back In Use with its custodian (ER1)", async ({ page, measure }, testInfo) => {
+test("an unfinished repair sends an asset in use to Under Maintenance, and repaired brings it back In Use with its custodian (ER1)", async ({ page, measure, e2eDevice }, testInfo) => {
   const run = readRunData()
   const receiver = run.employees.receiver1
   const masters = await readAssetMasters(page)
   const tag = areaTag(testInfo, "R1")
   const asset = await createAsset(page.request, masters, { tag, name: `${tag} โน้ตบุ๊กส่งซ่อม`, ownershipType: "personal" })
-  await handOverPermanently(page.request, masters, asset.id, receiver.id)
+  const handover = await handOverPermanently(page.request, masters, asset.id, receiver.id)
   expect((await readAsset(page.request, asset.id)).status.name, "the asset is In Use before the repair").toBe("In Use")
 
   // The repair list, then its "บันทึกซ่อม".
@@ -60,27 +67,38 @@ test("an unfinished repair sends an asset in use to Under Maintenance, and repai
   expect(record.repairStatus).toBe("in_progress")
   expect(record.repairNo).toMatch(/^MT-\d{8}-\d{4}$/)
 
-  // The record page: unfinished, the asset Under Maintenance, the custodian kept.
+  // The record page: unfinished, the asset Under Maintenance, the custodian kept (the panel names the holder, with the
+  // department under it, and no employee code: G5P3-R10).
   await expect(headerBadge(page)).toHaveText("ยังซ่อมไม่เสร็จ")
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
-  await expect(valueBeside(page, "ผู้ถือครอง")).toContainText(receiver.code)
+  await expect(valueBeside(page, "ผู้ถือครอง")).toContainText(receiver.fullNameTh)
+  await expect(valueBeside(page, "ผู้ถือครอง")).not.toContainText(receiver.code)
+  // The next-step card (G5P3-R1): ใช้งานได้ brings it back to its holder on its HO-; ซ่อมไม่ได้ is refused while it is held.
+  await expect(nextStepCard(page, "open")).toBeVisible()
+  await expect(outcomeRow(page, "usable")).toContainText("ใช้งานอยู่")
+  await expect(outcomeRow(page, "usable")).toContainText(`กลับไปที่ ${receiver.fullNameTh} ตามใบส่งมอบ ${handover.documentNo}`)
+  await expect(outcomeRow(page, "beyond_repair").locator("[data-repair-held]")).toContainText(handover.documentNo)
   await measure.recordPage("unfinished repair record")
   expect((await readAsset(page.request, asset.id)).status.name, "an unfinished repair: Under Maintenance").toBe("Under Maintenance")
 
-  // Repaired. A wrong entry first: the return date before the day the repair was recorded (a date pair reversed).
+  // Repaired. A wrong entry first: the return date before the day the repair was recorded (a date pair reversed), and
+  // no result, since none is pre-checked (G5P3-R9). Focus goes to the first field in error, the date.
   const today = bangkokToday()
-  await page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
+  await recordCompleteButton(page, e2eDevice).click()
   const dialog = page.getByRole("dialog", { name: "บันทึกว่าซ่อมเสร็จ" })
   await expect(dialog).toBeVisible()
+  await expect(dialog.locator("#repair-complete-outcome").getByRole("radio", { checked: true })).toHaveCount(0)
   await dialog.locator("#repair-complete-return-date").fill(dayBefore(today))
   await dialog.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
   await expect(dialog.locator("#repair-complete-return-date-error")).toHaveText("วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม")
+  await expect(dialog.locator("#repair-complete-outcome-error")).toHaveText("เลือกผลการซ่อม")
   await expect(dialog.locator("#repair-complete-return-date")).toBeFocused()
   await measure.recordPage("repaired dialog with its error")
 
   await dialog.locator("#repair-complete-return-date").fill(today)
   await expect(dialog.locator("#repair-complete-return-date-error")).toHaveCount(0)
-  await dialog.getByRole("radio", { name: "ใช้งานได้" }).check()
+  await dialog.getByRole("radio", { name: "ใช้งานได้", exact: true }).check()
+  await expect(dialog.locator("#repair-complete-outcome-error")).toHaveCount(0)
   const completed = page.waitForResponse((response) => response.url().endsWith(`/api/maintenance-tickets/${record.id}`) && response.request().method() === "PATCH")
   await measure.timed("save repaired", async () => {
     await dialog.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
@@ -88,16 +106,17 @@ test("an unfinished repair sends an asset in use to Under Maintenance, and repai
   })
   await expect(dialog).toBeHidden()
   await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  await expect(nextStepCard(page, "closedUsable")).toBeVisible()
   await expect(valueBeside(page, "ผลการซ่อม")).toHaveText("ใช้งานได้")
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("ใช้งานอยู่")
-  await expect(valueBeside(page, "ผู้ถือครอง")).toContainText(receiver.code)
+  await expect(valueBeside(page, "ผู้ถือครอง")).toContainText(receiver.fullNameTh)
   await measure.recordPage("repaired record")
   const after = await readAsset(page.request, asset.id)
   expect(after.status.name, "repaired, with an active handover: In Use").toBe("In Use")
   expect(after.custodian?.code, "the custodian is kept").toBe(receiver.code)
 })
 
-test("repaired brings a Ready asset back to Ready, and a second record found beyond repair sends it to Pending Disposal (ER2)", async ({ page, measure }, testInfo) => {
+test("repaired brings a Ready asset back to Ready, and a second record found beyond repair sends it to Pending Disposal (ER2)", async ({ page, measure, e2eDevice }, testInfo) => {
   const masters = await readAssetMasters(page)
   const tag = areaTag(testInfo, "R2")
   const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องส่วนกลางส่งซ่อม`, ownershipType: "shared" })
@@ -115,11 +134,17 @@ test("repaired brings a Ready asset back to Ready, and a second record found bey
   const first = await saveRepairForm(page, measure, "save the first unfinished repair")
   await expect(headerBadge(page)).toHaveText("ยังซ่อมไม่เสร็จ")
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
+  // The next-step card: ใช้งานได้ goes to พร้อมใช้งาน with no holder (Review Focus 1), ซ่อมไม่ได้ to รอตัดจำหน่าย.
+  await expect(nextStepCard(page, "open")).toBeVisible()
+  await expect(outcomeRow(page, "usable")).toContainText("พร้อมใช้งาน")
+  await expect(outcomeRow(page, "usable")).toContainText("ไม่มีผู้ถือครอง")
+  await expect(outcomeRow(page, "beyond_repair")).toContainText("รอตัดจำหน่าย")
   expect((await readAsset(page.request, asset.id)).status.name).toBe("Under Maintenance")
 
   // Repaired: no custodian, so Ready.
-  await completeRecord(page, measure, first.id, "ใช้งานได้", "save the first repaired")
+  await completeRecord(page, measure, e2eDevice, first.id, "ใช้งานได้", "save the first repaired")
   await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  await expect(nextStepCard(page, "closedUsable")).toBeVisible()
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("พร้อมใช้งาน")
   await measure.recordPage("first record repaired")
   expect((await readAsset(page.request, asset.id)).status.name, "repaired, no custodian: Ready").toBe("Ready")
@@ -132,8 +157,11 @@ test("repaired brings a Ready asset back to Ready, and a second record found bey
   const second = await saveRepairForm(page, measure, "save the second unfinished repair")
   expect(second.id).not.toBe(first.id)
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
-  await completeRecord(page, measure, second.id, "ซ่อมไม่ได้ เสนอจำหน่าย", "save beyond repair")
+  await completeRecord(page, measure, e2eDevice, second.id, "ซ่อมไม่ได้ เสนอจำหน่าย", "save beyond repair")
   await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  // The closed ซ่อมไม่ได้ card offers the disposal request (G5P3-R7; IT staff have disposal:create).
+  await expect(nextStepCard(page, "closedBeyond")).toContainText("ขั้นถัดไป: ยื่นคำขอตัดจำหน่าย")
+  await expect(nextStepCard(page, "closedBeyond").getByRole("link", { name: "ยื่นคำขอตัดจำหน่าย", exact: true })).toBeVisible()
   await expect(valueBeside(page, "ผลการซ่อม")).toHaveText("ซ่อมไม่ได้ เสนอจำหน่าย")
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("รอตัดจำหน่าย")
   await measure.recordPage("second record beyond repair")
@@ -155,7 +183,7 @@ test("the asset page passes axe (ER2, finding AR2)", async ({ page, measure }, t
   await expect(page.getByRole("heading", { level: 1 })).toContainText(tag)
 })
 
-test("a second record for an asset under repair is refused, and a mistaken record is cancelled with the asset back to Ready (ER3)", async ({ page, measure }, testInfo) => {
+test("a second record for an asset under repair is refused, and a mistaken record is cancelled with the asset back to Ready (ER3)", async ({ page, measure, e2eDevice }, testInfo) => {
   const masters = await readAssetMasters(page)
   const tag = areaTag(testInfo, "R3")
   const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องบันทึกผิด`, ownershipType: "stock" })
@@ -165,6 +193,8 @@ test("a second record for an asset under repair is refused, and a mistaken recor
   await answerRepair(page, { done: false })
   const record = await saveRepairForm(page, measure, "save the mistaken repair")
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
+  await expect(nextStepCard(page, "open")).toBeVisible()
+  await expect(outcomeRow(page, "usable")).toContainText("พร้อมใช้งาน")
 
   // Opened for the asset under repair, the card names its open record and links to it at once, before any save
   // (Review Focus 1).
@@ -187,9 +217,23 @@ test("a second record for an asset under repair is refused, and a mistaken recor
   // axe after the search closes (the open search has its own test below, finding AR3).
   await measure.recordPage("repair form after the refused search")
 
-  // Cancel the mistaken record: the reason stays in its history, the asset goes back to Ready.
+  // แก้ไขรายละเอียด through the record's menu ("อื่น ๆ" on the desktop, the bar's "เพิ่มเติม" on the phone): the invoice
+  // number, saved in place.
   await measure.visit(`/th/maintenance/${record.id}`, "mistaken record")
-  await page.getByRole("button", { name: "ยกเลิกบันทึก", exact: true }).click()
+  await recordMenuItem(await openRecordMenu(page, e2eDevice), "แก้ไขรายละเอียด").click()
+  const editDialog = page.getByRole("dialog", { name: "แก้ไขรายละเอียดการซ่อม" })
+  await expect(editDialog).toBeVisible()
+  await editDialog.locator("#repair-edit-invoice-no").fill(`${tag}-INV`)
+  const edited = page.waitForResponse((response) => response.url().endsWith(`/api/maintenance-tickets/${record.id}`) && response.request().method() === "PATCH")
+  await measure.timed("save the record's details", async () => {
+    await editDialog.getByRole("button", { name: "บันทึก", exact: true }).click()
+    expect((await edited).status()).toBe(200)
+  })
+  await expect(editDialog).toBeHidden()
+  await expect(valueBeside(page, "เลขใบเสร็จ / ใบกำกับภาษี")).toHaveText(`${tag}-INV`)
+
+  // Cancel the mistaken record through the same menu: the reason stays in its history, the asset goes back to Ready.
+  await recordMenuItem(await openRecordMenu(page, e2eDevice), "ยกเลิกบันทึก").click()
   const dialog = page.getByRole("dialog", { name: "ยกเลิกบันทึกนี้?" })
   await expect(dialog).toBeVisible()
   await dialog.locator("#repair-cancel-reason").fill(`${tag} เลือกเครื่องผิด`)
@@ -201,12 +245,21 @@ test("a second record for an asset under repair is refused, and a mistaken recor
   })
   await expect(dialog).toBeHidden()
   await expect(headerBadge(page)).toHaveText("ยกเลิก")
+  await expect(nextStepCard(page, "cancelled")).toBeVisible()
+  await expect(nextStepCard(page, "cancelled")).toContainText(`${tag} เลือกเครื่องผิด`)
   await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("พร้อมใช้งาน")
-  await expect(page.locator("#history")).toContainText("ยกเลิกบันทึก")
+  // The history, oldest first: บันทึกซ่อม, then ยกเลิกบันทึก with its reason.
+  const events = page.locator("#history [data-repair-history-event]")
+  await expect(events.first()).toContainText("บันทึกซ่อม")
+  await expect(events.last()).toContainText("ยกเลิกบันทึก")
   await expect(page.locator("#history")).toContainText(`${tag} เลือกเครื่องผิด`)
-  // A cancelled record cannot be finished or cancelled again.
+  // A cancelled record cannot be finished or cancelled again: no ซ่อมเสร็จ, and the menu holds แก้ไขรายละเอียด only.
   await expect(page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true })).toHaveCount(0)
-  await expect(page.getByRole("button", { name: "ยกเลิกบันทึก", exact: true })).toHaveCount(0)
+  const menu = await openRecordMenu(page, e2eDevice)
+  await expect(recordMenuItem(menu, "แก้ไขรายละเอียด")).toBeVisible()
+  await expect(recordMenuItem(menu, "ยกเลิกบันทึก")).toHaveCount(0)
+  await page.keyboard.press("Escape")
+  await expect(menu).toBeHidden()
   await measure.recordPage("cancelled record")
   expect((await readAsset(page.request, asset.id)).status.name, "cancelled: back to Ready").toBe("Ready")
 })
@@ -309,4 +362,81 @@ test("a PM visit saved not done leaves its plan's date, and the plan is ended (g
   } finally {
     await endPlan(page.request, plan.id)
   }
+})
+
+// A held asset's repair (group 5 plan 3, spec §16, Review Focus 2): a personal notebook still on its handover gets an
+// unfinished record through the form. On the record, ซ่อมไม่ได้ is refused on the card and in the complete dialog, naming
+// the HO- with รับคืน (IT staff have asset:edit). รับคืน opens the check-in of that handover; returned with ส่งซ่อม, it joins
+// the open record (group 3 decision 4). Back on the record, ซ่อมไม่ได้ reads รอตัดจำหน่าย, and closing it so shows the
+// disposal step (IT staff have disposal:create). The phone checks the card only; the rest is the desktop's.
+test("a held asset's repair: refused at ซ่อมไม่ได้, returned into ส่งซ่อม, then closed beyond repair with the disposal step", async ({ page, measure, e2eDevice }, testInfo) => {
+  const receiver = readRunData().employees.receiver1
+  const masters = await readAssetMasters(page)
+  const tag = areaTag(testInfo, "R7")
+  const asset = await createAsset(page.request, masters, { tag, name: `${tag} โน้ตบุ๊กส่งซ่อมระหว่างถือครอง`, ownershipType: "personal" })
+  const handover = await handOverPermanently(page.request, masters, asset.id, receiver.id)
+  expect(handover.documentNo, "the handover's document").toMatch(/^HO-/)
+
+  // An unfinished record through the form: ใช้งานอยู่ → อยู่ระหว่างซ่อม, the handover still open.
+  await measure.visit(`/th/maintenance/new?assetId=${asset.id}`, "repair form, a held asset")
+  await expect(page.locator("#repair-record-asset-value")).toContainText(tag)
+  await page.locator("#repair-record-problem").fill(`${tag} เปิดไม่ติด ส่งซ่อมระหว่างถือครอง`)
+  await answerRepair(page, { done: false })
+  await expect(page.locator("[data-repair-status-line]")).toHaveText(/ใช้งานอยู่\s*→\s*อยู่ระหว่างซ่อม/)
+  const record = await saveRepairForm(page, measure, "save the held asset's unfinished repair")
+  expect(record.repairStatus).toBe("in_progress")
+
+  // The card: ซ่อมไม่ได้ is refused while the asset is held, naming its HO-, with รับคืน.
+  await expect(nextStepCard(page, "open")).toBeVisible()
+  const heldRow = outcomeRow(page, "beyond_repair").locator("[data-repair-held]")
+  await expect(heldRow).toContainText("อยู่กับ")
+  await expect(heldRow).toContainText(handover.documentNo)
+  await expect(heldRow.getByRole("link", { name: "รับคืน", exact: true })).toBeVisible()
+  await measure.recordPage("held asset's record, ซ่อมไม่ได้ refused")
+  // The phone stops here: the dialog, the return and the close are the same parts on both devices.
+  if (e2eDevice === "phone") return
+
+  // The complete dialog: no result pre-checked; ซ่อมไม่ได้ shows the same refusal. Closed with Escape, nothing saved.
+  await recordCompleteButton(page, e2eDevice).click()
+  const dialog = page.getByRole("dialog", { name: "บันทึกว่าซ่อมเสร็จ" })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.locator("#repair-complete-outcome").getByRole("radio", { checked: true })).toHaveCount(0)
+  await dialog.getByRole("radio", { name: "ซ่อมไม่ได้ เสนอจำหน่าย", exact: true }).check()
+  await expect(dialog.locator("[data-repair-held]")).toContainText(handover.documentNo)
+  await measure.recordPage("complete dialog, a held asset refused")
+  await page.keyboard.press("Escape")
+  await expect(dialog).toBeHidden()
+
+  // รับคืน opens the check-in of that handover; its next status is locked to ส่งซ่อม under the open record (S-R43).
+  await heldRow.getByRole("link", { name: "รับคืน", exact: true }).click()
+  await page.waitForURL((url) => url.pathname === "/th/asset-management/checkin" && url.searchParams.get("checkoutId") === handover.id)
+  await expect(pickedAsset(page, asset.id)).toContainText(tag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+  const nextStatus = page.locator("#checkin-next-status option")
+  await expect(nextStatus).toHaveCount(1)
+  await expect(nextStatus).toHaveText("ส่งซ่อม")
+  await page.locator("#checkin-next-status").selectOption({ label: "ส่งซ่อม" })
+  await conditionChip(page, "เสียหาย", "checkin-condition-after").check()
+  // The run's room, by its full "code - name" (the run's second room's code starts with this one's).
+  const room = runRecords(readRunState().runId).location
+  await pickSearchable(page, "checkin-next-location", room.code, new RegExp(`^${room.code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} - `))
+  // Recorded as the transaction area records its forms (its known findings dropped).
+  await recordTxPage(measure, "return form from the record, ส่งซ่อม", testInfo)
+  const checkin = await saveReturnForm(page, asset.id)
+  expect(checkin.repair).toEqual({ id: record.id, repairNo: record.repairNo, joined: true })
+  expect((await readAsset(page.request, asset.id)).status.name, "returned into ส่งซ่อม: still Under Maintenance").toBe("Under Maintenance")
+
+  // Back on the record: no holder and no handover now. ซ่อมไม่ได้ reads รอตัดจำหน่าย, ใช้งานได้ พร้อมใช้งาน with no holder.
+  await measure.visit(`/th/maintenance/${record.id}`, "held asset's record after the return")
+  await expect(nextStepCard(page, "open")).toBeVisible()
+  await expect(outcomeRow(page, "beyond_repair")).toContainText("รอตัดจำหน่าย")
+  await expect(outcomeRow(page, "beyond_repair").locator("[data-repair-held]")).toHaveCount(0)
+  await expect(outcomeRow(page, "usable")).toContainText("ไม่มีผู้ถือครอง")
+
+  // Closed ซ่อมไม่ได้: the card turns to the disposal step, with the request's button.
+  await completeRecord(page, measure, e2eDevice, record.id, "ซ่อมไม่ได้ เสนอจำหน่าย", "save the returned asset beyond repair")
+  await expect(nextStepCard(page, "closedBeyond")).toContainText("ขั้นถัดไป: ยื่นคำขอตัดจำหน่าย")
+  const disposalLink = nextStepCard(page, "closedBeyond").getByRole("link", { name: "ยื่นคำขอตัดจำหน่าย", exact: true })
+  await expect(disposalLink).toHaveAttribute("href", new RegExp(`^/th/disposal/new\\?assetId=${asset.id}&`))
+  await measure.recordPage("held asset's record closed beyond repair")
+  expect((await readAsset(page.request, asset.id)).status.name, "beyond repair: Pending Disposal").toBe("Pending Disposal")
 })

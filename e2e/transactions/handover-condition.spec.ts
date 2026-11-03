@@ -8,7 +8,7 @@ import { asUser, expect, test } from "../support/fixtures.ts"
 import type { Measure } from "../support/measure.ts"
 import { readRunData } from "../support/state.ts"
 import { uploadPhotoByApi } from "../asset-detail/detail-steps.ts"
-import { saveRepairForm, valueBeside } from "../repair/repair-data.ts"
+import { nextStepCard, recordCompleteButton, saveRepairForm, valueBeside } from "../repair/repair-data.ts"
 import {
   conditionChip,
   createTxAsset,
@@ -101,6 +101,7 @@ test("the repair loop: a broken asset is refused with ส่งซ่อม; its
   await condition.getByRole("radio", { name: "ดี", exact: true }).check()
   await record(measure, "repair form, done, condition ดี", testInfo)
   const repair = await saveRepairForm(page, measure, "save the repair done")
+  await expect(nextStepCard(page, "closedUsable")).toBeVisible()
 
   // The asset page: the condition is ดี, and the history shows the change from เสียหาย to ดี.
   expect((await readCondition(page, asset.id)).condition?.nameTh).toBe("ดี")
@@ -167,9 +168,11 @@ test("closing an open repair as ซ่อมไม่ได้ says the conditio
   await page.getByRole("radio", { name: "ยังซ่อมไม่เสร็จ", exact: true }).check()
   const repair = await saveRepairForm(page, measure, "save the open repair")
 
-  await page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
+  // The header's ซ่อมเสร็จ (the next-step card holds a second one on the desktop); no result is pre-checked (G5P3-R9).
+  await recordCompleteButton(page, e2eDevice).click()
   const dialog = page.getByRole("dialog", { name: "บันทึกว่าซ่อมเสร็จ" })
   await expect(dialog).toBeVisible()
+  await expect(dialog.locator("#repair-complete-outcome").getByRole("radio", { checked: true })).toHaveCount(0)
   await dialog.getByRole("radio", { name: "ซ่อมไม่ได้ เสนอจำหน่าย" }).check()
   await expect(dialog).toContainText("สภาพของทรัพย์สินจะเปลี่ยนเป็น ซาก")
   await expect(dialog.locator("#repair-complete-condition")).toHaveCount(0)
@@ -178,6 +181,7 @@ test("closing an open repair as ซ่อมไม่ได้ says the conditio
   await dialog.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
   expect((await completed).status()).toBe(200)
   await expect(dialog).toBeHidden()
+  await expect(nextStepCard(page, "closedBeyond")).toBeVisible()
 
   const after = await readCondition(page, asset.id)
   expect(after.condition?.nameTh).toBe("ซาก")

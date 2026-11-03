@@ -5,6 +5,7 @@
 // are not the steps under test; the walk itself is on the page.
 import type { APIRequestContext, Locator, Page, TestInfo } from "@playwright/test"
 import { expect } from "../support/fixtures.ts"
+import type { E2eDevice } from "../support/matrix.ts"
 import type { Measure } from "../support/measure.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 
@@ -171,12 +172,53 @@ export async function saveRepairForm(page: Page, measure: Measure, label: string
   return record
 }
 
-// "ซ่อมเสร็จ" on the record page: today's date, the outcome, save, and the dialog closes.
-export async function completeRecord(page: Page, measure: Measure, recordId: string, outcome: "ใช้งานได้" | "ซ่อมไม่ได้ เสนอจำหน่าย", label: string) {
-  await page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
+// The record page's next-step card (group 5 plan 3, spec §8.2): its state on data-repair-next-step.
+export type RepairNextStepKind = "open" | "closedUsable" | "closedBeyond" | "closedNoOutcome" | "cancelled"
+export function nextStepCard(page: Page, kind: RepairNextStepKind): Locator {
+  return page.locator(`[data-repair-next-step="${kind}"]`)
+}
+
+// One result's row on the open card: what ซ่อมเสร็จ will do with ใช้งานได้ or ซ่อมไม่ได้ (the next status and the holder
+// note, or the refusal on a held asset).
+export function outcomeRow(page: Page, outcome: "usable" | "beyond_repair"): Locator {
+  return page.locator(`[data-repair-next-step="open"] [data-repair-outcome-row="${outcome}"]`)
+}
+
+// The record's "ซ่อมเสร็จ": the header's from md (the card holds a second one, so the page has two), the phone bar's below.
+export function recordCompleteButton(page: Page, device: E2eDevice): Locator {
+  return device === "desktop"
+    ? page.locator('[data-slot="page-header-actions"]').getByRole("button", { name: "ซ่อมเสร็จ", exact: true })
+    : page.locator('[data-slot="action-bar"]').getByRole("button", { name: "ซ่อมเสร็จ", exact: true })
+}
+
+// The record's menu, opened: "อื่น ๆ" in the header on the desktop (a dropdown), "เพิ่มเติม" in the phone bar (a bottom
+// sheet named by the record's MT-). Both hold แก้ไขรายละเอียด and, while the record is open, ยกเลิกบันทึก (G5P3-R8).
+export async function openRecordMenu(page: Page, device: E2eDevice): Promise<Locator> {
+  if (device === "desktop") {
+    await page.locator('[data-slot="page-header-actions"]').getByRole("button", { name: "อื่น ๆ", exact: true }).click()
+    const menu = page.getByRole("menu")
+    await expect(menu).toBeVisible()
+    return menu
+  }
+  await page.locator('[data-slot="action-bar"]').getByRole("button", { name: "เพิ่มเติม", exact: true }).click()
+  const sheet = page.getByRole("dialog").filter({ visible: true }).last()
+  await expect(sheet).toBeVisible()
+  return sheet
+}
+
+// An item of the record's open menu by its words: a menu item on the desktop, a button or a link in the phone sheet.
+export function recordMenuItem(menu: Locator, name: string): Locator {
+  return menu.getByRole("menuitem", { name, exact: true }).or(menu.getByRole("button", { name, exact: true })).or(menu.getByRole("link", { name, exact: true }))
+}
+
+// "ซ่อมเสร็จ" on the record page: no result is pre-checked (G5P3-R9), then today's date, the outcome, save, and the
+// dialog closes.
+export async function completeRecord(page: Page, measure: Measure, device: E2eDevice, recordId: string, outcome: "ใช้งานได้" | "ซ่อมไม่ได้ เสนอจำหน่าย", label: string) {
+  await recordCompleteButton(page, device).click()
   const dialog = page.getByRole("dialog", { name: "บันทึกว่าซ่อมเสร็จ" })
   await expect(dialog).toBeVisible()
-  await dialog.getByRole("radio", { name: outcome }).check()
+  await expect(dialog.locator("#repair-complete-outcome").getByRole("radio", { checked: true })).toHaveCount(0)
+  await dialog.getByRole("radio", { name: outcome, exact: true }).check()
   const completed = page.waitForResponse((response) => response.url().endsWith(`/api/maintenance-tickets/${recordId}`) && response.request().method() === "PATCH")
   await measure.timed(label, async () => {
     await dialog.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()

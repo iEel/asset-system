@@ -54,7 +54,8 @@ test("repair records: repaired brings a Ready asset back to Ready and beyond rep
   assert.ok(spec.includes(`test("the asset page passes axe (ER2, finding AR2)"`))
   assert.ok(!spec.includes(`  test.fail(true, "AR2: `), "AR2 is fixed (FX2)")
   assert.ok(spec.includes("  await measure.visit(`/th/assets/${asset.id}`, \"asset page\")\n"), "AR2's test runs axe on the asset page")
-  assert.ok(data.includes("export async function completeRecord(page: Page, measure: Measure, recordId: string, outcome:"))
+  // Group 5 plan 3 Task 5: ซ่อมเสร็จ opens from the header on the desktop or the bar on the phone.
+  assert.ok(data.includes("export async function completeRecord(page: Page, measure: Measure, device: E2eDevice, recordId: string, outcome:"))
   for (const text of [th.repairRecord.outcome.beyond_repair, th.repairRecord.status.closed]) assert.ok(spec.includes(text), text)
   // A shared asset with no custodian: repaired is Ready, beyond repair is Pending Disposal (the app's rules).
   const policy = await import("../src/lib/repair-record-policy.ts")
@@ -213,4 +214,137 @@ test("บันทึกซ่อม answers its questions, refuses a held asset
   const repairTest = fieldErrors.slice(repairStart, fieldErrors.indexOf("\n})", repairStart))
   assert.equal(repairTest.split("await repairSaveButton(page).click()").length - 1, 2)
   assert.ok(!repairTest.includes("await save(page)"))
+})
+
+test("the repair record's next step, its menu, its history oldest first, and a held asset's repair through the return to the disposal step (group 5 plan 3 Task 5)", async () => {
+  const spec = read("e2e/repair/repair-record.spec.ts")
+  const pm = read("e2e/repair/pm-plan.spec.ts")
+  const data = read("e2e/repair/repair-data.ts")
+  const handoverSpec = read("e2e/transactions/handover-condition.spec.ts")
+  const repair = th.repairRecord
+  const detail = repair.detail
+  // The record's controls by device: ซ่อมเสร็จ in the header on the desktop (the card holds a second one) and in the
+  // phone bar below md; "อื่น ๆ" (the header's menu) or "เพิ่มเติม" (the bar's sheet) for แก้ไขรายละเอียด and ยกเลิกบันทึก.
+  assert.equal(detail.more, "อื่น ๆ")
+  assert.equal(detail.phoneMore, "เพิ่มเติม")
+  assert.ok(data.includes('import type { E2eDevice } from "../support/matrix.ts"'))
+  assert.ok(data.includes("export function recordCompleteButton(page: Page, device: E2eDevice): Locator"))
+  assert.ok(data.includes(`page.locator('[data-slot="page-header-actions"]').getByRole("button", { name: "${repair.complete}", exact: true })`))
+  assert.ok(data.includes(`page.locator('[data-slot="action-bar"]').getByRole("button", { name: "${repair.complete}", exact: true })`))
+  assert.ok(data.includes("export async function openRecordMenu(page: Page, device: E2eDevice): Promise<Locator>"))
+  assert.ok(data.includes(`getByRole("button", { name: "${detail.more}", exact: true })`) && data.includes(`getByRole("button", { name: "${detail.phoneMore}", exact: true })`))
+  assert.ok(data.includes("export function recordMenuItem(menu: Locator, name: string): Locator"))
+  // completeRecord: no result is pre-checked (G5P3-R9), then the one given.
+  const complete = data.slice(data.indexOf("export async function completeRecord("), data.indexOf("export async function planAction("))
+  assert.ok(complete.includes("await recordCompleteButton(page, device).click()"))
+  assert.ok(complete.includes(`await expect(dialog.locator("#repair-complete-outcome").getByRole("radio", { checked: true })).toHaveCount(0)`))
+  // No spec presses an unscoped ซ่อมเสร็จ or ยกเลิกบันทึก on the record page: ซ่อมเสร็จ shows twice on the desktop (the header
+  // and the card) and ยกเลิกบันทึก sits in the menu.
+  for (const [file, source] of [["repair-record", spec], ["pm-plan", pm], ["handover-condition", handoverSpec]]) {
+    assert.ok(!source.includes(`page.getByRole("button", { name: "${repair.complete}", exact: true }).click()`), `${file}: ซ่อมเสร็จ`)
+    assert.ok(!source.includes(`page.getByRole("button", { name: "${repair.cancel}", exact: true }).click()`), `${file}: ยกเลิกบันทึก`)
+  }
+  assert.ok(handoverSpec.includes("await recordCompleteButton(page, e2eDevice).click()"))
+  assert.ok(handoverSpec.includes(`await expect(dialog.locator("#repair-complete-outcome").getByRole("radio", { checked: true })).toHaveCount(0)`))
+  assert.ok(handoverSpec.includes(`await expect(nextStepCard(page, "closedBeyond")).toBeVisible()`))
+  // ER1–ER3 read the next-step card: open, and the ใช้งานได้ row's next status.
+  assert.ok(data.includes("export function nextStepCard(page: Page, kind: RepairNextStepKind): Locator"))
+  assert.ok(data.includes(`export function outcomeRow(page: Page, outcome: "usable" | "beyond_repair"): Locator`))
+  assert.ok(data.includes("`[data-repair-next-step=\"${kind}\"]`") && data.includes("`[data-repair-next-step=\"open\"] [data-repair-outcome-row=\"${outcome}\"]`"))
+  const er = (suffix: string) => {
+    const title = titles(spec).find((name) => name.endsWith(suffix))
+    assert.ok(title, suffix)
+    const start = spec.indexOf(`test("${title}"`)
+    return spec.slice(start, spec.indexOf("\n})", start))
+  }
+  const [er1, er2, er3] = [er("(ER1)"), er("(ER2)"), er("(ER3)")]
+  for (const [name, body] of [["ER1", er1], ["ER2", er2], ["ER3", er3]]) {
+    assert.ok(body.includes(`await expect(nextStepCard(page, "open")).toBeVisible()`), name)
+    assert.ok(body.includes(`await expect(outcomeRow(page, "usable")).toContainText(`), name)
+  }
+  // ER1: a held asset goes back to its holder on its HO-; ซ่อมไม่ได้ is refused on the card.
+  assert.ok(er1.includes("const handover = await handOverPermanently(page.request, masters, asset.id, receiver.id)"))
+  assert.ok(er1.includes(`await expect(outcomeRow(page, "usable")).toContainText("ใช้งานอยู่")`))
+  assert.equal(detail.note.backTo, "กลับไปที่ {holder} ตามใบส่งมอบ {documentNo}")
+  assert.ok(er1.includes("await expect(outcomeRow(page, \"usable\")).toContainText(`กลับไปที่ ${receiver.fullNameTh} ตามใบส่งมอบ ${handover.documentNo}`)"))
+  assert.ok(er1.includes(`await expect(outcomeRow(page, "beyond_repair").locator("[data-repair-held]")).toContainText(handover.documentNo)`))
+  assert.ok(er1.includes("await recordCompleteButton(page, e2eDevice).click()"))
+  // ER1's wrong entry: no result is pre-checked, so the result's own error shows beside the date's.
+  assert.equal(th.apiErrors.repairOutcomeRequired, "เลือกผลการซ่อม")
+  assert.ok(er1.includes(`await expect(dialog.locator("#repair-complete-outcome-error")).toHaveText("${th.apiErrors.repairOutcomeRequired}")`))
+  // The asset panel's ผู้ถือครอง reads the name with the department under it, no employee code (G5P3-R10).
+  assert.ok(er1.includes(`await expect(valueBeside(page, "ผู้ถือครอง")).toContainText(receiver.fullNameTh)`))
+  assert.ok(er1.includes(`await expect(valueBeside(page, "ผู้ถือครอง")).not.toContainText(receiver.code)`))
+  assert.ok(!spec.includes(`await expect(valueBeside(page, "ผู้ถือครอง")).toContainText(receiver.code)`))
+  assert.ok(er1.includes(`await expect(nextStepCard(page, "closedUsable")).toBeVisible()`))
+  // ER2: no holder (Review Focus 1), then the closed ซ่อมไม่ได้ card offers the disposal request.
+  assert.ok(er2.includes(`await expect(outcomeRow(page, "usable")).toContainText("${detail.note.noHolder}")`))
+  assert.ok(er2.includes(`await expect(nextStepCard(page, "closedBeyond")).toContainText("${detail.nextDisposal}")`))
+  // ER3: แก้ไขรายละเอียด and ยกเลิกบันทึก through the menu; the cancelled card; the history oldest first.
+  assert.ok(er3.includes(`await recordMenuItem(await openRecordMenu(page, e2eDevice), "${repair.edit}").click()`))
+  assert.ok(er3.includes(`page.getByRole("dialog", { name: "${repair.editTitle}" })`))
+  assert.ok(er3.includes(`await recordMenuItem(await openRecordMenu(page, e2eDevice), "${repair.cancel}").click()`))
+  assert.ok(er3.includes(`await expect(nextStepCard(page, "cancelled")).toBeVisible()`))
+  assert.ok(er3.includes(`await expect(recordMenuItem(menu, "${repair.cancel}")).toHaveCount(0)`))
+  assert.equal(repair.movement.create, "บันทึกซ่อม")
+  assert.ok(er3.includes(`const events = page.locator("#history [data-repair-history-event]")`))
+  assert.ok(er3.includes(`await expect(events.first()).toContainText("${repair.movement.create}")`))
+  assert.ok(er3.includes(`await expect(events.last()).toContainText("${repair.movement.cancel}")`))
+  // The PM record follows the page: the closed card after the save.
+  assert.ok(pm.includes(`await expect(nextStepCard(page, "closedUsable")).toBeVisible()`))
+
+  // The held asset's repair (spec §16, Review Focus 2): IT staff, the desktop walks it all, the phone the card only.
+  const heldTitle = "a held asset's repair: refused at ซ่อมไม่ได้, returned into ส่งซ่อม, then closed beyond repair with the disposal step"
+  assert.ok(titles(spec).includes(heldTitle), "the held asset's repair test")
+  const heldStart = spec.indexOf(`test("${heldTitle}"`)
+  const held = spec.slice(heldStart, spec.indexOf("\n})", heldStart))
+  const at = (part: string) => {
+    const index = held.indexOf(part)
+    assert.ok(index >= 0, part)
+    return index
+  }
+  const steps = [
+    "const handover = await handOverPermanently(page.request, masters, asset.id, receiver.id)",
+    "await answerRepair(page, { done: false })",
+    "const record = await saveRepairForm(page, measure,",
+    `const heldRow = outcomeRow(page, "beyond_repair").locator("[data-repair-held]")`,
+    "await expect(heldRow).toContainText(handover.documentNo)",
+    `if (e2eDevice === "phone") return`,
+    `await dialog.getByRole("radio", { name: "${repair.outcome.beyond_repair}", exact: true }).check()`,
+    `await expect(dialog.locator("[data-repair-held]")).toContainText(handover.documentNo)`,
+    `await heldRow.getByRole("link", { name: "${repair.createForm.heldReturn}", exact: true }).click()`,
+    `await page.locator("#checkin-next-status").selectOption({ label: "ส่งซ่อม" })`,
+    "const checkin = await saveReturnForm(page, asset.id",
+    "expect(checkin.repair).toEqual({ id: record.id, repairNo: record.repairNo, joined: true })",
+    `await expect(outcomeRow(page, "beyond_repair")).toContainText("รอตัดจำหน่าย")`,
+    `await expect(outcomeRow(page, "beyond_repair").locator("[data-repair-held]")).toHaveCount(0)`,
+    `await completeRecord(page, measure, e2eDevice, record.id, "${repair.outcome.beyond_repair}",`,
+    `await expect(nextStepCard(page, "closedBeyond")).toContainText("${detail.nextDisposal}")`,
+    `nextStepCard(page, "closedBeyond").getByRole("link", { name: "${repair.openDisposalRequest}", exact: true })`,
+  ]
+  const positions = steps.map(at)
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions, "the steps in order")
+  assert.ok(held.includes(`url.searchParams.get("checkoutId") === handover.id`), "รับคืน opens that handover")
+  assert.ok(held.includes(`.toBe("Pending Disposal")`))
+  // The words the walk reads are the app's.
+  assert.equal(repair.createForm.heldWithDocument, "อยู่กับ {holder} ตามใบส่งมอบ {documentNo} ต้องรับคืนก่อน")
+  assert.equal(detail.nextDisposal, "ขั้นถัดไป: ยื่นคำขอตัดจำหน่าย")
+  assert.equal(repair.openDisposalRequest, "ยื่นคำขอตัดจำหน่าย")
+  // IT staff may return the asset, close the record and request its disposal (e2e/support/run-plan.ts).
+  const plan = read("e2e/support/run-plan.ts")
+  for (const permission of ["asset:edit", "disposal:create", "maintenance:edit"]) assert.ok(plan.includes(`"${permission}"`), permission)
+  // The app's rules: held, ซ่อมไม่ได้ is refused naming the HO-; returned (no holder, no handover), it goes Pending
+  // Disposal and ใช้งานได้ reads ไม่มีผู้ถือครอง (src/lib/repair-record-outlook.ts).
+  const outlook = await import("../src/lib/repair-record-outlook.ts")
+  const facts = {
+    id: "a", assetTag: "T", name: "N", statusName: "Under Maintenance", statusLabel: "อยู่ระหว่างซ่อม", conditionId: "c", conditionLabel: "ดี",
+    ownershipType: "personal", custodianId: "e", holderName: "ผู้รับ", departmentName: null, roomName: null, branchName: null, photo: null,
+    openRecord: { id: "r", repairNo: "MT-1" }, activeCheckout: { id: "h", documentNo: "HO-1", holderName: "ผู้รับ" },
+  }
+  assert.deepEqual(outlook.getRepairCompleteOutlook(facts, "beyond_repair").outlook, { kind: "refused", held: { checkoutId: "h", documentNo: "HO-1", holderName: "ผู้รับ" } })
+  const returned = { ...facts, custodianId: null, holderName: null, activeCheckout: null }
+  assert.deepEqual(outlook.getRepairCompleteOutlook(returned, "beyond_repair").outlook, { kind: "status", nextStatusName: "Pending Disposal", note: { key: "thenDisposal", holderStays: null } })
+  assert.deepEqual(outlook.getRepairCompleteOutlook(returned, "usable").outlook, { kind: "status", nextStatusName: "Ready", note: { key: "noHolder" } })
+  // Run-marked data only: the spec itself writes nothing.
+  assert.deepEqual(writes(spec), [])
 })
