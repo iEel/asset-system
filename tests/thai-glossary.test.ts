@@ -45,6 +45,8 @@ const rules: Rule[] = [
   { term: "พิมพ์ซ้ำ", pattern: /พิมพ์ซ้ำ/, use: "ต้องพิมพ์ใหม่" },
   // Group 5 plan 1 (decision 5): every due date that has passed reads เกินกำหนด, never เลยกำหนด.
   { term: "เลยกำหนด", pattern: /เลยกำหนด/, use: "เกินกำหนด" },
+  // Group 6 plan 3 (user 2026-11-04): the execute words carry no "จริง".
+  { term: "ตัดจำหน่ายจริง", pattern: /ตัดจำหน่ายจริง/, use: "บันทึกตัดจำหน่าย" },
 ]
 
 // Removed before matching: product names and allowed compounds.
@@ -159,4 +161,16 @@ test("every glossary exception points at a real key and explains itself", () => 
     assert.ok(keys.has(key), `exception for missing key ${key}`)
     assert.ok(reason.length >= 10, `exception ${key} needs a reason`)
   }
+})
+
+test("the execute words read บันทึกตัดจำหน่าย, never ตัดจำหน่ายจริง (group 6 plan 3)", () => {
+  const glossary = readFileSync("docs/19_THAI_GLOSSARY.md", "utf8")
+  assert.match(glossary, /\| \*\*บันทึกตัดจำหน่าย\*\* .*\| บันทึกตัดจำหน่ายจริง/)
+  assert.doesNotMatch(readFileSync("messages/th.json", "utf8"), /ตัดจำหน่ายจริง/)
+  assert.deepEqual(brokenRules("บันทึกตัดจำหน่ายจริง"), ["ตัดจำหน่ายจริง"])
+  assert.deepEqual(brokenRules("บันทึกตัดจำหน่าย"), [])
+  const page = th.disposalPage as Record<string, unknown>
+  assert.equal((page.types as Record<string, unknown>).dispose, "จำหน่าย")
+  assert.equal(page.executeDisposal, "บันทึกตัดจำหน่าย")
+  assert.equal((page.workflowSteps as Record<string, unknown>).execution, "บันทึกตัดจำหน่าย")
 })

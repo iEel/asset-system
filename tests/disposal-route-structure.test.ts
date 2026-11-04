@@ -22,7 +22,14 @@ test("keeps the disposal list queue-first and puts request creation on its own r
   assert.match(listSource, /buildDisposalQueryString\(filters, \{ page: filters\.page - 1 \}\)/)
   assert.match(listSource, /buildDisposalQueryString\(filters, \{ page: filters\.page \+ 1 \}\)/)
   assert.match(newSource, /requirePagePermission\(locale, "disposal", "create"\)/)
-  assert.match(newSource, /getDisposalAssetEligibilityError\(initialAsset\.status\) === null/)
+  // The ?assetId= prefill (group 6 plan 3 Task 1): lifecycle and readiness as the POST computes them, through the rule.
+  assert.match(newSource, /getDisposalAssetEligibilityError\(initialAsset\.status\) !== null \? \["lifecycle_status" as const\]/)
+  assert.match(newSource, /getDisposalReadinessBlockersForAsset\(initialAsset\)/)
+  assert.match(newSource, /\.\.\.disposalReadinessAssetSelect/)
+  assert.match(newSource, /initialDisposalAsset\(initialAsset \? \{ eligible: initialBlockers\.length === 0, blockers: initialBlockers \} : null\)/)
+  assert.match(newSource, /initialAsset && initialAssetRule === "use"/)
+  assert.match(newSource, /initialAsset && initialAssetRule === "blocked"/)
+  assert.match(newSource, /data-disposal-initial-blocked=""/)
   assert.doesNotMatch(newSource, /prisma\.asset\.findMany/)
   assert.match(newSource, /prisma\.asset\.findFirst/)
   assert.match(newSource, /<DisposalRequestForm/)
@@ -68,6 +75,16 @@ test("searches eligible disposal assets remotely instead of rendering the full a
   assert.match(routeSource, /slice\(0, 50\)/)
   assert.match(routeSource, /getDisposalReadinessBlockers/)
   assert.match(routeSource, /eligible: blockers\.length === 0/)
+  // ?id= also returns the request form's asset card, with the register photo as the asset page picks it (group 6
+  // plan 3 Task 1); the q= branch carries no card and reads no photo.
+  assert.match(routeSource, /const cardPhotoId = id && assets\.length > 0 \? await readAssetRegisterPhotoId\(assets\[0\]\.id\) : null/)
+  assert.match(routeSource, /\.\.\.\(id\r?\n\s+\? \{\r?\n\s+card: \{/)
+  for (const field of ["name: asset.name", "assetTag: asset.assetTag", "statusName: asset.status.name", "statusNameTh: asset.status.nameTh", "locationName: asset.currentLocation.name", "branchName: asset.branch.name", "custodianName: asset.custodian?.fullNameTh ?? null", "photoAttachmentId: cardPhotoId"]) {
+    assert.ok(routeSource.includes(field), field)
+  }
+  assert.match(routeSource, /where: \{ module: "asset", assetId, isActive: true, fileType: \{ startsWith: "image\/" \} \}/)
+  assert.match(routeSource, /orderBy: \{ uploadedAt: "desc" \}/)
+  assert.match(routeSource, /images\.find\(\(attachment\) => isThumbnailable\(attachment\.fileType\)\)/)
   assert.match(pickerSource, /disabled=\{!option\.eligible\}/)
   assert.match(pickerSource, /option\.blockers/)
 })

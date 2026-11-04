@@ -124,7 +124,7 @@ export const WRITE_LINK_PATTERNS: readonly RegExp[] = [
 // executeDisposal. The import card has no button a viewer could see by name since group 4 plan 5 opened it on arrival
 // ("เปิดตัวช่วยนำเข้า" went with the toggle); its template link is in WRITE_LINK_PATTERNS. The PM plan's พักแผน and
 // จบแผน moved inside the row's ⋯ (group 5 plan 4), which WRITE_MENU_NAMES catches.
-export const WRITE_BUTTON_NAMES: readonly string[] = ["อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "บันทึกตัดจำหน่ายจริง"]
+export const WRITE_BUTTON_NAMES: readonly string[] = ["อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "บันทึกตัดจำหน่าย"]
 // A ⋯ that holds only write actions, by its name (aria-label): the PM page's row menu "การดำเนินการของแผน <planNo>"
 // (maintenancePage.pmRowActions), drawn only with maintenance:edit. The viewer's PM page shows no ⋯ at all.
 export const WRITE_MENU_NAMES: readonly RegExp[] = [/^การดำเนินการของแผน /]

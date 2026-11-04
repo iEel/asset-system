@@ -141,8 +141,8 @@ test("the disposal request shows its three steps on the shared rail: filed, deci
   const page = read("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx")
   assert.match(page, /stepsLabel=\{t\("workflowStepsLabel"\)\}\n\s+labels=\{\{\n\s+request: t\("workflowSteps\.request"\),\n\s+decision: t\("workflowSteps\.decision"\),\n\s+execution: t\("workflowSteps\.execution"\),\n\s+\}\}/)
   const words = {
-    th: { label: "ขั้นตอนการตัดจำหน่าย", steps: { request: "ยื่นคำขอ", decision: "พิจารณา", execution: "ตัดจำหน่ายจริง" } },
-    en: { label: "Disposal steps", steps: { request: "Request", decision: "Decision", execution: "Execution" } },
+    th: { label: "ขั้นตอนการตัดจำหน่าย", steps: { request: "ยื่นคำขอ", decision: "พิจารณา", execution: "บันทึกตัดจำหน่าย" } },
+    en: { label: "Disposal steps", steps: { request: "Request", decision: "Decision", execution: "Record disposal" } },
   }
   for (const locale of ["th", "en"] as const) {
     const disposal = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, unknown> }).disposalPage
