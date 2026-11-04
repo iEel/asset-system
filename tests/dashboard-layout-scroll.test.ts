@@ -34,8 +34,9 @@ test("dashboard shell waits for a hash target that streams in after the loading 
   assert.match(shellSource, /import \{ landOnHashTarget \} from "@\/lib\/hash-target-landing"/)
   // scrollMainToHash says whether it landed, the target is still missing, or there is nothing to land on.
   assert.match(shellSource, /const scrollMainToHash = useCallback\(\(\): HashLandResult =>/)
-  assert.match(shellSource, /if \(!target\) return "missing"/)
-  assert.match(shellSource, /if \(target === main \|\| !main\.contains\(target\)\) return "none"/)
+  // A target still in React's hidden streaming holder (outside main) is not in place yet: the shell waits for it.
+  assert.match(shellSource, /if \(target === main\) return "none"/)
+  assert.match(shellSource, /if \(!target \|\| !main\.contains\(target\)\) return "missing"/)
   // The 96px offset from main's top is unchanged.
   assert.match(shellSource, /const anchorOffset = 96/)
   assert.match(shellSource, /top: main\.scrollTop \+ targetRect\.top - mainRect\.top - anchorOffset/)

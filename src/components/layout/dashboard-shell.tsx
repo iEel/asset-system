@@ -90,9 +90,11 @@ export function DashboardShell({
 
     const target = document.getElementById(targetId)
 
-    // A fresh load mounts the shell under loading.tsx's skeleton: the target streams in later, so the caller waits.
-    if (!target) return "missing"
-    if (target === main || !main.contains(target)) return "none"
+    if (target === main) return "none"
+    // A fresh load mounts the shell under loading.tsx's skeleton, so the caller waits for the target. React streams the
+    // page into a hidden holder under <body> (<div hidden id="S:0">) and moves it into main ~100-300ms later; a target
+    // found there is not in place yet (measured on next start, 2026-11-04).
+    if (!target || !main.contains(target)) return "missing"
 
     const anchorOffset = 96
     const mainRect = main.getBoundingClientRect()
