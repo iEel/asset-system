@@ -19,6 +19,8 @@ import {
   endPlan,
   handOverPermanently,
   headerBadge,
+  listRow,
+  listRows,
   nextStepCard,
   openRecordMenu,
   outcomeRow,
@@ -26,6 +28,8 @@ import {
   readAssetMasters,
   recordCompleteButton,
   recordMenuItem,
+  REPAIR_LIST,
+  repairListPanel,
   repairSaveButton,
   saveRepairForm,
   valueBeside,
@@ -43,9 +47,9 @@ test("an unfinished repair sends an asset in use to Under Maintenance, and repai
   const handover = await handOverPermanently(page.request, masters, asset.id, receiver.id)
   expect((await readAsset(page.request, asset.id)).status.name, "the asset is In Use before the repair").toBe("In Use")
 
-  // The repair list, then its "บันทึกซ่อม".
-  await measure.visit("/th/maintenance", "repair list")
-  await page.getByRole("main").getByRole("link", { name: "บันทึกซ่อม", exact: true }).first().click()
+  // The repair list, then its header's "บันทึกซ่อม" (the stuck card's rows hold one each too, group 5 plan 5).
+  await measure.visit(REPAIR_LIST, "repair list")
+  await page.locator('[data-slot="page-header-actions"]').getByRole("link", { name: "บันทึกซ่อม", exact: true }).click()
   await page.waitForURL(/\/th\/maintenance\/new(?:\?|$)/)
   await expect(page.getByRole("heading", { level: 1, name: "บันทึกซ่อม" })).toBeVisible()
   await measure.recordPage("repair form")
@@ -168,9 +172,11 @@ test("repaired brings a Ready asset back to Ready, and a second record found bey
   await measure.recordPage("second record beyond repair")
   expect((await readAsset(page.request, asset.id)).status.name, "beyond repair: Pending Disposal").toBe("Pending Disposal")
 
-  // The asset's repair history lists both records.
+  // The asset's repair history lists both records, and only them, under the chip "เฉพาะทรัพย์สินนี้".
   await measure.visit(`/th/maintenance?assetId=${asset.id}`, "the asset's repair records")
-  for (const record of [first, second]) await expect(page.getByRole("main").getByText(record.repairNo).first()).toBeAttached()
+  await expect(repairListPanel(page).locator('[data-slot="filter-chips"]')).toContainText("เฉพาะทรัพย์สินนี้")
+  await expect(listRows(page)).toHaveCount(2)
+  for (const record of [first, second]) await expect(listRow(page, record.id)).toBeVisible()
 })
 
 // Finding AR2 (expected to fail until it is fixed): the asset page's QR code is an <svg role="img"> with no name

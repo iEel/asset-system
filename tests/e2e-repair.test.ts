@@ -505,6 +505,122 @@ test("the PM page's tabs, search and cells, the open record on its row, the stal
   assert.ok(visit.indexOf("visitPlanRow(") < visit.indexOf("} finally {"), "looked at while the plan is active")
 })
 
+test("the repair list's strip, status tabs and cost total, the stuck card and the PM card (group 5 plan 5 Task 4)", async () => {
+  const spec = read("e2e/repair/repair-list.spec.ts")
+  const repairSpec = read("e2e/repair/repair-record.spec.ts")
+  const data = read("e2e/repair/repair-data.ts")
+  const r = th.repairRecord
+  const body = (title: string) => {
+    const start = spec.indexOf(`test("${title}`)
+    assert.ok(start >= 0, title)
+    return spec.slice(start, spec.indexOf("\n})", start))
+  }
+  // IT staff, on Chromium; run-marked data only, and the spec writes nothing itself (its plan goes through createPlan
+  // and is ended whatever happens).
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`))
+  assert.ok(!spec.includes("runPhoneOnWebKit()"))
+  assert.deepEqual(writes(spec), [])
+  for (const banned of ["/api/admin/settings", "ldap", "import-confirm", "import-preview", "status-correction"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
+  assert.deepEqual(titles(spec).map((title) => title.split(" (")[0].split(":")[0]), [
+    "the strip's cells open lists of their own size",
+    "a search's status tabs and cost total",
+    "the stuck card",
+    "a PM card row whose asset has an open record links to the record, never บันทึกว่าทำแล้ว",
+    "the repair list passes axe",
+  ])
+
+  // The list helpers: the strip's cells by data-repair-strip-cell, the rows from md and the phone cards below.
+  assert.ok(data.includes("export function stripCell(page: Page, key: RepairStripKey): Locator"))
+  assert.ok(data.includes("return page.locator(`[data-repair-strip-cell=\"${key}\"]`)"))
+  assert.ok(data.includes("export function listRows(page: Page): Locator"))
+  assert.ok(data.includes(".//tr[@data-repair-row]"))
+  assert.ok(data.includes(`return page.locator("section").filter({ has: page.locator("[data-repair-tabs]") }).last()`))
+  // The markup the helpers read (src/components/maintenance/repair-list-strip.tsx and the page).
+  const page = read("src/app/[locale]/(dashboard)/maintenance/page.tsx")
+  assert.ok(page.includes(`rowData={{ "data-repair-row": row.id }}`))
+  assert.ok(page.includes("<TabNav data-repair-tabs"))
+  for (const key of ["open", "stuck", "pmOverdue", "pmWeek"]) assert.ok(read("src/components/maintenance/repair-list-strip.tsx").includes(`data: { "data-repair-strip-cell": "${key}" }`), key)
+
+  // The strip (Review Focus 1, G5P5-R1): each cell against the list it opens, read on the same page; the PM cells
+  // against the PM page's range total; the stuck cell lands on #stuck.
+  const strip = body("the strip's cells open lists of their own size")
+  for (const step of [
+    `expect(countOf(await repairTab(page, "${r.status.in_progress}").innerText()), "the open cell and the unfiltered list's tab").toBe(cells.open)`,
+    `await expect(stripCell(page, "open").getByRole("link")).toHaveAttribute("aria-current", "page")`,
+    `for (const [key, due] of [["pmOverdue", "overdue"], ["pmWeek", "week"]] as const) {`,
+    "expect(await pmPlanTotal(page), `the ${key} cell and the PM page's ${due} list`).toBe(cell)",
+    `await page.waitForURL((url) => url.pathname === REPAIR_LIST && url.hash === "#stuck")`,
+  ]) assert.ok(strip.includes(step), step)
+  assert.equal(r.stripTitle, "ต้องจัดการ {count} เรื่อง")
+  assert.equal(r.stripEmpty, "ไม่มีงานที่ต้องจัดการ")
+  assert.equal(th.maintenancePage.pmRange, "แสดง {from}–{to} จาก {total}")
+  assert.equal(th.common.showingRange, "{from}–{to} จาก {total} รายการ")
+
+  // The search (Review Focus 1, G5P5-R4, R6): open 1,000, closed 500, cancelled 200; the tabs 3 · 1 · 1 · 1; the foot
+  // 2 records, 1,500.00, one cancelled left out; the ยกเลิก tab has no cost line.
+  const search = body("a search's status tabs and cost total")
+  for (const step of [
+    `await page.locator("#repair-record-cost").fill("1000")`,
+    `await page.locator("#repair-record-cost").fill("500")`,
+    `await page.locator("#repair-record-cost").fill("200")`,
+    `await dialog.getByRole("button", { name: "ยืนยันยกเลิก", exact: true }).click()`,
+    "await expect(listRows(page)).toHaveCount(3)",
+    `for (const [label, n] of [["${th.common.all}", 3], ["${r.status.in_progress}", 1], ["${r.status.closed}", 1], ["${r.status.cancelled}", 1]] as const) {`,
+    `await expect(costFoot).toContainText("ค่าใช้จ่ายรวม 2 รายการ")`,
+    `await expect(page.locator("[data-repair-cost-total]")).toContainText("1,500.00")`,
+    `await expect(costFoot).toContainText("ไม่นับ 1 รายการที่ยกเลิก")`,
+    "await expect(listRow(page, open.id)).toContainText(/(?:ส่ง)?ซ่อมมา 2 วัน/)",
+    "await expect(listRow(page, cancelled.id)).toContainText(reason)",
+    `await repairTab(page, "${r.status.cancelled}").click()`,
+    `await expect(page.locator("[data-repair-cost]")).toHaveCount(0)`,
+  ]) assert.ok(search.includes(step), step)
+  assert.equal(r.costTotal, "ค่าใช้จ่ายรวม {count} รายการ")
+  assert.equal(r.costExcludesCancelled, "ไม่นับ {count} รายการที่ยกเลิก")
+  assert.equal(r.detail.repairDays, "ซ่อมมา {days, number} วัน")
+  assert.equal(r.detail.sentDays, "ส่งซ่อมมา {days, number} วัน")
+
+  // The stuck card (Review Focus 3), read only on the dev database's own stuck assets (the controller's ruling (a)):
+  // nothing is saved on them, the row's บันทึกซ่อม is checked by its href, and decision 11 stays with the unit tests.
+  const stuck = body("the stuck card")
+  for (const write of ["saveRepairForm", "answerRepair", "createAsset", "/th/maintenance/new?"]) assert.ok(!stuck.includes(write), write)
+  for (const step of [
+    "await expect(card.locator('[data-slot=\"status-badge\"]').first()).toHaveText(`${count(total)} ชิ้น`)",
+    `await expect(card).toContainText("${r.stuckEmpty}")`,
+    `expect(create.searchParams.get("assetId")).toBe(assetId)`,
+    `expect(create.searchParams.get("returnTo") ?? "").toMatch(/^\\/th\\/maintenance\\?/)`,
+    "await card.getByRole(\"link\", { name: `ดูทั้งหมด ${count(total)} ชิ้น`, exact: true }).click()",
+    "await expect(rows).toHaveCount(total)",
+    `await card.getByRole("link", { name: "${r.stuckShowLess}", exact: true }).click()`,
+    "await expect(rows).toHaveCount(3)",
+  ]) assert.ok(stuck.includes(step), step)
+  assert.equal(r.stuckCount, "{count} ชิ้น")
+  assert.equal(r.stuckShowAll, "ดูทั้งหมด {count} ชิ้น")
+  assert.ok(spec.includes("Decision 11 (ยังซ่อมไม่เสร็จ saved on an asset") && spec.includes("G5P1-R10"))
+
+  // The PM card (Review Focus 4): a plan due yesterday on an asset with an open record names the record, never
+  // บันทึกว่าทำแล้ว; when older plans fill the 3 rows the PM page's row is read instead. The record is closed and the
+  // plan ended.
+  const pm = body("a PM card row whose asset has an open record")
+  for (const step of [
+    "const plan = await createPlan(page.request, { assetId: asset.id, title: `${tag} ตรวจแบตเตอรี่`, nextDueDate: dayBefore(bangkokToday()) })",
+    "const openLink = `มีบันทึกซ่อมที่ยังไม่เสร็จ ${record.repairNo}`",
+    `await expect(row.getByRole("link", { name: "${r.pmRecordDone}", exact: true })).toHaveCount(0)`,
+    `const pmRow = await visitPlanRow(page, measure, plan.planNo, "active", "PM plans, the overdue plan with its open record")`,
+    `await completeRecord(page, measure, e2eDevice, record.id, "ใช้งานได้", "close the PM plan's asset's record")`,
+  ]) assert.ok(pm.includes(step), step)
+  assert.match(pm, /\} finally \{\n\s+await endPlan\(page\.request, plan\.id\)\n\s+\}/)
+  assert.equal(th.maintenancePage.pmOpenRecord, "มีบันทึกซ่อมที่ยังไม่เสร็จ {repairNo}")
+  assert.equal(r.pmOverdue, "เกินกำหนด {days} วัน")
+
+  // axe: measure.visit runs it on the list, light and dark (the four projects).
+  assert.ok(body("the repair list passes axe").includes("await measure.visit(REPAIR_LIST, \"repair list\")"))
+
+  // The record specs' list visits: the header's บันทึกซ่อม (the stuck rows hold one too), and ?assetId= rows by id.
+  assert.ok(repairSpec.includes(`await page.locator('[data-slot="page-header-actions"]').getByRole("link", { name: "บันทึกซ่อม", exact: true }).click()`))
+  assert.ok(repairSpec.includes("for (const record of [first, second]) await expect(listRow(page, record.id)).toBeVisible()"))
+  assert.equal(r.assetFilter, "เฉพาะทรัพย์สินนี้")
+})
+
 // A value of messages/th.json by its key, wherever it sits.
 function findValue(node: unknown, key: string): string | undefined {
   if (!node || typeof node !== "object") return undefined

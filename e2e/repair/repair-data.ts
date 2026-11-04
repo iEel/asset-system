@@ -326,6 +326,58 @@ export async function choosePlanAsset(page: Page, tag: string) {
   await expect(planAssetCard(page)).toContainText(tag)
 }
 
+// The repair list (src/app/[locale]/(dashboard)/maintenance/page.tsx, group 5 plan 5): the ต้องจัดการ strip's cells
+// (data-repair-strip-cell), the records panel (the section that holds the status tabs) and its rows: the table's
+// tr[data-repair-row] from md, the phone cards (links to a record, outside the table) below. The strip counts globally,
+// like the bell (G5P5-R1), so a spec compares a cell to the list it opens, never to a fixed number.
+export const REPAIR_LIST = "/th/maintenance"
+export type RepairStripKey = "open" | "stuck" | "pmOverdue" | "pmWeek"
+
+export function stripCell(page: Page, key: RepairStripKey): Locator {
+  return page.locator(`[data-repair-strip-cell="${key}"]`)
+}
+
+// A cell's count, as a number (formatCount writes 1,234).
+export async function stripCount(page: Page, key: RepairStripKey): Promise<number> {
+  return countOf(await stripCell(page, key).locator("dd").first().innerText())
+}
+
+export function repairListPanel(page: Page): Locator {
+  return page.locator("section").filter({ has: page.locator("[data-repair-tabs]") }).last()
+}
+
+export function listRows(page: Page): Locator {
+  return repairListPanel(page)
+    .locator("xpath=.//tr[@data-repair-row] | .//a[starts-with(@href, '/th/maintenance/') and not(starts-with(@href, '/th/maintenance/new')) and not(ancestor::tr)]")
+    .filter({ visible: true })
+}
+
+// One record's row (or phone card) by its id.
+export function listRow(page: Page, recordId: string): Locator {
+  return repairListPanel(page)
+    .locator(`xpath=.//tr[@data-repair-row='${recordId}'] | .//a[starts-with(@href, '/th/maintenance/${recordId}?') and not(ancestor::tr)]`)
+    .filter({ visible: true })
+}
+
+// A status tab by its words; its text is the words, then the count ("ทั้งหมด3").
+export function repairTab(page: Page, label: string): Locator {
+  return page.locator("[data-repair-tabs]").getByRole("link", { name: new RegExp(`^${escapeRegExp(label)}`) })
+}
+
+// The PM page's plan total on screen: its range line "แสดง <from>–<to> จาก <total>", or 0 when the list is empty.
+export async function pmPlanTotal(page: Page): Promise<number> {
+  const text = await page.getByRole("main").innerText()
+  const match = text.match(/แสดง [\d,]+–[\d,]+ จาก ([\d,]+)/)
+  return match ? countOf(match[1]) : 0
+}
+
+// A number written with thousands separators, the first in the text.
+export function countOf(text: string): number {
+  const match = text.replace(/,/g, "").match(/\d+/)
+  if (!match) throw new Error(`no number in "${text}"`)
+  return Number(match[0])
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
