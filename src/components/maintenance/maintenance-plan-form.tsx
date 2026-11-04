@@ -326,7 +326,7 @@ export function MaintenancePlanForm({
           key: "asset",
           label: t("asset"),
           now: "–",
-          next: currentFacts ? <>{currentFacts.name} <span className="tag">{currentFacts.assetTag}</span></> : "–",
+          next: currentFacts ? <span className="grid min-w-0 gap-0.5 [overflow-wrap:anywhere]"><span>{currentFacts.name}</span><span className="tag whitespace-normal break-all">{currentFacts.assetTag}</span></span> : "–",
           changed: Boolean(currentFacts),
         },
         { key: "frequency", label: t("pmFrequencyLabel"), now: "–", next: frequencyLabel(values), changed: true },
