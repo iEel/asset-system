@@ -1471,9 +1471,23 @@ npm run build
   - **Shared parts touched:** `ContentPanel` `id` (both forms); `FilterMenuChip` `wholeText` on the popover chip (the chip's text is `valueText` alone).
   - **Message keys (`repairRecord`):** new `strip*`, `stuckCount`, `shownOfTotal`, `stuckShowAll`, `stuckShowLess`, `stuckEmpty`, `pmDueCount`, `pmDueOverdueLink`, `pmDueWeekLink`, `pmDueEmpty`, `dateRange*`, `colDateNo`, `colStatusOutcome`, `recordedBy`, `costTotal`, `costExcludesCancelled`; changed `subtitle`, `pmDueHelp`, `pmOverdue`, `searchPlaceholder`; deleted `stuckMore`, `pmDueMore`, `filterStatus`, `filter`, `resultCount`. The open day count reuses `repairRecord.detail.*` (plan 3).
   - **E2E specs:** `e2e/repair/repair-list.spec.ts` (new, 5 tests × 4 projects: the strip's cells open lists of their own size; a search across an open, a closed and a cancelled record reads the tabs 3 / 1 / 1 / 1 and the cost 1,500.00 less 1 cancelled; the stuck card; the PM card row with an open record, falling back to the PM page row when older overdue plans push it out of the card's 3; axe on the list, `?stuck=all#stuck` and `?status=cancelled`), helpers in `repair-data.ts`, ER1 scoped to the header's บันทึกซ่อม, ER2 reads the "เฉพาะทรัพย์สินนี้" chip and the rows by id; pin `tests/e2e-repair.test.ts`.
-  - **E2E:** (pending)
-  - **Final review:** (pending)
-  - **Look step:** (pending). To check: the toolbar row at 1440 / 1024 and its wrap at 390; the chip's idle and applied text and its popover; Enter in the search keeps the dates; the cost foot against the pager line in both themes; long Thai names in the table and the phone cards; the column head "ค่าใช้จ่ายรวม (บาท)" next to the foot's "ค่าใช้จ่ายรวม N รายการ"; `#stuck` landing below the edge on the phone.
+  - **E2E:** `E2E-1104E` (repair and dashboard, four projects, build `48aaa40d`) 90 / 0. `E2E-1104F` (whole suite, build `27fa56ef`) 529 passed, 0 failed, 45 skipped.
+  - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** the correctness and spec lenses found nothing. 1 Minor, fixed in `27fa56ef`: ล้างช่วงวันที่ now closes the popover, and the chip remounts on new dates, so focus returns to the chip.
+  - **Look step:** `next start` at 1440 (both themes), 1024 and 390 (both themes) as IT staff, and the viewer at 1440.
+    - Checked:
+      - the strip and its sum line;
+      - the stuck card expanded;
+      - the PM card;
+      - the records with long Thai names, in the table and on the phone cards;
+      - the cost foot against the pager line;
+      - the ยกเลิก tab;
+      - the reversed range (the danger notice under the toolbar);
+      - the open date chip on desktop and on the phone.
+    - Enter in the search keeps `dateFrom` / `dateTo`.
+    - A strip click lands `#stuck` at 80 px, below the top bar, on both widths.
+    - The viewer sees จัดการแผน PM only, with no row buttons.
+    - Fixed in `ec08f8e2`: the stuck and PM cards' foot painted square corners over the panel's rounded bottom; it is now `rounded-b-lg`.
+    - Open, a shell issue that predates this plan: a fresh load or reload of a `#hash` URL does not land, because `(dashboard)/loading.tsx` mounts the shell before the target exists. In-app links land. Filed as a follow-up task.
   - **Recorded (deferred):** the phone record card no longer shows the problem text (spec §11.3 lists only its parts; one line to add back); `dateFrom` / `dateTo` keys stay (the chip's inputs read them).
   - **Calls for the user to check:** G5P5-R1 (the strip counts globally like the bell and does not follow the search; the stuck cell links to `#stuck` on the same page); G5P5-R3 (`stuck=all` rides the search, tabs and pager, and every row shows with no cap); G5P5-R4 (the cost total is the whole filtered list less cancelled records, open records count with their typed cost; nothing on the ยกเลิก tab); G5P5-R5 (the problem then the work done, one line each); G5P5-R7 (the PM card's 3 rows by next due date, its foot link to the overdue list first, else the 7-day list); the controller's ruling that the stuck card's E2E only reads the dev DB's existing stuck assets (the app has no way to make an asset อยู่ระหว่างซ่อม without a record), so decision 11 stays on unit tests (G5P1-R10).
 
