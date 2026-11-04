@@ -187,12 +187,18 @@ The block reasons get separate codes so the page can say which one applies (§7.
 - **The bar is a sticky `DesktopSelectionBar`:** "{n} เลือกแล้ว {n} รายการ · {kind}", "ล้างรายการเลือก", the note "อนุมัติแบบกลุ่มทำได้ทีละประเภท · คำขอตัดจำหน่ายปฏิเสธทีละรายการเพราะต้องระบุเหตุผล", and the primary "ตรวจสอบและอนุมัติ {n} รายการ".
 - **Disposal:**
   - The bar opens today's review-then-approve dialog (`DisposalBulkApprovalProvider` and its dialog, moved from the disposal page).
-  - The dialog runs `POST /api/disposal-requests/bulk-decision`: a preview first, then the commit. The limit stays 50, and the optional shared remark stays.
+  - The dialog runs `POST /api/disposal-requests/bulk-decision`: a preview first, then the commit. The limit is 200 (see below), and the optional shared remark stays.
   - The preview lists any item that became blocked since the page loaded; those items are left out.
 - **Findings:**
   - The bar opens a confirm dialog with an optional remark, then runs today's client loop (`runAuditFindingBatchReview`, approve only).
   - A 409 conflict or an "already reviewed" answer is counted as "ต้องตัดสินในแผงด้านขวา", not as a failure.
-- **Selection is per page:** it resets when the page, tab or filter changes, as the disposal list does today. The bar says "เลือกได้สูงสุด 50 รายการต่อครั้ง".
+- **Selection survives paging** (user 2026-11-04). The selection is kept in `sessionStorage` under the inbox's key and the kind. It resets when the tab, the search or the overdue filter changes, after a bulk approve, and on "ล้างรายการเลือก".
+- **"เลือกทั้งหมดที่อนุมัติได้":** this control on the bar or above the table ticks every tickable row of the current kind in the filtered list, across all pages, up to 200. The rows it skips are blocked rows, the viewer's own requests and close rows. The bar says "{n} เลือกแล้ว (จากทุกหน้า) · เลือกได้สูงสุด 200 รายการต่อครั้ง".
+- **Bulk approval takes up to 200 items at a time** (user 2026-11-04), as many as a disposal round. The `bulk-decision` schema limit rises from 50 to 200. The findings loop has no server limit and takes the same 200 on the client.
+- **The confirm before a bulk approve:**
+  - It says "อนุมัติ {n} รายการ".
+  - It adds **"ยังไม่ได้เปิดดูรูป {m} รายการ"** when the approver has not opened some of the chosen items in the right panel. Opened items are recorded in `sessionStorage` when the panel shows them. The line is a warning, not a block.
+  - With m > 0, the dialog lists those items by name and tag, as a scrolling list of at most 8 lines with "และอีก {k} รายการ".
 - **After a bulk approve:** the page refreshes, the selection clears, and a toast says "อนุมัติแล้ว {n} รายการ" (plus "ข้ามไป {m} รายการ" when some were blocked).
 
 ### 7.5 The right panel (`?item=`)
@@ -579,7 +585,7 @@ model DisposalRound {
 6. The inbox shows disposal even with the `disposalRequired` setting off.
 7. The inbox's tab counts follow the search and the overdue filter; the strip does not.
 8. The inbox pages by 25/50/100; the phone shows 10 more at a time and has no ticks.
-9. Ticking the other kind restarts the selection; close rows are never tickable; findings bulk is approve only in the inbox.
+9. Bulk approve up to 200, with the selection kept across pages, "เลือกทั้งหมดที่อนุมัติได้", and a not-opened warning in the confirm (user agreed 2026-11-04). Ticking the other kind restarts the selection; close rows are never tickable; findings bulk is approve only in the inbox.
 10. Approvers may see disposal photos with `disposal:approve` alone.
 11. The separation-of-duties refusal gets three reason codes.
 12. Reject is guarded against a concurrent approve.

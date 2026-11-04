@@ -149,6 +149,7 @@ The pages themselves are not changed (plans 2 to 4).
   - `rejectDisposalRequest(command: { requestId: string; actor: DisposalApprovalActor; segregationRequired: boolean; approvalRemark: string | null | undefined; saleValue?: number | null; salvageValue?: number | null }): Promise<{ request: DisposalRequest }>`, in `disposal-approval-service.ts`. It throws `DisposalApprovalServiceError` with codes `DISPOSAL_REQUEST_NOT_FOUND`, `DISPOSAL_INVALID_STAGE`, `DISPOSAL_SOD_CONFLICT` (with `sodReason`), `DISPOSAL_PREVIOUS_STATUS_MISSING`, `DISPOSAL_PREVIOUS_STATUS_INACTIVE`, `DISPOSAL_ASSET_STATUS_CHANGED` (the restore errors), and `DISPOSAL_CONCURRENT_UPDATE`.
   - `DisposalApprovalServiceError` gains an optional `sodReason`.
   - `disposalApiError(code, error, status, fieldErrors?, extra?: { reason?: DisposalSodReason })` adds `reason` to the body when given.
+  - The bulk-decision limit rises to 200 (spec §7.4, user 2026-11-04): the max of `requestIds` in the bulk-decision schema in `src/lib/validations/disposal.ts` (today 50, near `:63`) becomes 200. It becomes a named export `MAX_DISPOSAL_BULK_DECISION_ITEMS = 200`. The client constant `MAX_DISPOSAL_BULK_APPROVAL_ITEMS` in `disposal-bulk-approval.tsx` is left for plan 2, and the bulk-execution limit of 20 is unchanged.
 
 - [ ] **Step 1: Write the failing tests**
   - `disposal-policy.test.ts`, `getDisposalApprovalSodReason`, with segregation required:
@@ -159,6 +160,7 @@ The pages themselves are not changed (plans 2 to 4).
     - segregation not required → null in all cases.
     - Requester wins over creator when both match.
   - `disposal-bulk-approval.test.ts`: `getDisposalApprovalBlock` returns `{ code: "DISPOSAL_SOD_CONFLICT", sodReason: "requester" }` for the viewer's own request, `{ code: "DISPOSAL_INVALID_STAGE", sodReason: null }` for an approved one, and null for an eligible one. `getDisposalBulkApprovalBlockCode` still returns `"DISPOSAL_SOD_CONFLICT"` for the own request.
+  - `disposal-validation.test.ts`: the bulk-decision schema accepts 200 unique uuids and refuses 201.
   - `disposal-validation.test.ts`: `disposalDecisionSchema` parses `{ decision: "approve" }` with no `nextStatusId`, `{ decision: "reject", approvalRemark: "เครื่องยังใช้งานได้ดี" }`, and still `{ decision: "approve", nextStatusId: "x" }`. A reject without a remark still fails on `approvalRemark`.
   - `tests/disposal-reject-service.test.ts`, with a fake transactional db in the style of `tests/disposal-execution-service.test.ts`:
     - (a) pending → rejected: the request row is updated through `updateMany` with `where: { id, isActive: true, requestStatus: "pending" }`; the asset gets `previousAssetStatusId`; a `disposal_reject` movement is written.
