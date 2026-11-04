@@ -170,7 +170,11 @@ test("the execute words read บันทึกตัดจำหน่าย, n
   assert.deepEqual(brokenRules("บันทึกตัดจำหน่ายจริง"), ["ตัดจำหน่ายจริง"])
   assert.deepEqual(brokenRules("บันทึกตัดจำหน่าย"), [])
   const page = th.disposalPage as Record<string, unknown>
-  assert.equal((page.types as Record<string, unknown>).dispose, "จำหน่าย")
+  assert.equal((page.types as Record<string, unknown>).dispose, "ตัดจำหน่าย") // the user kept the word (2026-11-04)
+  // No "จริง" on the value labels either (user 2026-11-04); the request's old estimates read ที่ประเมิน.
+  assert.equal(page.actualSaleValue, "มูลค่าขาย")
+  assert.equal(page.saleValue, "มูลค่าขายที่ประเมิน")
+  assert.equal(page.executionDetail, "รายละเอียดการดำเนินการ")
   assert.equal(page.executeDisposal, "บันทึกตัดจำหน่าย")
   assert.equal((page.workflowSteps as Record<string, unknown>).execution, "บันทึกตัดจำหน่าย")
 })
