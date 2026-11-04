@@ -44,6 +44,9 @@ type SearchChipProps = OptionChipProps & { searchable: true; searchPlaceholder: 
 // The caller's own content (the date range of "สร้างเมื่อ"). open and onOpenChange let it close the chip on apply.
 type CustomChipProps = ChipBase & {
   valueText: string
+  // valueText is the chip's whole text, not the part after "<filter>: ": a message that names the filter itself, such
+  // as the repair list's "ช่วงวันที่" and "ช่วงวันที่: {from} – {to}".
+  wholeText?: boolean
   children: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -160,8 +163,8 @@ function SearchChip({ label, options, value, onValueChange, searchPlaceholder, e
   )
 }
 
-function CustomChip({ label, valueText, children, open, onOpenChange, active = false, className }: CustomChipProps) {
-  const text = filterMenuChipJoin(label, valueText)
+function CustomChip({ label, valueText, wholeText, children, open, onOpenChange, active = false, className }: CustomChipProps) {
+  const text = wholeText ? valueText : filterMenuChipJoin(label, valueText)
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>

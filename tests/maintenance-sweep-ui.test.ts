@@ -49,9 +49,9 @@ test("PM plan form: the operation frame's plain panel with no tinted frame and n
 const D = "src/app/[locale]/(dashboard)/"
 
 // Group 5 plan 5 Task 2: the stuck and PM-due sections became RepairStuckCard and RepairPmDueCard, divided ContentPanels
-// that keep the ids, with rows split by soft lines (ContentPanelRows) and the count as a badge. Until Task 3 the
-// records part keeps its 2D-4 markup.
-test("repair-record list: the stuck and PM-due cards keep their ids on divided ContentPanels with a warning Notice and quiet rows, the list is a divided ContentPanel, and outcomes are StatusBadges (spec 2D D7, D9, M22, M25, M29, M33; group 5 spec §11.2)", () => {
+// that keep the ids, with rows split by soft lines (ContentPanelRows) and the count as a badge. Task 3: the records part
+// is a divided ContentPanel with the status as a StatusBadge and the outcome as the plain line under it (G5P5-R6).
+test("repair-record list: the stuck and PM-due cards keep their ids on divided ContentPanels with a warning Notice and quiet rows, the list is a divided ContentPanel, and statuses are StatusBadges (spec 2D D7, D9, M22, M25, M29, M33; group 5 spec §11.2, §11.3)", () => {
   const source = read(`${D}maintenance/page.tsx`)
   const stuck = read(`${C}maintenance/repair-stuck-card.tsx`)
   const pm = read(`${C}maintenance/repair-pm-due-card.tsx`)
@@ -67,11 +67,11 @@ test("repair-record list: the stuck and PM-due cards keep their ids on divided C
   for (const card of [stuck, pm]) {
     assert.doesNotMatch(card, /AlertTriangle|CalendarClock|bg-warning-soft|border-warning-border|text-(?:warning|success|danger|primary)\b|hover:bg-accent|\bbg-primary\b|\btext-xs\b|rounded-lg|border-dashed|dark:|#[0-9a-fA-F]{3,6}\b|rgba?\(|<section\b/)
   }
-  assert.match(source, /<Notice tone="danger" role="alert" className="mt-3">\{t\("invalidDateRange"\)\}<\/Notice>/)
-  assert.match(source, /<ContentPanel\s+divided\s+flush\s+className="overflow-hidden"\s+title=\{t\("listTitle"\)\}\s+description=\{t\("resultCount", \{ count: total \}\)\}\s+actions=\{/)
+  assert.match(source, /<Notice tone="danger" role="alert">\{t\("invalidDateRange"\)\}<\/Notice>/)
+  assert.match(source, /<ContentPanel divided flush className="overflow-hidden" title=\{t\("listTitle"\)\}>/)
   assert.match(source, /className="block min-w-0 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"/)
-  assert.match(source, /<StatusBadge label=\{label\} tone=\{outcome === "usable" \? "success" : outcome === "beyond_repair" \? "warning" : "muted"\} \/>/)
-  assert.match(source, /<DataTableCell className="whitespace-nowrap">\{orNil\(outcomeBadge\(record\.outcome, record\.repairStatus\)\)\}<\/DataTableCell>/)
+  assert.match(source, /<StatusBadge label=\{t\(`status\.\$\{row\.status\}`\)\} tone=\{getRepairRecordStatusTone\(row\.status\)\} \/>/)
+  assert.doesNotMatch(source, /outcomeBadge|orNil/, "the outcome is the plain line under the status badge (G5P5-R6)")
   assert.doesNotMatch(source, /AlertTriangle|CalendarClock|bg-warning-soft|border-warning-border|text-(?:warning|success|primary)\b|hover:bg-accent|hover:text-primary|\bbg-primary\b|\btext-xs\b|rounded-lg|divide-border(?![\w-])|<section className=/)
 })
 

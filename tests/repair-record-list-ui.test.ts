@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { maintenanceStatusFilters } from "../src/lib/maintenance-query.ts"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "../src/lib/maintenance-status.ts"
 
 const pagePath = "src/app/[locale]/(dashboard)/maintenance/page.tsx"
@@ -157,6 +158,112 @@ test("the strip and card words are §13's, and stuckMore and pmDueMore are gone"
     assert.equal(messages(locale).pmDueMore, undefined, `${locale} pmDueMore`)
   }
   assert.equal(JSON.parse(read("messages/th.json")).maintenancePage.pmOpenRecord, "มีบันทึกซ่อมที่ยังไม่เสร็จ {repairNo}")
+})
+
+// Group 5 plan 5 Task 3 (spec §11.3, G5P5-R3..R6, R8): the records section.
+test("records toolbar: four status tabs with counts, the search, the date chip and the hidden filters in one GET form", () => {
+  const source = read(pagePath)
+  assert.match(source, /^import \{ TabNav \} from "@\/components\/ui\/tab-nav"$/m)
+  assert.match(source, /^import \{ RepairDateRangeChip \} from "@\/components\/maintenance\/repair-date-range-chip"$/m)
+  // ทั้งหมด first, then the three statuses (four tabs); each keeps the filters, sets or drops the status, page 1.
+  assert.deepEqual([...maintenanceStatusFilters], ["in_progress", "closed", "cancelled"])
+  assert.match(source, /const statusTabs = \[\n\s+\{ key: "all", label: tCommon\("all"\), count: formatCount\(statusCounts\.all\), href: buildMaintenancePageHref\(locale, listQuery, \{ status: "", page: 1 \}\) \},\n\s+\.\.\.maintenanceStatusFilters\.map\(\(status\) => \(\{\n\s+key: status,\n\s+label: t\(`status\.\$\{status\}`\),\n\s+count: formatCount\(statusCounts\[status\]\),\n\s+href: buildMaintenancePageHref\(locale, listQuery, \{ status, page: 1 \}\),\n\s+\}\)\),\n\s+\]/)
+  assert.match(source, /<TabNav data-repair-tabs aria-label=\{tCommon\("status"\)\} items=\{statusTabs\} current=\{filters\.status \|\| "all"\} \/>/)
+  const form = source.slice(source.indexOf('<form id="repair-list-filter"'), source.indexOf("</form>"))
+  assert.match(form, /^<form id="repair-list-filter" role="search" action=\{`\/\$\{locale\}\/maintenance`\}/)
+  assert.match(form, /\{filters\.assetId \? <input type="hidden" name="assetId" value=\{filters\.assetId\} \/> : null\}/)
+  assert.match(form, /\{filters\.status \? <input type="hidden" name="status" value=\{filters\.status\} \/> : null\}/)
+  assert.match(form, /\{filters\.stuck \? <input type="hidden" name="stuck" value=\{filters\.stuck\} \/> : null\}/)
+  assert.match(form, /<input type="hidden" name="pageSize" value=\{filters\.pageSize\} \/>/)
+  assert.match(form, /<SearchField\n\s+name="search"\n\s+defaultValue=\{filters\.search\}\n\s+aria-label=\{tCommon\("search"\)\}\n\s+placeholder=\{t\("searchPlaceholder"\)\}/)
+  assert.match(form, /<RepairDateRangeChip\n\s+formId="repair-list-filter"\n\s+dateFrom=\{filters\.dateFrom\}\n\s+dateTo=\{filters\.dateTo\}\n/)
+  // The applied words: an empty side reads "–" (G5P5-R8).
+  assert.match(form, /applied: t\("dateRangeApplied", \{ from: filters\.dateFrom \? formatDate\(filters\.dateFrom\) : "–", to: filters\.dateTo \? formatDate\(filters\.dateTo\) : "–" \}\),/)
+  assert.match(form, /clearHref=\{`\/\$\{locale\}\/maintenance\?\$\{buildMaintenanceQueryString\(filters, \{ dateFrom: "", dateTo: "", page: 1 \}\)\}`\}/)
+  // The export keeps the list's query and its permission.
+  assert.match(source, /\{canExport \? \(\n\s+<a href=\{`\/api\/maintenance-tickets\/export\?\$\{listQuery\}`\} download className=\{cn\(buttonVariants\(\{ variant: "outline", size: "md" \}\), "md:ms-auto"\)\}>/)
+  assert.match(source, /\{getMaintenanceDateRangeError\(filters\) \? \(\n\s+<Notice tone="danger" role="alert">\{t\("invalidDateRange"\)\}<\/Notice>\n\s+\) : null\}/)
+  assert.doesNotMatch(source, /FilterSelect|<FilterPanel|FilterFormActions|resultCount/)
+})
+
+test("records table: six heads whatever the rights, rows to the record with returnTo and data-repair-row", () => {
+  const source = read(pagePath)
+  assert.equal(source.match(/<DataTableHead\b/g)?.length, 6)
+  for (const head of ['t("colDateNo")', 't("asset")', 't("problem")', 't("colStatusOutcome")', 't("vendor")']) {
+    assert.ok(source.includes(`<DataTableHead>{${head}}</DataTableHead>`), head)
+  }
+  assert.match(source, /<DataTableHead align="right">\{t\("cost"\)\}<\/DataTableHead>/)
+  assert.doesNotMatch(source, /canExport \?[^\n]*<DataTableHead/)
+  assert.match(source, /<ClickableTableRow key=\{row\.id\} href=\{recordHref\(row\.id\)\} label=\{`\$\{tCommon\("view"\)\}: \$\{row\.repairNo\}`\} rowData=\{\{ "data-repair-row": row\.id \}\}>/)
+  assert.match(source, /const recordHref = \(id: string\) => appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{id\}`, returnHref\)/)
+  // Date with the record number under it; the asset as plain text, its tag under it.
+  assert.match(source, /<div className="text-foreground">\{formatDate\(row\.reportedDate\)\}<\/div>\n\s+<div className="mt-1 text-meta text-muted-foreground"><span className="tag">\{row\.repairNo\}<\/span><\/div>/)
+  assert.match(source, /<div className="font-medium text-foreground">\{row\.asset\.name\}<\/div>\n\s+<div className="mt-1 text-meta text-muted-foreground"><span className="tag">\{row\.asset\.assetTag\}<\/span><\/div>/)
+  // G5P5-R5: the problem and the resolution on one line each, or the problem on two.
+  assert.match(source, /\{row\.resolution \? \(\n\s+<>\n\s+<div className="line-clamp-1 text-foreground">\{row\.problem\}<\/div>\n\s+<div className="mt-1 line-clamp-1 text-meta text-muted-foreground">\{row\.resolution\}<\/div>\n\s+<\/>\n\s+\) : \(\n\s+<div className="line-clamp-2 text-foreground">\{row\.problem\}<\/div>\n\s+\)\}/)
+  // G5P5-R6: the badge, then one plain secondary line.
+  assert.match(source, /const statusLine = \(line: RepairListLine\) =>\n\s+line == null\n\s+\? null\n\s+: line\.kind === "outcome"\n\s+\? t\(`outcome\.\$\{line\.key\}`\)\n\s+: line\.kind === "duration"\n\s+\? t\(`detail\.\$\{line\.key\}`, \{ days: line\.days \}\)\n\s+: line\.text/)
+  assert.match(source, /<StatusBadge label=\{t\(`status\.\$\{row\.status\}`\)\} tone=\{getRepairRecordStatusTone\(row\.status\)\} \/>\n\s+\{line \? <div className="mt-1 line-clamp-1 text-meta text-muted-foreground">\{line\}<\/div> : null\}/)
+  // The vendor or ช่างภายใน, บันทึกโดย under it; the cost or Nil.
+  assert.match(source, /<div className="text-foreground">\{row\.vendorName \?\? t\("internal"\)\}<\/div>\n\s+<div className="mt-1 text-meta text-muted-foreground">\{t\("recordedBy", \{ name: row\.reporterName \}\)\}<\/div>/)
+  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{row\.cost == null \? <Nil \/> : formatMoney\(row\.cost\)\}<\/DataTableCell>/)
+})
+
+test("phone cards: the name, the tag that breaks, the badge that keeps its width, the status line, then date · vendor · cost", () => {
+  const source = read(pagePath)
+  const start = source.indexOf("getMobileCardListClasses()")
+  const card = source.slice(start, source.indexOf("<DataTable ", start))
+  assert.match(card, /<div className="text-sm font-semibold text-foreground">\{row\.asset\.name\}<\/div>\n\s+<div className="mt-1 text-meta text-muted-foreground"><span className="tag break-all">\{row\.asset\.assetTag\}<\/span><\/div>/)
+  assert.match(card, /<StatusBadge className="shrink-0" label=\{t\(`status\.\$\{row\.status\}`\)\} tone=\{getRepairRecordStatusTone\(row\.status\)\} \/>/)
+  assert.match(card, /\{line \? <p className="mt-2 text-meta text-muted-foreground">\{line\}<\/p> : null\}/)
+  assert.match(card, /\{formatDate\(row\.reportedDate\)\} · \{row\.vendorName \?\? t\("internal"\)\}\n\s+\{row\.cost == null \? "" : ` · \$\{formatMoney\(row\.cost, \{ unit: tCommon\("baht"\) \}\)\}`\}/)
+  assert.ok(card.indexOf("row.asset.name") < card.indexOf("row.asset.assetTag"), "the name comes first")
+})
+
+test("foot: the cost total and the cancelled line, hidden on the ยกเลิก tab, then the pager (G5P5-R4)", () => {
+  const source = read(pagePath)
+  assert.match(source, /= await readRepairListPage\(prisma, filters, now\)/)
+  assert.match(source, /const \{ rows, total, statusCounts, cost, strip, stuck, pm \} = await readRepairListPage/)
+  const foot = source.slice(source.indexOf("<DataTableFoot"), source.indexOf("</DataTableFoot>"))
+  assert.match(foot, /\{filters\.status !== "cancelled" \? \(\n\s+<div data-repair-cost className="space-y-0\.5">/)
+  assert.match(foot, /<span>\{t\("costTotal", \{ count: formatCount\(cost\.count\) \}\)\}<\/span>\n\s+<span data-repair-cost-total className="font-semibold text-foreground">\{formatMoney\(cost\.sum, \{ unit: tCommon\("baht"\) \}\)\}<\/span>/)
+  assert.match(foot, /\{cost\.cancelled > 0 \? <p>\{t\("costExcludesCancelled", \{ count: formatCount\(cost\.cancelled\) \}\)\}<\/p> : null\}/)
+  assert.ok(foot.indexOf("data-repair-cost") < foot.indexOf("<Pagination"), "the cost line sits above the pager")
+  assert.match(foot, /range: tCommon\("showingRange", \{ from: formatCount\(pagination\.start\), to: formatCount\(pagination\.end\), total: formatCount\(pagination\.total\) \}\)/)
+})
+
+test("the records words are §13's, the duration words are plan 3's, and the old filter words are gone", () => {
+  const th = messages("th")
+  const expected: Record<string, string> = {
+    searchPlaceholder: "ค้นหาเลขที่ ทรัพย์สิน อาการ เลขใบเสร็จ หรือร้าน",
+    dateRange: "ช่วงวันที่",
+    dateRangeApplied: "ช่วงวันที่: {from} – {to}",
+    dateRangeApply: "ใช้ตัวกรอง",
+    dateRangeClear: "ล้างช่วงวันที่",
+    colDateNo: "วันที่ · เลขที่",
+    colStatusOutcome: "สถานะ · ผลการซ่อม",
+    recordedBy: "บันทึกโดย {name}",
+    costTotal: "ค่าใช้จ่ายรวม {count} รายการ",
+    costExcludesCancelled: "ไม่นับ {count} รายการที่ยกเลิก",
+    asset: "ทรัพย์สิน",
+    problem: "อาการ / สิ่งที่ซ่อม",
+    vendor: "ร้าน / ผู้ซ่อมภายนอก",
+    cost: "ค่าใช้จ่ายรวม (บาท)",
+    internal: "ช่างภายใน",
+    export: "ส่งออก Excel",
+    assetFilter: "เฉพาะทรัพย์สินนี้",
+  }
+  for (const [key, value] of Object.entries(expected)) assert.equal(th[key], value, key)
+  const en = messages("en")
+  for (const key of Object.keys(expected)) assert.equal(typeof en[key], "string", `en ${key}`)
+  assert.deepEqual(th.detail.sentDays, "ส่งซ่อมมา {days, number} วัน")
+  assert.deepEqual(th.detail.repairDays, "ซ่อมมา {days, number} วัน")
+  assert.deepEqual(th.detail.sentToday, "ส่งซ่อมวันนี้")
+  assert.deepEqual(th.detail.repairToday, "ซ่อมวันนี้")
+  assert.deepEqual(th.outcome, { usable: "ใช้งานได้", beyond_repair: "ซ่อมไม่ได้ เสนอจำหน่าย", unknown: "ไม่ระบุ" })
+  for (const locale of ["th", "en"] as const) {
+    for (const key of ["filterStatus", "filter", "resultCount"]) assert.equal(messages(locale)[key], undefined, `${locale} ${key}`)
+  }
 })
 
 test("the board view, SLA and evidence filters are gone", () => {

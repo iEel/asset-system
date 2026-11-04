@@ -105,12 +105,12 @@ test("the disposal queue renders one DisposalFilterForm in two places and the pa
 // the hidden asset filter removes only assetId (plan 2B-2 Task 12).
 test("the maintenance filter keeps the page size, and its asset chip clears only the asset filter (item 7)", () => {
   const source = read("src/app/[locale]/(dashboard)/maintenance/page.tsx")
-  const form = source.slice(source.indexOf('<form role="search"'), source.indexOf("</form>"))
+  // Group 5 plan 5 Task 3: the toolbar form has an id (the date chip's inputs join it) and no submit row of its own.
+  const form = source.slice(source.indexOf('<form id="repair-list-filter" role="search"'), source.indexOf("</form>"))
   assert.match(form, /<input type="hidden" name="pageSize" value=\{filters\.pageSize\} \/>/)
-  assert.match(form, /<FilterFormActions submitLabel=\{t\("filter"\)\} clear=\{hasActiveFilters \? \{ href: clearHref, label: t\("clearFilters"\) \} : undefined\} \/>/)
   assert.match(
     source,
-    /<FilterChipList\n\s+className="mt-3"\n\s+label=\{t\("activeFilters"\)\}\n\s+removeLabel=\{t\("clearFilters"\)\}\n\s+chips=\{\[\{ key: "assetId", label: t\("assetFilter"\), href: `\/\$\{locale\}\/maintenance\?\$\{buildMaintenanceQueryString\(filters, \{ assetId: "", page: 1 \}\)\}` \}\]\}/,
+    /<FilterChipList\n\s+label=\{t\("activeFilters"\)\}\n\s+removeLabel=\{t\("clearFilters"\)\}\n\s+chips=\{\[\{ key: "assetId", label: t\("assetFilter"\), href: `\/\$\{locale\}\/maintenance\?\$\{buildMaintenanceQueryString\(filters, \{ assetId: "", page: 1 \}\)\}` \}\]\}/,
   )
 })
 
