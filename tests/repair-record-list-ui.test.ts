@@ -176,7 +176,8 @@ test("records toolbar: four status tabs with counts, the search, the date chip a
   assert.match(form, /\{filters\.stuck \? <input type="hidden" name="stuck" value=\{filters\.stuck\} \/> : null\}/)
   assert.match(form, /<input type="hidden" name="pageSize" value=\{filters\.pageSize\} \/>/)
   assert.match(form, /<SearchField\n\s+name="search"\n\s+defaultValue=\{filters\.search\}\n\s+aria-label=\{tCommon\("search"\)\}\n\s+placeholder=\{t\("searchPlaceholder"\)\}/)
-  assert.match(form, /<RepairDateRangeChip\n\s+formId="repair-list-filter"\n\s+dateFrom=\{filters\.dateFrom\}\n\s+dateTo=\{filters\.dateTo\}\n/)
+  // Keyed on the applied dates, so the chip remounts closed after a clear or an apply (final review).
+  assert.match(form, /<RepairDateRangeChip\n\s+key=\{`\$\{filters\.dateFrom\}\|\$\{filters\.dateTo\}`\}\n\s+formId="repair-list-filter"\n\s+dateFrom=\{filters\.dateFrom\}\n\s+dateTo=\{filters\.dateTo\}\n/)
   // The applied words: an empty side reads "–" (G5P5-R8).
   assert.match(form, /applied: t\("dateRangeApplied", \{ from: filters\.dateFrom \? formatDate\(filters\.dateFrom\) : "–", to: filters\.dateTo \? formatDate\(filters\.dateTo\) : "–" \}\),/)
   assert.match(form, /clearHref=\{`\/\$\{locale\}\/maintenance\?\$\{buildMaintenanceQueryString\(filters, \{ dateFrom: "", dateTo: "", page: 1 \}\)\}`\}/)

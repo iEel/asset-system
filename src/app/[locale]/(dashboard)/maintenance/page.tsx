@@ -148,6 +148,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               className="w-full md:w-96"
             />
             <RepairDateRangeChip
+              key={`${filters.dateFrom}|${filters.dateTo}`}
               formId="repair-list-filter"
               dateFrom={filters.dateFrom}
               dateTo={filters.dateTo}

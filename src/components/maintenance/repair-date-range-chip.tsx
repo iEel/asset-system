@@ -48,7 +48,7 @@ export function RepairDateRangeChip({ formId, dateFrom, dateTo, labels, clearHre
               {labels.apply}
             </Button>
             {active ? (
-              <Link href={clearHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Link href={clearHref} onClick={() => setOpen(false)} className={buttonVariants({ variant: "outline", size: "sm" })}>
                 {labels.clear}
               </Link>
             ) : null}

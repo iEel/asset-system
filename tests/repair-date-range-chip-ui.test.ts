@@ -27,7 +27,7 @@ test("the two date inputs and the apply button belong to the toolbar's form; the
   assert.match(source, /<Input type="date" name="dateFrom" form=\{formId\} defaultValue=\{dateFrom\} \/>/)
   assert.match(source, /<Input type="date" name="dateTo" form=\{formId\} defaultValue=\{dateTo\} \/>/)
   assert.match(source, /<Button type="submit" form=\{formId\} size="sm">\n\s+\{labels\.apply\}\n\s+<\/Button>/)
-  assert.match(source, /\{active \? \(\n\s+<Link href=\{clearHref\} className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}>\n\s+\{labels\.clear\}/)
+  assert.match(source, /\{active \? \(\n\s+<Link href=\{clearHref\} onClick=\{\(\) => setOpen\(false\)\} className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}>\n\s+\{labels\.clear\}/)
   // Radix unmounts the closed popover, so the applied dates ride in hidden inputs until it opens (one value per name).
   assert.match(source, /\{!open && dateFrom \? <input type="hidden" name="dateFrom" form=\{formId\} value=\{dateFrom\} \/> : null\}/)
   assert.match(source, /\{!open && dateTo \? <input type="hidden" name="dateTo" form=\{formId\} value=\{dateTo\} \/> : null\}/)
