@@ -81,7 +81,12 @@ export function MaintenanceOptionSelect({
     const visibleOptions = query.trim().length < 2 && !value
       ? initialOption ? [initialOption] : []
       : options
-    return visibleOptions.map((option) => ({
+    // The value back on the stored option (คืนค่าเดิม after a search whose results left it out): the stored option
+    // still shows, so the trigger names what the save keeps, not the placeholder (group 5 plan 4 final review).
+    const shownOptions = initialOption && value === initialOption.id && !visibleOptions.some((option) => option.id === initialOption.id)
+      ? [initialOption, ...visibleOptions]
+      : visibleOptions
+    return shownOptions.map((option) => ({
       ...option,
       label: option.reason ? `${option.label} — ${formatReason ? formatReason(option.reason) : option.reason}` : option.label,
     }))

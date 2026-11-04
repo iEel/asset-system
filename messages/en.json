@@ -3435,7 +3435,8 @@
     "pmFormFooterEdit": "Edit plan {title} {planNo} · {count, plural, one {# field} other {# fields}} changed",
     "pmFormCancelEdit": "Discard changes",
     "pmFormSaveEdit": "Save changes",
-    "pmFormFooterCreate": "Add PM plan {title} · {asset}"
+    "pmFormFooterCreate": "Add PM plan {title} · {asset}",
+    "pmFormEditBlocked": "This plan cannot be edited because its asset is inactive · End the plan from the ⋯ menu on the plan list"
   },
   "repairRecord": {
     "title": "Maintenance",

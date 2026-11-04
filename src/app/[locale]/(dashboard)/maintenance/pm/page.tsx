@@ -64,7 +64,8 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
     redirect(listHref({ page: lastPage, pageSize: query.pageSize }))
   }
   const { start, end, totalPages } = paginationRange(query.page, query.pageSize, total)
-  const createHref = `/${locale}/maintenance/pm/new`
+  // เพิ่มแผน PM (the header and the empty state) brings the person back to this page as it is, like the row links.
+  const createHref = appendOperationalReturnTo(`/${locale}/maintenance/pm/new`, returnTo)
   const clearHref = buildPmPlanHref(locale, query, { q: "", due: null })
   const showActions = query.tab !== "ended"
 
@@ -151,6 +152,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
 
       <div className="space-y-4">
         <TabNav
+          data-pm-tabs
           aria-label={tCommon("status")}
           items={pmPlanTabs.map((tab) => ({ key: tab, label: t(`pmPlanStates.${tab}`), count: formatCount(tabCounts[tab]), href: buildPmPlanHref(locale, query, { tab }) }))}
           current={query.tab}
@@ -195,7 +197,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
                   <div className="mt-2 text-sm">{dueCell(plan)}</div>
                   {showActions ? (
                     <div className="mt-3">
-                      <MaintenancePlanRowActions plan={plan} locale={locale} returnTo={returnTo} canCreate={canCreate} canEdit={canEdit} openRecord={plan.openRecord} />
+                      <MaintenancePlanRowActions plan={plan} locale={locale} returnTo={returnTo} canCreate={canCreate} canEdit={canEdit} openRecord={plan.openRecord} assetOut={plan.due.kind === "assetStatus"} />
                     </div>
                   ) : null}
                 </article>
@@ -248,7 +250,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
                     </DataTableCell>
                     {showActions ? (
                       <DataTableCell align="right" sticky="right">
-                        <MaintenancePlanRowActions plan={plan} locale={locale} returnTo={returnTo} canCreate={canCreate} canEdit={canEdit} openRecord={plan.openRecord} />
+                        <MaintenancePlanRowActions plan={plan} locale={locale} returnTo={returnTo} canCreate={canCreate} canEdit={canEdit} openRecord={plan.openRecord} assetOut={plan.due.kind === "assetStatus"} />
                       </DataTableCell>
                     ) : null}
                   </>

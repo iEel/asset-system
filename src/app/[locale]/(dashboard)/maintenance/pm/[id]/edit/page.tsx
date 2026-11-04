@@ -86,8 +86,8 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
       title={t("pmFormEditTitle", { title: plan.title })}
       description={(
         <>
-          <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={planState === "active" ? "success" : "warning"} />
           <span className="tag">{plan.planNo}</span>
+          <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={planState === "active" ? "success" : "warning"} />
           <span>{rhythm} · {t("pmFormWasDue", { date: formatDate(plan.nextDueDate) })}</span>
           <span>{t("pmFormStateHint")}</span>
         </>
@@ -97,6 +97,9 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
       planNo={plan.planNo}
       planState={planState}
       inScope={inScope}
+      // The update refuses a plan whose asset is inactive (mutateMaintenancePlan reads it with isActive: true); a
+      // written-off asset that is still active can be edited (final review).
+      editBlocked={!plan.asset.isActive}
       returnHref={returnTo}
       expectedUpdatedAt={plan.updatedAt.toISOString()}
       initialFacts={facts}

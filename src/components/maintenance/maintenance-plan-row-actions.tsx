@@ -65,6 +65,7 @@ export function MaintenancePlanStateButton({
       toast.success(t(`pmActions.${action}Success`))
       setOpen(false)
       router.refresh()
+      if (returnFocusRef) focusAfterStateChange(returnFocusRef)
     } catch (error) {
       apiError.toast(error)
     } finally {
@@ -99,6 +100,32 @@ export function MaintenancePlanStateButton({
   )
 }
 
+// After a saved state change the row leaves its tab (pause, resume and end each move the plan), and the ⋯ the dialog
+// handed focus back to goes with it, dropping focus to the page. Once ⋯ has left (the refresh landed), focus goes to
+// the PM page's current tab, else to the page heading; if ⋯ is still there after about two seconds, or focus has moved
+// on by itself, nothing changes. Cancel keeps the dialog's own return to ⋯ (group 5 plan 4 final review).
+function focusAfterStateChange(opener: RefObject<HTMLElement | null>) {
+  const node = opener.current
+  let frames = 120
+  const look = () => {
+    if (node?.isConnected) {
+      if (frames <= 0) return
+      frames -= 1
+      window.requestAnimationFrame(look)
+      return
+    }
+    const active = document.activeElement
+    if (active && active !== document.body && active.isConnected) return
+    const tab = document.querySelector<HTMLElement>('[data-pm-tabs] [aria-current="page"]')
+    if (tab) return tab.focus()
+    const heading = document.querySelector<HTMLElement>("[data-dashboard-main] h1, main h1")
+    if (!heading) return
+    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1")
+    heading.focus()
+  }
+  window.requestAnimationFrame(look)
+}
+
 // React sends the events of a dialog's portal up the component tree to the table row, which would open the edit page
 // on a click or an Enter inside the dialog. The dialogs sit in this empty hidden span, which stops events that come
 // from outside it, as RowActions does for its own menu (src/components/disposal/disposal-row-actions.tsx).
@@ -114,13 +141,16 @@ export type MaintenancePlanRowActionsProps = {
   canCreate: boolean
   canEdit: boolean
   openRecord: PmPlanOpenRecord | null
+  // The plan's asset is written off or inactive (the row's due shows the asset's status, G5P4-R3): a repair record for
+  // it is refused (MAINTENANCE_ASSET_WRITTEN_OFF), so บันทึกว่าทำแล้ว is not offered; ⋯ stays (final review).
+  assetOut: boolean
 }
 
 // The actions of one PM plan (group 5 spec §9, G5P4-R5, R6). The next step is "บันทึกว่าทำแล้ว" (create, an active plan
 // whose asset has no open repair record); with an open record, the text link to that record takes its place, for
 // anyone who reads the page, because a new record would be refused (MAINTENANCE_OPEN_RECORD_EXISTS). ⋯ (edit) holds
 // แก้ไข, พักแผน or เปิดใช้งานต่อ, then จบแผน. Its confirms sit outside the menu with hideTrigger. An ended plan has no actions.
-export function MaintenancePlanRowActions({ plan, locale, returnTo, canCreate, canEdit, openRecord }: MaintenancePlanRowActionsProps) {
+export function MaintenancePlanRowActions({ plan, locale, returnTo, canCreate, canEdit, openRecord, assetOut }: MaintenancePlanRowActionsProps) {
   const t = useTranslations("maintenancePage")
   const tRecord = useTranslations("repairRecord")
   const tCommon = useTranslations("common")
@@ -131,7 +161,7 @@ export function MaintenancePlanRowActions({ plan, locale, returnTo, canCreate, c
 
   const toggle: PlanStateAction = plan.planState === "active" ? "pause" : "resume"
   const recordDone: RowNextAction | null =
-    canCreate && plan.planState === "active" && !openRecord
+    canCreate && plan.planState === "active" && !openRecord && !assetOut
       ? { label: tRecord("pmRecordDone"), href: appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnTo) }
       : null
   const groups: RowActionGroup[] = canEdit

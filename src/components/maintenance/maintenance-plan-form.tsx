@@ -35,6 +35,7 @@ import {
 } from "@/lib/pm-plan-form-rules"
 import { getPmDueBadge, maintenancePlanFrequencies, type PmDueBadge } from "@/lib/preventive-maintenance"
 import type { RepairAssetFacts } from "@/lib/repair-record-outlook"
+import { focusField } from "@/lib/field-focus"
 import { cn, formatDate } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
@@ -85,6 +86,7 @@ export function MaintenancePlanForm({
   planNo,
   planState,
   inScope = true,
+  editBlocked = false,
   initialValues,
   initialVendor,
   dueCounts,
@@ -105,6 +107,8 @@ export function MaintenancePlanForm({
   /** Edit: the plan's state (an ended plan has no edit page) and whether its asset is in the due counts' scope. */
   planState?: Exclude<PmPlanTab, "ended">
   inScope?: boolean
+  /** Edit: the plan's asset is inactive, so the server refuses every save: the form says so and keeps its save off. */
+  editBlocked?: boolean
   initialValues?: Partial<PmPlanFormValues>
   /** The plan's provider as "code - name", so the changed field and the summary name it without a read. */
   initialVendor?: Option
@@ -204,14 +208,30 @@ export function MaintenancePlanForm({
     if (field === "frequency" || field === "intervalDays") {
       setValues((current) => ({ ...current, frequency: initial.frequency, intervalDays: initial.intervalDays }))
       fieldErrors.clear("frequency", "intervalDays")
+      focusRestored(field)
       return
     }
     if (field === "vendorId") setVendorLabel(initialVendor?.label ?? "")
     setField(field, initial[field])
+    focusRestored(field)
+  }
+
+  // คืนค่าเดิม leaves with the change, so focus goes to the field's control once the restored value has rendered (as
+  // the asset form does): the frequency's pressed button (the days come back with it), the provider's trigger, else
+  // the input (group 5 plan 4 final review).
+  function focusRestored(field: PmPlanChangedField) {
+    window.requestAnimationFrame(() => {
+      const element = field === "frequency" || field === "intervalDays"
+        ? document.querySelector<HTMLElement>(`#${FIELD_IDS.frequency} [aria-pressed="true"]`)
+        : document.getElementById(FIELD_IDS[field])
+      if (element) focusField(element)
+    })
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    // An inactive asset's plan cannot be saved (the save is off; Enter in a field lands here too).
+    if (editBlocked) return
     fieldErrors.setErrors(validate())
     if (focusFirstError()) return
     setSaving(true)
@@ -383,10 +403,14 @@ export function MaintenancePlanForm({
           submitLabel: tRoot(footerKeys.submit),
           busy: saving,
           formId: PM_PLAN_FORM_ID,
+          submitDisabled: editBlocked,
         }}
       >
         <FormSection number={1} title={t("pmFormSectionAsset")}>
           <div className="grid gap-3">
+            {editBlocked ? (
+              <Notice tone="warning" data-pm-edit-blocked>{t("pmFormEditBlocked")}</Notice>
+            ) : null}
             {currentFacts ? (
               <div ref={assetCardRef} tabIndex={-1} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <PmPlanAssetCard facts={currentFacts} locked={isEdit} onChange={isEdit ? undefined : clearAsset} />

@@ -7,7 +7,8 @@ import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
-export type OperationFormFooter = { description: ReactNode; cancelHref: string; cancelLabel: string; submitLabel: string; busy: boolean; formId: string }
+// submitDisabled: a form that can never save (แก้ไขแผน PM of an inactive asset) keeps its save off.
+export type OperationFormFooter = { description: ReactNode; cancelHref: string; cancelLabel: string; submitLabel: string; busy: boolean; formId: string; submitDisabled?: boolean }
 export type OperationFormFrameProps = {
   title: string
   description: ReactNode
@@ -42,7 +43,7 @@ export function OperationFormFrame({ title, description, actions, breadcrumbs, b
           <Link href={footer.cancelHref} className={buttonVariants({ variant: "outline" })}>
             {footer.cancelLabel}
           </Link>
-          <Button type="submit" form={footer.formId} busy={footer.busy}>
+          <Button type="submit" form={footer.formId} busy={footer.busy} disabled={footer.submitDisabled}>
             {footer.submitLabel}
           </Button>
         </StickyFormFooter>

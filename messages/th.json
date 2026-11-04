@@ -3435,7 +3435,8 @@
     "pmFormFooterEdit": "แก้ไขแผน {title} {planNo} · แก้ {count, number} ช่อง",
     "pmFormCancelEdit": "ยกเลิกการแก้ไข",
     "pmFormSaveEdit": "บันทึกการแก้ไข",
-    "pmFormFooterCreate": "เพิ่มแผน PM {title} · {asset}"
+    "pmFormFooterCreate": "เพิ่มแผน PM {title} · {asset}",
+    "pmFormEditBlocked": "แก้ไขแผนนี้ไม่ได้ เพราะทรัพย์สินถูกปิดใช้งานแล้ว · จบแผนได้จากเมนู ⋯ ในหน้ารายการแผน"
   },
   "repairRecord": {
     "title": "ซ่อมบำรุง",

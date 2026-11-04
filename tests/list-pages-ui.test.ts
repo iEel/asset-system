@@ -434,7 +434,7 @@ test("the PM page goes back to maintenance, has no icon in its title, and its li
   assert.match(source, /<PageHeader\n\s+breadcrumbs=\{\[\{ label: tRecord\("title"\), href: `\/\$\{locale\}\/maintenance` \}, \{ label: t\("pmTitle"\) \}\]\}\n\s+title=\{t\("pmTitle"\)\}\n\s+meta=\{<span>\{t\("pmSubtitle"\)\} \{t\("pmPlanCount", \{ count: allPlansCount \}\)\}<\/span>\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/maintenance`\} label=\{tCommon\("back"\)\} \/>\}/)
   assert.doesNotMatch(source, /<h1|title=\{<CalendarClock/, "no icon in the title (the CalendarClock title icon is gone)")
   assert.match(source, /const returnTo = listHref\(\{ page: query\.page \}\)/)
-  assert.match(source, /<MaintenancePlanRowActions plan=\{plan\} locale=\{locale\} returnTo=\{returnTo\} canCreate=\{canCreate\} canEdit=\{canEdit\} openRecord=\{plan\.openRecord\} \/>/)
+  assert.match(source, /<MaintenancePlanRowActions plan=\{plan\} locale=\{locale\} returnTo=\{returnTo\} canCreate=\{canCreate\} canEdit=\{canEdit\} openRecord=\{plan\.openRecord\} assetOut=\{plan\.due\.kind === "assetStatus"\} \/>/)
 })
 
 // Plan 2B-2 Task 15 (spec 2B §4.4.3, §5.4 row admin/data-quality, I12): the data-quality header and number strip. The

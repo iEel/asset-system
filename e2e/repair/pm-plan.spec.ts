@@ -47,6 +47,8 @@ test("a monthly PM plan is created, recorded done on 31 Jan from its row with it
   await measure.visit(PM_LIST, "PM plans")
   await page.getByRole("main").getByRole("link", { name: "เพิ่มแผน PM", exact: true }).first().click()
   await page.waitForURL(/\/th\/maintenance\/pm\/new(?:\?|$)/)
+  // เพิ่มแผน PM brings the person back to the PM page as it was (final review).
+  expect(new URL(page.url()).searchParams.get("returnTo")).toBe(PM_LIST)
   await measure.recordPage("new PM plan form")
 
   // A wrong entry first (spec §6.7): the asset chosen (its card replaces the picker), no plan name. The error shows
@@ -137,6 +139,8 @@ test("a monthly PM plan is created, recorded done on 31 Jan from its row with it
   // "บันทึกว่าทำแล้ว", and the tab has no due cells.
   await planAction(page, e2eDevice, row, "พักแผน", "พักแผน PM นี้หรือไม่", "พักแผน PM แล้ว")
   await expect(row).toHaveCount(0)
+  // The row and its ⋯ are gone, so focus goes to the current tab, not the page (final review).
+  await expect(pmTab(page, "ใช้งาน")).toBeFocused()
   row = await visitPlanRow(page, measure, plan.planNo, "paused", "PM plans, plan paused")
   await expect(pmTab(page, "พักแผน")).toHaveAttribute("aria-current", "page")
   await expect(row).toContainText("28/02/2569")

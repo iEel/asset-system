@@ -51,13 +51,13 @@ test("OperationFormFrame: PageHeader with optional breadcrumbs and back link (P1
   const source = read(`${DIR}operation-form-frame.tsx`)
   assert.match(source, /^export function OperationFormFrame\(\{ title, description, actions, breadcrumbs, back, summary, footer, phoneSteps = false, summaryOnPhone = true, children \}: OperationFormFrameProps\) \{$/m)
   for (const part of [
-    "export type OperationFormFooter = { description: ReactNode; cancelHref: string; cancelLabel: string; submitLabel: string; busy: boolean; formId: string }",
+    "export type OperationFormFooter = { description: ReactNode; cancelHref: string; cancelLabel: string; submitLabel: string; busy: boolean; formId: string; submitDisabled?: boolean }",
     "breadcrumbs?: BreadcrumbItem[]", "back?: ReactNode",
     'data-slot="operation-form-frame"', 'className="mx-auto max-w-6xl"', '<PageHeader title={title} meta={description} actions={actions} breadcrumbs={breadcrumbs} back={back} className="mb-6" />',
     '"grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"', 'data-slot="operation-form-main"', '"grid min-w-0 content-start gap-8 p-4 sm:p-5"',
     '<StickyFormFooter className={cn("lg:col-span-2", phoneSteps && "max-lg:hidden")} status={footer.description}>',
     '<div className={cn("min-w-0", (phoneSteps || !summaryOnPhone) && "max-lg:hidden")}>{summary}</div>', "actions?: ReactNode", "summaryOnPhone?: boolean",
-    '<Link href={footer.cancelHref} className={buttonVariants({ variant: "outline" })}>', '<Button type="submit" form={footer.formId} busy={footer.busy}>',
+    '<Link href={footer.cancelHref} className={buttonVariants({ variant: "outline" })}>', '<Button type="submit" form={footer.formId} busy={footer.busy} disabled={footer.submitDisabled}>',
   ]) assert.ok(source.includes(part), part)
   assert.ok(source.indexOf("{children}") < source.indexOf("{summary}") && source.indexOf("{summary}") < source.indexOf("<StickyFormFooter"), "main, summary, then the bar")
   // ส่งมอบ, รับคืน and โอนย้าย pass neither, so their headers keep no breadcrumb and no back link.
