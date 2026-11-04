@@ -20,8 +20,9 @@ export const disposalRequestSchema = z.object({
   reason: z.string().trim().min(12).max(4000),
   requestedById: z.string().trim().min(1),
   approverId: optionalText,
-  saleValue: optionalDecimal,
-  salvageValue: optionalDecimal,
+  // No price at request time (user 2026-11-04): the form sends neither, so both may be absent.
+  saleValue: optionalDecimal.optional(),
+  salvageValue: optionalDecimal.optional(),
   sourceType: optionalText,
   sourceId: optionalText,
 })

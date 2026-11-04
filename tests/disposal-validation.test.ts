@@ -15,6 +15,7 @@ import {
   disposalBulkExecutionSchema,
   disposalDecisionSchema,
   disposalExecutionSchema,
+  disposalRequestSchema,
   MAX_DISPOSAL_BULK_DECISION_ITEMS,
 } from "../src/lib/validations/disposal.ts"
 
@@ -216,4 +217,14 @@ test("a decision no longer needs a next status id", () => {
   if (!missingRemark.success) {
     assert.deepEqual(missingRemark.error.issues.map((issue) => issue.path[0]), ["approvalRemark"])
   }
+})
+
+test("a disposal request needs no price: the form sends neither value (user 2026-11-04)", () => {
+  const parsed = disposalRequestSchema.safeParse({
+    assetId: "asset-1",
+    disposalType: "sell",
+    reason: "จอเสีย ซ่อมไม่คุ้ม เสนอตัดจำหน่าย",
+    requestedById: "employee-1",
+  })
+  assert.equal(parsed.success, true)
 })

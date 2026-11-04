@@ -4079,7 +4079,8 @@
       "assetStatusTitle": "Asset status",
       "assetStatusNow": "Now:",
       "addEvidence": "Tap to take a photo or choose a file"
-    }
+    },
+    "nextStatus": "Asset Status After Review"
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

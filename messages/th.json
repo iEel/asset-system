@@ -4079,7 +4079,8 @@
       "assetStatusTitle": "สถานะทรัพย์สิน",
       "assetStatusNow": "ตอนนี้:",
       "addEvidence": "แตะเพื่อถ่ายรูปหรือเลือกไฟล์"
-    }
+    },
+    "nextStatus": "สถานะทรัพย์สินหลังพิจารณา"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",
