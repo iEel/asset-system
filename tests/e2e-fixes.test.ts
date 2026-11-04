@@ -309,9 +309,11 @@ test("the check field's search is found by its exact name, not the global search
   assert.match(read("e2e/audit/scan-steps.ts"), /const searchInput = page\.getByRole\("combobox", \{ name: "ค้นหา", exact: true \}\)/)
 })
 
-test("the bulk execution's preview is read on the row, not the summary term of the same words (e2e Task 51 loop 4: D2 runs now)", () => {
-  // The summary's term shows on every preview, eligible or blocked (D3 shares the helper): it says the preview arrived.
-  assert.match(read("e2e/disposal/disposal-support.ts"), /await expect\(dialog\.getByRole\("term"\)\.filter\(\{ hasText: \/\^ดำเนินการได้\$\/ \}\)\)\.toBeVisible\(\)/)
+test("the bulk execution's preview helper is gone with the bulk execution; D2 and D3 run through a round (e2e Task 51 loop 4; group 6 plan 4 P4-R1)", () => {
+  const support = read("e2e/disposal/disposal-support.ts")
+  assert.ok(!support.includes("openBulkExecutionPreview"))
+  // The round's check is read on its own footer line, once the preview has answered.
+  assert.ok(support.includes("`ตรวจสอบแล้ว · บันทึกได้ทั้ง ${count} รายการ`"))
 })
 
 test("the PM plan form's save is checked on the plan it created, not found on a long list (e2e Task 51 loop 5: the dev data grows run by run)", () => {
@@ -337,7 +339,8 @@ test("a page's font cancelled as the workflow leaves the page is allowed, review
 })
 
 test("the bulk execution's result is read on the row; the forced tap on the waiting save waits for the condition list to close (e2e Task 51 loops 10-11)", () => {
-  assert.match(read("e2e/disposal/batch-bulk-approval.spec.ts"), /await expect\(result\.getByRole\("listitem"\)\.getByText\("ดำเนินการแล้ว", \{ exact: true \}\)\)\.toBeVisible\(\)/)
+  // The bulk execution's result dialog is retired (group 6 plan 4, P4-R1): D2's request is read in its round.
+  assert.match(read("e2e/disposal/batch-bulk-approval.spec.ts"), /await expect\(page\.getByRole\("main"\)\)\.toContainText\(round\.roundNo\)/)
   const walk = read("e2e/audit/field-audit.spec.ts")
   assert.match(walk, /await expect\(page\.getByRole\("listbox"\)\)\.toHaveCount\(0\)\n\s+await settleToasts\(page\)\n\s+await scan\.saveButton\(page\)\.click\(\{ force: true \}\)/)
 })

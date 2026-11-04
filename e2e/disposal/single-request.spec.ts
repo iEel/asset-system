@@ -1,22 +1,25 @@
-// Disposal of one asset (spec §6.4.1–3, §6.7): IT staff request it, the IT head approves it alone, IT staff execute it
-// with evidence, and the disposal print opens. On the way: a wrong entry first in each form (the error shows under the
-// field, then the corrected entry saves); IT staff have no approve, nor has the unlinked seed admin; the approver cannot
-// execute. The request form (board DP-New, group 6 plan 3) needs a method and a photo, and the request page decides
-// with separate อนุมัติ and ปฏิเสธ; execution waiting for evidence is request-form.spec.ts's (a request sent from the
-// form always has its photo, which counts as evidence).
+// Disposal of one asset (spec §6.4.1–3, §6.7): IT staff request it, the IT head approves it alone, IT staff record it
+// with evidence in a disposal round of one (group 6 plan 4: the only way to record a disposal), and the disposal print
+// opens. On the way: a wrong entry first in each form (the error shows under the field, then the corrected entry
+// saves); IT staff have no approve, nor has the unlinked seed admin; the approver cannot record it (their round preview
+// blocks it, and the retired per-row execution answers 410). The request form (board DP-New, group 6 plan 3) needs a
+// method and a photo, and the request page decides with separate อนุมัติ and ปฏิเสธ; a request waiting for evidence is
+// request-form.spec.ts's (a request sent from the form always has its photo, which counts as evidence).
 import { asUser, expect, test } from "../support/fixtures.ts"
-import { readRunData } from "../support/state.ts"
+import { recordSettled } from "../audit/settle.ts"
 import {
   actAs,
+  checkRoundButton,
   chooseMethod,
-  chooseSearchable,
   createAssets,
   createRoom,
+  createRound,
   employeeLabel,
   EVIDENCE_PDF,
   expectPresetRequester,
   expectReadyAssetCard,
   expectToast,
+  openRoundForm,
   PHOTO_PNG,
   pickDisposalAsset,
   readAssetChoices,
@@ -36,7 +39,7 @@ test.describe.configure({ mode: "serial" })
 
 let printPath = ""
 
-test("IT staff request one disposal, the IT head approves it, IT staff execute it with evidence, and the print opens", async ({ page, measure, e2eTheme, e2eDevice }, testInfo) => {
+test("IT staff request one disposal, the IT head approves it, IT staff record it with evidence in a round, and the print opens", async ({ page, measure, e2eTheme, e2eDevice }, testInfo) => {
   const prefix = recordPrefix(testInfo, "DSP1")
   const roomId = await createRoom(`${prefix}-R`, `${prefix} ห้องทดสอบตัดจำหน่าย`)
   const choices = await readAssetChoices(page, measure)
@@ -116,32 +119,20 @@ test("IT staff request one disposal, the IT head approves it, IT staff execute i
   await expect(page.getByRole("main").getByText("อนุมัติแล้ว รอตัดจำหน่าย").filter({ visible: true }).first()).toBeVisible()
   await expect(page.getByText(employeeLabel("itHead").split(" - ")[0]).filter({ visible: true }).first()).toBeVisible()
 
-  // The approver cannot execute: no execute on the page, and the execute API refuses them.
+  // The approver cannot record it: no execute on the page; their round preview blocks it for segregation of duties, and
+  // the retired per-row execution answers 410 (P4-R1).
   await expect(visibleButton(page, /^บันทึกตัดจำหน่าย$/)).toHaveCount(0)
-  const headExecute = await page.request.patch(`/api/disposal-requests/${requestId}`, {
-    data: {
-      action: "execute",
-      disposalType: "dispose",
-      executionDate: new Date().toISOString().slice(0, 10),
-      executedById: readRunData().employees.itHead.id,
-      nextStatusId: choices.statusId,
-      recipientName: `${prefix} ผู้รับซาก`,
-      documentNo: `${prefix}-DOC`,
-      // The body the execution dialog sends: every key present (the schema's preprocessed numbers need them).
-      actualSaleValue: null,
-      actualSalvageValue: null,
-      executionRemark: null,
-      useHistoricalEvidenceException: false,
-      evidenceExceptionReason: null,
-      evidenceExceptionAcknowledged: false,
-    },
-  })
+  const headPreview = await page.request.post("/api/disposal-rounds", { data: { mode: "preview", requestIds: [requestId] } })
+  expect(headPreview.status()).toBe(200)
+  const headItems = ((await headPreview.json()) as { items: { outcome: string; code: string | null }[] }).items
+  expect(headItems).toEqual([expect.objectContaining({ outcome: "blocked", code: "DISPOSAL_SOD_CONFLICT" })])
+  const headExecute = await page.request.patch(`/api/disposal-requests/${requestId}`, { data: { action: "execute" } })
   const headExecuteBody = (await headExecute.json()) as { code?: string }
-  expect(headExecute.status(), `the approver may not execute: ${JSON.stringify(headExecuteBody)}`).toBe(403)
-  expect(headExecuteBody.code).toBe("DISPOSAL_SOD_CONFLICT")
+  expect(headExecute.status(), `the per-row execution is retired: ${JSON.stringify(headExecuteBody)}`).toBe(410)
+  expect(headExecuteBody.code).toBe("DISPOSAL_USE_ROUND")
   await measure.recordPage("IT head: the approved request")
 
-  // 3. IT staff execute it, with a document (a fixture PDF) added beside the request's photo as evidence.
+  // 3. IT staff add a document (a fixture PDF) beside the request's photo as evidence, then record it in a round of one.
   await actAs(page, "itStaff", e2eTheme)
   await measure.visit(requestUrl, "IT staff: the approved request")
   await measure.timed("IT staff: upload the evidence", async () => {
@@ -149,25 +140,25 @@ test("IT staff request one disposal, the IT head approves it, IT staff execute i
     await expectToast(page, "อัปโหลดหลักฐานตัดจำหน่ายสำเร็จ")
   })
   await expect(page.getByText("evidence.pdf")).toBeVisible()
+  // The approved request sends IT staff to the approved tab (from md); the round is made there.
+  if (e2eDevice === "desktop") await expect(visibleLink(page, "ไปเลือกในแท็บอนุมัติแล้ว")).toHaveCount(1)
+  await openRoundForm(page, measure, e2eDevice, prefix, [{ id: requestId, asset }])
+  await expect(page.locator('[data-disposal-round-machine="eligible"]')).toHaveCount(1)
+  // Asked under one method: the round starts with it (decision 11).
+  await expect(page.getByRole("radio", { name: "ตัดจำหน่าย", exact: true })).toBeChecked()
 
-  // The execution: no document number first, the error shows under it; then the whole entry saves.
-  await visibleButton(page, /^บันทึกตัดจำหน่าย$/).click()
-  const execution = page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })
-  await expect(execution.getByText("กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย")).toHaveCount(0)
-  await chooseSearchable(page, "disposal-execution-executed-by", employeeLabel("itStaff"))
-  await execution.locator("#disposal-execution-recipient").fill(`${prefix} ผู้รับซาก`)
-  await execution.getByRole("button", { name: "บันทึกผล" }).click()
-  await expect(execution.locator("#disposal-execution-document-no-error")).toHaveText("กรุณากรอกเลขที่เอกสารอ้างอิง")
-  await measure.recordPage("IT staff: the missing document number under the field")
-  await execution.locator("#disposal-execution-document-no").fill(`${prefix}-DOC`)
-  await measure.timed("IT staff: save the execution", async () => {
-    await execution.getByRole("button", { name: "บันทึกผล" }).click()
-    await expect(execution).toHaveCount(0)
-  })
-  await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")
+  // The round: no document number first, the error shows under it; then the whole entry saves.
+  await page.locator("#disposal-round-recipient").fill(`${prefix} ผู้รับซาก`)
+  await checkRoundButton(page).click()
+  await expect(page.locator("#disposal-round-document-error")).toHaveText("กรุณากรอกเลขที่เอกสารอ้างอิง")
+  await recordSettled(page, measure, "IT staff: the missing document number under the field")
+  const round = await createRound(page, measure, { method: "ตัดจำหน่าย", recipient: `${prefix} ผู้รับซาก`, documentNo: `${prefix}-DOC` }, 1)
+  await expect(page.getByRole("main")).toContainText(asset.assetTag)
+  await measure.visit(requestUrl, "IT staff: the disposed request")
   await expect(page.getByRole("main").getByText("ตัดจำหน่ายแล้ว").filter({ visible: true }).first()).toBeVisible()
+  await expect(page.locator("[data-disposal-execution-round]")).toHaveText(round.roundNo)
   await expect(page.getByText(`${prefix}-DOC`)).toBeVisible()
-  await measure.recordPage("IT staff: the disposed request")
+  await measure.recordPage("IT staff: the disposed request, in its round")
 
   // The asset left the books: its status is Disposed.
   const assetRead = await page.request.get(`/api/assets/${asset.id}`)

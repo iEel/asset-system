@@ -1,31 +1,36 @@
 // Disposal of a batch of two (spec §6.4.1–3, §6.7): IT staff request both in one batch with shared evidence, the IT
 // head approves them in one bulk approval on the approvals page (each in its panel on the phone, which has no ticks),
-// and IT staff execute them. On the way: the batch form's wrong entry first;
-// the IT head's own request is refused approval by the same IT head (the requester cannot approve their own request);
-// the approver's bulk execution is blocked (the approver cannot execute).
+// and IT staff record them in disposal rounds (group 6 plan 4: per-row and bulk execution are retired). On the way: the
+// batch form's wrong entry first; the IT head's own request is refused approval by the same IT head (the requester
+// cannot approve their own request); the approver's round is blocked (the approver cannot record the disposal).
 import { asUser, expect, test } from "../support/fixtures.ts"
+import { recordSettled } from "../audit/settle.ts"
 import { readRunData } from "../support/state.ts"
 import {
   actAs,
+  approvedTab,
+  checkRoundButton,
   chooseSearchable,
   createAssets,
   createRoom,
+  createRound,
   employeeLabel,
   escapeRegExp,
   EVIDENCE_PDF,
   expectToast,
-  openBulkExecutionPreview,
+  openRoundForm,
   PHOTO_PNG,
   readAssetChoices,
   recordPrefix,
   visibleButton,
+  writeRoundSelection,
   type DisposalAsset,
 } from "./disposal-support.ts"
 
 asUser("itStaff")
-// One batch walks through four tests: the bulk approval, one execution on its page, the approver's blocked bulk
-// execution (finding D3) and IT staff's bulk execution (finding D2). Each needs the one before (an expected failure
-// lets the next run); an unexpected failure skips the rest.
+// One batch walks through four tests: the bulk approval, one request in a round of its own, the approver's blocked
+// round (finding D3's test) and IT staff's round of the other with the shared document number (finding D2's test).
+// Each needs the one before; a failure skips the rest.
 test.describe.configure({ mode: "serial" })
 
 let batchAssets: DisposalAsset[] = []
@@ -156,72 +161,63 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
   expect(ownItems).toEqual([expect.objectContaining({ outcome: "blocked", code: "DISPOSAL_SOD_CONFLICT" })])
 
   // The batch's two are approved.
-  await measure.visit(`/th/disposal?status=approved&search=${encodeURIComponent(prefix)}`, "IT head: approved disposals")
+  await measure.visit(approvedTab(prefix), "IT head: approved disposals")
   for (const asset of batchAssets) await expect(page.getByRole("main").getByText(asset.assetTag).filter({ visible: true }).first()).toBeVisible()
 })
 
-test("IT staff execute one batch request on its page with the batch's shared evidence", async ({ page, measure }) => {
+test("IT staff record one batch request in a round of its own; the batch's shared evidence counts for it", async ({ page, measure, e2eDevice }) => {
   const [asset] = batchAssets
   const path = requestPaths[asset.assetTag]
   expect(path, "the batch test read the request's page").toBeTruthy()
   await measure.visit(path, "IT staff: an approved batch request")
   await expect(page.getByRole("main").getByText("อนุมัติแล้ว รอตัดจำหน่าย").filter({ visible: true }).first()).toBeVisible()
-  // The batch's evidence counts for the request: the execution has no evidence notice.
-  await visibleButton(page, /^บันทึกตัดจำหน่าย$/).click()
-  const execution = page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })
-  await expect(execution.getByText("กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย")).toHaveCount(0)
-  await chooseSearchable(page, "disposal-execution-executed-by", employeeLabel("itStaff"))
-  await execution.locator("#disposal-execution-recipient").fill(`${queueSearch} ผู้รับซาก`)
-  await execution.locator("#disposal-execution-document-no").fill(`${asset.assetTag}-DOC`)
-  await measure.recordPage("IT staff: the execution of a batch request")
-  await measure.timed("IT staff: save the execution", async () => {
-    await execution.getByRole("button", { name: "บันทึกผล" }).click()
-    await expect(execution).toHaveCount(0)
-  })
-  await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")
+  // The batch's evidence counts for the request: in the round it is eligible, not "ยังไม่มีหลักฐาน".
+  const requestId = path.split("/").pop() as string
+  await openRoundForm(page, measure, e2eDevice, asset.assetTag, [{ id: requestId, asset }])
+  await expect(page.locator('[data-disposal-round-machine="eligible"]')).toHaveCount(1)
+  await expect(page.getByText("ยังไม่มีหลักฐาน")).toHaveCount(0)
+  const round = await createRound(page, measure, { method: "ตัดจำหน่าย", recipient: `${queueSearch} ผู้รับซาก`, documentNo: `${asset.assetTag}-DOC` }, 1)
+  await expect(page.getByRole("main")).toContainText(asset.assetTag)
+  await measure.visit(path, "IT staff: the batch request, disposed")
   await expect(page.getByRole("main").getByText("ตัดจำหน่ายแล้ว").filter({ visible: true }).first()).toBeVisible()
-  await measure.recordPage("IT staff: the executed batch request")
+  await expect(page.locator("[data-disposal-execution-round]")).toHaveText(round.roundNo)
+  await measure.recordPage("IT staff: the batch request in its round")
 })
 
-// Finding D3: a dialog body that scrolls with nothing focusable in it cannot be scrolled from the keyboard (axe
-// scrollable-region-focusable, serious; AccessibleDialogBody, src/components/ui/accessible-dialog.tsx). The bulk
-// execution preview with nothing to execute is one: here the approver's own preview, which segregation of duties blocks
-// (the approver cannot execute, in bulk too). Expected to fail until fixed.
-test("the approver's bulk execution preview is blocked with the reason, and its body scrolls from the keyboard (finding D3)", async ({ page, measure, e2eTheme }) => {
-  // Finding D3 fixed (FX3): this test now keeps a scrolling dialog body reachable from the keyboard.
+// Finding D3 (fixed, FX3) was the old bulk execution's blocked preview; its successor is the approver's round. The IT
+// head approved the request, so segregation of duties keeps them from recording it: on the computer the approved tab's
+// tick is disabled with the reason, and the round page (with the request in the selection, as from another session)
+// names it "คุณอนุมัติรายการนี้" and the round waits.
+test("the approver's round is blocked with the reason (finding D3)", async ({ page, measure, e2eTheme, e2eDevice }) => {
   const asset = batchAssets[1]
   expect(asset, "the batch test made the request").toBeTruthy()
+  const requestId = requestPaths[asset.assetTag].split("/").pop() as string
   await actAs(page, "itHead", e2eTheme)
-  await measure.visit(`/th/disposal?status=approved&search=${encodeURIComponent(asset.assetTag)}`, "IT head: approved disposals")
-  const dialog = await openBulkExecutionPreview(page, asset, employeeLabel("itStaff"), `${queueSearch} ผู้รับซาก`)
-  await expect(dialog.getByText("ไม่สามารถดำเนินการได้เนื่องจากขัดกับการแยกหน้าที่").first()).toBeVisible()
-  await expect(dialog.getByRole("alert")).toHaveText("ไม่มีคำขอตัดจำหน่ายที่อนุมัติแล้วซึ่งดำเนินการได้ด้วยข้อมูลร่วมนี้")
-  await measure.recordPage("IT head: the bulk execution's preview, blocked")
-  await dialog.getByRole("button", { name: "ยกเลิก" }).click()
-  await expect(dialog).toHaveCount(0)
+  await measure.visit(approvedTab(asset.assetTag), "IT head: approved disposals")
+  if (e2eDevice === "desktop") {
+    await expect(page.getByRole("checkbox", { name: new RegExp(`^เลือก ${escapeRegExp(asset.name)} · .*\\(คุณอนุมัติรายการนี้\\)$`) })).toBeDisabled()
+  }
+  await writeRoundSelection(page, asset.assetTag, [requestId])
+  await page.goto("/th/disposal/rounds/new", { waitUntil: "load" })
+  const blocked = page.locator('[data-disposal-round-machine="blocked"]')
+  await expect(blocked).toHaveCount(1)
+  await expect(blocked).toContainText("คุณอนุมัติรายการนี้")
+  await expect(page.locator("[data-disposal-round-blocked]")).toContainText("บันทึกในรอบนี้ไม่ได้ 1 รายการ")
+  await expect(checkRoundButton(page)).toBeDisabled()
+  await recordSettled(page, measure, "IT head: the round, blocked")
 })
 
-// Finding D2, decided (DX2 (ก)): a request has no document number until it is executed, so the bulk execution's
-// dialog takes one shared reference document number, used by every row without its own (as the shared recipient is).
-// IT staff fill it and the request is executed.
-test("IT staff execute the other batch request in a bulk execution (finding D2)", async ({ page, measure }) => {
+// Finding D2, decided (DX2 (ก)): a request has no document number until it is recorded, so the round takes one shared
+// reference document number (now the round's own). IT staff fill it and the request is recorded.
+test("IT staff record the other batch request in a round with the shared document number (finding D2)", async ({ page, measure, e2eDevice }) => {
   const asset = batchAssets[1]
   expect(asset, "the batch test made the request").toBeTruthy()
-  await measure.visit(`/th/disposal?status=approved&search=${encodeURIComponent(asset.assetTag)}`, "IT staff: approved disposals")
-  const dialog = await openBulkExecutionPreview(page, asset, employeeLabel("itStaff"), `${queueSearch} ผู้รับซาก`, `${queueSearch}-BULK-DOC`)
-  // The row is eligible, and uses the shared number.
-  await expect(dialog.getByRole("listitem").getByText("ดำเนินการได้", { exact: true })).toBeVisible()
-  await expect(dialog.getByText(`${queueSearch}-BULK-DOC`).first()).toBeVisible()
-  await measure.recordPage("IT staff: the bulk execution's preview")
-  await expect(dialog.locator("#disposal-bulk-execution-permanent")).toBeVisible()
-  await dialog.locator("#disposal-bulk-execution-permanent").check()
-  await dialog.getByRole("button", { name: "ยืนยันดำเนินการ 1 รายการ" }).click()
-  const result = page.getByRole("dialog", { name: "ผลการดำเนินการตัดจำหน่ายแบบกลุ่ม" })
-  // The row's outcome; the result's summary term reads the same words.
-  await expect(result.getByRole("listitem").getByText("ดำเนินการแล้ว", { exact: true })).toBeVisible()
-  await expect(result.getByText(asset.assetTag).first()).toBeVisible()
-  await measure.recordPage("IT staff: the bulk execution's result")
-  await result.getByRole("button", { name: "ปิด" }).first().click()
+  const requestId = requestPaths[asset.assetTag].split("/").pop() as string
+  await openRoundForm(page, measure, e2eDevice, asset.assetTag, [{ id: requestId, asset }])
+  await expect(page.locator('[data-disposal-round-machine="eligible"]')).toHaveCount(1)
+  const round = await createRound(page, measure, { method: "ตัดจำหน่าย", recipient: `${queueSearch} ผู้รับซาก`, documentNo: `${queueSearch}-BULK-DOC` }, 1)
+  await expect(page.getByRole("main")).toContainText(`${queueSearch}-BULK-DOC`)
   await measure.visit(`/th/disposal?status=disposed&search=${encodeURIComponent(asset.assetTag)}`, "IT staff: disposed disposals")
   await expect(page.getByRole("main").getByText(asset.assetTag).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByRole("main")).toContainText(round.roundNo)
 })

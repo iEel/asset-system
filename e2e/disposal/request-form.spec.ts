@@ -6,12 +6,15 @@
 //   own request says "คุณพิจารณาคำขอนี้เองไม่ได้"; the IT head approves with อนุมัติ, and ปฏิเสธ needs a remark and names
 //   the asset's real status before the request.
 // - A request with no photo (its uploads failed): the notice on the page, "ยังไม่มีรูป" in the approvals inbox, the server
-//   refusing a HEIC, and the execution waiting for evidence.
+//   refusing a HEIC, and the disposal round waiting for evidence (group 6 plan 4: the only way to record a disposal).
 // axe runs on every page each test records (measure), in both themes across the four projects.
 import { asUser, expect, test } from "../support/fixtures.ts"
+import { recordSettled } from "../audit/settle.ts"
 import { approvalsUrl, createInboxRequest, queueEntry } from "../approvals/approvals-support.ts"
 import {
   actAs,
+  approvedTab,
+  checkRoundButton,
   chooseMethod,
   createAssets,
   createRoom,
@@ -25,8 +28,10 @@ import {
   readDisposalNo,
   recordPrefix,
   requestPhotoInput,
+  roundTick,
   sendRequestButton,
   visibleButton,
+  writeRoundSelection,
   type DisposalAsset,
 } from "./disposal-support.ts"
 
@@ -172,7 +177,7 @@ test("the IT head cannot decide their own request, approves IT staff's with อ�
   expect(assetRead.status?.name).toBe("Ready")
 })
 
-test("a request whose uploads failed: the no-photo notice, ยังไม่มีรูป in the inbox, a HEIC refused, and execution waits for evidence", async ({ page, measure, e2eTheme, e2eDevice }, testInfo) => {
+test("a request whose uploads failed: the no-photo notice, ยังไม่มีรูป in the inbox, a HEIC refused, and its round waits for evidence", async ({ page, measure, e2eTheme, e2eDevice }, testInfo) => {
   const prefix = recordPrefix(testInfo, "DSP6")
   const roomId = await createRoom(`${prefix}-R`, `${prefix} ห้องทดสอบตัดจำหน่าย`)
   const choices = await readAssetChoices(page, measure)
@@ -200,16 +205,21 @@ test("a request whose uploads failed: the no-photo notice, ยังไม่ม
   await measure.visit(approvalsUrl({ tab: "disposal", search: prefix }), "IT head: the inbox with a request with no photo")
   await expect(queueEntry(page, e2eDevice, request.id)).toContainText("ยังไม่มีรูป")
 
-  // 4. Approved (through the decision API the dialog posts to), the execution waits for evidence.
+  // 4. Approved (through the decision API the dialog posts to), it cannot be recorded without evidence: on the computer
+  // the approved tab's tick is disabled "ยังไม่มีหลักฐาน"; the round page names it and the round waits.
   const decision = await page.request.patch(`/api/disposal-requests/${request.id}`, { data: { decision: "approve", approvalRemark: null } })
   expect(decision.status(), await decision.text()).toBe(200)
   await actAs(page, "itStaff", e2eTheme)
-  await measure.visit(`/th/disposal/${request.id}`, "IT staff: the approved request with no evidence")
-  await visibleButton(page, /^บันทึกตัดจำหน่าย$/).click()
-  const execution = page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })
-  await expect(execution.getByRole("alert")).toHaveText("กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย")
-  await expect(execution.getByRole("button", { name: "บันทึกผล" })).toHaveAttribute("aria-disabled", "true")
-  await measure.recordPage("IT staff: execution waits for evidence")
-  await execution.getByRole("button", { name: "ยกเลิก" }).click()
-  await expect(execution).toHaveCount(0)
+  await measure.visit(approvedTab(prefix), "IT staff: the approved request with no evidence")
+  if (e2eDevice === "desktop") {
+    await expect(roundTick(page, asset)).toBeDisabled()
+    await expect(roundTick(page, asset)).toHaveAccessibleName(/\(ยังไม่มีหลักฐาน\)$/)
+  }
+  await writeRoundSelection(page, prefix, [request.id])
+  await page.goto("/th/disposal/rounds/new", { waitUntil: "load" })
+  const blocked = page.locator('[data-disposal-round-machine="blocked"]')
+  await expect(blocked).toHaveCount(1)
+  await expect(blocked).toContainText("ยังไม่มีหลักฐาน · ให้ผู้ดูแลระบบบันทึก")
+  await expect(checkRoundButton(page)).toBeDisabled()
+  await recordSettled(page, measure, "IT staff: the round waits for evidence")
 })

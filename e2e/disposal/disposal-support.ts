@@ -1,10 +1,12 @@
 // The disposal workflows' helpers (spec §6.4). Each test makes its own records: a room of its own (the seed admin
 // creates it, as the setup does), assets in it, then the requests the people walk. Every code, tag and reason carries
 // the run id and the project, so the four projects never share a record and a person sees the marker in every list.
-// The person at the device changes inside one test (IT staff request, the IT head approves, IT staff execute): actAs
-// swaps the page's session for that user's saved one, so the one page, and its measurements, follow the whole workflow.
+// The person at the device changes inside one test (IT staff request, the IT head approves, IT staff record it in a
+// round): actAs swaps the page's session for that user's saved one, so the one page, and its measurements, follow the
+// whole workflow.
 import { readFileSync } from "node:fs"
 import { request as playwrightRequest, type APIRequestContext, type Locator, type Page, type TestInfo } from "@playwright/test"
+import { recordSettled } from "../audit/settle.ts"
 import { expect } from "../support/fixtures.ts"
 import type { E2eDevice, E2eTheme } from "../support/matrix.ts"
 import type { Measure } from "../support/measure.ts"
@@ -168,28 +170,6 @@ export function visibleLink(page: Page, name: string | RegExp): Locator {
   return page.getByRole("link", { name }).filter({ visible: true })
 }
 
-// A bulk execution of one approved request, up to its preview, from the approved tab of the queue: select the row, fill
-// the shared values (executor, final status Disposed, shared recipient) and ask for the preview. Returns the dialog once
-// the preview has answered (its counts show).
-// documentNo fills the dialog's shared reference document number (e2e decision DX2), which a row without its own takes.
-export async function openBulkExecutionPreview(page: Page, asset: DisposalAsset, executor: string, recipient: string, documentNo?: string): Promise<Locator> {
-  const toggle = page.getByRole("button", { name: "เลือกหลายรายการ" }).filter({ visible: true })
-  if (await toggle.count()) await toggle.click()
-  // The bulk execution names each row by the asset tag and name ("ทรัพย์สิน <tag> - <name>").
-  await page.getByRole("checkbox", { name: new RegExp(`ทรัพย์สิน ${escapeRegExp(asset.assetTag)} - `) }).filter({ visible: true }).check()
-  await page.getByRole("button", { name: "ตรวจสอบการดำเนินการ" }).click()
-  const dialog = page.getByRole("dialog", { name: "ตรวจสอบการดำเนินการตัดจำหน่ายแบบกลุ่ม" })
-  await dialog.locator("#disposal-bulk-execution-executor").selectOption({ label: executor })
-  await dialog.locator("#disposal-bulk-execution-status").selectOption({ label: "ตัดจำหน่ายแล้ว" })
-  await dialog.locator("#disposal-bulk-execution-recipient").fill(recipient)
-  if (documentNo) await dialog.locator("#disposal-bulk-execution-document-no").fill(documentNo)
-  await dialog.getByRole("button", { name: "ยืนยันดำเนินการ 1 รายการ" }).click()
-  // The preview has arrived: its summary's term shows whether the row is eligible (D2) or blocked (D3). The row's own
-  // outcome reads the same words only when it is eligible, so each test reads its row itself.
-  await expect(dialog.getByRole("term").filter({ hasText: /^ดำเนินการได้$/ })).toBeVisible()
-  return dialog
-}
-
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -252,4 +232,94 @@ export async function expectNoDecision(page: Page, device: E2eDevice, disposalNo
   } else {
     await expect(visibleLink(page, "พิมพ์คำขอตัดจำหน่าย")).toHaveCount(1)
   }
+}
+
+// Disposal rounds (group 6 plan 4): an approved request is disposed only through a รอบตัดจำหน่าย. Per-row and bulk
+// execution are retired (P4-R1: their routes answer 410 DISPOSAL_USE_ROUND).
+export const ROUND_SELECTION_KEY = "disposal-round-selection"
+
+// The queue's approved tab, narrowed to the test's marker (the selection's scope is this search).
+export function approvedTab(search: string): string {
+  return `/th/disposal?status=approved&search=${encodeURIComponent(search)}`
+}
+
+// A row's round tick on the approved tab, named "เลือก {asset name} · {DP-…}" (a blocked row's adds its reason in
+// brackets). From md only.
+export function roundTick(page: Page, asset: DisposalAsset): Locator {
+  return page.getByRole("checkbox", { name: new RegExp(`^เลือก ${escapeRegExp(asset.name)} · `) })
+}
+
+// The selection the approved tab leaves for สร้างรอบตัดจำหน่าย (P4-R2): the ids and the tab's scope (search, type,
+// dates). The phone has no ticks (spec §10.2), so a phone test leaves the same selection the computer's ticks would.
+export async function writeRoundSelection(page: Page, search: string, ids: readonly string[]) {
+  const value = JSON.stringify({ ids, scope: JSON.stringify([search.trim(), "", "", ""]) })
+  await page.evaluate(([key, stored]) => window.sessionStorage.setItem(key, stored), [ROUND_SELECTION_KEY, value] as const)
+}
+
+export type RoundRequest = { id: string; asset: DisposalAsset }
+
+// Select these approved requests and open สร้างรอบตัดจำหน่าย. The computer ticks them on the approved tab and presses
+// the bar's "สร้างรอบตัดจำหน่าย {n} รายการ"; the phone's approved tab has no ticks and says so, and the test leaves the
+// selection itself. The page has listed every machine (eligible or blocked) when this returns; axe runs on it.
+export async function openRoundForm(page: Page, measure: Measure, device: E2eDevice, search: string, requests: readonly RoundRequest[]) {
+  await measure.visit(approvedTab(search), "IT staff: the approved tab")
+  if (device === "phone") {
+    await expect(page.locator("[data-disposal-round-tick]").filter({ visible: true })).toHaveCount(0)
+    await expect(page.locator("[data-disposal-round-phone-note]")).toHaveText("สร้างรอบตัดจำหน่ายได้บนคอมพิวเตอร์")
+    await writeRoundSelection(page, search, requests.map((request) => request.id))
+    await page.goto("/th/disposal/rounds/new", { waitUntil: "load" })
+  } else {
+    await expect(page.locator("[data-disposal-round-phone-note]")).toBeHidden()
+    for (const request of requests) await roundTick(page, request.asset).check()
+    const bar = page.getByRole("group", { name: "รายการที่เลือกสำหรับรอบตัดจำหน่าย" })
+    await expect(bar).toContainText(`${requests.length} เลือกแล้ว (จากทุกหน้า)`)
+    await measure.timed("IT staff: open the new round", async () => {
+      await bar.getByRole("button", { name: `สร้างรอบตัดจำหน่าย ${requests.length} รายการ` }).click()
+      await page.waitForURL(/\/th\/disposal\/rounds\/new$/)
+    })
+  }
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("สร้างรอบตัดจำหน่าย")
+  await expect(page.locator("[data-disposal-round-machine]")).toHaveCount(requests.length)
+  await recordSettled(page, measure, "IT staff: new disposal round")
+}
+
+export type RoundEntry = { method: string; documentNo: string; recipient?: string; saleValue?: string; remark?: string }
+export type SavedRound = { id: string; roundNo: string; path: string }
+
+// The round form's two primaries: "ตรวจสอบรอบ" until the check passes, then "บันทึกรอบตัดจำหน่าย {n} รายการ".
+export function checkRoundButton(page: Page): Locator {
+  return page.getByRole("button", { name: "ตรวจสอบรอบ", exact: true })
+}
+
+export function saveRoundButton(page: Page, count: number): Locator {
+  return page.getByRole("button", { name: `บันทึกรอบตัดจำหน่าย ${count} รายการ`, exact: true })
+}
+
+// Fill the round (the method by its word, the buyer or recipient, the document, the lump price for ขาย, the detail),
+// press "ตรวจสอบรอบ", then "บันทึกรอบตัดจำหน่าย {n} รายการ". The executor stays the signed-in IT staff (the preset,
+// never an approver of a machine in the round). Returns on the round's page.
+export async function createRound(page: Page, measure: Measure, entry: RoundEntry, count: number): Promise<SavedRound> {
+  await chooseMethod(page, entry.method)
+  await expect(page.locator("#disposal-round-executed-by")).toContainText(employeeLabel("itStaff"))
+  if (entry.recipient !== undefined) await page.locator("#disposal-round-recipient").fill(entry.recipient)
+  await page.locator("#disposal-round-document").fill(entry.documentNo)
+  if (entry.saleValue !== undefined) await page.locator("#disposal-round-sale-value").fill(entry.saleValue)
+  if (entry.remark !== undefined) await page.locator("#disposal-round-remark").fill(entry.remark)
+  await checkRoundButton(page).click()
+  const save = saveRoundButton(page, count)
+  await expect(save).toBeEnabled()
+  await expect(page.locator("[data-disposal-round-footer]").first()).toHaveText(`ตรวจสอบแล้ว · บันทึกได้ทั้ง ${count} รายการ`)
+  await recordSettled(page, measure, "IT staff: the round, checked")
+  await measure.timed("IT staff: save the round", async () => {
+    await save.click()
+    await page.waitForURL(/\/th\/disposal\/rounds\/[0-9a-f-]{36}$/)
+  })
+  await expectToast(page, /บันทึกรอบตัดจำหน่าย DPR-\d{8}-\d{4} แล้ว/)
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^รอบตัดจำหน่าย · /)
+  const meta = await page.locator("[data-disposal-round-meta]").first().innerText()
+  const roundNo = meta.match(/DPR-\d{8}-\d{4}/)?.[0] ?? ""
+  expect(roundNo).toMatch(/^DPR-\d{8}-\d{4}$/)
+  const path = new URL(page.url()).pathname
+  await recordSettled(page, measure, "IT staff: the disposal round")
+  return { id: path.split("/").pop() as string, roundNo, path }
 }

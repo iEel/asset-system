@@ -25,12 +25,13 @@ export function approvalsUrl(params: Record<string, string> = {}): string {
 }
 
 // One pending disposal request through the request API (the body the request form sends), with the suite's photo on it
-// through the upload route the request page posts to. The user signed in on the page is its creator.
-export async function createInboxRequest(page: Page, asset: DisposalAsset, requester: E2eUserKey, reason: string, photo = true): Promise<InboxRequest> {
+// through the upload route the request page posts to. The user signed in on the page is its creator. disposalType is
+// the method asked (sell, donate, destroy, lost, dispose).
+export async function createInboxRequest(page: Page, asset: DisposalAsset, requester: E2eUserKey, reason: string, photo = true, disposalType = "dispose"): Promise<InboxRequest> {
   const response = await page.request.post("/api/disposal-requests", {
     data: {
       assetId: asset.id,
-      disposalType: "dispose",
+      disposalType,
       reason,
       requestedById: readRunData().employees[requester].id,
       approverId: null,

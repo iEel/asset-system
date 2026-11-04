@@ -10,7 +10,7 @@ import { E2E_PROJECTS } from "../e2e/support/matrix.ts"
 const read = (file: string) => readFileSync(file, "utf8").replace(/\r/g, "")
 const disposalSpecs = () => (existsSync("e2e/disposal") ? readdirSync("e2e/disposal").filter((file) => file.endsWith(".spec.ts")).sort() : [])
 
-test("one disposal is requested, approved alone and executed with evidence by the right people, and the print opens (e2e disposal task 1, ED1)", () => {
+test("one disposal is requested, approved alone and recorded with evidence in a round by the right people, and the print opens (e2e disposal task 1, ED1)", () => {
   const support = read("e2e/disposal/disposal-support.ts")
   // The four projects' codes in record tags are the projects of the matrix, each its own.
   const codes = Object.fromEntries([...support.matchAll(/"((?:desktop|phone)-(?:light|dark))": "([A-Z]{2})"/g)].map((match) => [match[1], match[2]]))
@@ -51,10 +51,14 @@ test("one disposal is requested, approved alone and executed with evidence by th
     `admin.post("/api/disposal-requests/bulk-decision"`,
     `await actAs(page, "itHead", e2eTheme)`,
     `"กรุณาระบุเหตุผลที่ไม่อนุมัติ"`,
-    `expect(headExecuteBody.code).toBe("DISPOSAL_SOD_CONFLICT")`,
+    `expect(headItems).toEqual([expect.objectContaining({ outcome: "blocked", code: "DISPOSAL_SOD_CONFLICT" })])`,
+    `expect(headExecuteBody.code).toBe("DISPOSAL_USE_ROUND")`,
     `await actAs(page, "itStaff", e2eTheme)`,
     `setInputFiles(EVIDENCE_PDF)`,
-    `"กรุณากรอกเลขที่เอกสารอ้างอิง"`,
+    `await openRoundForm(page, measure, e2eDevice, prefix, [{ id: requestId, asset }])`,
+    `await expect(page.locator("#disposal-round-document-error")).toHaveText("กรุณากรอกเลขที่เอกสารอ้างอิง")`,
+    `await createRound(page, measure, { method: "ตัดจำหน่าย"`,
+    `await expect(page.locator("[data-disposal-execution-round]")).toHaveText(round.roundNo)`,
     `.toBe("Disposed")`,
     `"ใบอนุมัติตัดจำหน่ายทรัพย์สิน"`,
   ]) assert.ok(spec.includes(step), step)
@@ -70,10 +74,9 @@ test("one disposal is requested, approved alone and executed with evidence by th
     `page.getByRole("dialog", { name: "ปฏิเสธ", exact: true })`,
     `await visibleButton(page, /^อนุมัติ$/).click()`,
     `page.getByRole("dialog", { name: "อนุมัติ", exact: true })`,
-    `page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })`,
-    `await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")`,
   ]) assert.ok(spec.includes(step), step)
-  for (const gone of [`"พิจารณาคำขอ"`, "ตัดจำหน่ายจริง", `"disposal-request-requested-by", employeeLabel`, `{ name: "บันทึก", exact: true }`, "nextStatusId: choices.statusId }"]) {
+  // Group 6 plan 4: the execution dialog is gone (P4-R1); the disposal is recorded only through a round.
+  for (const gone of [`"พิจารณาคำขอ"`, "ตัดจำหน่ายจริง", `page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย"`, "disposal-execution-executed-by", `action: "execute",\n      disposalType`, `"disposal-request-requested-by", employeeLabel`, `{ name: "บันทึก", exact: true }`, "nextStatusId: choices.statusId }"]) {
     assert.ok(!spec.includes(gone), `gone: ${gone}`)
   }
   // Finding D1 is fixed (FX1): the print's test is a plain test.
@@ -81,7 +84,7 @@ test("one disposal is requested, approved alone and executed with evidence by th
   assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "the print test follows the workflow")
 })
 
-test("a batch of two is requested with shared evidence, approved in one bulk approval, and executed; the own request and the approver's execution are refused (e2e disposal task 2, ED2)", () => {
+test("a batch of two is requested with shared evidence, approved in one bulk approval, and recorded in rounds; the own request and the approver's round are refused (e2e disposal task 2, ED2)", () => {
   assert.deepEqual(disposalSpecs().filter((file) => file === "batch-bulk-approval.spec.ts"), ["batch-bulk-approval.spec.ts"])
   const spec = read("e2e/disposal/batch-bulk-approval.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
@@ -95,12 +98,18 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
     String.raw`/^DPB-\d{8}-\d{4}$/`,
     `requestedById: readRunData().employees.itHead.id`,
     `code: "DISPOSAL_SOD_CONFLICT"`,
-    `"ไม่สามารถดำเนินการได้เนื่องจากขัดกับการแยกหน้าที่"`,
-    // Group 6 plan 3: the batch's shared files need an image (P3-R3); the execute words carry no "จริง".
+    // Group 6 plan 3: the batch's shared files need an image (P3-R3).
     `setInputFiles(PHOTO_PNG)`,
-    `page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })`,
-    `await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")`,
+    // Group 6 plan 4: each request is recorded in a round; the batch's evidence counts; the approver's round is blocked.
+    `await openRoundForm(page, measure, e2eDevice, asset.assetTag, [{ id: requestId, asset }])`,
+    `await expect(page.getByText("ยังไม่มีหลักฐาน")).toHaveCount(0)`,
+    `await expect(blocked).toContainText("คุณอนุมัติรายการนี้")`,
+    `await expect(checkRoundButton(page)).toBeDisabled()`,
+    `await expect(page.locator("[data-disposal-execution-round]")).toHaveText(round.roundNo)`,
   ]) assert.ok(spec.includes(step), step)
+  for (const gone of ["openBulkExecutionPreview", "ผลการดำเนินการตัดจำหน่ายแบบกลุ่ม", "disposal-execution-executed-by", `{ name: "บันทึกตัดจำหน่าย", exact: true }`]) {
+    assert.ok(!spec.includes(gone), `the retired execution is gone: ${gone}`)
+  }
   assert.ok(!spec.includes("ตัดจำหน่ายจริง"), "no old execute words")
   // The bulk approval moved to the approvals page (group 6 plan 2, P2-R2): the pending tab links there, the computer
   // ticks both and confirms with the not-opened warning, the phone (no ticks) approves each in the panel.
@@ -121,12 +130,12 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
   // Finding D3 is fixed (FX3); D2 is decided (DX2 (ก)): IT staff fill the shared reference document number.
   assert.ok(!spec.includes(`test.fail(true, "finding D3:`), "D3 is fixed")
   assert.ok(!spec.includes(`test.fail(true, "finding D2:`), "D2 is fixed")
-  assert.ok(spec.includes("openBulkExecutionPreview(page, asset, employeeLabel(\"itStaff\"), `${queueSearch} ผู้รับซาก`, `${queueSearch}-BULK-DOC`)"), "D2 fills the shared number")
-  assert.ok(spec.indexOf("(finding D3)") < spec.indexOf("(finding D2)"), "the approver's preview runs while the request is still approved")
+  assert.ok(spec.includes("documentNo: `${queueSearch}-BULK-DOC` }, 1)"), "D2 fills the shared number")
+  assert.ok(spec.indexOf("(finding D3)") < spec.indexOf("(finding D2)"), "the approver's round is checked while the request is still approved")
 })
 
 test("an asset in an open audit round cannot be requested for disposal, with the reason, and can once the round is cancelled (e2e disposal task 3, ED3)", () => {
-  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "open-audit-block.spec.ts", "request-form.spec.ts", "single-request.spec.ts"])
+  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "disposal-round.spec.ts", "open-audit-block.spec.ts", "request-form.spec.ts", "single-request.spec.ts"])
   const spec = read("e2e/disposal/open-audit-block.spec.ts")
   assert.ok(spec.indexOf("const roundResponse = await page.request.post") > spec.indexOf("await requestPhotoInput(page).setInputFiles(PHOTO_PNG)"), "the round opens after the form is filled")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
@@ -152,7 +161,7 @@ test("an asset in an open audit round cannot be requested for disposal, with the
   ]) assert.ok(spec.includes(step), step)
   // Every disposal test makes its own records under its own workflow code.
   const codes = disposalSpecs().map((file) => read(`e2e/disposal/${file}`).match(/recordPrefix\(testInfo, "(DSP\d)"\)/)?.[1])
-  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3", "DSP4"])
+  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3", "DSP4", "DSP7"])
 })
 
 test("the disposal specs read the request statuses by their one set of names (critique 2026-10-20 D3)", () => {
@@ -240,7 +249,9 @@ test("the disposal request form and the request page: the form's errors and phot
     `'[data-disposal-no-photo="none"]'`,
     `"อัปโหลดไม่สำเร็จ 2 ไฟล์ · คำขอนี้ยังไม่มีรูป"`,
     `toContainText("ยังไม่มีรูป")`,
-    `"กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย"`,
+    // Group 6 plan 4: without evidence the approved tab's tick is disabled and the round names it and waits.
+    `await expect(roundTick(page, asset)).toHaveAccessibleName(/\\(ยังไม่มีหลักฐาน\\)$/)`,
+    `await expect(blocked).toContainText("ยังไม่มีหลักฐาน · ให้ผู้ดูแลระบบบันทึก")`,
   ]) assert.ok(spec.includes(step), step)
   // The words the spec reads are the app's own.
   const th = JSON.parse(read("messages/th.json")) as { disposalPage: Record<string, unknown>; approvalInboxPage: Record<string, string> }
@@ -256,4 +267,70 @@ test("the disposal request form and the request page: the form's errors and phot
   assert.equal(page.requestPage.noPhoto, "คำขอนี้ยังไม่มีรูป · แนบรูปได้ที่นี่")
   assert.equal(th.approvalInboxPage.noPhoto, "ยังไม่มีรูป")
   assert.equal(th.approvalInboxPage.effectReject, "คำขอเป็น ไม่อนุมัติ · ทรัพย์สินกลับเป็น {status}")
+})
+
+test("disposal rounds and the accounting Excel: the approver's ticks, three requests in one round as ขาย with a lump price, the report, the retired paths, a stale selection, the phone (group 6 plan 4 Task 6)", () => {
+  const support = read("e2e/disposal/disposal-support.ts")
+  const spec = read("e2e/disposal/disposal-round.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "IT staff walk it")
+  assert.deepEqual([...spec.matchAll(/recordPrefix\(testInfo, "(DSP\d)"\)/g)].map((match) => match[1]), ["DSP7", "DSP8"])
+  assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "the report reads the round test's round")
+  // The helpers: the selection travels in sessionStorage (P4-R2); the computer ticks and uses the bar, the phone has no
+  // ticks and says so; the round is filled, checked, then saved.
+  for (const step of [
+    `export const ROUND_SELECTION_KEY = "disposal-round-selection"`,
+    `page.getByRole("group", { name: "รายการที่เลือกสำหรับรอบตัดจำหน่าย" })`,
+    "bar.getByRole(\"button\", { name: `สร้างรอบตัดจำหน่าย ${requests.length} รายการ` })",
+    `await expect(page.locator("[data-disposal-round-phone-note]")).toHaveText("สร้างรอบตัดจำหน่ายได้บนคอมพิวเตอร์")`,
+    `await expect(page.locator("[data-disposal-round-tick]").filter({ visible: true })).toHaveCount(0)`,
+    `page.getByRole("button", { name: "ตรวจสอบรอบ", exact: true })`,
+    "page.getByRole(\"button\", { name: `บันทึกรอบตัดจำหน่าย ${count} รายการ`, exact: true })",
+    "`ตรวจสอบแล้ว · บันทึกได้ทั้ง ${count} รายการ`",
+    `await expect(page.locator("#disposal-round-executed-by")).toContainText(employeeLabel("itStaff"))`,
+    `toHaveText(/^รอบตัดจำหน่าย · /)`,
+  ]) assert.ok(support.includes(step), step)
+  for (const step of [
+    `const ASKED = ["donate", "dispose", "donate"] as const`,
+    String.raw`\\(คุณอนุมัติรายการนี้\\)$`,
+    `await chooseMethod(page, "ขาย")`,
+    `toHaveText("จะเปลี่ยนวิธีของ 3 คำขอเป็น ขาย")`,
+    `saleValue: "3000.00" }, 3)`,
+    `toContainText("ราคาขายเหมาของรอบ 3,000.00 บาท · 3 เครื่อง")`,
+    `.toBe("Disposed")`,
+    "`/th/disposal/rounds?search=${encodeURIComponent(round.roundNo)}`",
+    `workbook.getWorksheet("รายการ")`,
+    `["ลำดับ", "รหัสทรัพย์สิน", "ชื่อทรัพย์สิน", "Serial", "รูป"]`,
+    `expect(sheet.getImages()).toHaveLength(3)`,
+    `expect(execute.status()).toBe(410)`,
+    `expect(bulk.status()).toBe(410)`,
+    `"DISPOSAL_USE_ROUND"`,
+    `toContainText("คำขอไม่อยู่ในสถานะอนุมัติแล้ว")`,
+    `expect(commitBody.code).toBe("DISPOSAL_ROUND_BLOCKED")`,
+    `await expect(checkRoundButton(page)).toBeDisabled()`,
+    `main.locator("article").filter({ visible: true })).toHaveCount(3)`,
+  ]) assert.ok(spec.includes(step), step)
+  assert.ok(spec.includes(`import ExcelJS from "exceljs"`), "the report is read with exceljs")
+  // The words the specs read are the app's own.
+  const th = JSON.parse(read("messages/th.json")) as { disposalPage: { queue: Record<string, string>; rounds: Record<string, string> & { form: Record<string, string> & { blocked: Record<string, string> } } } }
+  const { queue, rounds } = th.disposalPage
+  assert.equal(queue.roundTickApprover, "คุณอนุมัติรายการนี้")
+  assert.equal(queue.roundTickNoEvidence, "ยังไม่มีหลักฐาน")
+  assert.equal(queue.roundCreate, "สร้างรอบตัดจำหน่าย {count} รายการ")
+  assert.equal(queue.roundBarLabel, "รายการที่เลือกสำหรับรอบตัดจำหน่าย")
+  assert.equal(queue.roundSelectedCount, "{count} เลือกแล้ว (จากทุกหน้า)")
+  assert.equal(queue.roundPhoneNote, "สร้างรอบตัดจำหน่ายได้บนคอมพิวเตอร์")
+  assert.equal(rounds.pageTitle, "รอบตัดจำหน่าย · {title}")
+  assert.equal(rounds.exportReport, "ส่งออกรายงานส่งบัญชี")
+  assert.equal(rounds.saleLine, "ราคาขายเหมาของรอบ {value} บาท · {count} เครื่อง")
+  assert.equal(rounds.form.review, "ตรวจสอบรอบ")
+  assert.equal(rounds.form.save, "บันทึกรอบตัดจำหน่าย {count} รายการ")
+  assert.equal(rounds.form.methodChange, "จะเปลี่ยนวิธีของ {count} คำขอเป็น {method}")
+  assert.equal(rounds.form.footerReviewed, "ตรวจสอบแล้ว · บันทึกได้ทั้ง {count} รายการ")
+  assert.equal(rounds.form.footerBlocked, "บันทึกไม่ได้ {count} รายการ · นำออกก่อนบันทึก")
+  assert.equal(rounds.form.blockedTitle, "บันทึกในรอบนี้ไม่ได้ {count} รายการ")
+  assert.equal(rounds.form.removeBlocked, "นำรายการที่บันทึกไม่ได้ออกทั้งหมด")
+  assert.equal(rounds.form.blocked.DISPOSAL_SOD_CONFLICT, "คุณอนุมัติรายการนี้")
+  assert.equal(rounds.form.blocked.DISPOSAL_INVALID_STAGE, "คำขอไม่อยู่ในสถานะอนุมัติแล้ว")
+  assert.equal(rounds.form.blocked.DISPOSAL_EVIDENCE_REQUIRED, "ยังไม่มีหลักฐาน · ให้ผู้ดูแลระบบบันทึก")
 })
