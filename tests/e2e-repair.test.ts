@@ -131,10 +131,11 @@ test("the PM plan: created with a wrong entry first, recorded done on 31 Jan wit
     assert.ok(spec.includes(text), text)
   }
   // The plan is looked for on whichever list page holds it (menu B shell task 13B loop 1 for the ended plan; e2e fix 2D
-  // for every look, after E2E-1026E's 103 active plans pushed the paused plan to page 2): the list sorts active, paused,
-  // then ended plans across every page, and an ended plan has no page of its own (the edit page 404s).
+  // for every look, after E2E-1026E's 103 active plans pushed the paused plan to page 2), and an ended plan has no page
+  // of its own (the edit page 404s). Group 5 plan 4 (G5P4-R4) shows one state per page: the spec's tab moves with the
+  // page's rebuild.
   const listPage = read("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx")
-  assert.ok(listPage.includes("// Active plans first, then paused, then ended, each by next due date, across every page"))
+  assert.ok(listPage.includes("// One state per page, in that state's order (G5P4-R4)"))
   assert.match(read("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx"), /where: \{ id, planState: \{ not: "ended" \} \}/)
   // The helper walks forward from page 1 and stops where the plan's row shows, or on the page with no "next" link
   // (src/components/ui/pagination.tsx renders an enabled next as a link with rel="next").

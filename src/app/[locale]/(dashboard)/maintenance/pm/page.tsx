@@ -7,10 +7,11 @@ import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatDate } from "@/lib/utils"
 import { formatCount } from "@/lib/display-format"
-import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { getMaintenancePlanDueState, planStatePageSlices } from "@/lib/preventive-maintenance"
+import { buildPmPlanHref, parsePmPlanQuery, type PmPlanRowView } from "@/lib/pm-plan-list"
+import { readPmPlanPage } from "@/lib/pm-plan-page-data"
 import type { MaintenancePlanState } from "@/lib/maintenance-plan-service"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
@@ -24,12 +25,12 @@ import { MaintenancePlanStateActions } from "@/components/maintenance/maintenanc
 
 type Props = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ page?: string | string[]; pageSize?: string | string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function MaintenancePlansPage({ params, searchParams }: Props) {
   const { locale } = await params
-  const { page, pageSize } = await searchParams
+  const query = parsePmPlanQuery(await searchParams)
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
   const canEdit = hasPermission(user, "maintenance", "edit")
@@ -37,45 +38,19 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
   const tRecord = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
   const now = new Date()
-  const listPage = parseListPage({ page, pageSize })
-  const basePath = `/${locale}/maintenance/pm`
-  // The list URL with its page and page size; the default page and page size stay out of it (spec 2B B4).
-  const listHref = (next: { page?: number; pageSize?: number }) => {
-    const query = appendListPage(new URLSearchParams(), next).toString()
-    return query ? `${basePath}?${query}` : basePath
-  }
-  const planListReturnHref = listHref(listPage)
+  // The list URL keeps the tab, the search and the due filter; the default page and page size stay out of it (spec 2B
+  // B4). Task 3 of group 5 plan 4 rebuilds this page on the tabs, the due cells and the table.
+  const listHref = (next: { page?: number; pageSize?: number }) => buildPmPlanHref(locale, query, next)
+  const planListReturnHref = listHref({ page: query.page })
 
-  // Active plans first, then paused, then ended, each by next due date, across every page (spec 2B §5.9.2 row 6).
-  // The count per state places the page's window in the states it covers: usually one findMany, at most three.
-  const stateCounts = await prisma.maintenancePlan.groupBy({ by: ["planState"], _count: { _all: true } })
-  const total = stateCounts.reduce((sum, row) => sum + row._count._all, 0)
-  const slices = planStatePageSlices(
-    stateCounts.map((row) => ({ planState: row.planState, count: row._count._all })),
-    listPageWindow(listPage),
-  )
-  const plans = (
-    await Promise.all(
-      slices.map((slice) =>
-        prisma.maintenancePlan.findMany({
-          where: { planState: slice.planState },
-          include: {
-            asset: { select: { assetTag: true, name: true } },
-            vendor: { select: { code: true, name: true } },
-          },
-          orderBy: [{ nextDueDate: "asc" }, { id: "asc" }],
-          skip: slice.skip,
-          take: slice.take,
-        }),
-      ),
-    )
-  ).flat()
+  // One state per page, in that state's order (G5P4-R4), with the open repair record of each plan's asset (G5P4-R5).
+  const { rows: plans, total } = await readPmPlanPage(prisma, query, now)
   // A page past the last one (an old or hand-typed link) shows the last page (spec 2B I21).
-  const lastPage = lastListPage(total, listPage.pageSize)
-  if (plans.length === 0 && total > 0 && listPage.page > lastPage) {
-    redirect(listHref({ page: lastPage, pageSize: listPage.pageSize }))
+  const lastPage = lastListPage(total, query.pageSize)
+  if (plans.length === 0 && total > 0 && query.page > lastPage) {
+    redirect(listHref({ page: lastPage, pageSize: query.pageSize }))
   }
-  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
+  const { start, end, totalPages } = paginationRange(query.page, query.pageSize, total)
 
   return (
     <div className="space-y-6">
@@ -103,14 +78,12 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
           <ContentPanelRows>
             {plans.map((plan) => {
               const isActivePlan = plan.planState === "active"
-              const dueState = getMaintenancePlanDueState(plan.nextDueDate, now)
-              const dueTone = dueState === "overdue" ? "danger" : dueState === "due_soon" ? "warning" : "primary"
               return (
                 <li key={plan.id} className="grid min-w-0 gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(200px,260px)_auto] md:items-center">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-foreground">{plan.title}</div>
                     <div className="mt-1 truncate text-meta text-muted-foreground">
-                      <span className="tag">{plan.planNo}</span> · <span className="tag">{plan.asset.assetTag}</span> - {plan.asset.name}
+                      <span className="tag">{plan.planNo}</span> · <span className="tag">{plan.assetTag}</span> - {plan.assetName}
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -118,7 +91,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
                     <div className="mt-1">{t("pmExternalProvider")}: {plan.vendor ? <><span className="tag">{plan.vendor.code}</span> - {plan.vendor.name}</> : t("pmNoExternalProvider")}</div>
                   </div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2 md:justify-end">
-                    {isActivePlan ? <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} /> : null}
+                    <PlanDueBadge due={plan.due} dueLabel={(state) => t(`pmDueState.${state}`)} />
                     <Chip>{t(`pmFrequencies.${plan.frequency}`)}</Chip>
                     <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={isActivePlan ? "success" : plan.planState === "paused" ? "warning" : "muted"} />
                     {canCreate && isActivePlan ? (
@@ -141,17 +114,17 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
         {total > 0 ? (
           <DataTableFoot>
             <Pagination
-              page={listPage.page}
+              page={query.page}
               totalPages={totalPages}
-              previousHref={listHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
-              nextHref={listHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
-              pageSize={listPage.pageSize}
+              previousHref={listHref({ page: query.page - 1, pageSize: query.pageSize })}
+              nextHref={listHref({ page: query.page + 1, pageSize: query.pageSize })}
+              pageSize={query.pageSize}
               pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value }) }))}
               labels={{
                 navigation: tCommon("pagination"),
                 previous: tCommon("previous"),
                 next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                pageOf: tCommon("pageOf", { page: query.page, total: totalPages }),
                 range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
                 pageSizeGroup: tCommon("pageSizeLabel"),
                 rowsPerPage: tCommon("rowsPerPage"),
@@ -162,4 +135,13 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
       </ContentPanel>
     </div>
   )
+}
+
+// Today's due badge, from the row view: the due state of an active plan in scope, the asset's status for one whose
+// asset is written off or inactive (G5P4-R3), nothing for paused or ended plans.
+function PlanDueBadge({ due, dueLabel }: { due: PmPlanRowView["due"]; dueLabel: (state: "overdue" | "due_soon" | "upcoming") => string }) {
+  if (due.kind === "assetStatus") return <StatusBadge label={due.statusLabel} tone="muted" />
+  if (due.kind !== "badge") return null
+  const state = due.badge.key === "overdue" ? "overdue" : due.badge.key === "later" ? "upcoming" : "due_soon"
+  return <StatusBadge label={dueLabel(state)} tone={due.badge.tone} />
 }

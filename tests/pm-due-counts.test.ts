@@ -61,3 +61,27 @@ test("readPmDueCounts reads one aggregate per bucket and counts the plans out of
     outOfScope: 4,
   })
 })
+
+test("readPmDueCounts ANDs an extra where into each bucket and the out-of-scope count (G5P4-R1)", async () => {
+  const where = { title: { contains: "UPS" } }
+  const aggregateWheres: unknown[] = []
+  const countWheres: unknown[] = []
+  const db: PmDueCountsDb = {
+    maintenancePlan: {
+      async aggregate(args) {
+        aggregateWheres.push(args.where)
+        return { _count: { _all: 1 }, _min: { nextDueDate: null } }
+      },
+      async count(args) {
+        countWheres.push(args.where)
+        return 0
+      },
+    },
+  }
+
+  await readPmDueCounts(db, now, where)
+
+  assert.deepEqual(aggregateWheres, buckets.map((bucket) => ({ AND: [buildPmDueBucketWhere(bucket, now), where] })))
+  assert.equal(countWheres.length, 1)
+  assert.deepEqual((countWheres[0] as { AND: unknown[] }).AND[1], where)
+})
