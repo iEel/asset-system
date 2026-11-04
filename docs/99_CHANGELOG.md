@@ -6,6 +6,20 @@
 
 ## 2026-11-04
 
+### กลุ่มหน้า 5 แผน 4: หน้าแผน PM และฟอร์มแผน PM (MT-PM, MT-PM-Form)
+
+Branch `feat/group5-pm-page` (จาก `master` `c1cb0b9a`) · spec `docs/superpowers/specs/2026-11-03-page-group-5-maintenance-design.md` (§9, §10, §5, §6, §13, §16, §17 แถว 4 · การตัดสินใจ 10.1, 10.2, 10.4) · plan `docs/superpowers/plans/2026-11-04-group5-pm-page.md` (ข้อตัดสิน G5P4-R1..R10) · commits `59644bd2..8cc2580a`
+
+- **รายการแผน (Task 1):** `src/lib/pm-plan-list.ts` อ่าน URL (`?state=active|paused|ended`, `?q=`, `?due=overdue|soon|later|week`, หน้า) สร้างเงื่อนไขค้นหาและลิงก์ (`buildPmPlanHref`: เปลี่ยนแท็บแล้วตัวกรองกำหนดหลุด กดช่องเดิมซ้ำเอาตัวกรองออก) · `readPmPlanPage` (`src/lib/pm-plan-page-data.ts`) อ่านหน้าละสถานะเดียว นับแท็บด้วย `groupBy` ครั้งเดียวตามคำค้น ช่องกำหนดนับตามคำค้นด้วย (`readPmDueCounts(db, now, where?)`) และอ่านบันทึกซ่อมที่ยังไม่เสร็จของทรัพย์สินในหน้าในครั้งเดียว · ใช้งานและพักแผนเรียงตามกำหนดครั้งถัดไป จบแผนเรียงจากที่จบล่าสุด · `planStatePageSlices` ถูกลบ
+- **ส่วนกลางและกฎของฟอร์ม (Task 2):** `AssetFormChangedField` ย้ายเป็น `FormChangedField` (`src/components/ui/form-changed-field.tsx`) คำย้ายไป `common.fieldChanged` / `fieldWas` / `restoreField` ค่าเดิม · `automaticLabel` แทน `automatic` · ฟอร์มทรัพย์สินใช้ตัวเดียวกัน · `src/lib/pm-plan-form-rules.ts`: ตรวจฟอร์ม ช่องที่แก้ ตัวอย่าง 4 รอบ (`buildPmPreview`) ผลต่อหน้าแผน PM (`buildPmPlanImpact`) และบรรทัดท้ายฟอร์ม
+- **หน้าแผน PM (Task 3):** แท็บ ใช้งาน · พักแผน · จบแผน พร้อมจำนวน · ช่องค้นหา · 3 ช่องกำหนด (เกินกำหนด · ใกล้ถึงกำหนด · รอบถัดไป) เฉพาะแท็บใช้งาน กดแล้วกรองรายการ จำนวนแถวเท่าตัวเลข · บรรทัดรวมใต้ช่อง (ไม่นับแผนของทรัพย์สินที่ตัดจำหน่ายหรือปลดระวางแล้ว ซึ่งยังอยู่ในแท็บใช้งานพร้อมป้ายสถานะทรัพย์สิน) · ชิป "ครบกำหนดใน 7 วัน" ของ `?due=week` · แถวมีป้ายกำหนดพร้อมจำนวนวัน · "บันทึกว่าทำแล้ว" หรือลิงก์ "มีบันทึกซ่อมที่ยังไม่เสร็จ MT-…" เมื่อทรัพย์สินมีบันทึกค้าง · ⋯ (แก้ไข, พักแผน / เปิดใช้งานต่อ, จบแผน "ถาวร · มีให้ยืนยัน") หน้าต่างยืนยันอยู่นอกเมนู คืนเคอร์เซอร์ให้ ⋯ (`maintenance-plan-row-actions.tsx` แทน `maintenance-plan-state-actions.tsx`) · ส่วนกลางที่เพิ่ม: รายการของ `RowActions` มี `hint?` และ `StatStripItem` มี `data?` · ผู้ควบคุมตัดสิน: บรรทัดรวมเป็นบรรทัดเดียวใต้แถบ ไม่ใส่เป็น `filterNote` ของทุกช่อง (`966f444f`)
+- **ฟอร์มแผน PM (Task 4):** กรอบเดียวกับบันทึกซ่อม (breadcrumbs, ปุ่มกลับ, แถบบันทึกติดล่าง) 3 ส่วน · การ์ดทรัพย์สิน `PmPlanAssetCard` (เพิ่ม: ช่องเลือก `pmAsset` แล้วการ์ด อ่านข้อมูลผ่าน `/api/maintenance-options?type=pmAsset&id=` · แก้ไข: ล็อก "แก้ไขไม่ได้") · ความถี่เป็นปุ่ม · ตัวอย่าง "กำหนดรอบถัดไป" 4 รอบ · ช่องที่แก้มี "เดิม: …" และ คืนค่าเดิม · สรุป ก่อนแก้ → หลังแก้ และ "ผลต่อหน้าแผน PM" · ส่วนหัวหน้าแก้ไขบอกสถานะ เลขแผน และ "<ความถี่> · เดิมกำหนด <วันที่>" · บันทึกทับไม่ได้ (409 `MAINTENANCE_PLAN_CONFLICT`) ขึ้นข้อความและค่าที่กรอกยังอยู่ · วันที่ตั้งต้นของหน้าแก้ไขนับวันไทย
+- **E2E (Task 5):** ER4 ตามหน้าใหม่ (ปุ่มความถี่ ตัวอย่างรอบ ช่องเกินกำหนด ⋯ พัก / เปิดต่อ / จบ) · ใหม่: แท็บ ค้นหา และช่องกำหนดของหน้าแผน PM (ตั้งแผนให้ทรัพย์สินที่กำลังซ่อม ลิงก์บันทึกค้าง) · แก้แผนซ้อนกันถูกปฏิเสธ · ตั้งรอบ PM จากแท็บทรัพย์สินกลับมาแท็บนั้น · งาน PM ที่บันทึกว่ายังไม่เสร็จขึ้นลิงก์บันทึกค้าง · ผู้ดูอย่างเดียวไม่เห็น ⋯ และ "เพิ่มแผน PM" (`refusals.ts`, `roles-ui.ts`) · `field-errors.spec` รอการ์ดทรัพย์สิน
+- **E2E:** (รอผล)
+- **ตรวจทั้งสาขา:** (รอผล)
+- **เอกสาร:** `docs/06_WORKFLOWS.md`, `docs/17_REPAIR_RECORD_GUIDE_TH.md`, `docs/07_UAT_CHECKLIST.md`, `docs/11_FEATURE_LIST.md`, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DESIGN.md`, `DEVELOPER_HANDOFF.md`
+- ยังไม่ merge · ยังไม่ deploy · ไม่มี migration
+
 ### กลุ่มหน้า 5 แผน 3: หน้าบันทึกซ่อม (MT-Detail, MT-Detail-Phone)
 
 Branch `feat/group5-record-page` (จาก `master` `fb3e555a`) · spec `docs/superpowers/specs/2026-11-03-page-group-5-maintenance-design.md` (§8, §5, §6, §13, §16, §17 แถว 3 · การตัดสินใจ 1, 2, 9, 10.3) · plan `docs/superpowers/plans/2026-11-03-group5-record-page.md` (ข้อตัดสิน G5P3-R1..R10) · commits `6874885f..3012eff5`
