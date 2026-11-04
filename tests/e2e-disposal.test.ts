@@ -53,12 +53,29 @@ test("one disposal is requested, approved alone and executed with evidence by th
     `"กรุณาระบุเหตุผลที่ไม่อนุมัติ"`,
     `expect(headExecuteBody.code).toBe("DISPOSAL_SOD_CONFLICT")`,
     `await actAs(page, "itStaff", e2eTheme)`,
-    `"กรุณาแนบหลักฐานก่อนบันทึกการตัดจำหน่ายจริง"`,
     `setInputFiles(EVIDENCE_PDF)`,
     `"กรุณากรอกเลขที่เอกสารอ้างอิง"`,
     `.toBe("Disposed")`,
     `"ใบอนุมัติตัดจำหน่ายทรัพย์สิน"`,
   ]) assert.ok(spec.includes(step), step)
+  // Group 6 plan 3: the form needs a method and a photo, the requester is preset, and the request page decides with
+  // separate ปฏิเสธ and อนุมัติ (dialogs titled by the decision); the execute words carry no "จริง".
+  for (const step of [
+    `await expectReadyAssetCard(page, asset)`,
+    `await expectPresetRequester(page, "itStaff")`,
+    `await chooseMethod(page, "ตัดจำหน่าย")`,
+    `await requestPhotoInput(page).setInputFiles(PHOTO_PNG)`,
+    `await sendRequestButton(page).click()`,
+    `await visibleButton(page, /^ปฏิเสธ$/).click()`,
+    `page.getByRole("dialog", { name: "ปฏิเสธ", exact: true })`,
+    `await visibleButton(page, /^อนุมัติ$/).click()`,
+    `page.getByRole("dialog", { name: "อนุมัติ", exact: true })`,
+    `page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })`,
+    `await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")`,
+  ]) assert.ok(spec.includes(step), step)
+  for (const gone of [`"พิจารณาคำขอ"`, "ตัดจำหน่ายจริง", `"disposal-request-requested-by", employeeLabel`, `{ name: "บันทึก", exact: true }`, "nextStatusId: choices.statusId }"]) {
+    assert.ok(!spec.includes(gone), `gone: ${gone}`)
+  }
   // Finding D1 is fixed (FX1): the print's test is a plain test.
   assert.ok(!spec.includes(`test.fail(true, "finding D1:`), "D1 is fixed")
   assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "the print test follows the workflow")
@@ -79,7 +96,12 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
     `requestedById: readRunData().employees.itHead.id`,
     `code: "DISPOSAL_SOD_CONFLICT"`,
     `"ไม่สามารถดำเนินการได้เนื่องจากขัดกับการแยกหน้าที่"`,
+    // Group 6 plan 3: the batch's shared files need an image (P3-R3); the execute words carry no "จริง".
+    `setInputFiles(PHOTO_PNG)`,
+    `page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })`,
+    `await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")`,
   ]) assert.ok(spec.includes(step), step)
+  assert.ok(!spec.includes("ตัดจำหน่ายจริง"), "no old execute words")
   // The bulk approval moved to the approvals page (group 6 plan 2, P2-R2): the pending tab links there, the computer
   // ticks both and confirms with the not-opened warning, the phone (no ticks) approves each in the panel.
   for (const step of [
@@ -104,8 +126,9 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
 })
 
 test("an asset in an open audit round cannot be requested for disposal, with the reason, and can once the round is cancelled (e2e disposal task 3, ED3)", () => {
-  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "open-audit-block.spec.ts", "single-request.spec.ts"])
+  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "open-audit-block.spec.ts", "request-form.spec.ts", "single-request.spec.ts"])
   const spec = read("e2e/disposal/open-audit-block.spec.ts")
+  assert.ok(spec.indexOf("const roundResponse = await page.request.post") > spec.indexOf("await requestPhotoInput(page).setInputFiles(PHOTO_PNG)"), "the round opens after the form is filled")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
   assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "IT staff walk it")
   assert.ok(spec.includes(`recordPrefix(testInfo, "DSP3")`), "its own records")
@@ -114,6 +137,12 @@ test("an asset in an open audit round cannot be requested for disposal, with the
   for (const step of [
     `await expect(option).toBeDisabled()`,
     `"อยู่ในรอบตรวจนับที่ยังไม่ปิด"`,
+    // Group 6 plan 3: the request filled while the asset is ready is refused once the round opens; opened for the
+    // blocked asset, the form names it over the picker; the send needs a method and a photo.
+    `page.locator("[data-disposal-initial-blocked]")`,
+    `"ทรัพย์สินยังมีงานค้างที่ต้องปิดก่อนสร้างคำขอตัดจำหน่าย · อยู่ในรอบตรวจนับที่ยังไม่ปิด"`,
+    `await chooseMethod(page, "ทำลาย")`,
+    `await requestPhotoInput(page).setInputFiles(PHOTO_PNG)`,
     String.raw`measure.expectRefusal({ method: "POST", url: /\/api\/disposal-requests$/, status: 400,`,
     `"ทรัพย์สินยังมีงานค้างที่ต้องปิดก่อนสร้างคำขอตัดจำหน่าย"`,
     `expect(before.status?.name).toBe("Ready")`,
@@ -123,11 +152,11 @@ test("an asset in an open audit round cannot be requested for disposal, with the
   ]) assert.ok(spec.includes(step), step)
   // Every disposal test makes its own records under its own workflow code.
   const codes = disposalSpecs().map((file) => read(`e2e/disposal/${file}`).match(/recordPrefix\(testInfo, "(DSP\d)"\)/)?.[1])
-  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3"])
+  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3", "DSP4"])
 })
 
 test("the disposal specs read the request statuses by their one set of names (critique 2026-10-20 D3)", () => {
-  const specs = ["single-request.spec.ts", "batch-bulk-approval.spec.ts", "open-audit-block.spec.ts"].map((file) => read(`e2e/disposal/${file}`))
+  const specs = ["single-request.spec.ts", "batch-bulk-approval.spec.ts", "open-audit-block.spec.ts", "request-form.spec.ts"].map((file) => read(`e2e/disposal/${file}`))
   for (const spec of specs) {
     assert.ok(spec.includes('getByText("รอพิจารณา")'))
     assert.doesNotMatch(spec, /getByText\("รออนุมัติ"\)/)
@@ -171,4 +200,61 @@ test("the approvals page: strip, tabs, search, the panel, reject with a remark, 
   // The phone has no ticks: the bulk test skips there; the three requests walk one serial chain.
   assert.ok(spec.includes(`test.skip(e2eDevice === "phone",`), "no bulk approve on the phone")
   assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "one chain")
+})
+
+test("the disposal request form and the request page: the form's errors and photo rule, the requester, own and decide states, the no-photo request (group 6 plan 3 Task 5)", () => {
+  const support = read("e2e/disposal/disposal-support.ts")
+  const spec = read("e2e/disposal/request-form.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "IT staff walk it")
+  assert.deepEqual([...spec.matchAll(/recordPrefix\(testInfo, "(DSP\d)"\)/g)].map((match) => match[1]), ["DSP4", "DSP5", "DSP6"])
+  assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "the IT head decides the form's request")
+  // The helpers pick the method by its word and read the preset requester; photos are the suite's PNG.
+  assert.ok(support.includes(`page.getByRole("radio", { name: word, exact: true })`), "the method by its word")
+  assert.ok(support.includes(`export const PHOTO_PNG = "e2e/fixtures/photo.png"`))
+  assert.ok(support.includes(`page.getByRole("button", { name: "ส่งคำขอตัดจำหน่าย", exact: true })`))
+  assert.ok(support.includes(`"ไม่มีงานค้าง: รับคืนแล้ว · ไม่มีงานซ่อม · ไม่อยู่ในรอบตรวจนับ · ไม่มีส่วนควบติดตั้ง"`))
+  // Someone who cannot decide: no อนุมัติ or ปฏิเสธ, no action bar, and print in the ⋯ on the phone.
+  assert.ok(support.includes(`await expect(page.locator('[data-slot="action-bar"]')).toHaveCount(0)`))
+  assert.ok(support.includes("await visibleButton(page, `การดำเนินการของ ${disposalNo}`).click()"))
+  for (const step of [
+    "await measure.visit(`/th/disposal/new?assetId=${asset.id}`",
+    `await expect(page.locator('[data-disposal-method="sell"]')).toBeFocused()`,
+    `await chooseMethod(page, "สูญหาย")`,
+    `await requestPhotoInput(page).setInputFiles(EVIDENCE_PDF)`,
+    `await chooseMethod(page, "ขาย")`,
+    `{ name: "x.heic", mimeType: "image/heic", buffer: Buffer.from(`,
+    `const PHOTO_TYPE_REFUSED = "ใช้ไฟล์ JPG, PNG หรือ WEBP"`,
+    `const PHOTO_REQUIRED = "ต้องมีรูปทรัพย์สินอย่างน้อย 1 รูป"`,
+    `const METHOD_REQUIRED = "เลือกวิธีจำหน่าย"`,
+    `'[data-disposal-next-step="waiting"]'`,
+    `'[data-disposal-next-step="own"]'`,
+    `"คุณพิจารณาคำขอนี้เองไม่ได้"`,
+    `await expectNoDecision(page, e2eDevice, disposalNo)`,
+    `await expectNoDecision(page, e2eDevice, ownRequest.disposalNo)`,
+    `page.getByRole("dialog", { name: "อนุมัติ", exact: true })`,
+    `page.getByRole("dialog", { name: "ปฏิเสธ", exact: true })`,
+    `"กรุณาระบุเหตุผลที่ไม่อนุมัติ"`,
+    "`คำขอเป็น ไม่อนุมัติ · ทรัพย์สินกลับเป็น ${READY_TH}`",
+    `createInboxRequest(page, asset, "itStaff", `,
+    `'[data-disposal-no-photo="none"]'`,
+    `"อัปโหลดไม่สำเร็จ 2 ไฟล์ · คำขอนี้ยังไม่มีรูป"`,
+    `toContainText("ยังไม่มีรูป")`,
+    `"กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย"`,
+  ]) assert.ok(spec.includes(step), step)
+  // The words the spec reads are the app's own.
+  const th = JSON.parse(read("messages/th.json")) as { disposalPage: Record<string, unknown>; approvalInboxPage: Record<string, string> }
+  const page = th.disposalPage as Record<string, string> & { requestPage: Record<string, string>; errors: Record<string, string> }
+  assert.equal(page.photoRequired, "ต้องมีรูปทรัพย์สินอย่างน้อย 1 รูป")
+  assert.equal(page.methodRequired, "เลือกวิธีจำหน่าย")
+  assert.equal(page.photoTypeRefused, "ใช้ไฟล์ JPG, PNG หรือ WEBP")
+  assert.equal(page.submitRequest, "ส่งคำขอตัดจำหน่าย")
+  assert.equal(page.executeDisposal, "บันทึกตัดจำหน่าย")
+  assert.equal(page.executionTitle, "บันทึกตัดจำหน่าย")
+  assert.equal(page.executionSuccess, "บันทึกตัดจำหน่ายแล้ว")
+  assert.equal(page.errors.DISPOSAL_EVIDENCE_REQUIRED, "กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย")
+  assert.equal(page.requestPage.titleOwn, "คุณพิจารณาคำขอนี้เองไม่ได้")
+  assert.equal(page.requestPage.noPhoto, "คำขอนี้ยังไม่มีรูป · แนบรูปได้ที่นี่")
+  assert.equal(th.approvalInboxPage.noPhoto, "ยังไม่มีรูป")
+  assert.equal(th.approvalInboxPage.effectReject, "คำขอเป็น ไม่อนุมัติ · ทรัพย์สินกลับเป็น {status}")
 })

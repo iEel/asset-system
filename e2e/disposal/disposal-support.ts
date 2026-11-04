@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs"
 import { request as playwrightRequest, type APIRequestContext, type Locator, type Page, type TestInfo } from "@playwright/test"
 import { expect } from "../support/fixtures.ts"
-import type { E2eTheme } from "../support/matrix.ts"
+import type { E2eDevice, E2eTheme } from "../support/matrix.ts"
 import type { Measure } from "../support/measure.ts"
 import { ADMIN_STATE_FILE, authStateFile, fromRoot } from "../support/paths.ts"
 import type { E2eUserKey } from "../support/run-plan.ts"
@@ -195,3 +195,61 @@ export function escapeRegExp(value: string): string {
 }
 
 export const EVIDENCE_PDF = "e2e/fixtures/evidence.pdf"
+// The suite's image (a 96×64 PNG): a request needs one JPG, PNG or WEBP before it is sent (group 6 plan 3).
+export const PHOTO_PNG = "e2e/fixtures/photo.png"
+
+// The request form (board DP-New, group 6 plan 3): the method is a ChoiceCard radio named by its word (ขาย · บริจาค ·
+// ทำลาย · สูญหาย · ตัดจำหน่าย), with no default.
+export async function chooseMethod(page: Page, word: string) {
+  const radio = page.getByRole("radio", { name: word, exact: true })
+  await radio.check()
+  await expect(radio).toBeChecked()
+}
+
+// The request form's photo input (the dropzone's file input, #disposal-request-photos): each call queues more files.
+export function requestPhotoInput(page: Page): Locator {
+  return page.locator("#disposal-request-photos")
+}
+
+// The request form's submit, the sticky footer's ส่งคำขอตัดจำหน่าย.
+export function sendRequestButton(page: Page): Locator {
+  return page.getByRole("button", { name: "ส่งคำขอตัดจำหน่าย", exact: true }).filter({ visible: true })
+}
+
+// The requester starts as the signed-in user's employee ("code - name · department"): the specs read it, never choose
+// it again.
+export async function expectPresetRequester(page: Page, key: string) {
+  await expect(page.locator("#disposal-request-requested-by")).toContainText(employeeLabel(key))
+}
+
+// The chosen asset's card with its readiness line (the ready line names no blocker).
+export async function expectReadyAssetCard(page: Page, asset: DisposalAsset) {
+  const card = page.locator("[data-disposal-asset-card]")
+  await expect(card).toContainText(asset.assetTag)
+  await expect(card).toContainText(asset.name)
+  await expect(page.locator('[data-disposal-readiness="ready"]')).toHaveText("ไม่มีงานค้าง: รับคืนแล้ว · ไม่มีงานซ่อม · ไม่อยู่ในรอบตรวจนับ · ไม่มีส่วนควบติดตั้ง")
+}
+
+// The request page's number (DP-…), read off the page header's meta line "tag · คำขอ DP-…".
+export async function readDisposalNo(page: Page): Promise<string> {
+  const text = await page.getByRole("main").innerText()
+  const disposalNo = text.match(/DP-\d{8}-\d{4}/)?.[0] ?? ""
+  expect(disposalNo).toMatch(/^DP-\d{8}-\d{4}$/)
+  return disposalNo
+}
+
+// The request page's next steps for someone who cannot decide: no อนุมัติ or ปฏิเสธ anywhere, no action bar on the
+// phone, and print in the header (the ⋯ on the phone).
+export async function expectNoDecision(page: Page, device: E2eDevice, disposalNo: string) {
+  await expect(visibleButton(page, /^อนุมัติ$/)).toHaveCount(0)
+  await expect(visibleButton(page, /^ปฏิเสธ$/)).toHaveCount(0)
+  await expect(page.locator('[data-slot="action-bar"]')).toHaveCount(0)
+  if (device === "phone") {
+    await visibleButton(page, `การดำเนินการของ ${disposalNo}`).click()
+    await expect(visibleLink(page, "พิมพ์คำขอตัดจำหน่าย")).toHaveCount(1)
+    await page.keyboard.press("Escape")
+    await expect(visibleLink(page, "พิมพ์คำขอตัดจำหน่าย")).toHaveCount(0)
+  } else {
+    await expect(visibleLink(page, "พิมพ์คำขอตัดจำหน่าย")).toHaveCount(1)
+  }
+}

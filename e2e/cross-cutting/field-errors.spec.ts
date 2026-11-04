@@ -23,6 +23,10 @@ const REQUIRED = "กรุณาระบุข้อมูลนี้"
 const END_BEFORE_START = "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น"
 const HANDOVER_MODE_REQUIRED = "กรุณาเลือกลักษณะการส่งมอบก่อนดำเนินการต่อ"
 const DUPLICATE_TAG = "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว"
+// The disposal request form (board DP-New, group 6 plan 3): its send and the method and photo errors.
+const DISPOSAL_SEND = "ส่งคำขอตัดจำหน่าย"
+const DISPOSAL_METHOD_REQUIRED = "เลือกวิธีจำหน่าย"
+const DISPOSAL_PHOTO_REQUIRED = "ต้องมีรูปทรัพย์สินอย่างน้อย 1 รูป"
 
 test("asset register: a warranty that ends before it starts shows its error, and the corrected asset saves", async ({ page, measure, e2eDevice }, testInfo) => {
   const run = readRunData()
@@ -285,19 +289,30 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   expect(((await ended.json()) as { planState: string }).planState).toBe("ended")
 })
 
-test("disposal request: an empty reason shows its error, and the corrected request saves", async ({ page, measure }, testInfo) => {
+test("disposal request: no method, no reason and no photo show their errors, and the corrected request saves", async ({ page, measure }, testInfo) => {
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-DP", name: "ฟอร์มขอตัดจำหน่าย" })
   await measure.visit(`/th/disposal/new?assetId=${asset.id}`, "disposal request form")
-  await choose(page, "disposal-request-requested-by", run.employees.itStaff.code)
-  await save(page)
-  await expectFieldError(page, "disposal-request-reason", REQUIRED)
+  // The requester starts as the signed-in IT staff's employee (group 6 plan 3); the method has no default and a photo is
+  // required. The send is the sticky footer's ส่งคำขอตัดจำหน่าย.
+  await expect(page.locator("#disposal-request-requested-by")).toContainText(run.employees.itStaff.code)
+  await expect(page.locator("[data-disposal-asset-card]")).toContainText(asset.assetTag)
+  const send = () => page.getByRole("button", { name: DISPOSAL_SEND, exact: true }).filter({ visible: true }).click()
+  await send()
+  // The method group is the first wrong field: focus goes to its first card.
+  await expectFieldError(page, "disposal-request-type", DISPOSAL_METHOD_REQUIRED, { group: true, focus: '[data-disposal-method="sell"]' })
+  await expectFieldError(page, "disposal-request-reason", REQUIRED, { focus: false })
+  await expectFieldError(page, "disposal-request-photos", DISPOSAL_PHOTO_REQUIRED, { focus: false })
 
+  await page.getByRole("radio", { name: "ขาย", exact: true }).check()
+  await expectNoFieldError(page, "disposal-request-type")
   await page.locator("#disposal-request-reason").fill(`${projectMarker(testInfo)} ชำรุดเกินซ่อม ขอตัดจำหน่าย`)
   await expectNoFieldError(page, "disposal-request-reason")
+  await page.locator("#disposal-request-photos").setInputFiles("e2e/fixtures/photo.png")
+  await expectNoFieldError(page, "disposal-request-photos")
   await measure.timed("disposal request save", async () => {
-    await save(page)
+    await send()
     await expect(page).toHaveURL(/\/th\/disposal\/[0-9a-f-]{36}(?:[?#]|$)/)
   })
   await measure.recordPage("after the disposal request save")

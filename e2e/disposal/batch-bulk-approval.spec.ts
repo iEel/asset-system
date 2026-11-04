@@ -15,6 +15,7 @@ import {
   EVIDENCE_PDF,
   expectToast,
   openBulkExecutionPreview,
+  PHOTO_PNG,
   readAssetChoices,
   recordPrefix,
   visibleButton,
@@ -50,6 +51,9 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
   await page.locator("#disposal-batch-reason").fill(`${prefix} หมดอายุการใช้งาน เสนอตัดจำหน่ายทั้งชุด`)
   await page.locator('input[type="file"]').first().setInputFiles(EVIDENCE_PDF)
   await expect(page.getByText("evidence.pdf")).toBeVisible()
+  // The batch's shared files need one image (group 6 plan 3, P3-R3): the suite's PNG beside the PDF.
+  await page.locator('input[type="file"]').first().setInputFiles(PHOTO_PNG)
+  await expect(page.getByText("photo.png")).toBeVisible()
   await page.getByRole("button", { name: "ตรวจสอบชุดคำขอ" }).click()
   await expect(page.locator("#disposal-batch-requested-by-error")).toHaveText("กรุณาระบุข้อมูลนี้")
   await expect(page.locator("#disposal-batch-requested-by")).toBeFocused()
@@ -144,8 +148,8 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
 
   // Their own request stays pending: no review on its page, and the bulk preview blocks it for segregation of duties.
   await measure.visit(`/th/disposal/${ownRequestId}`, "IT head: their own request")
-  await expect(page.getByRole("main").getByText("รอพิจารณา").first()).toBeVisible()
-  await expect(visibleButton(page, "พิจารณาคำขอ")).toHaveCount(0)
+  await expect(page.getByRole("main").getByText("รอพิจารณา").filter({ visible: true }).first()).toBeVisible()
+  await expect(visibleButton(page, /^อนุมัติ$/)).toHaveCount(0)
   const ownPreview = await page.request.post("/api/disposal-requests/bulk-decision", { data: { mode: "preview", requestIds: [ownRequestId] } })
   expect(ownPreview.status()).toBe(200)
   const ownItems = ((await ownPreview.json()) as { items: { outcome: string; code: string | null }[] }).items
@@ -161,11 +165,11 @@ test("IT staff execute one batch request on its page with the batch's shared evi
   const path = requestPaths[asset.assetTag]
   expect(path, "the batch test read the request's page").toBeTruthy()
   await measure.visit(path, "IT staff: an approved batch request")
-  await expect(page.getByRole("main").getByText("อนุมัติแล้ว รอตัดจำหน่าย").first()).toBeVisible()
+  await expect(page.getByRole("main").getByText("อนุมัติแล้ว รอตัดจำหน่าย").filter({ visible: true }).first()).toBeVisible()
   // The batch's evidence counts for the request: the execution has no evidence notice.
-  await visibleButton(page, "บันทึกตัดจำหน่ายจริง").click()
-  const execution = page.getByRole("dialog", { name: "บันทึกผลการตัดจำหน่ายจริง" })
-  await expect(execution.getByText("กรุณาแนบหลักฐานก่อนบันทึกการตัดจำหน่ายจริง")).toHaveCount(0)
+  await visibleButton(page, /^บันทึกตัดจำหน่าย$/).click()
+  const execution = page.getByRole("dialog", { name: "บันทึกตัดจำหน่าย", exact: true })
+  await expect(execution.getByText("กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย")).toHaveCount(0)
   await chooseSearchable(page, "disposal-execution-executed-by", employeeLabel("itStaff"))
   await execution.locator("#disposal-execution-recipient").fill(`${queueSearch} ผู้รับซาก`)
   await execution.locator("#disposal-execution-document-no").fill(`${asset.assetTag}-DOC`)
@@ -174,8 +178,8 @@ test("IT staff execute one batch request on its page with the batch's shared evi
     await execution.getByRole("button", { name: "บันทึกผล" }).click()
     await expect(execution).toHaveCount(0)
   })
-  await expectToast(page, "บันทึกผลการตัดจำหน่ายจริงสำเร็จ")
-  await expect(page.getByRole("main").getByText("ตัดจำหน่ายแล้ว").first()).toBeVisible()
+  await expectToast(page, "บันทึกตัดจำหน่ายแล้ว")
+  await expect(page.getByRole("main").getByText("ตัดจำหน่ายแล้ว").filter({ visible: true }).first()).toBeVisible()
   await measure.recordPage("IT staff: the executed batch request")
 })
 
