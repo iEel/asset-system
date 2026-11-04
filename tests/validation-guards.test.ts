@@ -41,6 +41,8 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 1,
+  // Group 6 plan 4 Task 4: สร้างรอบตัดจำหน่าย.
+  [`${C}disposal/disposal-round-form.tsx`]: 1,
   [`${C}approvals/approval-inbox-selection.tsx`]: 1,
   [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 1,
@@ -76,6 +78,7 @@ const V_FORMS: readonly string[] = [
   `${C}disposal/disposal-decision-button.tsx`,
   `${C}disposal/disposal-batch-form.tsx`,
   `${C}disposal/disposal-request-form.tsx`,
+  `${C}disposal/disposal-round-form.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}asset-operations/transfer-form.tsx`,
@@ -171,7 +174,7 @@ test("the V readers skip comments and see a catch block, a .catch() handler and 
 })
 
 // Group 6 plan 4 (P4-R1) retired the two execution dialogs' forms: 52 became 50.
-test("V1 the scope list names every form a person submits, 50 in all (spec §5)", () => {
+test("V1 the scope list names every form a person submits, 51 in all (spec §5)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
   for (const path of [...Object.keys(V_SCOPE), ...Object.keys(NOT_IN_SCOPE), ...V_FORMS, ...Object.keys(SELECT_STAR_ONLY)]) if (!exists(path)) problems.push(`${path} not found`)
@@ -187,7 +190,7 @@ test("V1 the scope list names every form a person submits, 50 in all (spec §5)"
     else if (forms > V_SCOPE[file.path]) problems.push(`${file.path}: ${forms} <form>, V_SCOPE counts ${V_SCOPE[file.path]}`)
   }
   assert.deepEqual(problems, [])
-  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 50)
+  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 51)
 })
 
 // Group 4 plan 6 Task 5: the labels page's note and print actions are no form. Print opens the print route, whose one

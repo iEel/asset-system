@@ -23,6 +23,9 @@ test("mobile shell keeps browsing and pending queues in navigation mode", () => 
     "/th/maintenance/pm",
     "/th/disposal/batches",
     "/th/disposal/batches/batch-1",
+    // Group 6 plan 4 Task 4: the rounds list and a round page keep the bottom navigation.
+    "/th/disposal/rounds",
+    "/th/disposal/rounds/round-1",
     "/th/admin/users",
     "/th/admin/roles",
     "/th/admin/data-quality",
@@ -51,6 +54,8 @@ test("mobile shell reserves scanner and contextual action routes for focus mode"
     "/th/audit/rounds/round-1",
     "/th/maintenance/ticket-1",
     "/th/disposal/request-1",
+    // Group 6 plan 4 Task 4: creating a round is a focus task (its save bar sits at the bottom).
+    "/th/disposal/rounds/new",
   ]) {
     assert.equal(getMobileShellMode(pathname), "focus", pathname)
   }

@@ -72,8 +72,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
   [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
   // Group 3: the frame of ส่งมอบ, รับคืน and โอนย้าย (plan 2 added /th/asset-management/checkin, plan 3 Task 6 /th/asset-management/transfer);
-  // group 5 plan 2 Task 3: บันทึกซ่อม; group 5 plan 4 Task 4: the PM form's create and edit pages; group 6 plan 3 Task 2: ยื่นคำขอตัดจำหน่าย.
-  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer", "/th/maintenance/new", "/th/maintenance/pm/new", "/th/maintenance/pm/sample-1/edit", "/th/disposal/new"],
+  // group 5 plan 2 Task 3: บันทึกซ่อม; group 5 plan 4 Task 4: the PM form's create and edit pages; group 6 plan 3 Task 2: ยื่นคำขอตัดจำหน่าย; group 6 plan 4 Task 4: สร้างรอบตัดจำหน่าย.
+  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer", "/th/maintenance/new", "/th/maintenance/pm/new", "/th/maintenance/pm/sample-1/edit", "/th/disposal/new", "/th/disposal/rounds/new"],
   // Group 3 plan 1 Task 7: the phone steps' own bar (P1-R4).
   [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
 }
@@ -114,6 +114,9 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   // Group 6 plan 3 Task 2: the type's Select and its NativeSelect became ChoiceCard radios (spec §8.3), which keep one required; the reason keeps its three.
   [`${C}disposal/disposal-request-form.tsx`]: [2, 1, 1],
   [`${C}disposal/disposal-batch-form.tsx`]: [1, 1, 1],
+  // Group 6 plan 4 Task 4: สร้างรอบตัดจำหน่าย. The method radios, the date, the document and the lump price always keep
+  // required; the buyer and the remark pass theirs by method; the exception's reason keeps required, minLength and maxLength.
+  [`${C}disposal/disposal-round-form.tsx`]: [7, 4, 1],
   // Group 6 plan 3 Task 3: the decision select shows only without a preset decision and the status select went; it keeps
   // the select's required, the remark's required (to reject) and its maxLength.
   [`${C}disposal/disposal-decision-button.tsx`]: [2, 1, 0],
@@ -172,6 +175,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}ui/asset-operation-picker.tsx`]: [0, 1, 0],
   // Group 5 plan 4 Task 3: the PM page's search caps its text at 100 characters (pmPlanSearchMaxLength, as the query reads it).
   ["src/app/[locale]/(dashboard)/maintenance/pm/page.tsx"]: [0, 1, 0],
+  // Group 6 plan 4 Task 4: the rounds list's search caps its text at 100 characters, as the page reads it.
+  ["src/app/[locale]/(dashboard)/disposal/rounds/page.tsx"]: [0, 1, 0],
 }
 
 // GF7 old label span, red star, legend and checkbox markup

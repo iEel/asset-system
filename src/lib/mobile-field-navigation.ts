@@ -20,7 +20,9 @@ const focusTaskRoutes = [
   /^\/audit\/rounds\/new$/,
   /^\/audit\/rounds\/[^/]+(?:\/scan)?$/,
   /^\/maintenance\/(?!pm$)[^/]+$/,
-  /^\/disposal\/(?:new|batch\/new|(?!batches$)[^/]+)$/,
+  // A request page is a focus task; the batches and rounds lists (and a round page) keep the bottom navigation, and
+  // creating a round is a focus task (group 6 plan 4 Task 4).
+  /^\/disposal\/(?:new|batch\/new|rounds\/new|(?!(?:batches|rounds)$)[^/]+)$/,
   // K15 (spec 2C section 6.9): the settings page and every new or [id]/edit form of users, roles, PM plans and
   // master data (brand models included) are focus tasks. Their list and detail pages keep the bottom navigation.
   /^\/admin\/settings$/,

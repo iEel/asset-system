@@ -7,6 +7,7 @@ import { formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 import { readDisposalSourceLinks } from "@/lib/disposal-source"
+import { disposalRequestRoundSelect } from "@/lib/disposal-round-page-data"
 
 type DisposalPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -47,6 +48,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
         requestedBy: { select: { code: true, fullNameTh: true } },
         approver: { select: { code: true, fullNameTh: true } },
         executedBy: { select: { code: true, fullNameTh: true } },
+        round: { select: disposalRequestRoundSelect },
       },
     }),
     prisma.attachment.count({ where: { module: "disposal", referenceId: id, isActive: true } }),
@@ -69,7 +71,14 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
     readDisposalSourceLinks(prisma, locale, [disposalRequest]),
   ])
   const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
+  // Recorded in a round (spec §9.3): the round's number, its method and, for a sale, the round's one lump price.
+  const round = disposalRequest.round
   const executionFields = [
+    round ? { label: t("rounds.roundLabel"), value: round.roundNo } : null,
+    round ? { label: t("rounds.method"), value: t(`types.${round.disposalType}`) } : null,
+    round && round.disposalType === "sell" && round.saleValue != null
+      ? { label: t("rounds.saleValue"), value: t("rounds.saleLine", { value: formatMoney(Number(round.saleValue)), count: round._count.disposalRequests }) }
+      : null,
     { label: t("executionDate"), value: formatDateTime(disposalRequest.executionDate) },
     { label: t("executedBy"), value: disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null },
     { label: t("recipientName"), value: disposalRequest.recipientName },

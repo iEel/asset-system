@@ -225,7 +225,8 @@ test("the approved card shows ไปเลือกในแท็บอนุ�
 
 test("the disposed card links รอบตัดจำหน่าย DPR-… when the request has a round", () => {
   const source = read(PAGE)
-  assert.match(source, /round: \{ select: \{ id: true, roundNo: true \} \}/)
+  // Plan 4 Task 4: the round select also carries the execution panel's facts (disposalRequestRoundSelect).
+  assert.match(source, /round: \{ select: disposalRequestRoundSelect \}/)
   assert.match(source, /const roundLink = disposalRequest\.round \? \(/)
   assert.match(source, /href=\{`\/\$\{locale\}\/disposal\/rounds\/\$\{disposalRequest\.round\.id\}`\}/)
   assert.match(source, /t\("requestPage\.roundLink", \{ roundNo: disposalRequest\.round\.roundNo \}\)/)

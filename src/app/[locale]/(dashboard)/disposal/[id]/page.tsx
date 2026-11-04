@@ -31,6 +31,7 @@ import { formatMovementType } from "@/lib/asset-detail-format"
 import { getAssetStateTone, getPanelClasses } from "@/lib/design-system"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { readDisposalSourceLinks } from "@/lib/disposal-source"
+import { disposalRequestRoundSelect } from "@/lib/disposal-round-page-data"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -64,7 +65,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     where: { id, isActive: true },
     include: {
       batch: { select: { id: true, batchNo: true } },
-      round: { select: { id: true, roundNo: true } },
+      round: { select: disposalRequestRoundSelect },
       asset: {
         select: {
           id: true,
@@ -409,6 +410,36 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               <ContentPanel title={t("executionDetail")}>
                 <KeyValueList
                   items={[
+                    // Recorded in a round (spec §9.3): the round's number (linked), its method and, for a sale, the round's
+                    // one lump price; the date, executor, buyer and document were written onto the request from the round.
+                    ...(disposalRequest.round
+                      ? [
+                          {
+                            key: "round",
+                            label: t("rounds.roundLabel"),
+                            value: (
+                              <Link data-disposal-execution-round href={`/${locale}/disposal/rounds/${disposalRequest.round.id}`} className={linkVariants({ size: "inherit" })}>
+                                <span className="tag">{disposalRequest.round.roundNo}</span>
+                              </Link>
+                            ),
+                          },
+                          { key: "roundMethod", label: t("rounds.method"), value: t(`types.${disposalRequest.round.disposalType}`) },
+                          ...(disposalRequest.round.disposalType === "sell" && disposalRequest.round.saleValue != null
+                            ? [{
+                                key: "roundSaleValue",
+                                label: t("rounds.saleValue"),
+                                value: (
+                                  <span className="num">
+                                    {t("rounds.saleLine", {
+                                      value: formatMoney(Number(disposalRequest.round.saleValue)),
+                                      count: disposalRequest.round._count.disposalRequests,
+                                    })}
+                                  </span>
+                                ),
+                              }]
+                            : []),
+                        ]
+                      : []),
                     { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDate(disposalRequest.executionDate) : null },
                     {
                       key: "executedBy",

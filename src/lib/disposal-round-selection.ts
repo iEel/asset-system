@@ -68,3 +68,25 @@ export function selectAllRound(
 ): { next: StoredRoundSelection; capped: boolean } {
   return { next: { ids: tickableIds.slice(0, max), scope }, capped: tickableIds.length > max }
 }
+
+/**
+ * The approved tab with the search, type and dates the selection was made under (group 6 plan 4 Task 4): the round
+ * page's "เพิ่มจากรายการอนุมัติแล้ว" goes back there, so the queue restores the same selection. A missing or malformed
+ * scope gives the bare approved tab.
+ */
+export function disposalRoundApprovedTabHref(locale: string, scope: string | null | undefined): string {
+  const params = new URLSearchParams({ status: "approved" })
+  let value: unknown = null
+  try {
+    value = scope ? JSON.parse(scope) : null
+  } catch {
+    value = null
+  }
+  const parts: unknown[] = Array.isArray(value) ? value : []
+  const keys = ["search", "disposalType", "dateFrom", "dateTo"] as const
+  keys.forEach((key, index) => {
+    const entry = parts[index]
+    if (typeof entry === "string" && entry !== "") params.set(key, entry)
+  })
+  return `/${locale}/disposal?${params.toString()}`
+}
