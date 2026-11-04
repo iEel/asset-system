@@ -4,8 +4,10 @@ import test from "node:test"
 
 import {
   approvalInboxNeighbours,
+  buildApprovalInboxHref,
   buildApprovalInboxPage,
   buildApprovalInboxRows,
+  formatApprovalInboxDay,
   parseApprovalInboxItemParam,
   parseApprovalInboxQuery,
   type ApprovalInboxQuery,
@@ -350,4 +352,30 @@ test("approvalInboxNeighbours: the position, the next one, wrapping, absent and 
   // The same id under another kind is another item.
   assert.deepEqual(approvalInboxNeighbours(order, { key: "finding", id: "c" }), { position: null, total: 5, next: order[0] })
   assert.deepEqual(approvalInboxNeighbours([], { key: "round", id: "x" }), { position: null, total: 0, next: null })
+})
+
+// Group 6 plan 2 Task 2: the page's one link writer.
+test("buildApprovalInboxHref: keeps the tab, search, overdue, page and a non-default page size, drops the rest", () => {
+  const base = parseApprovalInboxQuery({})
+  const parse = (href: string) => {
+    const url = new URL(href, "http://x")
+    return { path: url.pathname, params: Object.fromEntries(url.searchParams) }
+  }
+  assert.equal(buildApprovalInboxHref("th", base, { tab: "disposal" }), "/th/admin/approvals?tab=disposal")
+  assert.deepEqual(parse(buildApprovalInboxHref("th", base, { search: "ThinkPad", overdue: true, page: 2, item: "disposal:abc" })), {
+    path: "/th/admin/approvals",
+    params: { tab: "all", search: "ThinkPad", overdue: "1", page: "2", item: "disposal:abc" },
+  })
+  assert.match(buildApprovalInboxHref("th", base, { item: "disposal:abc" }), /item=disposal%3Aabc/)
+  assert.equal(parse(buildApprovalInboxHref("en", { ...base, search: "x" }, { item: null })).params.item, undefined)
+  assert.deepEqual(parse(buildApprovalInboxHref("en", { ...base, pageSize: 50, page: 3 }, {})).params, { tab: "all", page: "3", pageSize: "50" })
+  assert.deepEqual(parse(buildApprovalInboxHref("en", { ...base, overdue: true, page: 3 }, { overdue: false, page: 1 })).params, { tab: "all" })
+  assert.equal(parse(buildApprovalInboxHref("en", base, {})).path, "/en/admin/approvals")
+})
+
+test("formatApprovalInboxDay: Bangkok day, short month, Buddhist year in Thai", () => {
+  const date = new Date("2026-10-11T18:30:00Z") // 12 Oct in Bangkok
+  assert.equal(formatApprovalInboxDay(date, "th", false), "12 ต.ค.")
+  assert.equal(formatApprovalInboxDay(date, "th", true), "12 ต.ค. 2569")
+  assert.equal(formatApprovalInboxDay(date, "en", true), "12 Oct 2026")
 })

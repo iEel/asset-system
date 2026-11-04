@@ -114,7 +114,8 @@ test("roles and permissions: each refused page and request needs a permission th
     const page = read(`src/app/[locale]/(dashboard)/${refusal.file}`)
     assert.ok(refusals.lacks("viewer", refusal.permission), `the viewer lacks ${refusal.permission}`)
     if (refusal.permission === "approve-inbox") {
-      assert.ok(page.includes("if (!snapshot.access.canAnyApproval) notFound()"), refusal.file)
+      assert.ok(page.includes("if (!getApprovalInboxAccess(user).canAnyApproval) notFound()"), refusal.file)
+      assert.ok(page.indexOf("notFound()") < page.indexOf("getApprovalInboxPage(user"), `${refusal.file}: the gate before the read`)
       continue
     }
     const [moduleName, action] = refusal.permission.split(":")

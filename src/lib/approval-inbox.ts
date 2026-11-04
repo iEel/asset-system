@@ -226,6 +226,41 @@ export function parseApprovalInboxQuery(searchParams: Record<string, string | st
   }
 }
 
+/**
+ * The approvals page's one link writer (group 6 plan 2 Task 2): the query with a patch applied. It always writes the
+ * tab, and writes the search, the overdue filter, a page above 1, a page size other than 25 and an item only when set.
+ * The caller passes `page: 1` when a filter changes; `item: null` (or no item) drops the open item.
+ */
+export function buildApprovalInboxHref(
+  locale: string,
+  query: ApprovalInboxQuery,
+  patch: Partial<ApprovalInboxQuery> & { item?: string | null },
+): string {
+  const next = { ...query, ...patch }
+  const params = new URLSearchParams()
+  params.set("tab", next.tab)
+  const search = next.search.trim()
+  if (search) params.set("search", search)
+  if (next.overdue) params.set("overdue", "1")
+  if (next.page > 1) params.set("page", String(next.page))
+  if (next.pageSize !== 25) params.set("pageSize", String(next.pageSize))
+  if (patch.item) params.set("item", patch.item)
+  return `/${locale}/admin/approvals?${params.toString()}`
+}
+
+/** "12 ต.ค." or, with the year, "12 ต.ค. 2569": the Bangkok day, Buddhist years in Thai. */
+export function formatApprovalInboxDay(date: Date, locale: string, withYear: boolean): string {
+  const format = new Intl.DateTimeFormat(locale === "th" ? "th-TH-u-ca-buddhist" : "en-GB", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    ...(withYear ? { year: "numeric" as const } : {}),
+  })
+  const parts = format.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((entry) => entry.type === type)?.value ?? ""
+  return [part("day"), part("month"), withYear ? part("year") : ""].filter(Boolean).join(" ")
+}
+
 export type ApprovalInboxRow = {
   key: ApprovalInboxItemKey
   id: string

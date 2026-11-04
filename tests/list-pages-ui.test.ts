@@ -658,17 +658,17 @@ test("storage: PageHeader, two StatStrips and three DataTables that scroll sidew
 // Plan 2B-5 Task 4 (spec 2B §5.6 row admin/approvals, §4.4.6, bug §5.10 #3, R-d, R-g): the approval inbox. The
 // module chips are TabNav links with counts, the tinted SummaryCards are one StatStrip, and a row is one link whose
 // action reads as words with an arrow, not as a button inside the link.
-test("approval inbox: PageHeader, one StatStrip, the queue in a divided panel with TabNav, and rows that are one link (spec 2B §5.6, §5.10 #3)", () => {
+// Group 6 plan 2 Task 2 rebuilt the page as board AP (tests/approval-inbox-ui.test.ts pins the rest): the rows are
+// ClickableTableRow, the phone cards whole links whose next step reads as words with an arrow, not a button.
+test("approval inbox: PageHeader, one StatStrip, TabNav with counts, a DataTable queue and phone cards that are one link (spec 2B §5.6, §5.10 #3)", () => {
   const source = read(`${D}admin/approvals/page.tsx`)
-  for (const part of ["<PageHeader", "<StatStrip", "<ContentPanel", "<TabNav", "<ApprovalInboxRow", "<ActionEmptyState"]) {
+  for (const part of ["<PageHeader", "<StatStrip", "<TabNav", "<DataTable", "<ClickableTableRow", "<ActionEmptyState", "<Pagination"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
-  assert.equal(source.match(/className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}/g)?.length, 3, "history and policy in the header, manage roles in its panel")
-  assert.match(source, /<TabNav\n\s+aria-label=\{t\("queueTitle"\)\}\n\s+items=\{filterOptions\.map\(\(filter\) => \(\{\n\s+key: filter\.key,\n\s+label: filter\.label,\n\s+count: formatCount\(filter\.count\),/)
-  assert.match(source, /current=\{activeFilter\}/)
-  assert.match(source, /<span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">\n\s+\{item\.actionLabel\}\n\s+<ChevronRight aria-hidden="true" className="size-4" \/>/, "bug §5.10 #3: no button look inside the row link")
-  assert.match(source, /\{orNil\(item\.requestedBy\)\}/)
-  assert.match(source, /<span className="tag">\{item\.permissionKey\}<\/span>/)
+  assert.match(source, /count: formatCount\(tabs\[tab\]\),/)
+  assert.match(source, /current=\{query\.tab\}/)
+  assert.match(source, /<span className="inline-flex items-center gap-0\.5 font-medium text-primary">\n\s+\{t\(nextStepKeys\[row\.key\]\)\}\n\s+<ChevronRight aria-hidden="true" className="size-4" \/>/, "bug §5.10 #3: no button look inside the card link")
+  assert.match(read("src/components/approvals/approval-inbox-policy.tsx"), /<span className="tag">\{item\.permissionKey\}<\/span>/)
   assert.doesNotMatch(source, /function (?:FilterChip|SummaryCard|summaryClass)\b|toLocaleString\(|font-mono|"-"|<h1\b/)
 })
 

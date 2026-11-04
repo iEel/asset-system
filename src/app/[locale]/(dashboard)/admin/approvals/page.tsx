@@ -1,294 +1,382 @@
 import Link from "next/link"
-import type React from "react"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ChevronRight, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
+import { ChevronRight, FileCheck2, History } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import { redirectToLogin } from "@/lib/page-auth"
-import { buildApprovalInboxCopy, type ApprovalInboxItem } from "@/lib/approval-inbox"
-import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
-import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
-import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
-import { buildApprovalPermissionMatrix, type ApprovalPermissionMatrixItem } from "@/lib/approval-permission-matrix"
+import {
+  approvalInboxPageSizes,
+  buildApprovalInboxHref,
+  formatApprovalInboxDay,
+  parseApprovalInboxItemParam,
+  parseApprovalInboxQuery,
+  type ApprovalInboxItemKey,
+  type ApprovalInboxRow,
+  type ApprovalInboxTab,
+} from "@/lib/approval-inbox"
+import { getApprovalInboxAccess, getApprovalInboxPage } from "@/lib/approval-inbox-query"
+import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
+import { auditFindingTypeShortLabelKeys, resolveAuditFindingType } from "@/lib/audit-finding-filters"
+import type { DisposalSodReason } from "@/lib/disposal-policy"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
-import { formatDateTime } from "@/lib/utils"
+import { paginationRange } from "@/lib/master-data-query"
+import { cn } from "@/lib/utils"
+import { ApprovalInboxPolicy, ApprovalInboxPolicyLine } from "@/components/approvals/approval-inbox-policy"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
-import { ContentPanel } from "@/components/ui/content-panel"
-import { KeyValueList } from "@/components/ui/key-value-list"
-import { orNil } from "@/components/ui/nil"
-import { PageHeader } from "@/components/ui/page-header"
-import { StatStrip } from "@/components/ui/stat-strip"
-import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { SearchField } from "@/components/ui/search-field"
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
 
 type ApprovalInboxPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ module?: string | string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
+// A blocked disposal row's reason (group 6 spec §7.3): a separation-of-duties reason has its own line; any other block
+// code reads its disposalPage.errors text.
+const sodReasonKeys: Record<DisposalSodReason, string> = {
+  requester: "blockRequester",
+  creator: "blockCreator",
+  no_employee: "blockNoEmployee",
+}
+
+// The next step a phone card names (spec §7.7), in the work center's words.
+const nextStepKeys: Record<ApprovalInboxItemKey, string> = {
+  disposal: "actionDisposal",
+  finding: "actionFinding",
+  round: "actionRound",
+}
+
+// งานรออนุมัติ as board AP (group 6 plan 2 Task 2, spec §7.1–7.3, §7.7): the policy line and its fold, the overdue /
+// oldest / total strip, the tabs, the search and the overdue toggle, the paged queue and the phone cards. The right
+// pane is the slot Task 4 fills; ticks come with Task 3.
 export default async function ApprovalInboxPage({ params, searchParams }: ApprovalInboxPageProps) {
   const { locale } = await params
-  const query = await searchParams
+  const rawQuery = await searchParams
   const user = await getSessionUser()
   if (!user) return redirectToLogin(locale)
+  if (!getApprovalInboxAccess(user).canAnyApproval) notFound()
 
-  const snapshot = await getApprovalInboxSnapshot(user, locale, buildApprovalInboxCopy(await getTranslations({ locale, namespace: "approvalInboxPage" })))
-  if (!snapshot.access.canAnyApproval) notFound()
-
-  const [t, approverUsers] = await Promise.all([
-    getTranslations("approvalInboxPage"),
+  const query = parseApprovalInboxQuery(rawQuery)
+  const item = parseApprovalInboxItemParam(rawQuery.item)
+  const now = new Date()
+  const [data, approverUsers, t, tCommon, tDisposal, tRound] = await Promise.all([
+    getApprovalInboxPage(user, locale, query, now),
     getApprovalPermissionMatrixUsers(),
+    getTranslations({ locale, namespace: "approvalInboxPage" }),
+    getTranslations({ locale, namespace: "common" }),
+    getTranslations({ locale, namespace: "disposalPage" }),
+    getTranslations({ locale, namespace: "auditRound" }),
   ])
-  const { access, policy, items, summary } = snapshot
-  const approverMatrix = buildApprovalPermissionMatrix(approverUsers, policy.minApprovers)
-  const sortedItems = sortApprovalInboxItemsByAge(items, policy.slaDays)
-  const activeFilter = parseApprovalInboxFilter(query.module)
-  const filteredItems = filterApprovalInboxItems(sortedItems, activeFilter)
-  const filterOptions: Array<{ key: ApprovalInboxFilter; label: string; count: number }> = approvalInboxFilters.map((filter) => ({
-    key: filter,
-    label: t(`filter_${filter}`),
-    count: filter === "all" ? summary.total : summary[filter],
+  const { access, policy, strip, tabs, rows, filteredTotal, pageSize } = data
+  const matrix = buildApprovalPermissionMatrix(approverUsers, policy.minApprovers)
+
+  // The page shown (the read model clamps a page past the last), kept on every row and pager link.
+  const shown = { ...query, page: data.page }
+  const href = (patch: Parameters<typeof buildApprovalInboxHref>[2]) => buildApprovalInboxHref(locale, shown, patch)
+  const itemHref = (key: ApprovalInboxItemKey, id: string) => href({ item: `${key}:${id}` })
+  const closeHref = href({})
+  const hasFilters = Boolean(query.search) || query.overdue
+  const clearHref = href({ search: "", overdue: false, page: 1 })
+  const { start, end, totalPages } = paginationRange(data.page, pageSize, filteredTotal)
+
+  const day = (date: Date, withYear = false) => formatApprovalInboxDay(date, locale, withYear)
+  const methodWord = (type: string) => (tDisposal.has(`types.${type}`) ? tDisposal(`types.${type}`) : type)
+  const findingWord = (type: string) => {
+    const known = resolveAuditFindingType(type)
+    return known ? tRound(auditFindingTypeShortLabelKeys[known]) : type
+  }
+  const kindLabel = (row: ApprovalInboxRow) => (row.key === "disposal" ? t("kindDisposal") : t("kindAudit"))
+  const subtypeLine = (row: ApprovalInboxRow) =>
+    row.subtype.kind === "method"
+      ? t("subtypeMethod", { method: methodWord(row.subtype.disposalType) })
+      : row.subtype.kind === "finding"
+        ? t("subtypeFinding", { type: findingWord(row.subtype.findingType) })
+        : t("subtypeClose")
+  const subtypeShort = (row: ApprovalInboxRow) =>
+    row.subtype.kind === "method"
+      ? methodWord(row.subtype.disposalType)
+      : row.subtype.kind === "finding"
+        ? findingWord(row.subtype.findingType)
+        : t("subtypeClose")
+  const blockLine = (row: ApprovalInboxRow) =>
+    row.block ? (row.block.sodReason ? t(sodReasonKeys[row.block.sodReason]) : tDisposal(`errors.${row.block.code}`)) : null
+  const isLost = (row: ApprovalInboxRow) => row.subtype.kind === "method" && row.subtype.disposalType === "lost"
+  const slaBadge = (row: ApprovalInboxRow) => (
+    <StatusBadge
+      label={row.age.isOverdue ? t("overdueDays", { days: formatCount(row.age.daysOverdue) }) : t("waitingDays", { days: formatCount(row.age.ageDays) })}
+      tone={row.age.isOverdue ? "danger" : "muted"}
+    />
+  )
+  // A disposal request with no photo (spec §7.3): a warning, except a lost machine, which cannot be photographed (§5).
+  const photoNote = (row: ApprovalInboxRow) =>
+    row.key === "disposal" && row.photoCount === 0 ? (
+      isLost(row) ? (
+        <span className="text-meta text-muted-foreground">{t("noPhotoLost")}</span>
+      ) : (
+        <StatusBadge label={t("noPhoto")} tone="warning" />
+      )
+    ) : null
+
+  // The strip counts every pending item the viewer may see (spec §7.2); it does not follow the tab or the filters.
+  const stripItems: StatStripItem[] = [
+    {
+      key: "overdue",
+      label: t("stripOverdue"),
+      value: formatCount(strip.overdue.total),
+      unit: t("unitItems"),
+      foot: t("stripOverdueFoot", { disposal: formatCount(strip.overdue.disposal), audit: formatCount(strip.overdue.audit) }),
+      href: href({ overdue: true, page: 1 }),
+      current: query.overdue,
+      attention: strip.overdue.total > 0,
+      filterNote: t("stripOverdueNote"),
+      scroll: false,
+      data: { "data-approval-strip-cell": "overdue" },
+    },
+    {
+      key: "oldest",
+      label: t("stripOldest"),
+      value: formatCount(strip.oldest?.ageDays ?? 0),
+      unit: t("unitDays"),
+      foot: strip.oldest ? t("stripOldestFoot", { title: strip.oldest.title, date: day(strip.oldest.requestedAt, true) }) : undefined,
+      footTitle: strip.oldest?.title,
+      // The oldest item is the first row of the unfiltered list, so it opens on page 1 of ทั้งหมด.
+      href: strip.oldest ? buildApprovalInboxHref(locale, parseApprovalInboxQuery({}), { item: `${strip.oldest.key}:${strip.oldest.id}` }) : undefined,
+      scroll: false,
+      data: { "data-approval-strip-cell": "oldest" },
+    },
+    {
+      key: "total",
+      label: t("stripTotal"),
+      value: formatCount(strip.total.total),
+      unit: t("unitItems"),
+      foot: t("stripTotalFoot", { overdue: formatCount(strip.total.overdue), within: formatCount(strip.total.within), total: formatCount(strip.total.total) }),
+      data: { "data-approval-strip-cell": "total" },
+    },
+  ]
+
+  const tabItems = (["all", "disposal", "audit"] as const satisfies readonly ApprovalInboxTab[]).map((tab) => ({
+    key: tab,
+    label: t(`filter_${tab}`),
+    count: formatCount(tabs[tab]),
+    href: href({ tab, page: 1 }),
   }))
-  // The inbox no longer hides disposal behind policy.disposalRequired (group 6 spec §7.2): approval is always required.
-  const disposalPolicyOn = access.canApproveDisposal
-  const auditPolicyOn = policy.auditCloseRequired && access.canApproveAudit
+
+  const empty = hasFilters
+    ? { title: t("emptyFilterTitle"), description: t("emptyFilterDescription"), actionHref: clearHref, actionLabel: t("clearFilters"), actionVariant: "secondary" as const }
+    : { title: t("emptyTitle"), description: t("emptyDescription") }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("title")}
-        meta={t("subtitle")}
+        meta={<ApprovalInboxPolicyLine policy={policy} matrix={matrix} />}
         actions={
-          <>
-            <Link href={`/${locale}/admin/approvals/history`} className={buttonVariants({ variant: "outline", size: "md" })}>
-              <History aria-hidden="true" />
-              {t("openDecisionHistory")}
-            </Link>
-            <Link href={`/${locale}/admin/settings`} className={buttonVariants({ variant: "outline", size: "md" })}>
-              {t("openPolicySettings")}
-            </Link>
-          </>
-        }
-      />
-
-      <StatStrip
-        items={[
-          { key: "total", label: t("total"), value: formatCount(summary.total) },
-          { key: "disposal", label: t("disposal"), value: formatCount(summary.disposal) },
-          { key: "audit", label: t("audit"), value: formatCount(summary.audit) },
-        ]}
-      />
-
-      {/* The policy in effect: facts as label and value pairs, on and off as status badges (no tinted boxes). */}
-      <ContentPanel title={t("policyTitle")} description={t("policyDescription")}>
-        <KeyValueList
-          items={[
-            { key: "disposal", label: t("policyDisposal"), value: <StatusBadge label={disposalPolicyOn ? t("enabled") : t("disabled")} tone={disposalPolicyOn ? "success" : "muted"} /> },
-            { key: "auditClose", label: t("policyAuditClose"), value: <StatusBadge label={auditPolicyOn ? t("enabled") : t("disabled")} tone={auditPolicyOn ? "success" : "muted"} /> },
-            { key: "minApprovers", label: t("minApprovers"), value: `${formatCount(policy.minApprovers)} / ${policy.segregationRequired ? t("sodOn") : t("sodOff")}` },
-            { key: "sla", label: t("approvalSla"), value: t("slaDays", { days: policy.slaDays }) },
-          ]}
-        />
-      </ContentPanel>
-
-      <ContentPanel
-        title={t("approverMatrixTitle")}
-        description={t("approverMatrixDescription", { min: policy.minApprovers })}
-        actions={
-          <Link href={`/${locale}/admin/roles`} className={buttonVariants({ variant: "outline", size: "md" })}>
-            <Users aria-hidden="true" />
-            {t("manageRoles")}
+          <Link href={`/${locale}/admin/approvals/history`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            <History aria-hidden="true" />
+            {t("openDecisionHistory")}
           </Link>
         }
-      >
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          {approverMatrix.map((item) => (
-            <ApproverMatrixCard
-              key={item.key}
-              item={item}
-              labels={{
-                workflow: t(`matrixWorkflow_${item.key}`),
-                approverCount: (count) => t("approverCount", { count }),
-                permissionKey: t("permissionKey"),
-                roles: t("roles"),
-                approvers: t("approvers"),
-                noRoles: t("noRoles"),
-                noApprovers: t("noApprovers"),
-                moreApprovers: (count) => t("moreApprovers", { count }),
-                status: t(`matrixStatus_${item.status}`),
-              }}
-            />
-          ))}
-        </div>
-      </ContentPanel>
+      />
 
-      <ContentPanel
-        divided
-        flush
-        className="overflow-hidden"
-        title={t("queueTitle")}
-        description={t("queueDescription")}
-        actions={<span className="text-sm font-medium text-muted-foreground num">{t("filteredCount", { count: formatCount(filteredItems.length) })}</span>}
-      >
-        <TabNav
-          aria-label={t("queueTitle")}
-          items={filterOptions.map((filter) => ({
-            key: filter.key,
-            label: filter.label,
-            count: formatCount(filter.count),
-            href: filter.key === "all" ? `/${locale}/admin/approvals` : `/${locale}/admin/approvals?module=${filter.key}`,
-          }))}
-          current={activeFilter}
-          className="px-4 md:px-5"
-        />
-        {filteredItems.length === 0 ? (
-          <div className="p-4 md:p-5">
-            <ActionEmptyState
-              icon={<FileCheck2 className="h-6 w-6" />}
-              title={items.length === 0 ? t("emptyTitle") : t("emptyFilterTitle")}
-              description={items.length === 0 ? t("emptyDescription") : t("emptyFilterDescription")}
-            />
+      {/* Below xl an open item takes the page (spec §7.7): the strip, the fold and the list wait behind its back link. */}
+      <div className={cn("space-y-4", item && "hidden xl:block")}>
+        <section aria-label={t("stripLabel")}>
+          <StatStrip items={stripItems} className="max-lg:grid-cols-3 max-lg:[&>:last-child:nth-child(odd)]:col-span-1" />
+        </section>
+        <ApprovalInboxPolicy locale={locale} policy={policy} access={access} matrix={matrix} />
+      </div>
+
+      <div data-approval-panes className="grid xl:grid-cols-[minmax(0,1fr)_420px] min-w-0 gap-6 xl:items-start xl:gap-4">
+        <div data-approval-list className={cn("min-w-0 space-y-4", item && "hidden xl:block")}>
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
+            <TabNav data-approval-tabs aria-label={t("queueTitle")} items={tabItems} current={query.tab} scroll={false} className="min-w-0" />
+            <p data-approval-audit-note className="pb-2.5 text-meta text-muted-foreground">
+              {t("auditTabNote", { findings: formatCount(tabs.findings), rounds: formatCount(tabs.rounds) })}
+            </p>
           </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {filteredItems.map((item) => (
-              <ApprovalInboxRow
-                key={item.id}
-                item={item}
-                slaDays={policy.slaDays}
-                labels={{
-                  modules: { disposal: t("disposal"), audit: t("audit") },
-                  requestedBy: t("requestedBy"),
-                  requestedAt: t("requestedAt"),
-                  waitingDays: (days) => t("waitingDays", { days }),
-                  overdueDays: (days) => t("overdueDays", { days }),
-                }}
-              />
-            ))}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <form role="search" action={`/${locale}/admin/approvals`} className="w-full md:w-96">
+              <input type="hidden" name="tab" value={query.tab} />
+              {query.overdue ? <input type="hidden" name="overdue" value="1" /> : null}
+              {pageSize !== 25 ? <input type="hidden" name="pageSize" value={pageSize} /> : null}
+              <SearchField name="search" defaultValue={query.search} aria-label={tCommon("search")} placeholder={t("searchPlaceholder")} className="w-full" />
+            </form>
+            <Link
+              href={href({ overdue: !query.overdue, page: 1 })}
+              scroll={false}
+              aria-pressed={query.overdue}
+              data-approval-overdue-toggle
+              className={cn(buttonVariants({ variant: "outline", size: "md" }), query.overdue && "border-primary bg-primary-soft text-primary-hover hover:border-primary hover:bg-primary-soft")}
+            >
+              {t("overdueToggle")}
+            </Link>
           </div>
-        )}
-      </ContentPanel>
+
+          <div className={cn(getPanelClasses(), "overflow-hidden")}>
+            {/* Phone cards (spec §7.7): each card is one link to its item, the whole card a 44px+ target. No ticks. */}
+            <div className="md:hidden">
+              {rows.length === 0 ? (
+                <div className="p-3">
+                  <ActionEmptyState icon={<FileCheck2 />} {...empty} />
+                </div>
+              ) : (
+                <>
+                  <p className="px-3 pt-3 text-meta text-muted-foreground">{t("phoneSummary", { count: formatCount(rows.length), total: formatCount(filteredTotal) })}</p>
+                  <div className="grid gap-3 p-3">
+                    {rows.map((row) => (
+                      <Link
+                        key={`${row.key}:${row.id}`}
+                        href={itemHref(row.key, row.id)}
+                        data-approval-card={`${row.key}:${row.id}`}
+                        className="block min-h-11 min-w-0 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip>{`${kindLabel(row)} · ${subtypeShort(row)}`}</Chip>
+                          {row.age.isOverdue ? slaBadge(row) : null}
+                          <span className="ms-auto text-meta text-muted-foreground">{t("waitingDays", { days: formatCount(row.age.ageDays) })}</span>
+                        </div>
+                        <div className="mt-2 break-words font-semibold text-foreground">{row.title}</div>
+                        <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag break-all">{row.codes}</span></div>
+                        {photoNote(row) || blockLine(row) ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
+                            {photoNote(row)}
+                            {blockLine(row) ? <span>{blockLine(row)}</span> : null}
+                          </div>
+                        ) : null}
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-meta">
+                          <span className="text-muted-foreground">{`${row.isOwn ? t("you") : row.requesterName} · ${day(row.requestedAt)}`}</span>
+                          <span className="inline-flex items-center gap-0.5 font-medium text-primary">
+                            {t(nextStepKeys[row.key])}
+                            <ChevronRight aria-hidden="true" className="size-4" />
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <DataTable framed={false} layout="fixed" minWidth={560} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+              <colgroup>
+                <col className="w-11" />
+                <col className="w-32" />
+                <col />
+                <col className="w-40" />
+                <col className="w-32" />
+              </colgroup>
+              <DataTableHeader>
+                <tr>
+                  {/* The tick column; Task 3 fills it. */}
+                  <DataTableHead hideLabel className="p-0 first:pl-0 md:first:pl-0">{t("colSelect")}</DataTableHead>
+                  <DataTableHead>{t("colKind")}</DataTableHead>
+                  <DataTableHead>{t("colItem")}</DataTableHead>
+                  <DataTableHead>{t("requestedBy")}</DataTableHead>
+                  <DataTableHead>{`${t("colWaiting")} ↓`}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {rows.length === 0 ? (
+                  <TableEmptyRow colSpan={5} emptyState={{ icon: <FileCheck2 />, ...empty }} />
+                ) : (
+                  rows.map((row) => {
+                    const block = blockLine(row)
+                    const photo = photoNote(row)
+                    return (
+                      <ClickableTableRow
+                        key={`${row.key}:${row.id}`}
+                        href={itemHref(row.key, row.id)}
+                        scroll={false}
+                        current={item?.key === row.key && item.id === row.id}
+                        rowData={{ "data-approval-row": `${row.key}:${row.id}` }}
+                        label={`${tCommon("view")}: ${row.title} · ${row.codes}`}
+                      >
+                        <DataTableCell className="p-0 first:pl-0 md:first:pl-0" />
+                        <DataTableCell>
+                          <Chip>{kindLabel(row)}</Chip>
+                          <div className="mt-1 break-words text-meta text-muted-foreground">{subtypeLine(row)}</div>
+                        </DataTableCell>
+                        <DataTableCell>
+                          <div className="break-words font-semibold text-foreground">{row.title}</div>
+                          <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag whitespace-normal [overflow-wrap:anywhere]">{row.codes}</span></div>
+                          {photo ? <div className="mt-1">{photo}</div> : null}
+                          {block ? <div data-approval-block className="mt-1 break-words text-meta text-muted-foreground">{block}</div> : null}
+                        </DataTableCell>
+                        <DataTableCell>
+                          {row.isOwn ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-medium text-foreground">{t("you")}</span>
+                              <StatusBadge label={t("selfApprovalBadge")} tone="muted" />
+                            </div>
+                          ) : (
+                            <div className="break-words text-foreground">{row.requesterName}</div>
+                          )}
+                          <div className="mt-0.5 text-meta text-muted-foreground">{t("sentOn", { date: day(row.requestedAt) })}</div>
+                        </DataTableCell>
+                        <DataTableCell>
+                          {slaBadge(row)}
+                          {row.age.isOverdue ? (
+                            <div className="mt-1 text-meta text-muted-foreground">{t("waitingDays", { days: formatCount(row.age.ageDays) })}</div>
+                          ) : row.age.isDueToday ? (
+                            <div className="mt-1 text-meta font-medium text-warning">{t("dueToday")}</div>
+                          ) : null}
+                        </DataTableCell>
+                      </ClickableTableRow>
+                    )
+                  })
+                )}
+              </DataTableBody>
+            </DataTable>
+
+            {filteredTotal > 0 ? (
+              <DataTableFoot>
+                <Pagination
+                  page={data.page}
+                  totalPages={totalPages}
+                  previousHref={href({ page: data.page - 1 })}
+                  nextHref={href({ page: data.page + 1 })}
+                  pageSize={pageSize}
+                  pageSizes={approvalInboxPageSizes.map((value) => ({ value, href: href({ pageSize: value, page: 1 }) }))}
+                  labels={{
+                    navigation: tCommon("pagination"),
+                    previous: tCommon("previous"),
+                    next: tCommon("next"),
+                    pageOf: tCommon("pageOf", { page: data.page, total: totalPages }),
+                    range: t("listRange", { from: formatCount(start), to: formatCount(end), total: formatCount(filteredTotal) }),
+                    pageSizeGroup: tCommon("pageSizeLabel"),
+                    rowsPerPage: tCommon("rowsPerPage"),
+                  }}
+                />
+              </DataTableFoot>
+            ) : null}
+          </div>
+        </div>
+
+        {/* The right pane (spec §7.5): Task 4 fills it with the chosen item's panel. Sticky from xl; below xl it shows
+            only with ?item=, full width, with its back link. */}
+        <section
+          data-approval-panel={item ? item.key : "empty"}
+          aria-label={t("title")}
+          className={cn("min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] xl:overflow-y-auto", !item && "max-xl:hidden")}
+        >
+          {item ? <PageBackLink href={closeHref} label={t("backToInbox")} className="mb-3 xl:hidden" /> : null}
+          <div className={cn(getPanelClasses(), "p-4 md:p-5")}>
+            <EmptyNote>{t("panelEmpty")}</EmptyNote>
+          </div>
+        </section>
+      </div>
     </div>
   )
-}
-
-// A row is one link (2B bug §5.10 #3). The module is a name, so a Chip; only an overdue request is a danger badge.
-function ApprovalInboxRow({
-  item,
-  slaDays,
-  labels,
-}: {
-  item: ApprovalInboxItem
-  slaDays: number
-  labels: {
-    modules: Record<ApprovalInboxItem["module"], string>
-    requestedBy: string
-    requestedAt: string
-    waitingDays: (days: number) => string
-    overdueDays: (days: number) => string
-  }
-}) {
-  const ageStatus = getApprovalAgeStatus(item.requestedAt, new Date(), slaDays)
-  return (
-    <Link href={item.href} className="block p-5 transition-colors hover:bg-row-hover">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div aria-hidden="true" className="mt-1 text-muted-foreground">{kindIcon(item.kind)}</div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Chip>{labels.modules[item.module]}</Chip>
-              <StatusBadge
-                label={ageStatus.isOverdue ? labels.overdueDays(ageStatus.daysOverdue) : labels.waitingDays(ageStatus.ageDays)}
-                tone={ageStatus.isOverdue ? "danger" : "muted"}
-              />
-              <h3 className="font-semibold text-foreground">{item.title}</h3>
-            </div>
-            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>{labels.requestedBy}: {orNil(item.requestedBy)}</span>
-              <span>{labels.requestedAt}: {formatDateTime(item.requestedAt)}</span>
-            </div>
-          </div>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-          {item.actionLabel}
-          <ChevronRight aria-hidden="true" className="size-4" />
-        </span>
-      </div>
-    </Link>
-  )
-}
-
-function ApproverMatrixCard({
-  item,
-  labels,
-}: {
-  item: ApprovalPermissionMatrixItem
-  labels: {
-    workflow: string
-    approverCount: (count: number) => string
-    permissionKey: string
-    roles: string
-    approvers: string
-    noRoles: string
-    noApprovers: string
-    moreApprovers: (count: number) => string
-    status: string
-  }
-}) {
-  const visibleApprovers = item.approverLabels.slice(0, 4)
-  const hiddenApproverCount = item.approverLabels.length - visibleApprovers.length
-
-  // A neutral card in the panel; the coverage is its status badge (ready, thin, missing).
-  return (
-    <div className="rounded-md border border-border bg-background p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-foreground">{labels.workflow}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.approverCount(item.approverCount)}</p>
-        </div>
-        <StatusBadge label={labels.status} tone={matrixTone(item.status)} />
-      </div>
-      <div className="mt-4 space-y-3 text-sm">
-        <div>
-          <div className="text-xs font-medium text-muted-foreground">{labels.permissionKey}</div>
-          <div className="mt-1 text-xs text-foreground"><span className="tag">{item.permissionKey}</span></div>
-        </div>
-        <div>
-          <div className="text-xs font-medium text-muted-foreground">{labels.roles}</div>
-          <div className="mt-1 text-foreground">{item.roleLabels.length > 0 ? item.roleLabels.join(", ") : labels.noRoles}</div>
-        </div>
-        <div>
-          <div className="text-xs font-medium text-muted-foreground">{labels.approvers}</div>
-          {visibleApprovers.length === 0 ? (
-            <div className="mt-1 text-muted-foreground">{labels.noApprovers}</div>
-          ) : (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {visibleApprovers.map((approver) => (
-                <Chip key={approver}>{approver}</Chip>
-              ))}
-              {hiddenApproverCount > 0 ? (
-                <span className="text-meta text-muted-foreground">{labels.moreApprovers(hiddenApproverCount)}</span>
-              ) : null}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function kindIcon(kind: ApprovalInboxItem["kind"]): React.ReactNode {
-  if (kind === "disposal_review") return <Trash2 className="h-4 w-4" />
-  if (kind === "audit_round_close") return <ShieldCheck className="h-4 w-4" />
-  return <ClipboardCheck className="h-4 w-4" />
-}
-
-function matrixTone(status: ApprovalPermissionMatrixItem["status"]): StatusTone {
-  if (status === "missing") return "danger"
-  if (status === "thin") return "warning"
-  return "success"
 }

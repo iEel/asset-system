@@ -150,15 +150,19 @@ test("readiness: the checklist is a ContentPanel of neutral cards with a status 
 })
 
 test("approval inbox: the policy is a KeyValueList with status badges, matrix cards are neutral, modules and approvers are Chips (spec 2D D7, D9, M30)", () => {
+  // Group 6 plan 2 Task 2: the policy panel and the matrix moved, unchanged, into the page's policy fold.
+  const policy = read("src/components/approvals/approval-inbox-policy.tsx")
+  assert.match(policy, /<ContentPanel title=\{t\("policyTitle"\)\} description=\{t\("policyDescription"\)\}>\n\s+<KeyValueList/)
+  assert.match(policy, /<ContentPanel\n\s+title=\{t\("approverMatrixTitle"\)\}/)
+  assert.match(policy, /<StatusBadge label=\{labels\.status\} tone=\{matrixTone\(item\.status\)\} \/>/)
+  assert.match(policy, /<Chip key=\{approver\}>\{approver\}<\/Chip>/)
+  assert.doesNotMatch(policy, /rounded-full|rounded-lg border|bg-(?:success|warning|danger|primary)-soft|text-danger|function (?:PolicyBadge|moduleLabel|toneClass|pillClass|matrixCardClass|matrixStatusClass|matrixStatusIcon)\b|hover:bg-accent|"ตัดจำหน่าย"/)
+  // The queue: the kind is a Chip, the age an SLA badge (danger only when overdue). The pressed overdue toggle takes the
+  // Segmented pressed look (primary-soft), the only tint on the page.
   const source = read(`${D}admin/approvals/page.tsx`)
-  assert.match(source, /<ContentPanel title=\{t\("policyTitle"\)\} description=\{t\("policyDescription"\)\}>\n\s+<KeyValueList/)
-  assert.match(source, /<ContentPanel\n\s+title=\{t\("approverMatrixTitle"\)\}/)
-  assert.match(source, /modules: \{ disposal: t\("disposal"\), audit: t\("audit"\) \},/)
-  assert.match(source, /<Chip>\{labels\.modules\[item\.module\]\}<\/Chip>/)
-  assert.match(source, /tone=\{ageStatus\.isOverdue \? "danger" : "muted"\}/)
-  assert.match(source, /<StatusBadge label=\{labels\.status\} tone=\{matrixTone\(item\.status\)\} \/>/)
-  assert.match(source, /<Chip key=\{approver\}>\{approver\}<\/Chip>/)
-  assert.doesNotMatch(source, /rounded-full|rounded-lg border|bg-(?:success|warning|danger|primary)-soft|text-danger|function (?:PolicyBadge|moduleLabel|toneClass|pillClass|matrixCardClass|matrixStatusClass|matrixStatusIcon)\b|hover:bg-accent|"ตัดจำหน่าย"/)
+  assert.match(source, /<Chip>\{kindLabel\(row\)\}<\/Chip>/)
+  assert.match(source, /tone=\{row\.age\.isOverdue \? "danger" : "muted"\}/)
+  assert.doesNotMatch(source, /rounded-full|rounded-lg border|bg-(?:success|warning|danger)-soft|text-danger|hover:bg-accent|"ตัดจำหน่าย"/)
 })
 
 test("approval history: the filter panel is a ContentPanel, a row shows a module Chip and a decision badge, and its changes are a DataTable (spec 2D D7, D9)", () => {
