@@ -37,8 +37,10 @@ test("dashboard shell waits for a hash target that streams in after the loading 
   // A target still in React's hidden streaming holder (outside main) is not in place yet: the shell waits for it.
   assert.match(shellSource, /if \(target === main\) return "none"/)
   assert.match(shellSource, /if \(!target \|\| !main\.contains\(target\)\) return "missing"/)
-  // The 96px offset from main's top is unchanged.
-  assert.match(shellSource, /const anchorOffset = 96/)
+  // The gap under main's top is the target's own scroll-margin-top (scroll-mt-*), the one a client-side <Link> lands
+  // with through Next's scrollIntoView, so a fresh load, a reload and a click land alike (was a fixed 96px).
+  assert.match(shellSource, /const anchorOffset = Number\.parseFloat\(window\.getComputedStyle\(target\)\.scrollMarginTop\) \|\| 0/)
+  assert.doesNotMatch(shellSource, /const anchorOffset = 96/)
   assert.match(shellSource, /top: main\.scrollTop \+ targetRect\.top - mainRect\.top - anchorOffset/)
   // It watches main's subtree for the streamed content, and the reader's own scroll or keys end the wait.
   assert.match(shellSource, /new MutationObserver\(retry\)/)

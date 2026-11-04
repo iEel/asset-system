@@ -62,7 +62,7 @@ export function DashboardShell({
 
   const expandSidebar = useCallback(() => changeSidebarCollapsed(false), [changeSidebarCollapsed])
 
-  // The skip link moves focus itself: a native hash jump would fire hashchange, scroll main 96px and leave #main in the URL (spec §6.9).
+  // The skip link moves focus itself: a native hash jump would fire hashchange, scroll main and leave #main in the URL (spec §6.9).
   const skipToMain = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     mainRef.current?.focus({ preventScroll: true })
@@ -96,7 +96,9 @@ export function DashboardShell({
     // found there is not in place yet (measured on next start, 2026-11-04).
     if (!target || !main.contains(target)) return "missing"
 
-    const anchorOffset = 96
+    // The target's own scroll-margin-top (scroll-mt-*) is its gap under main's top: a client-side <Link> to the hash
+    // lands with it through Next's scrollIntoView, so a fresh load, a reload and a click put the target in one place.
+    const anchorOffset = Number.parseFloat(window.getComputedStyle(target).scrollMarginTop) || 0
     const mainRect = main.getBoundingClientRect()
     const targetRect = target.getBoundingClientRect()
 

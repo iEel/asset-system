@@ -229,23 +229,36 @@ test("the stuck card: its count is the strip's, the cell lands on it, ดูท�
 
 // A fresh load or a reload with the hash lands too, not only a click: the shell mounts under loading.tsx's skeleton and
 // waits for the streamed card (src/lib/hash-target-landing.ts). Before the fix the card stayed at top 358 (1440) / 523
-// (390) with main.scrollTop 0 (2026-11-04). The shell puts the target 96px under main's top, or main ends first.
+// (390) with main.scrollTop 0 (2026-11-04). All three land the card at its own scroll-margin-top (scroll-mt-6, 24px)
+// under main's top, or main ends first; a click and a fresh load used to differ (24px and 96px).
 test("a fresh load and a reload of ?stuck=all#stuck land on the stuck card (hash landing fix)", async ({ page, measure }) => {
   const landing = () =>
     page.evaluate(() => {
       const main = document.querySelector<HTMLElement>("main#main")
       const card = document.querySelector("section#stuck")
-      if (!main || !card) return "the card is not on the page yet"
+      if (!main || !card) return { landed: false, gap: null, why: "the card is not on the page yet" }
+      const margin = Number.parseFloat(getComputedStyle(card).scrollMarginTop) || 0
       const gap = Math.round(card.getBoundingClientRect().top - main.getBoundingClientRect().top)
       const atEnd = main.scrollTop > 0 && main.scrollTop >= main.scrollHeight - main.clientHeight - 1
-      return Math.abs(gap - 96) <= 2 || (atEnd && gap >= 0) ? "landed" : `the card is ${gap}px under main's top, main.scrollTop ${main.scrollTop}`
+      const landed = Math.abs(gap - margin) <= 2 || (atEnd && gap >= 0)
+      return { landed, gap, why: `the card is ${gap}px under main's top (its scroll margin ${margin}px), main.scrollTop ${main.scrollTop}` }
     })
+  const landedGap = async (message: string) => {
+    await expect.poll(async () => { const at = await landing(); return at.landed ? "landed" : at.why }, { message }).toBe("landed")
+    return (await landing()).gap ?? Number.NaN
+  }
+
+  // The strip's cell: a client-side link to #stuck on the same expanded list (Next's own scrollIntoView).
+  await measure.visit(`${REPAIR_LIST}?stuck=all`, "repair list, the stuck card expanded")
+  await stripCell(page, "stuck").getByRole("link").click()
+  await page.waitForURL((url) => url.searchParams.get("stuck") === "all" && url.hash === "#stuck")
+  const clicked = await landedGap("a click on the strip's cell lands on #stuck")
 
   await measure.visit(`${REPAIR_LIST}?stuck=all#stuck`, "repair list, the stuck card expanded, a fresh load")
-  await expect.poll(landing, { message: "a fresh load lands on #stuck" }).toBe("landed")
+  expect(Math.abs((await landedGap("a fresh load lands on #stuck")) - clicked), "a fresh load lands where a click does").toBeLessThanOrEqual(2)
 
   await page.reload({ waitUntil: "load" })
-  await expect.poll(landing, { message: "a reload lands on #stuck" }).toBe("landed")
+  expect(Math.abs((await landedGap("a reload lands on #stuck")) - clicked), "a reload lands where a click does").toBeLessThanOrEqual(2)
 })
 
 test("a PM card row whose asset has an open record links to the record, never บันทึกว่าทำแล้ว (group 5 plan 5, Review Focus 4)", async ({ page, measure, e2eDevice }, testInfo) => {
