@@ -115,6 +115,7 @@ model Employee {
   executedDisposals           DisposalRequest[]   @relation("DisposalExecutedBy")
   requestedDisposalBatches    DisposalBatch[]     @relation("DisposalBatchRequestedBy")
   approvedDisposalBatches     DisposalBatch[]     @relation("DisposalBatchApprover")
+  executedDisposalRounds      DisposalRound[]     @relation("DisposalRoundExecutedBy")
   user                        User?
   auditRounds                 AuditRound[]
 
@@ -872,6 +873,8 @@ model DisposalRequest {
   previousAssetStatus        AssetStatus?   @relation("DisposalPreviousAssetStatus", fields: [previousAssetStatusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   batchId                    String?
   batch                      DisposalBatch? @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roundId                    String?
+  round                      DisposalRound? @relation(fields: [roundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   disposalType               String         @db.NVarChar(30)
   reason                     String         @db.NVarChar(Max)
   requestedById              String
@@ -908,8 +911,35 @@ model DisposalRequest {
   @@index([assetId], map: "IX_disposal_requests_assetId")
   @@index([requestedById], map: "IX_disposal_requests_requestedById")
   @@index([batchId], map: "IX_disposal_requests_batchId")
+  @@index([roundId], map: "IX_disposal_requests_roundId")
   @@index([previousAssetStatusId], map: "IX_disposal_requests_previousAssetStatusId")
   @@map("disposal_requests")
+}
+
+// A disposal round: one actual disposal of approved requests (group 6 spec §11.1). No status column: a round exists
+// only once all its machines are executed. Manual migration: prisma/manual-migrations/2026-11-05-add-disposal-rounds.sql
+model DisposalRound {
+  id            String    @id @default(uuid())
+  roundNo       String    @unique(map: "UX_disposal_rounds_roundNo") @db.NVarChar(50) // DPR-yyyyMMdd-NNNN, Bangkok day
+  disposalType  String    @db.NVarChar(30) // one method per round
+  executionDate DateTime // the disposal date, Bangkok day, not in the future
+  executedById  String // employee
+  executedBy    Employee  @relation("DisposalRoundExecutedBy", fields: [executedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recipientName String?   @db.NVarChar(200) // required for sell / donate / dispose
+  documentNo    String    @db.NVarChar(100) // required
+  saleValue     Decimal?  @db.Decimal(18, 2) // the lump price, required for sell, empty otherwise
+  remark        String?   @db.NVarChar(Max) // required for destroy / lost
+  createdBy     String    @db.NVarChar(100)
+  updatedBy     String?   @db.NVarChar(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  isActive      Boolean   @default(true)
+
+  disposalRequests DisposalRequest[]
+
+  @@index([isActive, executionDate], map: "IX_disposal_rounds_isActive_executionDate")
+  @@index([executedById], map: "IX_disposal_rounds_executedById")
+  @@map("disposal_rounds")
 }
 
 // ============================================================
