@@ -420,8 +420,10 @@ The block reasons get separate codes so the page can say which one applies (§7.
     - it has no evidence: "ยังไม่มีหลักฐาน".
   - the "เลือกทั้ง {n} รายการที่เลือกได้" control;
   - the sticky bar "{n} เลือกแล้ว · ล้างรายการเลือก" with the primary **"สร้างรอบตัดจำหน่าย {n} รายการ →"**.
-  - Machines asked under different methods may be ticked together (decision 11). The limit is 50 per round *(my call; today's bulk is 20)*.
-  - The tab's page size may be raised to 100 so one round fits on one page.
+  - Machines asked under different methods may be ticked together (decision 11).
+  - **The limit is 200 per round.** The user expects rounds of 100–150 machines (2026-11-04); today's bulk limit is 20.
+  - **The selection survives paging** in this tab. It is kept in `sessionStorage` under the tab's key and cleared when the round is saved or "ล้างรายการเลือก" is pressed. The bar counts across pages: "{n} เลือกแล้ว (จากทุกหน้า)".
+  - "เลือกทั้ง {n} รายการที่เลือกได้" picks every selectable row of the filtered tab, up to 200, not only the visible page.
 - **Row click** opens the request (`ClickableTableRow`).
 - **Phone:** cards with name, tag, number, status, method and requester, and the next step as a link. The approved tab on the phone has no ticks: "สร้างรอบตัดจำหน่ายได้บนคอมพิวเตอร์" *(my call)*.
 - **The footer line** "แสดง {a}–{b} จาก {n}" stays. The board's "ชื่อสถานะชุดเดียว… 4 + 3 + 20 + 2 = 29" note becomes the sum in the ทั้งหมด tab's tooltip-free foot *(builder's call whether to show it)*.
@@ -469,7 +471,7 @@ model DisposalRound {
   - **It must run before the deploy:** once `roundId` is in the Prisma client, every DisposalRequest read fails on a database without the column. It is not gated with `omit`.
 
 ### 11.2 Creating a round (from the approved tab)
-- **The page:** "สร้างรอบตัดจำหน่าย {n} รายการ" opens `/disposal/rounds/new?ids=…`. This is an `OperationFormFrame` page and a focus route on the phone *(my call: a page, not a dialog, for its length and its review)*.
+- **The page:** "สร้างรอบตัดจำหน่าย {n} รายการ" opens `/disposal/rounds/new`. The ids travel in `sessionStorage` (§10.2), not in the query string, because 200 UUIDs would not fit; the page posts them to the preview. This is an `OperationFormFrame` page and a focus route on the phone *(my call: a page, not a dialog, for its length and its review)*.
 - **Section 1 "เครื่องในรอบ":**
   - The chosen machines as rows (name, tag, `DP-…`, approver), each with a ×.
   - "เพิ่มจากรายการอนุมัติแล้ว" goes back to the tab with the selection kept in the query.
@@ -501,7 +503,14 @@ model DisposalRound {
   - "ยังไม่มีหลักฐาน".
   - Saving is disabled until those machines are removed. The primary is then "บันทึกรอบตัดจำหน่าย {n} รายการ".
 - **Save (`POST /api/disposal-rounds`, `disposal:edit`, preview | commit):**
-  - **One Serializable transaction** with a 60 s timeout:
+  - **One Serializable transaction** with a 120 s timeout. For 200 machines it uses set-based writes where it can, rather than the 6 queries per machine of today's single execution:
+    - one `updateMany` for the requests;
+    - one `updateMany` for the assets;
+    - `createMany` for the movements;
+    - one `updateMany` to end the PM plans.
+
+    The per-machine checks run once in the preview and once more inside the transaction, against one read of every row. The plan of plan 4 measures a 200-machine round on the dev DB before it is accepted.
+  - The transaction does this:
     - create the round with the next `DPR-` number (`withPrismaUniqueRetry`);
     - execute every request through the extracted `executeDisposalRequestInTransaction(tx, …, { roundId })`:
       - set the request `disposed` with the round's date, executor, recipient, document and remark;
@@ -538,7 +547,7 @@ model DisposalRound {
   - Use the request's first image by upload time, else its batch's first image.
   - Read it safely (`assertSafeUploadPath`), convert it with `sharp` (rotate, fit inside 240 px, JPEG 80), then embed it with `workbook.addImage` and `worksheet.addImage` (one cell, `editAs: "oneCell"`), with the row height set to fit.
   - A missing file or a failed conversion writes "ไม่มีรูป" in the cell, never a 500.
-- **Limits:** up to 50 machines; images are read one at a time; the file is about 1–2 MB.
+- **Limits:** up to 200 machines; images are read with a small pool (4 at a time); the file is about 5–8 MB at 200 photos.
 - **Permission:** `disposal:view` (decision 10). It is not one of the `disposal:export` exports, so `export-rights.ts` lists it as a view-gated report and its pin says so.
 - **Tests:** the route is classified in `src/lib/rbac-route-matrix.ts` and added to the refusal matrix and the export-rights pin.
 
@@ -577,7 +586,7 @@ model DisposalRound {
 13. The last image of an unexecuted request cannot be deleted; the delete button shows only to `disposal:edit`.
 14. The requester is preset to the signed-in user and stays changeable.
 15. The request-batch pages are not redesigned; they move into the "ชุดคำขอ ▾" menu and gain the photo rule.
-16. Round creation is a page; one method per round, chosen there (decision 11); at most 50 machines; all or nothing; the asset becomes Disposed for every method; no undo; no files on the round.
+16. Round creation is a page; one method per round, chosen there (decision 11); at most 200 machines (the user expects 100–150), with the selection kept across pages; all or nothing; the asset becomes Disposed for every method; no undo; no files on the round.
 17. A round's machines keep `actualSaleValue` empty; the lump price lives on the round only.
 18. The report's title row shows the round number and date.
 19. Work center rows open the inbox item.
