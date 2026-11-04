@@ -2,6 +2,9 @@ import type { Prisma } from "@prisma/client"
 import { listDisposalPhotos, type DisposalPhotoDb } from "./disposal-photo.ts"
 import { listPageWindow, type ListPageSize } from "./list-pagination.ts"
 
+// The photo types sharp turns into the report's JPEG and the thumbnail route serves.
+const roundShowablePhotoTypes: readonly string[] = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+
 // The round pages' reads (group 6 plan 4 Task 4, spec §11.3–11.4): the rounds list (/disposal/rounds) and one round
 // with its machines (/disposal/rounds/[id]). A round has no title of its own; it comes from its requests' asset names.
 
@@ -218,7 +221,8 @@ export async function readDisposalRound(
       assetName: request.asset.name,
       serialNumber: request.asset.serialNumber,
       approverName: request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : null,
-      firstPhotoId: photos.get(request.id)?.[0]?.id ?? null,
+      // The first photo the thumbnail and the accounting Excel can show (JPG, PNG, WEBP, GIF): an old HEIC is skipped.
+      firstPhotoId: photos.get(request.id)?.find((photo) => roundShowablePhotoTypes.includes(photo.fileType.toLowerCase()))?.id ?? null,
     })),
   }
 }

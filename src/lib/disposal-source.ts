@@ -47,7 +47,15 @@ function idsOfType(requests: Array<DisposalSourceRef>, sourceType: string) {
   return [...new Set(requests.filter((request) => request.sourceType === sourceType && request.sourceId).map((request) => request.sourceId as string))]
 }
 
-/** One read per source table for any number of requests; the map holds every request id. */
+const SOURCE_ID_CHUNK = 2000
+
+async function readInChunks<T>(ids: string[], read: (chunk: string[]) => Promise<T[]>): Promise<T[]> {
+  const chunks: string[][] = []
+  for (let start = 0; start < ids.length; start += SOURCE_ID_CHUNK) chunks.push(ids.slice(start, start + SOURCE_ID_CHUNK))
+  return (await Promise.all(chunks.map(read))).flat()
+}
+
+/** One read per source table (per 2,000 ids) for any number of requests; the map holds every request id. */
 export async function readDisposalSourceLinks(
   db: DisposalSourceDb,
   locale: string,
@@ -56,16 +64,13 @@ export async function readDisposalSourceLinks(
   const maintenanceIds = idsOfType(requests, "maintenance")
   const findingIds = idsOfType(requests, "audit_finding")
 
+  // IN lists in chunks of 2,000: SQL Server takes at most 2,100 parameters per query, and the export reads up to 5,000.
   const [maintenanceRows, findingRows] = await Promise.all([
-    maintenanceIds.length
-      ? (db.maintenanceTicket.findMany({ where: { id: { in: maintenanceIds } }, select: { id: true, repairNo: true } }) as Promise<MaintenanceRow[]>)
-      : Promise.resolve([] as MaintenanceRow[]),
-    findingIds.length
-      ? (db.auditFinding.findMany({
-          where: { id: { in: findingIds } },
-          select: { id: true, auditRound: { select: { auditNo: true } } },
-        }) as Promise<FindingRow[]>)
-      : Promise.resolve([] as FindingRow[]),
+    readInChunks(maintenanceIds, (ids) => db.maintenanceTicket.findMany({ where: { id: { in: ids } }, select: { id: true, repairNo: true } }) as Promise<MaintenanceRow[]>),
+    readInChunks(findingIds, (ids) => db.auditFinding.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, auditRound: { select: { auditNo: true } } },
+    }) as Promise<FindingRow[]>),
   ])
 
   const repairNoById = new Map(maintenanceRows.map((row) => [row.id, row.repairNo]))
