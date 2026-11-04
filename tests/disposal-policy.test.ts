@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   getDisposalActionPermission,
+  getDisposalApprovalSodReason,
   getDisposalAssetEligibilityError,
   getDisposalApprovalAssetStatusError,
   getDisposalDecisionStatusOptions,
@@ -172,5 +173,53 @@ test("execution is refused when no approver was recorded, because segregation ca
       executedById: "employee-executor",
     }) ?? "",
     /approver/i,
+  )
+})
+
+test("names the separation-of-duties reason for an approve or reject", () => {
+  const base = {
+    segregationRequired: true,
+    actorEmployeeId: "employee-approver",
+    actorUserId: "user-approver",
+    requestedById: "employee-requester",
+    createdByUserId: "user-creator",
+  }
+
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorEmployeeId: null }), "no_employee")
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorEmployeeId: undefined }), "no_employee")
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorEmployeeId: "employee-requester" }), "requester")
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorUserId: "user-creator" }), "creator")
+  assert.equal(getDisposalApprovalSodReason(base), null)
+  // The requester reason wins when the viewer both asked for and keyed in the request.
+  assert.equal(
+    getDisposalApprovalSodReason({ ...base, actorEmployeeId: "employee-requester", actorUserId: "user-creator" }),
+    "requester",
+  )
+})
+
+test("names no separation-of-duties reason when segregation is not required", () => {
+  const base = {
+    segregationRequired: false,
+    actorUserId: "user-creator",
+    requestedById: "employee-requester",
+    createdByUserId: "user-creator",
+  }
+
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorEmployeeId: null }), null)
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorEmployeeId: "employee-requester" }), null)
+  assert.equal(getDisposalApprovalSodReason({ ...base, actorEmployeeId: "employee-other" }), null)
+})
+
+test("a reject is held to the same separation of duties as an approve", () => {
+  assert.match(
+    getDisposalSegregationError({
+      action: "reject",
+      segregationRequired: true,
+      actorEmployeeId: "employee-requester",
+      actorUserId: "user-approver",
+      requestedById: "employee-requester",
+      createdByUserId: "user-creator",
+    }) ?? "",
+    /requester/i,
   )
 })

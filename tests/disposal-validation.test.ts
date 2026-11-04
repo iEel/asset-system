@@ -13,7 +13,9 @@ import {
 import {
   disposalBulkDecisionSchema,
   disposalBulkExecutionSchema,
+  disposalDecisionSchema,
   disposalExecutionSchema,
+  MAX_DISPOSAL_BULK_DECISION_ITEMS,
 } from "../src/lib/validations/disposal.ts"
 
 const baseExecution = {
@@ -156,7 +158,7 @@ test("rejects empty, duplicate, oversized, and malformed bulk approval IDs", () 
   const id = "11111111-1111-4111-8111-111111111111"
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: [] }).success, false)
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: [id, id] }).success, false)
-  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: Array.from({ length: 51 }, (_, index) => `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`) }).success, false)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: Array.from({ length: 201 }, (_, index) => `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`) }).success, false)
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: ["not-a-uuid"] }).success, false)
 })
 
@@ -190,4 +192,28 @@ test("normalizes and limits the shared bulk recipient name", () => {
     ...validBulkExecutionPacket,
     sharedRecipientName: "x".repeat(201),
   }).success, false)
+})
+
+const bulkDecisionIds = (count: number) =>
+  Array.from({ length: count }, (_, index) => `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`)
+
+test("a bulk decision takes up to 200 requests", () => {
+  assert.equal(MAX_DISPOSAL_BULK_DECISION_ITEMS, 200)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: bulkDecisionIds(200) }).success, true)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "commit", requestIds: bulkDecisionIds(200) }).success, true)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: bulkDecisionIds(201) }).success, false)
+})
+
+test("a decision no longer needs a next status id", () => {
+  assert.equal(disposalDecisionSchema.safeParse({ decision: "approve" }).success, true)
+  assert.equal(disposalDecisionSchema.safeParse({ decision: "reject", approvalRemark: "เครื่องยังใช้งานได้ดี" }).success, true)
+  const legacy = disposalDecisionSchema.safeParse({ decision: "approve", nextStatusId: "x" })
+  assert.equal(legacy.success, true)
+  if (legacy.success) assert.equal(legacy.data.nextStatusId, "x")
+
+  const missingRemark = disposalDecisionSchema.safeParse({ decision: "reject" })
+  assert.equal(missingRemark.success, false)
+  if (!missingRemark.success) {
+    assert.deepEqual(missingRemark.error.issues.map((issue) => issue.path[0]), ["approvalRemark"])
+  }
 })

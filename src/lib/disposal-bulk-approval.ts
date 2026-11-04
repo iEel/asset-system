@@ -1,7 +1,8 @@
 import {
   getDisposalApprovalAssetStatusError,
-  getDisposalSegregationError,
+  getDisposalApprovalSodReason,
   type DisposalLifecycleStatus,
+  type DisposalSodReason,
 } from "./disposal-policy.ts"
 
 export const disposalBulkApprovalCodes = [
@@ -32,7 +33,9 @@ export type DisposalBulkApprovalItem = {
   assetTag: string
   outcome: DisposalBulkApprovalOutcome
   code: DisposalBulkApprovalCode | null
+  sodReason: DisposalSodReason | null
 }
+export type DisposalApprovalBlock = { code: DisposalBulkApprovalCode; sodReason: DisposalSodReason | null }
 export type DisposalBulkApprovalSummary = {
   selected: number
   eligible: number
@@ -41,23 +44,33 @@ export type DisposalBulkApprovalSummary = {
   failed: number
 }
 
-export function getDisposalBulkApprovalBlockCode(
+export function getDisposalApprovalBlock(
   candidate: DisposalBulkApprovalCandidate,
   actor: DisposalBulkApprovalActor,
   segregationRequired: boolean,
-): DisposalBulkApprovalCode | null {
-  if (!candidate.isActive) return "DISPOSAL_REQUEST_NOT_FOUND"
-  if (candidate.requestStatus !== "pending") return "DISPOSAL_INVALID_STAGE"
-  if (getDisposalSegregationError({
-    action: "approve",
+): DisposalApprovalBlock | null {
+  if (!candidate.isActive) return { code: "DISPOSAL_REQUEST_NOT_FOUND", sodReason: null }
+  if (candidate.requestStatus !== "pending") return { code: "DISPOSAL_INVALID_STAGE", sodReason: null }
+  const sodReason = getDisposalApprovalSodReason({
     segregationRequired,
     actorEmployeeId: actor.employeeId,
     actorUserId: actor.userId,
     requestedById: candidate.requestedById,
     createdByUserId: candidate.createdBy,
-  })) return "DISPOSAL_SOD_CONFLICT"
-  if (getDisposalApprovalAssetStatusError(candidate.asset.status)) return "DISPOSAL_ASSET_INELIGIBLE"
+  })
+  if (sodReason) return { code: "DISPOSAL_SOD_CONFLICT", sodReason }
+  if (getDisposalApprovalAssetStatusError(candidate.asset.status)) {
+    return { code: "DISPOSAL_ASSET_INELIGIBLE", sodReason: null }
+  }
   return null
+}
+
+export function getDisposalBulkApprovalBlockCode(
+  candidate: DisposalBulkApprovalCandidate,
+  actor: DisposalBulkApprovalActor,
+  segregationRequired: boolean,
+): DisposalBulkApprovalCode | null {
+  return getDisposalApprovalBlock(candidate, actor, segregationRequired)?.code ?? null
 }
 
 export function summarizeDisposalBulkApproval(items: DisposalBulkApprovalItem[]): DisposalBulkApprovalSummary {

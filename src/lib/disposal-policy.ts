@@ -13,7 +13,9 @@ export type DisposalAction = "approve" | "reject" | "execute"
 
 type DisposalStatusOption = DisposalLifecycleStatus & { id: string }
 
-type DisposalSegregationInput = {
+export type DisposalSodReason = "requester" | "creator" | "no_employee"
+
+export type DisposalSegregationInput = {
   action: DisposalAction
   segregationRequired: boolean
   actorEmployeeId?: string | null
@@ -121,6 +123,30 @@ export function filterDisposalExecutorOptions<T extends { id: string }>(
   return employees.filter((employee) => employee.id !== approverId)
 }
 
+const disposalApprovalSodMessages: Record<DisposalSodReason, string> = {
+  no_employee: "Disposal approvers must be linked to an employee record while segregation of duties is required",
+  requester: "The requester cannot approve their own disposal request",
+  creator: "The request creator cannot approve their own disposal request",
+}
+
+// The one reason an approve or reject is refused under segregation of duties; the requester
+// reason wins over the creator one when the viewer is both.
+export function getDisposalApprovalSodReason({
+  segregationRequired,
+  actorEmployeeId,
+  actorUserId,
+  requestedById,
+  createdByUserId,
+}: Omit<DisposalSegregationInput, "action" | "approverId" | "executedById">): DisposalSodReason | null {
+  if (!segregationRequired) return null
+  // The decision is recorded against the approver's employee; without one, execution could not
+  // tell whether the executor is the same person who decided.
+  if (!actorEmployeeId) return "no_employee"
+  if (actorEmployeeId === requestedById) return "requester"
+  if (actorUserId && actorUserId === createdByUserId) return "creator"
+  return null
+}
+
 export function getDisposalSegregationError({
   action,
   segregationRequired,
@@ -133,19 +159,15 @@ export function getDisposalSegregationError({
 }: DisposalSegregationInput) {
   if (!segregationRequired) return null
 
-  if (action === "approve") {
-    // The approval is recorded against the approver's employee; without one, execution could not
-    // tell whether the executor is the same person who approved.
-    if (!actorEmployeeId) {
-      return "Disposal approvers must be linked to an employee record while segregation of duties is required"
-    }
-    if (actorEmployeeId === requestedById) {
-      return "The requester cannot approve their own disposal request"
-    }
-    if (actorUserId && actorUserId === createdByUserId) {
-      return "The request creator cannot approve their own disposal request"
-    }
-    return null
+  if (action === "approve" || action === "reject") {
+    const reason = getDisposalApprovalSodReason({
+      segregationRequired,
+      actorEmployeeId,
+      actorUserId,
+      requestedById,
+      createdByUserId,
+    })
+    return reason ? disposalApprovalSodMessages[reason] : null
   }
 
   if (action === "execute") {

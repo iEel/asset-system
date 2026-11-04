@@ -44,7 +44,6 @@ const WRITERS = [
   "src/app/api/audit-findings/[id]/review/route.ts",
   "src/app/api/audit-rounds/[id]/scan/route.ts",
   "src/app/api/disposal-batches/route.ts",
-  "src/app/api/disposal-requests/[id]/route.ts",
   "src/app/api/disposal-requests/route.ts",
   "src/lib/asset-component-sync.ts",
   "src/lib/asset-register-edit.ts",

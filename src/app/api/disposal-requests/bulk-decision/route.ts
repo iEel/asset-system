@@ -57,15 +57,17 @@ export async function POST(request: NextRequest) {
           assetTag: result.assetTag,
           outcome: "approved",
           code: null,
+          sodReason: null,
         })
       } catch (error) {
-        const { code, display } = getBulkApprovalFailure(error, requestId)
+        const { code, display, sodReason } = getBulkApprovalFailure(error, requestId)
         items.push({
           requestId,
           disposalNo: display.disposalNo,
           assetTag: display.assetTag,
           outcome: code === "DISPOSAL_APPROVAL_FAILED" ? "failed" : "blocked",
           code,
+          sodReason,
         })
       }
     }
@@ -90,16 +92,19 @@ function getBulkApprovalFailure(
 ): {
   code: DisposalBulkApprovalCode
   display: Pick<DisposalBulkApprovalItem, "disposalNo" | "assetTag">
+  sodReason: DisposalBulkApprovalItem["sodReason"]
 } {
   if (error instanceof DisposalApprovalServiceError) {
     return {
       code: error.code as DisposalBulkApprovalCode,
       display: error.item,
+      sodReason: error.sodReason,
     }
   }
 
   return {
     code: "DISPOSAL_APPROVAL_FAILED",
     display: { disposalNo: requestId, assetTag: "-" },
+    sodReason: null,
   }
 }

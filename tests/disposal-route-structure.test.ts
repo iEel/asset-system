@@ -233,3 +233,31 @@ test("execution sanitizes unexpected infrastructure failures", () => {
   assert.match(route, /DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED/)
   assert.doesNotMatch(route, /catch \(error\) \{\s*return errorResponse\(error, 400\)/)
 })
+
+test("the decision route rejects through the guarded service and resolves Pending Disposal without a status id", () => {
+  const route = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
+  const service = readFileSync("src/lib/disposal-approval-service.ts", "utf8")
+  const rejectService = service.slice(service.indexOf("export async function rejectDisposalRequest"))
+
+  assert.doesNotMatch(route, /tx\.disposalRequest\.update\(\{/)
+  assert.match(route, /rejectDisposalRequest\(/)
+  assert.match(route, /\{ name: "Pending Disposal" \}/)
+  assert.match(route, /if \(input\.nextStatusId\)/)
+  assert.match(route, /DISPOSAL_PENDING_STATUS_MISSING/)
+  assert.match(route, /\{ reason:/)
+  assert.match(rejectService, /tx\.disposalRequest\.updateMany\(\{\s*where: \{ id: [^}]*isActive: true, requestStatus: "pending" \}/)
+  assert.match(rejectService, /Prisma\.TransactionIsolationLevel\.Serializable/)
+  assert.match(rejectService, /deriveDisposalBatchStatus/)
+  assert.match(rejectService, /logAudit/)
+})
+
+test("the bulk preview and the approve answer carry the separation-of-duties reason", () => {
+  const service = readFileSync("src/lib/disposal-approval-service.ts", "utf8")
+  const bulkRoute = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+  const errors = readFileSync("src/lib/disposal-api-errors.ts", "utf8")
+
+  assert.match(service, /getDisposalApprovalBlock\(/)
+  assert.match(service, /sodReason: block\?\.sodReason \?\? null/)
+  assert.match(bulkRoute, /sodReason:/)
+  assert.match(errors, /extra\?: \{ reason\?: DisposalSodReason \}/)
+})

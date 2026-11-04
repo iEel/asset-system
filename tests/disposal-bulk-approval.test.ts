@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
+  getDisposalApprovalBlock,
   getDisposalBulkApprovalBlockCode,
   summarizeDisposalBulkApproval,
   type DisposalBulkApprovalItem,
@@ -33,11 +34,27 @@ test("blocks stale stage, SOD conflicts, and invalid asset lifecycle", () => {
   assert.equal(getDisposalBulkApprovalBlockCode({ ...candidate, asset: { ...candidate.asset, status: { name: "Ready" } } }, actor, true), "DISPOSAL_ASSET_INELIGIBLE")
 })
 
+test("names the block and its separation-of-duties reason", () => {
+  assert.deepEqual(
+    getDisposalApprovalBlock(candidate, { ...actor, employeeId: candidate.requestedById }, true),
+    { code: "DISPOSAL_SOD_CONFLICT", sodReason: "requester" },
+  )
+  assert.deepEqual(
+    getDisposalApprovalBlock({ ...candidate, requestStatus: "approved" }, actor, true),
+    { code: "DISPOSAL_INVALID_STAGE", sodReason: null },
+  )
+  assert.equal(getDisposalApprovalBlock(candidate, actor, true), null)
+  assert.equal(
+    getDisposalBulkApprovalBlockCode(candidate, { ...actor, employeeId: candidate.requestedById }, true),
+    "DISPOSAL_SOD_CONFLICT",
+  )
+})
+
 test("summarizes preview and commit outcomes without hiding blocked items", () => {
   const items: DisposalBulkApprovalItem[] = [
-    { requestId: "1", disposalNo: "DP-1", assetTag: "IT-1", outcome: "approved", code: null },
-    { requestId: "2", disposalNo: "DP-2", assetTag: "IT-2", outcome: "blocked", code: "DISPOSAL_SOD_CONFLICT" },
-    { requestId: "3", disposalNo: "DP-3", assetTag: "IT-3", outcome: "failed", code: "DISPOSAL_APPROVAL_FAILED" },
+    { requestId: "1", disposalNo: "DP-1", assetTag: "IT-1", outcome: "approved", code: null, sodReason: null },
+    { requestId: "2", disposalNo: "DP-2", assetTag: "IT-2", outcome: "blocked", code: "DISPOSAL_SOD_CONFLICT", sodReason: "requester" },
+    { requestId: "3", disposalNo: "DP-3", assetTag: "IT-3", outcome: "failed", code: "DISPOSAL_APPROVAL_FAILED", sodReason: null },
   ]
   assert.deepEqual(summarizeDisposalBulkApproval(items), {
     selected: 3,

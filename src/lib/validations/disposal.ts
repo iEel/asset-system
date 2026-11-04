@@ -28,9 +28,10 @@ export const disposalRequestSchema = z.object({
 
 export const disposalDecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
-  nextStatusId: z.string().trim().min(1),
-  saleValue: optionalDecimal,
-  salvageValue: optionalDecimal,
+  // Old clients still send the Pending Disposal id; without one the route resolves it.
+  nextStatusId: optionalText,
+  saleValue: optionalDecimal.optional(),
+  salvageValue: optionalDecimal.optional(),
   approvalRemark: optionalText,
 }).superRefine((input, context) => {
   for (const error of getDisposalDecisionFieldErrors(input)) {
@@ -60,7 +61,9 @@ export const disposalExecutionSchema = z.object({
   }
 })
 
-const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(50)
+export const MAX_DISPOSAL_BULK_DECISION_ITEMS = 200
+
+const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(MAX_DISPOSAL_BULK_DECISION_ITEMS)
 const disposalBulkExecutionRequestIds = z.array(z.string().trim().min(1))
   .transform(normalizeDisposalBulkExecutionIds)
   .pipe(z.array(z.string().min(1)).min(1).max(20))
