@@ -101,18 +101,19 @@ function assertMigratedForm(
   assert.equal(source.match(/\btoast\.(?:error|warning)\(/g)?.length ?? 0, form.toasts ?? 0, "no validation toast (the catch keeps apiError.toast)")
 }
 
-test("disposal request: the asset, the requester and the reason are checked on save, and errors show under the field (v-track D2)", () => {
+// Group 6 plan 3 Task 2: board DP-New. The method is a ChoiceCard group whose error reads เลือกวิธีจำหน่าย, the photo
+// rule is a field (focus goes to the dropzone), and the estimated values are gone (the user, 2026-11-04: no price).
+test("disposal request: the asset, the method, the requester, the reason and the photo are checked on save, and errors show under the field (v-track D2)", () => {
   const source = read(`${C}disposal/disposal-request-form.tsx`)
   assertMigratedForm(source, {
     ids: {
       assetId: "disposal-request-asset",
       disposalType: "disposal-request-type",
       requestedById: "disposal-request-requested-by",
-      saleValue: "disposal-request-sale-value",
-      salvageValue: "disposal-request-salvage-value",
       reason: "disposal-request-reason",
+      photos: "disposal-request-photos",
     },
-    messages: ["assetId", "disposalType", "requestedById"],
+    messages: ["assetId", "requestedById"],
     toasts: 1,
   })
   const rules = validateBody(source)
@@ -120,26 +121,20 @@ test("disposal request: the asset, the requester and the reason are checked on s
     'check("assetId", required(values.assetId))',
     'check("disposalType", required(values.disposalType))',
     'check("requestedById", required(values.requestedById))',
-    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
-    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
     // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).
     "const reasonTooShort = getDisposalRequestReasonError(values.reason)",
-    'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))',
+    'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, REASON_MAX))',
+    'check("photos", getDisposalPhotoRequirementError(files.map((item) => item.file), values.disposalType))',
   ]) assert.ok(rules.includes(rule), rule)
-  // A hidden estimated value is neither checked nor focused (D-R4), and a type change clears them with itself.
-  assert.ok(rules.includes("if (code && shown.includes(key)) errors[key] = code"))
-  assert.match(source, /if \(key === "saleValue"\) return showsEstimatedSaleValue\(type\)\n\s+if \(key === "salvageValue"\) return showsEstimatedSalvageValue\(type\)\n/)
-  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(shownFields(values), { idFor: (key) => FIELD_IDS[key] })"))
-  assert.match(source, /if \(field === "disposalType"\) fieldErrors\.clear\("disposalType", "saleValue", "salvageValue"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as DisposalRequestField\)/)
+  assert.doesNotMatch(source, /saleValue|salvageValue|showsEstimated/)
+  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })"))
+  assert.ok(source.includes('error={fieldErrors.errors.disposalType ? t("methodRequired") : undefined}'))
   // The two stars nothing checked (spec §5 bug): the picker and the requester show their errors and take focus.
   assert.match(source, /<DisposalAssetPicker\n\s+id="disposal-request-asset"\n/)
   assert.ok(source.includes('error={fieldErrors.message("assetId")}'))
   assert.match(source, /<SearchableSelect\n\s+id="disposal-request-requested-by"\n\s+label=\{t\("requestedBy"\)\}/)
-  // The money fields and the reason say their limits.
-  for (const key of ["saleValue", "salvageValue"]) {
-    assert.ok(source.includes(`error={fieldErrors.errors.${key} ? validationMessage(fieldErrors.errors.${key}, { min: 0 }) : undefined}`), key)
-  }
-  assert.ok(source.includes("error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: 12, max: 4000 }) : undefined}"))
+  // The reason says its limits.
+  assert.ok(source.includes("error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: REASON_MIN, max: REASON_MAX }) : undefined}"))
   // A requester change clears its error, and the approver it may reset is not a field with a rule.
   assert.match(source, /approverId: current\.approverId === value \? "" : current\.approverId,\n\s+\}\)\)\n\s+fieldErrors\.clear\("requestedById"\)/)
   // The upload result after a saved request stays a toast: it is not about a field (NON_VALIDATION_TOASTS).
@@ -155,11 +150,11 @@ test("disposal batch: the edit step is a form whose requester and reason are err
   const source = read(`${C}disposal/disposal-batch-form.tsx`)
   assertMigratedForm(source, {
     handler: "handleReview",
+    // Group 6 plan 3 Task 2: no estimated values (the user, 2026-11-04), and the shared evidence's photo rule (P3-R3).
     ids: {
       requestedById: "disposal-batch-requested-by",
-      saleValue: "disposal-batch-sale-value",
-      salvageValue: "disposal-batch-salvage-value",
       reason: "disposal-batch-reason",
+      files: "disposal-batch-files",
     },
     messages: ["requestedById"],
     toasts: 1,
@@ -167,24 +162,24 @@ test("disposal batch: the edit step is a form whose requester and reason are err
   const rules = validateBody(source)
   for (const rule of [
     'check("requestedById", required(values.requestedById))',
-    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
-    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
     "const reasonTooShort = getDisposalRequestReasonError(values.reason)",
     'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))',
+    'check("files", getDisposalPhotoRequirementError(files, values.disposalType))',
   ]) assert.ok(rules.includes(rule), rule)
   // The old gate mixed a prerequisite with content rules (spec §4.4): the reason and the requester are now errors on
   // review, and only the asset count still holds the button, focusable and tied to the visible reason beside it.
   assert.doesNotMatch(source, /const valid = /)
   assert.doesNotMatch(source, /(?<![\w-])disabled=\{!valid\}/)
   assert.match(source, /const needsAssets = selectedIds\.length < 2 \|\| selectedIds\.length > 100\n/)
-  assert.match(source, /event\.preventDefault\(\)\n\s+if \(needsAssets\) return\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setReviewing\(true\)/)
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(needsAssets\) return\n\s+setFilesTried\(true\)\n\s+fieldErrors\.setErrors\(validate\(values, files\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setReviewing\(true\)/)
   assert.match(source, /<Button\n\s+type="submit"\n\s+aria-disabled=\{needsAssets \|\| undefined\}\n\s+aria-describedby=\{needsAssets \? "disposal-batch-review-reason" : undefined\}\n\s+className="w-full"\n\s+>/)
   assert.ok(source.includes('{needsAssets ? <p id="disposal-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsAssets")}</p> : null}'))
   // A refusal on the review step goes back to the edit step that owns the field (spec §4.2): reveal leaves the review.
-  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(shownFields(values), { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })"))
-  // A hidden estimated value is neither checked nor focused (D-R4), and a type change clears them.
-  assert.ok(rules.includes("if (code && shown.includes(key)) errors[key] = code"))
-  assert.match(source, /if \(field === "disposalType"\) fieldErrors\.clear\("saleValue", "salvageValue"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as DisposalBatchField\)/)
+  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })"))
+  assert.doesNotMatch(source, /saleValue|salvageValue|showsEstimated/)
+  // The photo rule's error shows under the dropzone; a HEIC is refused with the request form's words.
+  assert.ok(source.includes('<Field label={t("formSteps.evidence")} hideLabel id="disposal-batch-files" error={filesError}>'))
+  assert.ok(source.includes('{fileRefused ? <FieldError data-disposal-photo-refused>{t("photoTypeRefused")}</FieldError> : null}'))
   assert.ok(source.includes('<NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)} required>'))
   assert.doesNotMatch(source, /if \(!valid\) return/)
   assert.match(source, /onChange=\{\(value\) => \{\n\s+setValues\(\(current\) => \(\{ \.\.\.current, requestedById: value, approverId: current\.approverId === value \? "" : current\.approverId \}\)\)\n\s+fieldErrors\.clear\("requestedById"\)\n/)

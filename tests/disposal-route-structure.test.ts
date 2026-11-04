@@ -29,7 +29,9 @@ test("keeps the disposal list queue-first and puts request creation on its own r
   assert.match(newSource, /initialDisposalAsset\(initialAsset \? \{ eligible: initialBlockers\.length === 0, blockers: initialBlockers \} : null\)/)
   assert.match(newSource, /initialAsset && initialAssetRule === "use"/)
   assert.match(newSource, /initialAsset && initialAssetRule === "blocked"/)
-  assert.match(newSource, /data-disposal-initial-blocked=""/)
+  // Group 6 plan 3 Task 2: the page names the blocked asset; the form shows the notice over its picker.
+  assert.match(newSource, /initialBlocked=\{blockedInitialAsset\}/)
+  assert.match(readFileSync("src/components/disposal/disposal-request-form.tsx", "utf8"), /data-disposal-initial-blocked=""/)
   assert.doesNotMatch(newSource, /prisma\.asset\.findMany/)
   assert.match(newSource, /prisma\.asset\.findFirst/)
   assert.match(newSource, /<DisposalRequestForm/)

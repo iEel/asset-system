@@ -153,12 +153,15 @@ test("SignaturePad names its group and puts a ghost clear button under the canva
   assert.doesNotMatch(source, /<button|disabled:opacity-50|\bh-8\b|justify-between/)
 })
 
+// Group 6 plan 3 Task 2: the photo section of DP-New (spec §8.4): a visible label with its rule, the description by method,
+// image thumbnails and a file chip list for the rest.
 test("the disposal request form describes its evidence box before a file is chosen and lists the queue (spec 7.6.3 #15)", () => {
   const source = readFileSync("src/components/disposal/disposal-request-form.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /<Field label=\{t\("requestEvidence"\)\} hideLabel>\s*<FileDropzone/)
-  assert.match(source, /description=\{t\("requestEvidenceDescription"\)\}/)
+  assert.match(source, /id="disposal-request-photos"\s+required\s+error=\{photoError\}\s+>\s+\{\(control\) => \(\s+<FileDropzone/)
+  assert.match(source, /description=\{lost \? t\("createForm\.dropDescriptionLost"\) : t\("createForm\.dropDescription"\)\}/)
   assert.doesNotMatch(source, /hint=\{t\("dropEvidenceSelected"\)\}/, "the old hint said the file uploads now; it waits for the request")
-  assert.match(source, /<FileQueueList\s+items=\{evidenceFiles\.map\(/)
+  assert.match(source, /<ChosenPhotoPreview file=\{item\.file\}/)
+  assert.match(source, /<FileQueueList\s+items=\{otherFiles\.map\(/)
   assert.doesNotMatch(source, /text-xs font-medium text-danger/, "the 18px text remove button is gone")
 })
 

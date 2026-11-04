@@ -7,26 +7,22 @@ import { ArrowLeft, PackageCheck, Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { Field } from "@/components/ui/field"
+import { Field, FieldError } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormSection } from "@/components/ui/form-section"
-import { Input } from "@/components/ui/input"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
 import { getApiErrorKey } from "@/lib/api-error-catalog"
-import {
-  getDisposalRequestReasonError,
-  showsEstimatedSaleValue,
-  showsEstimatedSalvageValue,
-  type DisposalType,
-} from "@/lib/disposal-type-policy"
+import { getDisposalRequestReasonError } from "@/lib/disposal-type-policy"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
-import { formatCount, formatMoney } from "@/lib/display-format"
-import { decimals, maxLength, range, required } from "@/lib/validation-rules"
+import { disposalEvidenceAccept } from "@/lib/disposal-photo"
+import { getDisposalPhotoRequirementError, getDisposalQueuedFileError } from "@/lib/disposal-request-form-rules"
+import { formatCount } from "@/lib/display-format"
+import { maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -37,46 +33,33 @@ type DisposalBatchValues = {
   reason: string
   requestedById: string
   approverId: string
-  saleValue: string
-  salvageValue: string
 }
 
 // The fields of the edit step in visual order, keyed like the request body, with the id focus moves to (v-track M-R1).
 // The type always holds a choice and the approver has no rule, so they stay out; the asset count is a prerequisite.
+// The estimated values are gone (the user, 2026-11-04: a request asks for no price). files is the shared evidence's
+// photo rule (group 6 plan 3 P3-R3), focused on the dropzone's file input.
 const FIELD_IDS = {
   requestedById: "disposal-batch-requested-by",
-  saleValue: "disposal-batch-sale-value",
-  salvageValue: "disposal-batch-salvage-value",
   reason: "disposal-batch-reason",
+  files: "disposal-batch-files",
 } as const
 type DisposalBatchField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as DisposalBatchField[]
 
-// The fields the edit step shows: the estimated values follow the type. A hidden field is neither checked nor focused
-// (v-track D-R4).
-function shownFields(values: DisposalBatchValues): DisposalBatchField[] {
-  const type = values.disposalType as DisposalType
-  return FIELD_ORDER.filter((key) => {
-    if (key === "saleValue") return showsEstimatedSaleValue(type)
-    if (key === "salvageValue") return showsEstimatedSalvageValue(type)
-    return true
-  })
-}
-
-// The content rules the review button used to hide behind its gate, and the controls' min, minLength and maxLength,
-// which nothing applied because the step was not a form (v-track M-R2, D-R3).
-function validate(values: DisposalBatchValues): Partial<Record<DisposalBatchField, string>> {
+// The content rules the review button used to hide behind its gate, and the controls' minLength and maxLength,
+// which nothing applied because the step was not a form (v-track M-R2, D-R3), and the photo rule: one image among the
+// shared files, or one file of any kind for สูญหาย.
+function validate(values: DisposalBatchValues, files: readonly File[]): Partial<Record<DisposalBatchField, string>> {
   const errors: Partial<Record<DisposalBatchField, string>> = {}
-  const shown = shownFields(values)
   const check = (key: DisposalBatchField, code: string | null) => {
-    if (code && shown.includes(key)) errors[key] = code
+    if (code) errors[key] = code
   }
   check("requestedById", required(values.requestedById))
-  check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))
-  check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))
   // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).
   const reasonTooShort = getDisposalRequestReasonError(values.reason)
   check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))
+  check("files", getDisposalPhotoRequirementError(files, values.disposalType))
   return errors
 }
 
@@ -90,7 +73,10 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
   const [reviewing, setReviewing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [files, setFiles] = useState<File[]>([])
-  const [values, setValues] = useState<DisposalBatchValues>({ disposalType: "dispose", reason: "", requestedById: "", approverId: "", saleValue: "", salvageValue: "" })
+  const [fileRefused, setFileRefused] = useState(false)
+  // After a review was tried, the photo error follows the files and the type live.
+  const [filesTried, setFilesTried] = useState(false)
+  const [values, setValues] = useState<DisposalBatchValues>({ disposalType: "dispose", reason: "", requestedById: "", approverId: "" })
   const fieldErrors = useFieldErrors<DisposalBatchField>()
   const validationMessage = useValidationMessage()
   const selectedIds = selectedAssets.map((asset) => asset.id)
@@ -98,19 +84,31 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
   // A prerequisite, not a field (spec §4.4): review waits for 2 to 100 assets and says so beside the button.
   const needsAssets = selectedIds.length < 2 || selectedIds.length > 100
   // A field the server names on the review step sends the person back to the edit step that owns it (spec §4.2).
-  const focusFirstError = () => fieldErrors.focusFirst(shownFields(values), { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })
 
   function setField(field: keyof DisposalBatchValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
-    // The type decides which estimated values show: it clears them.
-    if (field === "disposalType") fieldErrors.clear("saleValue", "salvageValue")
-    else if (field in FIELD_IDS) fieldErrors.clear(field as DisposalBatchField)
+    if (field in FIELD_IDS) fieldErrors.clear(field as DisposalBatchField)
   }
+
+  // A HEIC/HEIF (or any image outside JPG, PNG, WEBP) is refused at once and never queued, as on the request form.
+  function addFile(file: File | null) {
+    if (!file) return
+    const refused = getDisposalQueuedFileError(file) !== null
+    setFileRefused(refused)
+    if (refused) return
+    setFiles((current) => [...current, file])
+    fieldErrors.clear("files")
+  }
+
+  const liveFilesError = getDisposalPhotoRequirementError(files, values.disposalType)
+  const filesError = filesTried && liveFilesError ? t(liveFilesError) : undefined
 
   function handleReview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (needsAssets) return
-    fieldErrors.setErrors(validate(values))
+    setFilesTried(true)
+    fieldErrors.setErrors(validate(values, files))
     if (focusFirstError()) return
     setReviewing(true)
   }
@@ -159,12 +157,6 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
             { key: "disposalType", label: t("disposalType"), value: t(`types.${values.disposalType}`) },
             { key: "requestedBy", label: t("requestedBy"), value: employees.find((item) => item.id === values.requestedById)?.label },
             { key: "approver", label: t("approver"), value: employees.find((item) => item.id === values.approverId)?.label ?? t("noApprover") },
-            ...(showsEstimatedSaleValue(values.disposalType as DisposalType)
-              ? [{ key: "saleValue", label: t("saleValue"), value: values.saleValue ? <span className="num">{formatMoney(Number(values.saleValue), { unit: tCommon("baht") })}</span> : null }]
-              : []),
-            ...(showsEstimatedSalvageValue(values.disposalType as DisposalType)
-              ? [{ key: "salvageValue", label: t("salvageValue"), value: values.salvageValue ? <span className="num">{formatMoney(Number(values.salvageValue), { unit: tCommon("baht") })}</span> : null }]
-              : []),
             { key: "reason", label: t("reason"), value: <span className="whitespace-pre-wrap">{values.reason}</span> },
           ]}
         />
@@ -223,24 +215,6 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
             }}
           />
           <SearchableSelect label={t("approver")} value={values.approverId} options={approverOptions} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setValues((current) => ({ ...current, approverId: value }))} />
-          {showsEstimatedSaleValue(values.disposalType as DisposalType) ? (
-            <Field
-              label={t("saleValueBaht")}
-              id="disposal-batch-sale-value"
-              error={fieldErrors.errors.saleValue ? validationMessage(fieldErrors.errors.saleValue, { min: 0 }) : undefined}
-            >
-              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.saleValue} onChange={(event) => setField("saleValue", event.target.value)} />
-            </Field>
-          ) : null}
-          {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? (
-            <Field
-              label={t("salvageValueBaht")}
-              id="disposal-batch-salvage-value"
-              error={fieldErrors.errors.salvageValue ? validationMessage(fieldErrors.errors.salvageValue, { min: 0 }) : undefined}
-            >
-              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.salvageValue} onChange={(event) => setField("salvageValue", event.target.value)} />
-            </Field>
-          ) : null}
           <Field
             label={t("reason")}
             id="disposal-batch-reason"
@@ -251,7 +225,12 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
             <Textarea required minLength={12} maxLength={4000} rows={5} value={values.reason} onChange={(event) => setField("reason", event.target.value)} className="min-h-28" />
           </Field>
           <FormSection number={3} title={t("formSteps.evidence")} />
-          <FileDropzone file={null} onFileChange={(file) => file && setFiles((current) => [...current, file])} disabled={saving} accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" title={t("dropEvidenceTitle")} description={t("batchEvidenceHelp")} browseLabel={t("dropEvidenceHint")} />
+          <Field label={t("formSteps.evidence")} hideLabel id="disposal-batch-files" error={filesError}>
+            {(control) => (
+              <FileDropzone {...control} file={null} onFileChange={addFile} disabled={saving} accept={disposalEvidenceAccept} capture="environment" title={t("dropEvidenceTitle")} description={t("batchEvidenceHelp")} browseLabel={t("dropEvidenceHint")} />
+            )}
+          </Field>
+          {fileRefused ? <FieldError data-disposal-photo-refused>{t("photoTypeRefused")}</FieldError> : null}
           <FileQueueList
             items={files.map((file, index) => ({ id: String(index), name: file.name }))}
             disabled={saving}

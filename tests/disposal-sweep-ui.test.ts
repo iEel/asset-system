@@ -42,21 +42,22 @@ test("disposal asset picker: shared remove buttons, one quiet list of the chosen
   assert.doesNotMatch(source, /hover:bg-accent|hover:bg-danger-soft|\btext-xs\b|h-10 w-10|space-y-2 overflow-y-auto|px-3 py-6 text-center/)
 })
 
-test("disposal request form: the form sits in a ContentPanel at the one panel spacing (spec 2D D9)", () => {
+// Group 6 plan 3 Task 2: the request form is board DP-New on the operation frame, which owns the panel (spec §8.1).
+test("disposal request form: the form wraps the operation frame, which owns the panel (group 6 spec §8.1)", () => {
   const source = read(`${C}disposal/disposal-request-form.tsx`)
-  assert.match(source, /<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\} noValidate className="grid grid-cols-1 gap-5 md:grid-cols-2">/)
-  assert.match(source, /<\/form>\n\s+<\/ContentPanel>/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{DISPOSAL_REQUEST_FORM_ID\}>\n\s+<OperationFormFrame\b/)
+  assert.doesNotMatch(source, /<ContentPanel\b/)
   assert.doesNotMatch(source, /<section\b|rounded-lg border|sm:p-6/)
 })
 
-test("disposal batch form: two ContentPanels, the review facts a KeyValueList with Nil and formatMoney, a plain count and one quiet asset list (spec 2D D9, D19, M17, M22)", () => {
+// The user (2026-11-04): a request asks for no price, so the review facts lose the two estimated values and formatMoney.
+test("disposal batch form: two ContentPanels, the review facts a KeyValueList with Nil and no price, a plain count and one quiet asset list (spec 2D D9, D19, M17, M22)", () => {
   const source = read(`${C}disposal/disposal-batch-form.tsx`)
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 2, "the review step and the form step")
   assert.match(source, /<ContentPanel\n\s+title=\{t\("batchReviewTitle"\)\}\n\s+description=\{t\("batchReviewHelp", \{ count: selectedIds\.length \}\)\}\n\s+actions=\{<span className="text-count num text-foreground" aria-hidden="true">\{formatCount\(selectedIds\.length\)\}<\/span>\}\n\s+>/)
   assert.equal(source.match(/<KeyValueList\b/g)?.length, 1)
   assert.match(source, /\{ key: "requestedBy", label: t\("requestedBy"\), value: employees\.find\(\(item\) => item\.id === values\.requestedById\)\?\.label \}/)
-  assert.match(source, /value: values\.saleValue \? <span className="num">\{formatMoney\(Number\(values\.saleValue\), \{ unit: tCommon\("baht"\) \}\)\}<\/span> : null/)
-  assert.match(source, /value: values\.salvageValue \? <span className="num">\{formatMoney\(Number\(values\.salvageValue\), \{ unit: tCommon\("baht"\) \}\)\}<\/span> : null/)
+  assert.doesNotMatch(source, /saleValue|salvageValue|formatMoney/)
   assert.match(source, /<div className="mt-4 max-h-72 divide-y divide-border-soft overflow-y-auto rounded-md border border-border">/)
   assert.match(source, /<ArrowLeft aria-hidden="true" \/>/, "back to editing keeps its arrow (LFG EXEMPT.LB1)")
   assert.doesNotMatch(source, /function Summary\b|"-"|<section\b|rounded-lg border|bg-primary-soft|text-lg|\btext-xs\b|border-b border-border(?!-)/)

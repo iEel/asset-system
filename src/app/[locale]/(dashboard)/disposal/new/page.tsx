@@ -7,11 +7,10 @@ import {
   getDisposalOutstandingComponentTags,
   getDisposalReadinessBlockersForAsset,
 } from "@/lib/disposal-readiness"
-import { initialDisposalAsset } from "@/lib/disposal-request-form-rules"
+import { defaultDisposalRequester, initialDisposalAsset } from "@/lib/disposal-request-form-rules"
 import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
-import { PageBackLink, PageHeader } from "@/components/ui/page-header"
-import { Notice } from "@/components/ui/notice"
+import { PageBackLink } from "@/components/ui/page-header"
 
 type NewDisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -27,9 +26,9 @@ type NewDisposalPageProps = {
 export default async function NewDisposalPage({ params, searchParams }: NewDisposalPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "disposal", "create")
+  const user = await requirePagePermission(locale, "disposal", "create")
   const initialAssetId = getSingleSearchParam(rawSearchParams.assetId)
-  const [t, tCommon, initialAsset, employees] = await Promise.all([
+  const [t, tCommon, initialAsset, employees, statuses] = await Promise.all([
     getTranslations("disposalPage"),
     getTranslations("common"),
     initialAssetId
@@ -46,9 +45,11 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
       : Promise.resolve(null),
     prisma.employee.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, fullNameTh: true },
+      select: { id: true, code: true, fullNameTh: true, department: { select: { name: true } } },
       orderBy: { code: "asc" },
     }),
+    // Every active status by its name: the summary's รอตัดจำหน่าย and its footnote (spec §8.5).
+    prisma.assetStatus.findMany({ where: { isActive: true }, select: { name: true, nameTh: true } }),
   ])
   const returnToHref = normalizeOperationalReturnTo(locale, "disposal", rawSearchParams.returnTo)
   // The ?assetId= prefill (plan 3 Task 1, review focus 5): readiness as the POST computes it. A ready asset is
@@ -71,28 +72,31 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
           .join(" · "),
       }
     : undefined
-  const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
+  // Pickers keep "code - name", and the requester's adds the department (spec §8.3).
+  const employeeOptions = employees.map((employee) => ({
+    id: employee.id,
+    label: `${employee.code} - ${employee.fullNameTh} · ${employee.department.name}`,
+  }))
+  // The requester starts as the signed-in user's employee; with no link it stays empty and the hint says so.
+  const requester = defaultDisposalRequester({ employeeId: user.employeeId ?? null }, employeeOptions)
+  const statusLabels = Object.fromEntries(statuses.map((status) => [status.name, status.nameTh]))
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t("createTitle")}
-        meta={t("createSubtitle")}
-        back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
-      />
-      {blockedInitialAsset ? (
-        <Notice tone="warning" title={blockedInitialAsset.label} data-disposal-initial-blocked="">
-          {t("errors.DISPOSAL_ASSET_BLOCKED")} · {blockedInitialAsset.reasons}
-        </Notice>
-      ) : null}
-      <DisposalRequestForm
-        employees={employeeOptions}
-        initialAsset={eligibleInitialAsset}
-        initialReason={getSingleSearchParam(rawSearchParams.reason)}
-        initialSourceType={getSingleSearchParam(rawSearchParams.sourceType)}
-        initialSourceId={getSingleSearchParam(rawSearchParams.sourceId)}
-      />
-    </div>
+    <DisposalRequestForm
+      breadcrumbs={[{ label: t("title"), href: `/${locale}/disposal` }, { label: t("createTitle") }]}
+      back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+      locale={locale}
+      cancelHref={returnToHref}
+      employees={employeeOptions}
+      initialAsset={eligibleInitialAsset}
+      initialBlocked={blockedInitialAsset}
+      initialReason={getSingleSearchParam(rawSearchParams.reason)}
+      initialSourceType={getSingleSearchParam(rawSearchParams.sourceType)}
+      initialSourceId={getSingleSearchParam(rawSearchParams.sourceId)}
+      initialRequesterId={requester.requestedById}
+      requesterNeedsChoice={requester.needsChoice}
+      statusLabels={statusLabels}
+    />
   )
 }
 

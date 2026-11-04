@@ -271,7 +271,8 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
     ["src/lib/repair-record-form-rules.ts", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
     // Group 5 plan 4 Task 4: the PM form's checks live in its rules file; its field ids stay in the form.
     ["src/lib/pm-plan-form-rules.ts", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title", "src/components/maintenance/maintenance-plan-form.tsx"],
-    ["src/components/disposal/disposal-request-form.tsx", `check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))`, "disposal-request-reason"],
+    // Group 6 plan 3 Task 2: the request form names its 4,000 limit REASON_MAX.
+    ["src/components/disposal/disposal-request-form.tsx", `check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, REASON_MAX))`, "disposal-request-reason"],
     ["src/components/audit/audit-round-form.tsx", `check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))`, "audit-round-end-date"],
   ]
   for (const [file, rule, id, idFile = file] of forms) {

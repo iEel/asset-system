@@ -8,7 +8,8 @@ test("disposal forms use one page title and compact numbered sections", () => {
 
   assert.doesNotMatch(single, /<h2[^>]*>\{t\("createTitle"\)\}/)
   assert.doesNotMatch(batch, /<h2[^>]*>\{t\("batchCreateTitle"\)\}/)
-  assert.match(single, /<FormSection number=\{1\} title=\{t\("formSteps\.asset"\)\}/)
+  // The request form is board DP-New (group 6 plan 3 Task 2): its sections are the frame's own.
+  assert.match(single, /<FormSection number=\{1\} title=\{t\("createForm\.sectionAsset"\)\}/)
   assert.doesNotMatch(single, /function FormStep/)
   // Step 1 of the batch form only picks the assets; the type is under step 2 and marked required (critique 2026-10-20 D5).
   assert.match(batch, /<FormSection number=\{1\} title=\{t\("formSteps\.batchAssets"\)\}/)
