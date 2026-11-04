@@ -140,6 +140,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
     <StatusBadge
       label={row.age.isOverdue ? t("overdueDays", { days: formatCount(row.age.daysOverdue) }) : t("waitingDays", { days: formatCount(row.age.ageDays) })}
       tone={row.age.isOverdue ? "danger" : "muted"}
+      wrap
     />
   )
   // A disposal request with no photo (spec §7.3): a warning, except a lost machine, which cannot be photographed (§5).
@@ -339,7 +340,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
       {/* Below xl an open item takes the page (spec §7.7): the strip, the fold and the list wait behind its back link. */}
       <div className={cn("space-y-4", item && "hidden xl:block")}>
         <section aria-label={t("stripLabel")}>
-          <StatStrip items={stripItems} className="max-lg:grid-cols-3 max-lg:[&>:last-child:nth-child(odd)]:col-span-1" />
+          {/* Three cells from sm; on the phone they stack, so each foot reads in full (the counts run to hundreds). */}
+          <StatStrip items={stripItems} className="max-sm:grid-cols-1 sm:max-lg:grid-cols-3 max-lg:[&>:last-child:nth-child(odd)]:col-span-1" />
         </section>
         <ApprovalInboxPolicy locale={locale} policy={policy} access={access} matrix={matrix} />
       </div>
