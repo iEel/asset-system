@@ -410,8 +410,8 @@ test("the PM form test ends its plan, and since group 5 plan 2 waits for no read
   // networkidle once the page has settled resolves at once (the state was reached on load), so it no longer guards the save.
   assert.ok(!pm.includes("After the refused save the asset select fetches its options again"))
   // The plan is ended as the list's own action ends it: a PATCH of its state, not a DELETE.
-  const actions = read("src/components/maintenance/maintenance-plan-state-actions.tsx")
-  assert.match(actions, /method: "PATCH",\n\s*headers: \{ "Content-Type": "application\/json" \},\n\s*body: JSON\.stringify\(\{ action: pendingAction \}\)/)
+  const actions = read("src/components/maintenance/maintenance-plan-row-actions.tsx")
+  assert.match(actions, /method: "PATCH",\n\s*headers: \{ "Content-Type": "application\/json" \},\n\s*body: JSON\.stringify\(\{ action \}\)/)
   assert.ok(pm.includes("const ended = await page.request.patch(`/api/maintenance-plans/${planId}`, { data: { action: \"end\" } })"))
   assert.ok(pm.includes(`expect(ended.status(), "the plan is ended").toBe(200)`))
 })

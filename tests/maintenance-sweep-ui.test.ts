@@ -101,7 +101,7 @@ test("repair record page: ContentPanels, the history section on the panel classe
 test("PM plans page: the frequency is a Chip (a cadence, not a state), and the row's sub-line is text-meta (spec 2D M22, 2D-2 R2)", () => {
   const source = read(`${D}maintenance/pm/page.tsx`)
   assert.match(source, /<Chip>\{t\(`pmFrequencies\.\$\{plan\.frequency\}`\)\}<\/Chip>/)
-  assert.match(source, /<div className="mt-1 truncate text-meta text-muted-foreground">\n\s+<span className="tag">\{plan\.planNo\}<\/span>/)
+  assert.match(source, /<div className="mt-1 text-meta text-muted-foreground"><span className="tag">\{plan\.planNo\}<\/span><\/div>/)
   assert.doesNotMatch(source, /pmFrequencies[^\n]*tone=|\btext-xs\b/)
 })
 

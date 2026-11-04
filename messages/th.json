@@ -3301,7 +3301,8 @@
       "endHelp": "แผนที่จบแล้วจะคงอยู่ในประวัติและไม่สามารถเปิดใช้งานหรือแก้ไขได้อีก",
       "pauseSuccess": "พักแผน PM แล้ว",
       "resumeSuccess": "เปิดใช้งานแผน PM ต่อแล้ว",
-      "endSuccess": "จบแผน PM แล้ว"
+      "endSuccess": "จบแผน PM แล้ว",
+      "endHint": "ถาวร · มีให้ยืนยัน"
     },
     "pmNotes": "รายละเอียดแผน",
     "pmEmptyTitle": "ยังไม่มีแผน PM",
@@ -3385,7 +3386,27 @@
     "attachmentTypeDefaultClosed": "ตั้งเป็น{type}ไว้ให้ เพราะซ่อมเสร็จแล้ว",
     "dropAttachmentTitle": "ถ่ายรูปหรือแนบใบเสร็จ",
     "takeBeforePhoto": "ถ่ายรูปก่อนซ่อม",
-    "takeAfterPhoto": "ถ่ายรูปหลังซ่อม"
+    "takeAfterPhoto": "ถ่ายรูปหลังซ่อม",
+    "pmPlanCount": "· ทั้งหมด {count, number} แผน",
+    "pmSearchPlaceholder": "ค้นหาชื่อแผน ชื่อหรือรหัสทรัพย์สิน",
+    "pmDueCellOverdueFoot": "นานสุด {days, number} วัน",
+    "pmDueCellSoonFoot": "ภายใน 14 วัน · ครบ {date}",
+    "pmDueCellSoonWindow": "ภายใน 14 วัน",
+    "pmDueCellLaterFoot": "ไกลกว่า 14 วัน",
+    "pmDueSum": "{overdue} + {soon} + {later} = {total, number} แผนที่ใช้งาน",
+    "pmDueOutOfScope": "· ไม่นับ {count, number} แผนของทรัพย์สินที่ตัดจำหน่ายหรือปลดระวางแล้ว",
+    "pmDueWeekChip": "ครบกำหนดใน 7 วัน",
+    "pmColumnPlan": "แผน",
+    "pmEndedAt": "จบแผนเมื่อ {date}",
+    "pmRange": "แสดง {from}–{to} จาก {total}",
+    "pmOrderByDue": "เรียงจากกำหนดที่ถึงก่อน",
+    "pmOrderByEnded": "เรียงจากที่จบแผนล่าสุด",
+    "pmNoVendorNote": "“–” คือช่างภายในทำเอง ไม่มีผู้ให้บริการภายนอก",
+    "pmEmptyPaused": "ไม่มีแผนที่พักไว้",
+    "pmEmptyEnded": "ยังไม่มีแผนที่จบแล้ว",
+    "pmEmptyFiltered": "ไม่พบแผนที่ตรงกับการค้นหาหรือตัวกรอง",
+    "pmRowActions": "การดำเนินการของแผน {planNo}",
+    "pmOpenRecord": "มีบันทึกซ่อมที่ยังไม่เสร็จ {repairNo}"
   },
   "repairRecord": {
     "title": "ซ่อมบำรุง",

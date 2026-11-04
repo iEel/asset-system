@@ -25,7 +25,7 @@ test("RowActions is a client component with one data-only API: no children, no o
   assert.match(source, /\| \{ label: string; href: string; icon\?: ReactNode; onNavigate\?: \(\) => void \}/)
   assert.match(source, /\| \{ label: string; onSelect: \(\) => void; icon\?: ReactNode \}/)
   assert.match(source, /\| \{ kind: "link"; key: string; label: string; href: string; icon\?: ReactNode; onNavigate\?: \(\) => void \}/)
-  assert.match(source, /\| \{ kind: "action"; key: string; label: string; onSelect: \(\) => void; icon\?: ReactNode; destructive\?: boolean \}/)
+  assert.match(source, /\| \{ kind: "action"; key: string; label: string; onSelect: \(\) => void; icon\?: ReactNode; destructive\?: boolean; hint\?: string \}/, "an action may carry a hint under its label (the PM page's จบแผน, group 5 plan 4)")
   assert.match(source, /\| \{ kind: "unavailable"; key: string; label: string; reason: string; icon\?: ReactNode \}/)
   assert.match(source, /export type RowActionGroup = \{ key: string; label\?: string; items: readonly RowActionItem\[\] \}/)
   assert.doesNotMatch(source, /children|contentClassName/)

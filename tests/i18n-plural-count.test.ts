@@ -45,7 +45,13 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 5 plan 3 Task 4 added 1: the repair record's attachment head "n ไฟล์" (maintenancePage.attachmentCount).
   // The plan 3 final review added 4: the record's day counts while sent out or in repair, the history's attachment run
   // and the asset panel's repair count.
-  assert.equal(pluralKeys.size, 78,[...pluralKeys.keys()].join(", "))
+  // Group 5 plan 4 Task 3 added 4: the PM page's plan count, the overdue cell's "นานสุด n วัน", the cells' sum line and
+  // its out-of-scope tail.
+  assert.equal(pluralKeys.size, 82,[...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("maintenancePage.pmPlanCount"), "count")
+  assert.equal(pluralKeys.get("maintenancePage.pmDueCellOverdueFoot"), "days")
+  assert.equal(pluralKeys.get("maintenancePage.pmDueSum"), "total")
+  assert.equal(pluralKeys.get("maintenancePage.pmDueOutOfScope"), "count")
   assert.equal(pluralKeys.get("maintenancePage.attachmentCount"), "count")
   assert.equal(pluralKeys.get("repairRecord.detail.sentDays"), "days")
   assert.equal(pluralKeys.get("repairRecord.detail.repairDays"), "days")

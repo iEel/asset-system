@@ -35,7 +35,7 @@ export type RowNextAction =
 
 export type RowActionItem =
   | { kind: "link"; key: string; label: string; href: string; icon?: ReactNode; onNavigate?: () => void }
-  | { kind: "action"; key: string; label: string; onSelect: () => void; icon?: ReactNode; destructive?: boolean }
+  | { kind: "action"; key: string; label: string; onSelect: () => void; icon?: ReactNode; destructive?: boolean; hint?: string }
   | { kind: "unavailable"; key: string; label: string; reason: string; icon?: ReactNode }
 
 export type RowActionGroup = { key: string; label?: string; items: readonly RowActionItem[] }
@@ -157,7 +157,14 @@ export function RowActions({
       return (
         <DropdownMenuItem key={item.key} variant={item.destructive ? "destructive" : "default"} onSelect={() => openFromMenu(onSelect)}>
           {item.icon}
-          {item.label}
+          {item.hint ? (
+            <DropdownMenuItemText>
+              {item.label}
+              <DropdownMenuItemDescription>{item.hint}</DropdownMenuItemDescription>
+            </DropdownMenuItemText>
+          ) : (
+            item.label
+          )}
         </DropdownMenuItem>
       )
     }
@@ -194,7 +201,14 @@ export function RowActions({
           className={sheetItemClasses}
         >
           {item.icon}
-          {item.label}
+          {item.hint ? (
+            <DropdownMenuItemText>
+              {item.label}
+              <DropdownMenuItemDescription>{item.hint}</DropdownMenuItemDescription>
+            </DropdownMenuItemText>
+          ) : (
+            item.label
+          )}
         </button>
       )
     }

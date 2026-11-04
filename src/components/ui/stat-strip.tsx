@@ -26,6 +26,8 @@ export type StatStripItem = {
   filterNote?: string
   // A bar full width under the value (PaceBar for a round's progress), server-safe and phrasing content. It holds no link or word: the value and the foot say what it shows, and the cell's link covers it.
   meter?: React.ReactNode
+  // data-* hooks on the cell, for the tests that read a cell (the PM page's data-pm-due-cell).
+  data?: Readonly<Record<`data-${string}`, string>>
 }
 
 // Mockup .stat: a subgrid of three rows (label, value, foot), so labels and values line up across the strip.
@@ -47,7 +49,7 @@ export function StatStrip({ items, className }: { items: readonly StatStripItem[
       {items.map((item, index) => {
         const noteId = item.href && item.filterNote ? `${noteIdBase}-note-${index}` : undefined
         return (
-          <div key={item.key} data-slot="stat" className={cn(statClasses, item.href && !item.current && "hover:bg-background", item.href && statLinkClasses, item.current && statCurrentClasses)} style={noteId ? { anchorName: `--${noteId}` } : undefined}>
+          <div key={item.key} {...item.data} data-slot="stat" className={cn(statClasses, item.href && !item.current && "hover:bg-background", item.href && statLinkClasses, item.current && statCurrentClasses)} style={noteId ? { anchorName: `--${noteId}` } : undefined}>
             <dt className="text-meta font-medium text-muted-foreground text-balance">
               {item.href ? (
                 <Link href={item.href} scroll={item.scroll} aria-describedby={noteId} aria-current={item.current ? "page" : undefined} className="after:absolute after:inset-0 focus-visible:outline-none">

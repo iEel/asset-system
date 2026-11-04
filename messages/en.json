@@ -3301,7 +3301,8 @@
       "endHelp": "Ended plans remain in history and cannot be resumed or edited.",
       "pauseSuccess": "PM plan paused",
       "resumeSuccess": "PM plan resumed",
-      "endSuccess": "PM plan ended"
+      "endSuccess": "PM plan ended",
+      "endHint": "Permanent · asks to confirm"
     },
     "pmNotes": "Plan Notes",
     "pmEmptyTitle": "No PM plans yet",
@@ -3385,7 +3386,27 @@
     "attachmentTypeDefaultClosed": "Set to {type} because the repair is finished",
     "dropAttachmentTitle": "Take a photo or attach a receipt",
     "takeBeforePhoto": "Take a before-repair photo",
-    "takeAfterPhoto": "Take an after-repair photo"
+    "takeAfterPhoto": "Take an after-repair photo",
+    "pmPlanCount": "· {count, plural, one {# plan} other {# plans}} in all",
+    "pmSearchPlaceholder": "Search plan title, asset name or tag",
+    "pmDueCellOverdueFoot": "Oldest {days, plural, one {# day} other {# days}}",
+    "pmDueCellSoonFoot": "Within 14 days · first due {date}",
+    "pmDueCellSoonWindow": "Within 14 days",
+    "pmDueCellLaterFoot": "More than 14 days away",
+    "pmDueSum": "{overdue} + {soon} + {later} = {total, plural, one {# active plan} other {# active plans}}",
+    "pmDueOutOfScope": "· leaves out {count, plural, one {# plan} other {# plans}} of disposed or retired assets",
+    "pmDueWeekChip": "Due within 7 days",
+    "pmColumnPlan": "Plan",
+    "pmEndedAt": "Ended {date}",
+    "pmRange": "Showing {from}–{to} of {total}",
+    "pmOrderByDue": "Sorted by the nearest due date",
+    "pmOrderByEnded": "Sorted by the most recently ended",
+    "pmNoVendorNote": "“–” means in-house staff do it, with no external provider",
+    "pmEmptyPaused": "No paused plans",
+    "pmEmptyEnded": "No ended plans yet",
+    "pmEmptyFiltered": "No plans match the search or filter",
+    "pmRowActions": "Actions for plan {planNo}",
+    "pmOpenRecord": "Open repair record {repairNo}"
   },
   "repairRecord": {
     "title": "Maintenance",

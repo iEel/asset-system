@@ -22,7 +22,7 @@ test("PM plans persist distinct active, paused, and ended states", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx", "utf8")
   assert.match(schema, /planState\s+String\s+@default\("active"\)/)
   assert.match(migration, /planState/)
-  assert.match(page, /MaintenancePlanStateActions/)
+  assert.match(page, /<MaintenancePlanRowActions\b/)
 })
 
 test("maintenance plan state migration defers new-column references until runtime", () => {
