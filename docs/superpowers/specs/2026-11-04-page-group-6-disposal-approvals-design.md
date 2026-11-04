@@ -289,17 +289,14 @@ The block reasons get separate codes so the page can say which one applies (§7.
 - **`?assetId=` prefill** (from the repair page, group 5 decision 9) keeps working.
 
 ### 8.3 Section 2 "วิธีและเหตุผล"
-- **วิธีจำหน่ายที่เสนอ \***: five `ChoiceCard` radios with **no default**: ขาย · บริจาค · ทำลาย · สูญหาย · จำหน่าย. The hint reads "เปลี่ยนได้ตอนบันทึกรอบตัดจำหน่าย" (decision 11).
-  - `types.dispose` reads "จำหน่าย" *(my call: the glossary keeps "ตัดจำหน่าย" for leaving the books)*.
+- **วิธีจำหน่ายที่เสนอ \***: five `ChoiceCard` radios with **no default**: ขาย · บริจาค · ทำลาย · สูญหาย · ตัดจำหน่าย. The hint reads "เปลี่ยนได้ตอนบันทึกรอบตัดจำหน่าย" (decision 11).
+  - `types.dispose` reads "ตัดจำหน่าย", unchanged (user 2026-11-04: "ใช้คำว่าตัดจำหน่าย ดีกว่า").
   - Under the chosen card, one line on what the round will need:
     - ขาย: "ตอนบันทึกรอบต้องมีผู้ซื้อ ราคาขายเหมาของรอบ และเลขที่เอกสาร";
     - บริจาค and จำหน่าย: "…ผู้รับและเลขที่เอกสาร";
     - ทำลาย and สูญหาย: "…เลขที่เอกสารและรายละเอียดการดำเนินการ".
   - The error "เลือกวิธีจำหน่าย" appears under the group.
-- **The estimate fields stay optional, as today:**
-  - มูลค่าขายที่ประเมิน, shown for ขาย;
-  - มูลค่าซาก.
-  - Both have the hint "ไม่บังคับ · ใช้ประกอบการพิจารณา".
+- **No price at request time** (user 2026-11-04: there is no basis for an estimate). The form has no sale or salvage field; the approve dialog has none either. A stored estimate on an old request still shows on its page. The only price is the round's lump price (§11).
 - **ผู้ขอ:**
   - Preset to the signed-in user's employee, with the hint "ตั้งเป็นคุณไว้ให้ · เปลี่ยนได้เมื่อขอแทนคนอื่น".
   - The picker shows "code - name · department".
@@ -482,7 +479,7 @@ model DisposalRound {
   - The chosen machines as rows (name, tag, `DP-…`, approver), each with a ×.
   - "เพิ่มจากรายการอนุมัติแล้ว" goes back to the tab with the selection kept in the query.
 - **Section 2 "ข้อมูลการจำหน่าย":**
-  - **วิธีจำหน่าย \*** (decision 11): five `ChoiceCard` radios, ขาย · บริจาค · ทำลาย · สูญหาย · จำหน่าย.
+  - **วิธีจำหน่าย \*** (decision 11): five `ChoiceCard` radios, ขาย · บริจาค · ทำลาย · สูญหาย · ตัดจำหน่าย.
     - No default when the machines were asked under different methods. When they all share one method, that method is pre-chosen.
     - Each row of section 1 shows the method it was asked under ("ขอเป็น: บริจาค").
     - When the chosen method differs from a request's, a line says "จะเปลี่ยนวิธีของ {n} คำขอเป็น {method}".
@@ -569,7 +566,7 @@ model DisposalRound {
 ## 13. Words
 - **รอบตัดจำหน่าย** is the round *(my call)*. The user said "รอบจำหน่าย", but the glossary keeps "จำหน่าย" for a method (`docs/19_THAI_GLOSSARY.md:22`) and already names the flow "รอบตัดจำหน่าย" (`:55`). A round of method จำหน่าย would otherwise read "รอบจำหน่าย · จำหน่าย".
 - **ยื่นคำขอตัดจำหน่าย** is the main button and the form's H1 (glossary `:56`).
-- **Methods:** ขาย · บริจาค · ทำลาย · สูญหาย · จำหน่าย (`types.dispose`).
+- **Methods:** ขาย · บริจาค · ทำลาย · สูญหาย · ตัดจำหน่าย (`types.dispose`).
 - **Statuses:** as §5.
 - **งานรออนุมัติ** is the inbox. "Inbox" is removed from the Thai text (`policyTitle`).
 - **New glossary rows** (added before use): รอบตัดจำหน่าย; ราคาขายเหมา; ส่งออกรายงานส่งบัญชี; "ครบ SLA วันนี้". `tests/thai-glossary.test.ts` gains a pin that "รอบจำหน่าย" does not appear in `messages/th.json`.
@@ -579,7 +576,7 @@ model DisposalRound {
 ### 14.1 Calls (for the user to check)
 1. Inbox ages, SLA and round numbers use Bangkok days.
 2. Disposal status words stay as today (D3); the board's shorter words are not adopted.
-3. `types.dispose` reads "จำหน่าย"; the round is "รอบตัดจำหน่าย"; the main button is "ยื่นคำขอตัดจำหน่าย".
+3. `types.dispose` reads "ตัดจำหน่าย", unchanged (user 2026-11-04: "ใช้คำว่าตัดจำหน่าย ดีกว่า").
 4. HEIC is refused for disposal photos; PDFs are extra and never count as the photo.
 5. A batch's shared image counts as a batch request's photo; the report falls back to it.
 6. The inbox shows disposal even with the `disposalRequired` setting off.

@@ -41,7 +41,7 @@ DP-Request:
 - **Words:**
   - Thai first; words from `docs/19_THAI_GLOSSARY.md`.
   - Messages change only through `node scripts/messages-edit.mjs <change.json>`, whose keys are **dotted paths** (`{ "set": { "th": { "disposalPage.types.dispose": "จำหน่าย" }, "en": { … } }, "delete": [] }`). A nested object replaces a whole namespace, so never pass one.
-- **The method `dispose` reads "จำหน่าย"** everywhere `disposalPage.types.dispose` is used. The other methods are ขาย · บริจาค · ทำลาย · สูญหาย.
+- **The method `dispose` reads "ตัดจำหน่าย", unchanged (user 2026-11-04: "ใช้คำว่าตัดจำหน่าย ดีกว่า").
 - **The page's H1 and the main button** read "ยื่นคำขอตัดจำหน่าย"; the submit button reads "ส่งคำขอตัดจำหน่าย".
 - **Disposal status words stay:** รอพิจารณา · อนุมัติแล้ว รอตัดจำหน่าย · ตัดจำหน่ายแล้ว · ไม่อนุมัติ.
 - **Photo rule** (plan 1's `src/lib/disposal-photo.ts` is the source):
@@ -93,7 +93,7 @@ DP-Request:
   - `buildDisposalRequestSummary(input: { assetStatusName: string | null; disposalType: string | ""; approverLabel: string | null; photoCount: number; fileCount: number; requesterChosen: boolean; reasonOk: boolean }): { rows: Array<{ key: "assetStatus" | "request" | "approver"; now: string | null; next: string }>; checks: Array<{ key: "asset" | "method" | "requesterReason" | "photo"; done: boolean }> }`. It returns message keys and raw values; the form translates them.
   - `GET /api/disposal-assets?id=<id>` returns, besides today's fields, `card: { name, assetTag, statusName, statusNameTh, locationName, branchName, custodianName, photoAttachmentId | null }`. The photo is the asset's register photo (`module: "asset"`), as the asset page reads it.
 - Messages (all through the script, dotted keys):
-  - `disposalPage.types.dispose` "จำหน่าย" / "Disposal (general)";
+  - `disposalPage.types.dispose` stays "ตัดจำหน่าย" (user 2026-11-04);
   - `disposalPage.photoRequired` "ต้องมีรูปทรัพย์สินอย่างน้อย 1 รูป";
   - `disposalPage.fileRequired` "แนบหลักฐานอย่างน้อย 1 ไฟล์";
   - `disposalPage.photoTypeRefused` "ใช้ไฟล์ JPG, PNG หรือ WEBP";
@@ -215,7 +215,7 @@ DP-Request:
 
     A blocked `?assetId=` shows a `Notice` with the blocker words over the picker.
   - **Section 2 "วิธีและเหตุผล":**
-    - **Methods:** five `ChoiceCard` radios (ขาย · บริจาค · ทำลาย · สูญหาย · จำหน่าย) with no default. The hint `methodHint` shows, and under the chosen card the `methodNeeds` line. The error "เลือกวิธีจำหน่าย" (an existing key, or add `disposalPage.methodRequired`) goes under the group.
+    - **Methods:** five `ChoiceCard` radios (ขาย · บริจาค · ทำลาย · สูญหาย · ตัดจำหน่าย) with no default. The hint `methodHint` shows, and under the chosen card the `methodNeeds` line. The error "เลือกวิธีจำหน่าย" (an existing key, or add `disposalPage.methodRequired`) goes under the group.
     - **Estimates:** sale value for ขาย, salvage value for ขาย and จำหน่าย (today's `showsEstimated*`), each with "ไม่บังคับ · ใช้ประกอบการพิจารณา".
     - **ผู้ขอ:** preset from the page; hint `requesterPresetHint` or `requesterNoEmployeeHint`. The picker labels read "code - name · department": the page adds the department.
     - **ผู้พิจารณา (ไม่บังคับ):** with `approverHint`. The options still exclude the requester.
