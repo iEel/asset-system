@@ -30,6 +30,8 @@ export const disposalApiErrorCodes = [
   "DISPOSAL_BULK_INVALID_SELECTION",
   "DISPOSAL_BULK_MIXED_TYPES",
   "DISPOSAL_BULK_EXECUTION_FAILED",
+  "DISPOSAL_PHOTO_TYPE",
+  "DISPOSAL_LAST_PHOTO",
 ] as const
 
 export type DisposalApiErrorCode = (typeof disposalApiErrorCodes)[number]

@@ -32,6 +32,8 @@ const localizedDisposalErrorCodes = new Set([
   "DISPOSAL_BATCH_OPEN_REQUEST",
   "DISPOSAL_BATCH_SOD_CONFLICT",
   "DISPOSAL_BATCH_SCHEMA_REQUIRED",
+  "DISPOSAL_PHOTO_TYPE",
+  "DISPOSAL_LAST_PHOTO",
 ])
 
 export function getDisposalApiErrorMessage(

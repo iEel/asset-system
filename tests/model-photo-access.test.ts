@@ -80,6 +80,15 @@ test("a person with neither asset:view nor brand:view cannot view a model photo"
   await assert.rejects(access.assertCanViewAttachment(other, modelPhoto), /Forbidden/)
 })
 
+test("disposal:approve views disposal photos but does not edit them (group 6 spec §5)", () => {
+  const approver = user("disposal:approve")
+  for (const module of ["disposal", "disposal_batch"]) {
+    assert.equal(access.hasAttachmentPermission(approver, module, "view"), true, module)
+    assert.equal(access.hasAttachmentPermission(approver, module, "edit"), false, module)
+  }
+  assert.equal(access.hasAttachmentPermission(approver, "asset", "view"), false)
+})
+
 test("the rule for every other module is unchanged", () => {
   const cases: Array<[string, string]> = [
     ["asset", "asset"],

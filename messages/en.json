@@ -3937,7 +3937,9 @@
       "DISPOSAL_BULK_EXECUTION_FAILED": "Bulk disposal execution could not be completed. Please try again.",
       "DISPOSAL_PREVIOUS_STATUS_MISSING": "This request has no recorded prior status. Send it to the asset state review queue.",
       "DISPOSAL_PREVIOUS_STATUS_INACTIVE": "The recorded prior status is inactive. Send it to the asset state review queue.",
-      "DISPOSAL_ASSET_STATUS_CHANGED": "The asset is no longer Pending Disposal. Reload and review the request."
+      "DISPOSAL_ASSET_STATUS_CHANGED": "The asset is no longer Pending Disposal. Reload and review the request.",
+      "DISPOSAL_PHOTO_TYPE": "Use a JPG, PNG or WEBP file",
+      "DISPOSAL_LAST_PHOTO": "At least one photo must remain"
     },
     "batchStatuses": {
       "partial": "Partially completed"
@@ -3977,7 +3979,9 @@
       "DISPOSAL_BATCH_ASSET_BLOCKED": "One or more assets in the batch still have open operational work.",
       "DISPOSAL_BATCH_OPEN_REQUEST": "One or more assets in the batch already have open disposal requests.",
       "DISPOSAL_BATCH_SOD_CONFLICT": "The batch requester and assigned approver must be different people.",
-      "DISPOSAL_BATCH_SCHEMA_REQUIRED": "The Disposal Batch database migration has not been applied yet."
+      "DISPOSAL_BATCH_SCHEMA_REQUIRED": "The Disposal Batch database migration has not been applied yet.",
+      "DISPOSAL_PHOTO_TYPE": "Use a JPG, PNG or WEBP file",
+      "DISPOSAL_LAST_PHOTO": "At least one photo must remain"
     },
     "readinessBlockers": {
       "lifecycle_status": "Lifecycle status is not eligible",
@@ -5396,7 +5400,9 @@
     "repairOutcomeRequired": "Choose the repair result",
     "maintenancePlanAssetWrittenOff": "This asset is disposed or retired; a PM plan cannot be set up",
     "maintenancePlanConflict": "This plan was edited or recorded as done while this page was open. Reload the page and edit again.",
-    "repairDoneRequired": "Choose whether the repair is finished"
+    "repairDoneRequired": "Choose whether the repair is finished",
+    "disposalPhotoType": "Use a JPG, PNG or WEBP file",
+    "disposalLastPhoto": "At least one photo must remain"
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

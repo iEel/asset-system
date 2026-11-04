@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assertSafeUploadPath, isMissingFileError, isOutsideUploadRootError } from "@/lib/uploads"
 import { assertCanViewAttachment, requireAttachmentPermission } from "@/lib/attachment-access"
+import { getDisposalLastFileBlock } from "@/lib/disposal-photo"
 
 export const runtime = "nodejs"
 
@@ -66,6 +67,11 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 })
     }
     requireAttachmentPermission(user, existing.module, "edit")
+    // A pending or approved disposal request keeps at least one photo, its own or its batch's (group 6 spec §5).
+    if (existing.module === "disposal" || existing.module === "disposal_batch") {
+      const block = await getDisposalLastFileBlock(prisma, existing)
+      if (block) return NextResponse.json({ code: block, error: block }, { status: 409 })
+    }
 
     const attachment = await prisma.attachment.update({
       where: { id },

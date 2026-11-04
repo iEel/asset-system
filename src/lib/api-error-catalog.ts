@@ -137,6 +137,8 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "DISPOSAL_FORBIDDEN": "forbidden",
   "DISPOSAL_INVALID_STAGE": "disposalAlreadyDecided",
   "DISPOSAL_INVALID_STATUS_TARGET": "disposalInvalidStatusTarget",
+  "DISPOSAL_LAST_PHOTO": "disposalLastPhoto",
+  "DISPOSAL_PHOTO_TYPE": "disposalPhotoType",
   "DISPOSAL_REQUEST_NOT_FOUND": "disposalRequestNotFound",
   "DISPOSAL_SOD_CONFLICT": "disposalSameRequesterApprover",
   "DISPOSAL_STATUS_NOT_FOUND": "disposalNextStatusNotFound",

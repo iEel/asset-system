@@ -3937,7 +3937,9 @@
       "DISPOSAL_BULK_EXECUTION_FAILED": "ไม่สามารถดำเนินการตัดจำหน่ายแบบกลุ่มได้ กรุณาลองใหม่",
       "DISPOSAL_PREVIOUS_STATUS_MISSING": "คำขอนี้ไม่มีสถานะเดิมที่บันทึกไว้ กรุณาส่งเข้ารายการรอตรวจสอบสถานะทรัพย์สิน",
       "DISPOSAL_PREVIOUS_STATUS_INACTIVE": "สถานะเดิมของคำขอนี้ถูกปิดใช้งาน กรุณาส่งเข้ารายการรอตรวจสอบสถานะทรัพย์สิน",
-      "DISPOSAL_ASSET_STATUS_CHANGED": "สถานะทรัพย์สินเปลี่ยนจากรอตัดจำหน่ายแล้ว กรุณาโหลดข้อมูลใหม่และตรวจสอบ"
+      "DISPOSAL_ASSET_STATUS_CHANGED": "สถานะทรัพย์สินเปลี่ยนจากรอตัดจำหน่ายแล้ว กรุณาโหลดข้อมูลใหม่และตรวจสอบ",
+      "DISPOSAL_PHOTO_TYPE": "ใช้ไฟล์ JPG, PNG หรือ WEBP",
+      "DISPOSAL_LAST_PHOTO": "ต้องเหลือรูปอย่างน้อย 1 รูป"
     },
     "batchStatuses": {
       "partial": "ดำเนินการบางส่วน"
@@ -3977,7 +3979,9 @@
       "DISPOSAL_BATCH_ASSET_BLOCKED": "มีทรัพย์สินในชุดที่ยังมีงานค้างและยังไม่พร้อมตัดจำหน่าย",
       "DISPOSAL_BATCH_OPEN_REQUEST": "มีทรัพย์สินในชุดที่มีคำขอตัดจำหน่ายค้างอยู่แล้ว",
       "DISPOSAL_BATCH_SOD_CONFLICT": "ผู้ขอและผู้อนุมัติของชุดต้องเป็นคนละคน",
-      "DISPOSAL_BATCH_SCHEMA_REQUIRED": "ฐานข้อมูลยังไม่ได้ติดตั้ง migration สำหรับการตัดจำหน่ายแบบกลุ่ม"
+      "DISPOSAL_BATCH_SCHEMA_REQUIRED": "ฐานข้อมูลยังไม่ได้ติดตั้ง migration สำหรับการตัดจำหน่ายแบบกลุ่ม",
+      "DISPOSAL_PHOTO_TYPE": "ใช้ไฟล์ JPG, PNG หรือ WEBP",
+      "DISPOSAL_LAST_PHOTO": "ต้องเหลือรูปอย่างน้อย 1 รูป"
     },
     "readinessBlockers": {
       "lifecycle_status": "สถานะไม่อนุญาต",
@@ -5396,7 +5400,9 @@
     "repairOutcomeRequired": "เลือกผลการซ่อม",
     "maintenancePlanAssetWrittenOff": "ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว ตั้งแผน PM ไม่ได้",
     "maintenancePlanConflict": "แผนนี้ถูกแก้ไขหรือบันทึกว่าทำแล้วระหว่างที่เปิดหน้านี้ โหลดหน้าใหม่แล้วแก้อีกครั้ง",
-    "repairDoneRequired": "เลือกว่าซ่อมเสร็จหรือยัง"
+    "repairDoneRequired": "เลือกว่าซ่อมเสร็จหรือยัง",
+    "disposalPhotoType": "ใช้ไฟล์ JPG, PNG หรือ WEBP",
+    "disposalLastPhoto": "ต้องเหลือรูปอย่างน้อย 1 รูป"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

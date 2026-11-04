@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db"
 import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { disposalApiError } from "@/lib/disposal-api-errors"
+import { getDisposalUploadTypeError } from "@/lib/disposal-photo"
 import { createUploadCleanup, scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
@@ -30,6 +32,9 @@ export async function POST(request: NextRequest, context: DisposalBatchAttachmen
     const file = formData.get("file")
     if (!(file instanceof File)) return NextResponse.json({ error: "File is required" }, { status: 400 })
     validateUploadFile(file)
+    // Disposal photos are JPG, PNG or WEBP; other image types are refused here (group 6 spec §5).
+    const typeError = getDisposalUploadTypeError(file.type)
+    if (typeError) return disposalApiError(typeError, "Use a JPG, PNG or WEBP photo", 400)
     await validateUploadFileContent(file)
 
     const now = new Date()

@@ -27,6 +27,8 @@ export function hasAttachmentPermission(user: AttachmentUser, module: string, ac
   // A model photo stands in for the asset's photo on asset pages, so viewing it also opens with asset:view.
   // Uploading or deleting one stays brand:edit.
   if (module === "asset_model" && action === "view" && hasPermission(user, "asset", "view")) return true
+  // An approver sees the disposal photos to decide (group 6 spec §5); uploading or deleting stays disposal:edit.
+  if ((module === "disposal" || module === "disposal_batch") && action === "view" && hasPermission(user, "disposal", "approve")) return true
   return hasPermission(user, getAttachmentPermissionModule(module), action)
 }
 
