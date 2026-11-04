@@ -27,6 +27,7 @@ import { paginationRange } from "@/lib/master-data-query"
 import { cn } from "@/lib/utils"
 import { ApprovalInboxPolicy, ApprovalInboxPolicyLine } from "@/components/approvals/approval-inbox-policy"
 import {
+  ApprovalInboxSelectAll,
   ApprovalInboxSelectionBar,
   ApprovalInboxSelectionProvider,
   ApprovalInboxTick,
@@ -265,6 +266,9 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
                 {t("overdueToggle")}
               </Link>
             </div>
+
+            {/* Select all approvable before any tick (spec §7.4): from md, while the tab has tickable rows. */}
+            <ApprovalInboxSelectAll tab={query.tab} />
 
             <div className={cn(getPanelClasses(), "overflow-hidden")}>
               {/* Phone cards (spec §7.7): each card is one link to its item, the whole card a 44px+ target. No ticks. */}

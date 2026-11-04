@@ -95,6 +95,23 @@ export function selectAll(
   return { next: { kind, ids: tickableIds.slice(0, max), scope }, capped: tickableIds.length > max }
 }
 
+/**
+ * The kind "เลือกทั้งหมดที่อนุมัติได้" selects on a tab (review fix round 1): the disposal tab disposal, the audit tab
+ * findings; the all tab the kind already ticked, else disposal, else findings. Only a kind with tickable rows; null when
+ * there is none.
+ */
+export function selectAllKind(
+  tab: "all" | "disposal" | "audit",
+  current: StoredSelection | null,
+  tickable: ApprovalInboxTickableIds,
+): ApprovalInboxSelectionKind | null {
+  const has = (kind: ApprovalInboxSelectionKind) => tickable[kind].length > 0
+  if (tab === "disposal") return has("disposal") ? "disposal" : null
+  if (tab === "audit") return has("finding") ? "finding" : null
+  if (current && has(current.kind)) return current.kind
+  return has("disposal") ? "disposal" : has("finding") ? "finding" : null
+}
+
 /** The ids not opened in the panel this session, in order; `seen` holds "<key>:<id>". */
 export function unopened(ids: readonly string[], seen: ReadonlySet<string>, kind: ApprovalInboxSelectionKind): string[] {
   return ids.filter((id) => !seen.has(`${kind}:${id}`))

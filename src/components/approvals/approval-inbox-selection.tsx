@@ -14,6 +14,7 @@ import {
   parseStoredSelection,
   restoreSelection,
   selectAll,
+  selectAllKind,
   toggleSelection,
   unopened,
   type ApprovalInboxSelectionKind,
@@ -185,10 +186,14 @@ type SelectionContextValue = {
   selection: StoredSelection | null
   isSelected: (kind: ApprovalInboxSelectionKind, id: string) => boolean
   toggle: (kind: ApprovalInboxSelectionKind, id: string) => void
-  selectAllOfKind: () => void
+  /** Every tickable row of the kind, up to 200 (the bar's control and the one above the table). */
+  selectAllOf: (kind: ApprovalInboxSelectionKind) => void
   clear: () => void
   /** One line for the bar's status: a restart, the limit, the cap, or the findings run's progress. */
   status: string | null
+  /** The cap line when the control above the table selected with nothing ticked: the bar mounts with that click, and a
+   * live region added together with its text is not read, so the control's own region says it. */
+  topStatus: string | null
   running: boolean
   openConfirm: () => void
 }
@@ -222,6 +227,7 @@ export function ApprovalInboxSelectionProvider({
   const router = useRouter()
   const [selection, setSelection] = useState<StoredSelection | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+  const [topStatus, setTopStatus] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const runningRef = useRef(false)
@@ -234,6 +240,7 @@ export function ApprovalInboxSelectionProvider({
     writeSelection(restored)
     setSelection(restored)
     setStatus(null)
+    setTopStatus(null)
   }, [scope, tickableKey])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -246,20 +253,25 @@ export function ApprovalInboxSelectionProvider({
     if (runningRef.current) return
     const result = toggleSelection(selection, kind, id, scope)
     update(result.next)
+    setTopStatus(null)
     setStatus(result.refused === "limit" ? copy.limit : result.restarted ? fill(copy.restarted, { kind: copy.kind[kind] }) : null)
   }
 
-  function selectAllOfKind() {
-    if (runningRef.current || !selection) return
-    const result = selectAll(selection.kind, tickable[selection.kind], scope)
+  function selectAllOf(kind: ApprovalInboxSelectionKind) {
+    if (runningRef.current || tickable[kind].length === 0) return
+    const barShown = selection !== null
+    const result = selectAll(kind, tickable[kind], scope)
+    const line = result.capped ? fill(copy.capped, { count: result.next.ids.length }) : null
     update(result.next)
-    setStatus(result.capped ? fill(copy.capped, { count: result.next.ids.length }) : null)
+    setStatus(line)
+    setTopStatus(barShown ? null : line)
   }
 
   function clear() {
     if (runningRef.current) return
     update(null)
     setStatus(null)
+    setTopStatus(null)
   }
 
   function finish(approved: number, skipped: number, toPanel: number) {
@@ -300,9 +312,10 @@ export function ApprovalInboxSelectionProvider({
     selection,
     isSelected: (kind, id) => selection?.kind === kind && selection.ids.includes(id),
     toggle,
-    selectAllOfKind,
+    selectAllOf,
     clear,
     status,
+    topStatus,
     running,
     openConfirm: () => {
       if (selection && !runningRef.current) setConfirmOpen(true)
@@ -351,9 +364,32 @@ export function ApprovalInboxTick({ kind, id, label, disabled = false, reason }:
   )
 }
 
+/**
+ * "เลือกทั้งหมดที่อนุมัติได้ ({n})" above the queue (spec §7.4, review fix round 1): reachable before any tick, from md
+ * only (no ticks on the phone), shown while the tab has tickable rows. Its kind is selectAllKind's; {n} is every
+ * tickable row of that kind, and the click selects the first 200.
+ */
+export function ApprovalInboxSelectAll({ tab }: { tab: "all" | "disposal" | "audit" }) {
+  const { copy, selection, tickable, running, topStatus, selectAllOf } = useSelection()
+  const kind = selectAllKind(tab, selection, tickable)
+  const approvable = kind ? tickable[kind].length : 0
+  const allSelected = kind !== null && selection?.kind === kind && selection.ids.length >= Math.min(approvable, 200)
+  return (
+    <div data-approval-select-all={kind ?? "none"} className={kind ? "hidden min-w-0 flex-wrap items-center gap-x-3 gap-y-1 md:flex" : "hidden"}>
+      {kind ? (
+        <Button variant="outline" size="md" onClick={() => selectAllOf(kind)} disabled={running || allSelected}>
+          <ListChecks aria-hidden="true" />
+          {fill(copy.selectAll, { count: approvable })}
+        </Button>
+      ) : null}
+      <p role="status" className={topStatus ? "text-meta text-muted-foreground" : "sr-only"}>{topStatus}</p>
+    </div>
+  )
+}
+
 /** The bar under the list while something is ticked (spec §7.4): from md only, sticky, one kind, across pages. */
 export function ApprovalInboxSelectionBar() {
-  const { copy, selection, tickable, status, running, clear, selectAllOfKind, openConfirm } = useSelection()
+  const { copy, selection, tickable, status, running, clear, selectAllOf, openConfirm } = useSelection()
   if (!selection && !running) return null
   const count = selection?.ids.length ?? 0
   const kind = selection?.kind ?? "finding"
@@ -368,7 +404,7 @@ export function ApprovalInboxSelectionBar() {
       clearDisabled={running}
       actions={
         <>
-          <Button variant="outline" size="md" onClick={selectAllOfKind} disabled={running || allSelected}>
+          <Button variant="outline" size="md" onClick={() => selectAllOf(kind)} disabled={running || allSelected}>
             <ListChecks aria-hidden="true" />
             {fill(copy.selectAll, { count: approvable })}
           </Button>

@@ -135,3 +135,17 @@ test("selection: the bar's words are the spec's (§7.4)", () => {
   assert.equal(th.bulkSkipped, "ข้ามไป {count} รายการ")
   assert.equal(th.bulkToPanel, "ต้องตัดสินในแผงด้านขวา {count} รายการ")
 })
+
+test("selection: select all approvable above the queue, before any tick, from md (review fix round 1)", () => {
+  const page = read(PAGE)
+  const providerStart = page.indexOf("<ApprovalInboxSelectionProvider")
+  const control = page.indexOf("<ApprovalInboxSelectAll tab={query.tab} />")
+  const table = page.indexOf("<DataTable ")
+  assert.ok(providerStart >= 0 && control > providerStart && control < table, "inside the provider, above the queue table")
+  const source = read(SELECTION)
+  assert.match(source, /const kind = selectAllKind\(tab, selection, tickable\)/)
+  assert.match(source, /className=\{kind \? "hidden min-w-0 flex-wrap items-center gap-x-3 gap-y-1 md:flex" : "hidden"\}/, "hidden below md and when the tab has nothing to tick")
+  assert.match(source, /onClick=\{\(\) => selectAllOf\(kind\)\}/)
+  assert.match(source, /\{fill\(copy\.selectAll, \{ count: approvable \}\)\}/)
+  assert.match(source, /<p role="status" className=\{topStatus \? "text-meta text-muted-foreground" : "sr-only"\}>\{topStatus\}<\/p>/, "the cap line is read even though the bar mounts with the click")
+})

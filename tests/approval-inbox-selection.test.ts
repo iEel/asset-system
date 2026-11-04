@@ -9,6 +9,7 @@ import {
   parseStoredSelection,
   restoreSelection,
   selectAll,
+  selectAllKind,
   toggleSelection,
   unopened,
   type StoredSelection,
@@ -113,4 +114,24 @@ test("the seen list is a JSON array of <key>:<id>; anything else is empty", () =
   assert.deepEqual([...parseApprovalInboxSeen(JSON.stringify(["disposal:a", "finding:b", 3]))], ["disposal:a", "finding:b"])
   assert.equal(parseApprovalInboxSeen(null).size, 0)
   assert.equal(parseApprovalInboxSeen("nope").size, 0)
+})
+
+// Fix round 1 (controller review): "เลือกทั้งหมดที่อนุมัติได้" above the queue picks its kind before any tick.
+test("selectAllKind: the disposal tab selects disposal, the audit tab findings, each only when it has tickable rows", () => {
+  const both = { disposal: ["d1"], finding: ["f1"] }
+  assert.equal(selectAllKind("disposal", null, both), "disposal")
+  assert.equal(selectAllKind("audit", null, both), "finding")
+  assert.equal(selectAllKind("disposal", null, { disposal: [], finding: [] }), null)
+  assert.equal(selectAllKind("audit", null, { disposal: ["d1"], finding: [] }), null)
+})
+
+test("selectAllKind: the all tab takes the kind already ticked, else disposal when it has tickable rows, else findings", () => {
+  const both = { disposal: ["d1"], finding: ["f1"] }
+  assert.equal(selectAllKind("all", { kind: "finding", ids: ["f1"], scope }, both), "finding")
+  assert.equal(selectAllKind("all", { kind: "disposal", ids: ["d1"], scope }, both), "disposal")
+  assert.equal(selectAllKind("all", null, both), "disposal")
+  assert.equal(selectAllKind("all", null, { disposal: [], finding: ["f1"] }), "finding")
+  assert.equal(selectAllKind("all", null, { disposal: [], finding: [] }), null)
+  // A ticked kind with nothing left to tick falls back to the other kind.
+  assert.equal(selectAllKind("all", { kind: "finding", ids: ["gone"], scope }, { disposal: ["d1"], finding: [] }), "disposal")
 })
