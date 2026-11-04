@@ -466,13 +466,13 @@ function DisposalNextAction({ request, href, row, canApprove, canExecute, canUse
 
   if (row) {
     const next: DisposalRowNext = review
-      ? { kind: "review", label: labels.review, dialog: { requestId: request.id, disposalNo: request.disposalNo, disposalType: request.disposalType, statuses: decisionStatuses, defaultSaleValue, defaultSalvageValue } }
+      ? { kind: "review", label: labels.review, dialog: { requestId: request.id, disposalNo: request.disposalNo } }
       : execute
         ? { kind: "execute", label: labels.executeShort, dialog: { requestId: request.id, disposalNo: request.disposalNo, disposalType: request.disposalType, statuses: executionStatuses, employees: filterDisposalExecutorOptions(employees, request.approverId, segregationRequired), defaultActualSaleValue: defaultSaleValue, defaultActualSalvageValue: defaultSalvageValue, effectiveEvidenceCount: request.effectiveEvidenceCount, canUseHistoricalEvidenceException } }
         : { kind: "view", label: labels.view }
     return <DisposalRowActions code={request.disposalNo} menuLabel={row.menuLabel} detail={{ label: labels.openRequest, href }} batch={row.batchHref ? { label: labels.openBatch, href: row.batchHref } : undefined} next={next} />
   }
-  if (review) return <DisposalDecisionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={decisionStatuses} defaultSaleValue={defaultSaleValue} defaultSalvageValue={defaultSalvageValue} />
+  if (review) return <DisposalDecisionButton requestId={request.id} disposalNo={request.disposalNo} />
   if (execute) return <DisposalExecutionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={executionStatuses} employees={filterDisposalExecutorOptions(employees, request.approverId, segregationRequired)} defaultActualSaleValue={defaultSaleValue} defaultActualSalvageValue={defaultSalvageValue} effectiveEvidenceCount={request.effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} />
   return <Link href={href} className={buttonVariants({ variant: "outline", size: "sm" })}>{labels.view}</Link>
 }

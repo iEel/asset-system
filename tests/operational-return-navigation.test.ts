@@ -43,7 +43,8 @@ test("disposal list and detail preserve filtered list context", () => {
   assert.match(listSource, /const disposalReturnHref = /)
   assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/\$\{request\.id\}`, disposalReturnHref\)/)
 
-  assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  // Group 6 plan 3 Task 3: the request page also reads /disposal/new's ?uploadErrors=.
+  assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; uploadErrors\?: string \| string\[\] \}>/)
   assert.match(detailSource, /normalizeOperationalReturnTo\(locale, "disposal", rawSearchParams\.returnTo\)/)
   assert.match(detailSource, /\{ label: t\("title"\), href: returnToHref \}/)
   assert.match(detailSource, /href=\{returnToHref\}/)

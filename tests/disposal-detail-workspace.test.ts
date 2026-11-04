@@ -5,19 +5,20 @@ import test from "node:test"
 const detailPath = "src/app/[locale]/(dashboard)/disposal/[id]/page.tsx"
 const detailSource = () => readFileSync(detailPath, "utf8")
 
-test("disposal detail surfaces one stage-aware next action in a workflow workspace", () => {
-  assert.ok(existsSync("src/components/disposal/disposal-workflow-stepper.tsx"))
+// Group 6 plan 3 Task 3 (spec §9.2): the next-step card replaced the stepper and its owner line.
+test("disposal detail surfaces one stage-aware next action in the next-step card", () => {
+  assert.ok(existsSync("src/components/disposal/disposal-next-step-card.tsx"))
+  assert.ok(!existsSync("src/components/disposal/disposal-workflow-stepper.tsx"))
 
   const source = detailSource()
-  assert.match(source, /DisposalWorkflowStepper/)
+  assert.match(source, /<DisposalNextStepCard\b/)
   assert.match(source, /getDisposalNextAction/)
   assert.match(source, /nextAction === "review"/)
   assert.match(source, /<DisposalDecisionButton/)
   assert.match(source, /nextAction === "execute"/)
   assert.match(source, /<DisposalExecutionButton/)
-  assert.match(source, /getCurrentOwnerContext/)
   assert.match(source, /centralApprovalQueue/)
-  assert.match(source, /executionQueue/)
+  assert.doesNotMatch(source, /getCurrentOwnerContext|executionQueue/)
 })
 
 test("disposal detail progressively reveals reviewed and completed information", () => {
@@ -101,18 +102,18 @@ test("child requests disclose their source batch and inherited evidence", () => 
 })
 
 // Plan 2B-4 Task 4 (spec 2B §4.4.5, §4.5.4, §8.8 row 4, B2, I32): the request page header is PageHeader with the asset's
-// name as the h1; the request code, the status and the asset code are its meta and show on phones too. The back button
-// shows at every width; print and the next step stay in the md-and-up group (the mobile bar has them on phones). The
-// stepper stays under the header; 2C plan 5 moved the O11 bottom padding to actionBarPagePadding. Raw read (CRLF): no
-// line breaks here.
+// name as the h1. Group 6 plan 3 Task 3 (spec §9.1): the meta reads "tag · คำขอ DP-…", the status badge and the method
+// chip; print and ⋯ (history, the asset page) stay in the md-and-up group (the mobile bar has them on phones). The
+// next-step card sits under the header; 2C plan 5 moved the O11 bottom padding to actionBarPagePadding. Raw read (CRLF):
+// no line breaks here.
 test("disposal request header is PageHeader with the asset name and a back button at every width (spec 2B §4.5.4)", () => {
   const source = detailSource()
 
   assert.match(source, /breadcrumbs=\{\[\s*\{ label: t\("title"\), href: returnToHref \},\s*\{ label: disposalRequest\.disposalNo, code: true \},\s*\]\}\s*title=\{disposalRequest\.asset\.name\}/)
-  assert.match(source, /meta=\{\s*<>\s*<span className="tag">\{disposalRequest\.disposalNo\}<\/span>\s*<StatusBadge /)
+  assert.match(source, /meta=\{\s*<>\s*<span className="text-meta text-muted-foreground">\s*<span className="tag">\{disposalRequest\.asset\.assetTag\}<\/span>\s*\{" · "\}\s*\{t\("requestPage\.metaRequest", \{ number: disposalRequest\.disposalNo \}\)\}\s*<\/span>\s*<StatusBadge [^\n]*\/>\s*<Chip>\{method\}<\/Chip>/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\s*actions=\{\s*<div className="hidden items-center gap-2 md:flex">/)
-  assert.ok(source.indexOf("<PageHeader") < source.indexOf("<DisposalWorkflowStepper"), "the stepper stays under the header")
+  assert.ok(source.indexOf("<PageHeader") < source.indexOf("<DisposalNextStepCard"), "the next-step card sits under the header")
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/, "room for the ActionBar and its next step (2C plan 5, O11)")
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 6, "plan 2D-4 adds the decision remark")
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 6, "request, decision, execution, the historical exception, a history row, the asset")
   assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|ArrowLeft|formatCurrency|function Info\b|"-"/)
 })

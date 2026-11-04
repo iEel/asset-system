@@ -3714,7 +3714,6 @@
     "decision": "Decision",
     "approve": "Approve",
     "reject": "Reject",
-    "nextStatus": "Asset Status After Review",
     "approveKeepsPendingDisposal": "Approval keeps the asset in its current status until the disposal is recorded.",
     "rejectRestoresPreviousStatus": "Rejection automatically restores the status recorded before the disposal request.",
     "approvalRemark": "Review Remark",
@@ -3732,7 +3731,6 @@
     "printRequest": "Print disposal request",
     "printFinalDocument": "Print final disposal document",
     "centralApprovalQueue": "Central approval queue",
-    "executionQueue": "Disposal execution queue",
     "disposalDocumentTitle": "Asset Disposal Approval Document",
     "approvedAt": "Reviewed At",
     "currentLocation": "Current Location",
@@ -3986,11 +3984,6 @@
     "activeFilterCount": "{count} filters on",
     "executeDisposalShort": "Dispose",
     "workflowStepsLabel": "Disposal steps",
-    "workflowSteps": {
-      "request": "Request",
-      "decision": "Decision",
-      "execution": "Record disposal"
-    },
     "bulkDiscardSelectionAction": "Discard selection",
     "batchNeedsAssets": "Select at least 2 assets before you review the batch.",
     "bulkExecutionPermanentConfirmationRequired": "Tick the confirmation box before you continue.",
@@ -4055,6 +4048,34 @@
       "checkRequesterReason": "Requester and reason",
       "checkPhoto": "Photos {count}",
       "checkEvidence": "Evidence {count}"
+    },
+    "requestPage": {
+      "metaRequest": "Request {number}",
+      "history": "History",
+      "openAssetPage": "Open asset page",
+      "steps": {
+        "request": "Request",
+        "decision": "Decision",
+        "round": "Record in a disposal round"
+      },
+      "titleDecide": "Waiting for your decision",
+      "titleOwn": "You cannot decide this request yourself",
+      "titleWaiting": "Waiting for an approver",
+      "waitingFor": "Waiting for: {approver} (named) or another approver",
+      "waitingForQueue": "Waiting for: the central approval queue · any approver other than you",
+      "waitingSince": "Waiting since {date}",
+      "titleApproved": "Approved · awaiting disposal record",
+      "approverCannotExecute": "You approved this request, so you cannot record its disposal yourself",
+      "titleDisposed": "Disposed · {date}",
+      "titleRejected": "Not approved · {remark}",
+      "titleRejectedNoRemark": "Not approved",
+      "restoredTo": "The asset returned to {status}",
+      "restoredToUnknown": "The asset returned to its status before the request",
+      "method": "Method",
+      "reviewer": "Reviewer",
+      "noPhoto": "This request has no photo yet · attach one here",
+      "uploadFailedNoPhoto": "{count} files failed to upload · this request has no photo yet",
+      "evidenceHint": "Add photos while the request waits for a decision; the reviewer sees them at once"
     }
   },
   "approvalInboxPage": {

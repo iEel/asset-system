@@ -3714,7 +3714,6 @@
     "decision": "ผลการพิจารณา",
     "approve": "อนุมัติ",
     "reject": "ปฏิเสธ",
-    "nextStatus": "สถานะทรัพย์สินหลังพิจารณา",
     "approveKeepsPendingDisposal": "อนุมัติแล้วจะยังคงสถานะทรัพย์สินไว้ก่อน จนกว่าจะบันทึกตัดจำหน่าย",
     "rejectRestoresPreviousStatus": "เมื่อปฏิเสธ ระบบจะคืนสถานะเดิมที่บันทึกไว้ก่อนสร้างคำขอตัดจำหน่ายโดยอัตโนมัติ",
     "approvalRemark": "หมายเหตุการพิจารณา",
@@ -3732,7 +3731,6 @@
     "printRequest": "พิมพ์คำขอตัดจำหน่าย",
     "printFinalDocument": "พิมพ์เอกสารตัดจำหน่ายฉบับสมบูรณ์",
     "centralApprovalQueue": "คิวอนุมัติส่วนกลาง",
-    "executionQueue": "คิวรอดำเนินการตัดจำหน่าย",
     "disposalDocumentTitle": "ใบอนุมัติตัดจำหน่ายทรัพย์สิน",
     "approvedAt": "วันที่พิจารณา",
     "currentLocation": "ที่ตั้งปัจจุบัน",
@@ -3986,11 +3984,6 @@
     "activeFilterCount": "ใช้ตัวกรอง {count} รายการ",
     "executeDisposalShort": "บันทึกตัดจำหน่าย",
     "workflowStepsLabel": "ขั้นตอนการตัดจำหน่าย",
-    "workflowSteps": {
-      "request": "ยื่นคำขอ",
-      "decision": "พิจารณา",
-      "execution": "บันทึกตัดจำหน่าย"
-    },
     "bulkDiscardSelectionAction": "ละทิ้งรายการที่เลือก",
     "batchNeedsAssets": "เลือกทรัพย์สินอย่างน้อย 2 รายการก่อนตรวจสอบชุดคำขอ",
     "bulkExecutionPermanentConfirmationRequired": "กรุณาเลือกช่องยืนยันก่อนดำเนินการ",
@@ -4055,6 +4048,34 @@
       "checkRequesterReason": "ผู้ขอและเหตุผล",
       "checkPhoto": "รูป {count}",
       "checkEvidence": "หลักฐาน {count}"
+    },
+    "requestPage": {
+      "metaRequest": "คำขอ {number}",
+      "history": "ประวัติ",
+      "openAssetPage": "เปิดหน้าทรัพย์สิน",
+      "steps": {
+        "request": "ยื่นคำขอ",
+        "decision": "พิจารณา",
+        "round": "บันทึกในรอบตัดจำหน่าย"
+      },
+      "titleDecide": "รอคุณพิจารณา",
+      "titleOwn": "คุณพิจารณาคำขอนี้เองไม่ได้",
+      "titleWaiting": "รอผู้มีสิทธิ์พิจารณา",
+      "waitingFor": "รอใคร: {approver} (ระบุไว้) หรือผู้มีสิทธิ์คนอื่น",
+      "waitingForQueue": "รอใคร: คิวอนุมัติส่วนกลาง · ผู้มีสิทธิ์พิจารณาคนใดก็ได้ที่ไม่ใช่คุณ",
+      "waitingSince": "รอมาแล้ว ตั้งแต่ {date}",
+      "titleApproved": "อนุมัติแล้ว · รอบันทึกตัดจำหน่าย",
+      "approverCannotExecute": "คุณอนุมัติคำขอนี้ จึงบันทึกตัดจำหน่ายรายการนี้เองไม่ได้",
+      "titleDisposed": "ตัดจำหน่ายแล้ว · {date}",
+      "titleRejected": "ไม่อนุมัติ · {remark}",
+      "titleRejectedNoRemark": "ไม่อนุมัติ",
+      "restoredTo": "ทรัพย์สินกลับเป็น{status}",
+      "restoredToUnknown": "ทรัพย์สินกลับเป็นสถานะก่อนยื่นคำขอ",
+      "method": "วิธี",
+      "reviewer": "ผู้พิจารณา",
+      "noPhoto": "คำขอนี้ยังไม่มีรูป · แนบรูปได้ที่นี่",
+      "uploadFailedNoPhoto": "อัปโหลดไม่สำเร็จ {count} ไฟล์ · คำขอนี้ยังไม่มีรูป",
+      "evidenceHint": "เพิ่มรูปได้ระหว่างรอพิจารณา ผู้พิจารณาจะเห็นทันที"
     }
   },
   "approvalInboxPage": {

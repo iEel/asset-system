@@ -2,7 +2,7 @@ import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { ApprovalDisposalDecision } from "@/components/approvals/approval-disposal-decision"
 import { ApprovalInboxSeen } from "@/components/approvals/approval-inbox-seen"
-import { ApprovalPhotoGallery } from "@/components/approvals/approval-photo-gallery"
+import { DisposalPhotoGallery } from "@/components/disposal/disposal-photo-gallery"
 import { linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { KeyValueList, type KeyValueItem } from "@/components/ui/key-value-list"
@@ -115,7 +115,7 @@ export async function ApprovalDisposalPanel({
         </p>
       </header>
 
-      <ApprovalPhotoGallery
+      <DisposalPhotoGallery
         key={request.id}
         photos={panel.photos.map((photo) => ({ id: photo.id, originalName: photo.originalName }))}
         documents={panel.documents.map((document) => ({ id: document.id, originalName: document.originalName }))}

@@ -11,11 +11,12 @@ import { cn } from "@/lib/utils"
 
 type GalleryFile = { id: string; originalName: string }
 
-// The disposal request's photos in the approvals panel (group 6 spec §7.5, decision 2): one large photo, the card-size
-// thumbnail in the shared AssetPhotoFrame, whose button opens the original in AttachmentPreviewDialog; a strip of 64px
-// thumbnails that change it; then the PDFs as file chips. With no photo, the warning (or, for a lost machine, which
-// cannot be photographed, the muted line the row shows).
-export function ApprovalPhotoGallery({
+// The disposal request's photos, in the approvals panel and on the request page (group 6 spec §7.5, §9.3, decision 2;
+// P3-R2): one large photo, the card-size thumbnail in the shared AssetPhotoFrame, whose button opens the original in
+// AttachmentPreviewDialog; a strip of 64px thumbnails that change it; then the PDFs as file chips. With no photo, the
+// warning (or, for a lost machine, which cannot be photographed, the muted line the row shows); the request page
+// renders it only with a photo, as its own no-photo notice sits on top of the panel.
+export function DisposalPhotoGallery({
   photos,
   documents,
   assetName,

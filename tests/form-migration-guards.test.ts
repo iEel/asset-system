@@ -115,7 +115,9 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}disposal/disposal-request-form.tsx`]: [2, 1, 1],
   [`${C}disposal/disposal-batch-form.tsx`]: [1, 1, 1],
   [`${C}disposal/disposal-execution-button.tsx`]: [8, 4, 1],
-  [`${C}disposal/disposal-decision-button.tsx`]: [3, 1, 0],
+  // Group 6 plan 3 Task 3: the decision select shows only without a preset decision and the status select went; it keeps
+  // the select's required, the remark's required (to reject) and its maxLength.
+  [`${C}disposal/disposal-decision-button.tsx`]: [2, 1, 0],
   [`${C}audit/audit-finding-review-actions.tsx`]: [1, 2, 0],
   [`${C}audit/audit-finding-decision.tsx`]: [0, 1, 0],
   // Group 6 plan 2 Task 4: the approvals panel's review remark (maxLength 4000; required only to reject, checked in code).

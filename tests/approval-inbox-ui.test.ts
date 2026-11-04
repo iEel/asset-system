@@ -157,5 +157,5 @@ test("final review: own requests read อนุมัติเองไม่ไ
   assert.match(page, /row\.isOwn && row\.block\?\.sodReason \?/)
   assert.match(page, /emptyTabTitle/)
   const panel = readFileSync("src/components/approvals/approval-disposal-panel.tsx", "utf8")
-  assert.match(panel, /<ApprovalPhotoGallery\s+key=\{request\.id\}/)
+  assert.match(panel, /<DisposalPhotoGallery\s+key=\{request\.id\}/)
 })

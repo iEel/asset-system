@@ -10,21 +10,24 @@ import test from "node:test"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const C = "src/components/"
 
-test("disposal stepper: the stage row and the steps sit in a ContentPanel (spec 2D D9, M28)", () => {
-  const source = read(`${C}disposal/disposal-workflow-stepper.tsx`)
+// Group 6 plan 3 Task 3: the next-step card replaced the stepper; the title, the rail and the body sit in a ContentPanel.
+test("disposal next-step card: the title, the steps and the body sit in a ContentPanel (spec 2D D9, M28; group 6 spec §9.2)", () => {
+  const source = read(`${C}disposal/disposal-next-step-card.tsx`)
   assert.match(source, /^import \{ ContentPanel \} from "@\/components\/ui\/content-panel"$/m)
-  assert.match(source, /<ContentPanel>\n\s+<div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">/)
-  assert.match(source, /<Steps className="mt-4" label=\{stepsLabel\} steps=\{steps\} \/>\n\s+<\/ContentPanel>/)
+  assert.match(source, /<ContentPanel title=\{title\}>\n\s+<div className="grid gap-5 lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,340px\)\] lg:items-start">\n\s+<div className="min-w-0 space-y-4">\n\s+<Steps label=\{t\("workflowStepsLabel"\)\} steps=\{steps\} \/>/)
   assert.doesNotMatch(source, /<section\b|rounded-lg border|waits for 2D/)
 })
 
+// Group 6 plan 3 Task 3 (spec §9.3): images are 96px thumbnails, the one raw button (the N3 EXEMPT row) that opens the
+// preview; PDFs are rows with the shared download link.
 test("disposal evidence: a ContentPanel, EmptyNote, the shared download link and delete button, and no teal icon (spec 2D D9, M21, M29)", () => {
   const source = read(`${C}disposal/disposal-attachments.tsx`)
   assert.match(source, /<ContentPanel title=\{title \?\? t\("requestEvidence"\)\}>/)
   assert.match(source, /<EmptyNote>\{tCommon\("noData"\)\}<\/EmptyNote>/)
-  assert.match(source, /<a href=\{`\/api\/attachments\/\$\{attachment\.id\}`\} className=\{cn\(buttonVariants\(\{ variant: "outline", size: "sm" \}\), "flex-1"\)\}>/)
+  assert.match(source, /<a href=\{`\/api\/attachments\/\$\{attachment\.id\}`\} className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}>/)
   assert.match(source, /<Button\s+variant="danger"\s+size="icon-sm"\s+onClick=\{\(\) => handleDelete\(attachment\.id\)\}\s+busy=\{deletingId === attachment\.id\}\s+aria-label=\{tCommon\("delete"\)\}/)
-  assert.doesNotMatch(source, /<button\b|<section\b|Loader2|disabled:opacity|border-dashed|rounded-lg border|text-lg|text-info|text-primary|hover:bg-accent|\btext-xs\b|sm:h-8/)
+  assert.equal(source.match(/<button\b/g)?.length, 1, "the thumbnail")
+  assert.doesNotMatch(source, /<section\b|Loader2|disabled:opacity|border-dashed|rounded-lg border|text-lg|text-info|text-primary|hover:bg-accent|\btext-xs\b|sm:h-8/)
 })
 
 test("disposal asset picker: shared remove buttons, one quiet list of the chosen assets, options on the row hover, EmptyNote and 13px meta lines (spec 2D M21, M29)", () => {
@@ -108,17 +111,20 @@ test("disposal queue: the phone filter on the panel classes, text links with a 4
   assert.doesNotMatch(source, /function MobileDisposalField\b|hover:text-primary|hover:underline|\btext-xs\b|rounded-lg border|bg-surface px-3 py-2|tone="muted" \/>/)
 })
 
-test("disposal request page: ContentPanels, the batch an info Notice, the historical exception a warning Notice with its facts outside, remarks in the KeyValueLists and shape markers (spec 2D D7, D9, M21, M22, M29)", () => {
+// Group 6 plan 3 Task 3 (spec §9.3): the reason and the batch link joined the request details ("สร้างจากชุด DPB-…").
+test("disposal request page: ContentPanels, the batch a request detail row, the historical exception a warning Notice with its facts outside, remarks in the KeyValueLists and shape markers (spec 2D D7, D9, M21, M22, M29)", () => {
   const source = read("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx")
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 5)
-  assert.equal(source.match(/<ContentPanel title=\{t\("(?:requestDetail|reason|decisionDetail|executionDetail|asset)"\)\}>/g)?.length, 5, "request, reason, decision, execution, asset")
-  assert.match(source, /<Notice\n\s+tone="info"\n\s+title=\{t\("sourceBatch"\)\}\n\s+action=\{<Link href=\{`\/\$\{locale\}\/disposal\/batches\/\$\{disposalRequest\.batch\.id\}`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\{t\("openBatch"\)\}<\/Link>\}\n\s+>\n\s+<span className="tag">\{disposalRequest\.batch\.batchNo\}<\/span>/)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 4)
+  assert.equal(source.match(/<ContentPanel title=\{t\("(?:requestDetail|decisionDetail|executionDetail|asset)"\)\}>/g)?.length, 4, "request, decision, execution, asset")
+  assert.match(source, /key: "batch",\n\s+label: t\("sourceBatch"\),\n\s+value: disposalRequest\.batch \? \(\n\s+<Link href=\{`\/\$\{locale\}\/disposal\/batches\/\$\{disposalRequest\.batch\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>\n\s+<span className="tag">\{disposalRequest\.batch\.batchNo\}<\/span>/)
+  assert.match(source, /\{ key: "reason", label: t\("reason"\), value: <span className="whitespace-pre-wrap">\{disposalRequest\.reason\}<\/span> \}/)
   assert.match(source, /<section aria-label=\{t\("historicalEvidenceSummary"\)\} className="mt-5 space-y-4">\n\s+<Notice tone="warning" title=\{t\("historicalEvidenceBadge"\)\}>/)
   assert.match(source, /key: "approvalRemark",\n\s+label: t\("approvalRemark"\),/)
   assert.match(source, /key: "executionRemark",\n\s+label: t\("executionRemark"\),/)
   assert.match(source, /<section id="history" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
   assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-2 -left-1"\)\} \/>/)
-  assert.match(source, /<Link href=\{`\/\$\{locale\}\/assets\/\$\{disposalRequest\.asset\.id\}`\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)
+  assert.match(source, /const assetHref = `\/\$\{locale\}\/assets\/\$\{disposalRequest\.asset\.id\}`/)
+  assert.match(source, /<Link href=\{assetHref\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)
   assert.doesNotMatch(source, /function TextBlock\b|rounded-lg border|bg-(?:primary|warning)-soft|border-(?:primary|warning)-border|rounded-full|text-lg|\btext-xs\b|hover:bg-accent|sm:h-9|AlertTriangle|text-primary/)
 })
 

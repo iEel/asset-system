@@ -6,25 +6,29 @@ import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getDisposalOptions } from "@/lib/disposal-options"
-import { formatMoney } from "@/lib/display-format"
+import { formatMoney, isBlankValue } from "@/lib/display-format"
 import { cn, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
-import { DisposalWorkflowStepper } from "@/components/disposal/disposal-workflow-stepper"
+import { DisposalNextStepCard, type DisposalNextStepState } from "@/components/disposal/disposal-next-step-card"
+import { DisposalPhotoGallery } from "@/components/disposal/disposal-photo-gallery"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { statusMarkerVariants } from "@/components/ui/badge-variants"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { KeyValueList } from "@/components/ui/key-value-list"
+import { KeyValueList, type KeyValueItem } from "@/components/ui/key-value-list"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { RowActions } from "@/components/ui/row-actions"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { filterDisposalExecutorOptions, getDisposalDecisionStatusOptions, getDisposalExecutionStatusOptions, getDisposalSegregationError } from "@/lib/disposal-policy"
-import { getDisposalNextAction, getDisposalStage } from "@/lib/disposal-stage"
+import { filterDisposalExecutorOptions, getDisposalApprovalSodReason, getDisposalExecutionStatusOptions, getDisposalSegregationError } from "@/lib/disposal-policy"
+import { getDisposalNextAction } from "@/lib/disposal-stage"
+import { listDisposalPhotos, isDisposalPhotoFile } from "@/lib/disposal-photo"
 import { formatMovementType } from "@/lib/asset-detail-format"
 import { getPanelClasses } from "@/lib/design-system"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
@@ -32,9 +36,15 @@ import { readDisposalSourceLinks } from "@/lib/disposal-source"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; uploadErrors?: string | string[] }>
 }
 
+// Labels above values, in one column, long codes and names wrap anywhere (board DP-Request).
+const stackedKeyValues = "grid-cols-1 gap-y-0.5 [&>dd+dt]:mt-3 [overflow-wrap:anywhere]"
+
+// The disposal request page, board DP-Request (group 6 spec §9.1–9.3, §9.5): the header with print and ⋯, the next-step
+// card, the request details with the source link and the reason, the decision, execution and history panels, and a
+// 380px aside with the asset's photos and facts and the evidence. The phone keeps the ActionBar until Task 4.
 export default async function DisposalDetailPage({ params, searchParams }: DisposalDetailPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
@@ -43,6 +53,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   const canEdit = hasPermission(user, "disposal", "edit")
   const canCreate = hasPermission(user, "disposal", "create")
   const t = await getTranslations("disposalPage")
+  const tInbox = await getTranslations("approvalInboxPage")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
 
@@ -69,6 +80,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           custodian: { select: { code: true, fullNameTh: true } },
         },
       },
+      previousAssetStatus: { select: { name: true, nameTh: true } },
       requestedBy: { select: { code: true, fullNameTh: true } },
       approver: { select: { code: true, fullNameTh: true } },
       executedBy: { select: { code: true, fullNameTh: true } },
@@ -84,7 +96,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     : null
   const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
 
-  const [movements, attachments, batchAttachments, options, savedSettings, sourceLinks] = await Promise.all([
+  const [movements, attachments, batchAttachments, options, savedSettings, sourceLinks, photoLists] = await Promise.all([
     prisma.assetMovement.findMany({
       where: { referenceType: "disposal", referenceId: disposalRequest.id },
       orderBy: { performedAt: "desc" },
@@ -97,20 +109,22 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       where: { module: "disposal_batch", referenceId: disposalRequest.batch.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
     }) : Promise.resolve([]),
-    canApprove || canEdit ? getDisposalOptions() : Promise.resolve(null),
+    canEdit ? getDisposalOptions() : Promise.resolve(null),
     prisma.systemSetting.findMany({
       where: { key: { in: [...workflowApprovalSettingKeys] } },
       select: { key: true, value: true },
     }),
     readDisposalSourceLinks(prisma, locale, [disposalRequest]),
+    listDisposalPhotos(prisma, [{ id: disposalRequest.id, batchId: disposalRequest.batch?.id ?? null }]),
   ])
+  const photos = photoLists.get(disposalRequest.id) ?? []
   const sourceLink = sourceLinks.get(disposalRequest.id) ?? null
   const sourceValue = !sourceLink
     ? null
     : sourceLink.kind === "other"
       ? sourceLink.text
       : (
-          <Link href={sourceLink.href} className="font-medium underline underline-offset-3 hover:decoration-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <Link href={sourceLink.href} className={linkVariants({ size: "inherit" })}>
             {sourceLink.kind === "maintenance"
               ? t("sourceMaintenance", { number: sourceLink.number })
               : t("sourceAuditFinding", { number: sourceLink.number })}
@@ -118,15 +132,13 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         )
   const movementLabels = await getMovementDisplayLabels(movements)
   const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
-  const canReviewDisposal = canApprove && getDisposalSegregationError({
-    action: "approve",
+  const sodReason = getDisposalApprovalSodReason({
     segregationRequired: workflowPolicy.segregationRequired,
     actorEmployeeId: user.employeeId,
     actorUserId: user.id,
     requestedById: disposalRequest.requestedById,
     createdByUserId: disposalRequest.createdBy,
-    approverId: disposalRequest.approverId,
-  }) === null
+  })
   const canExecuteDisposal = canEdit && getDisposalSegregationError({
     action: "execute",
     segregationRequired: workflowPolicy.segregationRequired,
@@ -136,7 +148,6 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     createdByUserId: disposalRequest.createdBy,
     approverId: disposalRequest.approverId,
   }) === null
-  const decisionStatuses = getDisposalDecisionStatusOptions(options?.statuses ?? [])
   const executionStatuses = getDisposalExecutionStatusOptions(options?.statuses ?? [])
   const executorOptions = filterDisposalExecutorOptions(options?.employees ?? [], disposalRequest.approverId, workflowPolicy.segregationRequired)
 
@@ -146,34 +157,40 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     disposed: t("statuses.disposed"),
     rejected: t("statuses.rejected"),
   }
-  const workflowStage = getDisposalStage(disposalRequest.requestStatus)
-  const nextAction = getDisposalNextAction(disposalRequest.requestStatus, {
-    canApprove: canReviewDisposal,
+  const status = disposalRequest.requestStatus
+  const nextAction = getDisposalNextAction(status, {
+    canApprove: canApprove && sodReason === null,
     canExecute: canExecuteDisposal,
   })
-  const ownerContext = getCurrentOwnerContext(disposalRequest, {
-    centralApprovalQueue: t("centralApprovalQueue"),
-    executionQueue: t("executionQueue"),
-  })
+  const nextStepState: DisposalNextStepState =
+    status === "pending" ? (!canApprove ? "waiting" : sodReason ? "own" : "decide")
+      : status === "approved" ? "approved"
+        : status === "disposed" ? "disposed"
+          : "rejected"
+  const previousStatusName = disposalRequest.previousAssetStatus
+    ? disposalRequest.previousAssetStatus.nameTh || disposalRequest.previousAssetStatus.name
+    : null
   const returnToHref = normalizeOperationalReturnTo(locale, "disposal", rawSearchParams.returnTo)
   const printHref = appendOperationalReturnTo(`/${locale}/disposal/${disposalRequest.id}/print`, returnToHref)
   const printLabel = disposalRequest.requestStatus === "disposed" ? t("printFinalDocument") : t("printRequest")
+  const assetHref = `/${locale}/assets/${disposalRequest.asset.id}`
+  const method = t.has(`types.${disposalRequest.disposalType}`) ? t(`types.${disposalRequest.disposalType}`) : disposalRequest.disposalType
   const disposalMovementLabels: Record<string, string> = {
     disposal_request: t("requestDetail"),
     disposal_approve: t("approve"),
     disposal_reject: t("reject"),
     disposal_execute: t("executionDetail"),
   }
-  const nextActionControl = nextAction === "review" && options && decisionStatuses.length > 0 ? (
-    <DisposalDecisionButton
-      requestId={disposalRequest.id}
-      disposalNo={disposalRequest.disposalNo}
-      disposalType={disposalRequest.disposalType}
-      statuses={decisionStatuses}
-      defaultSaleValue={disposalRequest.saleValue?.toString()}
-      defaultSalvageValue={disposalRequest.salvageValue?.toString()}
-    />
-  ) : nextAction === "execute" && options && executionStatuses.length > 0 ? (
+
+  // Files the request keeps: the no-photo notice, from /disposal/new's ?uploadErrors=<n> when its uploads failed.
+  const rawUploadErrors = Array.isArray(rawSearchParams.uploadErrors) ? rawSearchParams.uploadErrors[0] : rawSearchParams.uploadErrors
+  const parsedUploadErrors = Number.parseInt(rawUploadErrors ?? "", 10)
+  const failedUploads = Number.isFinite(parsedUploadErrors) && parsedUploadErrors > 0 ? parsedUploadErrors : 0
+  const isLost = disposalRequest.disposalType === "lost"
+  const showNoPhoto = photos.length === 0 && !isLost
+  const inheritedQualifying = batchAttachments.filter((file) => isLost || isDisposalPhotoFile(file.fileType)).length
+
+  const executionControl = nextAction === "execute" && options && executionStatuses.length > 0 ? (
     <DisposalExecutionButton
       requestId={disposalRequest.id}
       disposalNo={disposalRequest.disposalNo}
@@ -186,6 +203,63 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       canUseHistoricalEvidenceException={user.roles.includes("system_admin")}
     />
   ) : null
+  const decisionActions = nextAction === "review" ? (
+    <>
+      <DisposalDecisionButton
+        requestId={disposalRequest.id}
+        disposalNo={disposalRequest.disposalNo}
+        initialDecision="approve"
+        triggerLabel={t("approve")}
+      />
+      <DisposalDecisionButton
+        requestId={disposalRequest.id}
+        disposalNo={disposalRequest.disposalNo}
+        initialDecision="reject"
+        triggerLabel={t("reject")}
+      />
+    </>
+  ) : null
+  // The phone's ActionBar keeps one next step until the phone board (Task 4): the decision dialog that asks, or execution.
+  const nextActionControl = nextAction === "review" ? (
+    <DisposalDecisionButton requestId={disposalRequest.id} disposalNo={disposalRequest.disposalNo} />
+  ) : executionControl
+
+  const money = (value: unknown) => (value == null ? null : <span className="num">{formatMoney(Number(value), { unit: tCommon("baht") })}</span>)
+  const person = (row: { code: string; fullNameTh: string } | null) => (row ? <>{row.fullNameTh} <span className="tag">{row.code}</span></> : null)
+  // The estimates show only on an old request that has one: a request asks for no price (the user, 2026-11-04).
+  const requestItems: KeyValueItem[] = [
+    { key: "disposalType", label: t("requestPage.method"), value: method },
+    { key: "saleValue", label: t("saleValue"), value: money(disposalRequest.saleValue) },
+    { key: "salvageValue", label: t("salvageValue"), value: money(disposalRequest.salvageValue) },
+    { key: "requestedBy", label: t("requestedBy"), value: person(disposalRequest.requestedBy) },
+    { key: "approver", label: t("requestPage.reviewer"), value: disposalRequest.approver ? person(disposalRequest.approver) : t("centralApprovalQueue") },
+    { key: "requestDate", label: t("requestDate"), value: formatDateTime(disposalRequest.requestDate) },
+    { key: "source", label: t("source"), value: sourceValue },
+    {
+      key: "batch",
+      label: t("sourceBatch"),
+      value: disposalRequest.batch ? (
+        <Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className={linkVariants({ size: "inherit" })}>
+          <span className="tag">{disposalRequest.batch.batchNo}</span>
+        </Link>
+      ) : null,
+    },
+    { key: "reason", label: t("reason"), value: <span className="whitespace-pre-wrap">{disposalRequest.reason}</span> },
+  ].filter((item) => !isBlankValue(item.value))
+  // Empty rows are hidden (board DP-Request).
+  const assetItems: KeyValueItem[] = [
+    { key: "assetTag", label: tAsset("assetTag"), value: <span className="tag">{disposalRequest.asset.assetTag}</span> },
+    { key: "serialNumber", label: tAsset("serialNumber"), value: disposalRequest.asset.serialNumber },
+    { key: "fixedAssetCode", label: tAsset("fixedAssetCode"), value: disposalRequest.asset.fixedAssetCode },
+    { key: "category", label: tAsset("category"), value: disposalRequest.asset.category.name },
+    { key: "brand", label: tAsset("brand"), value: [disposalRequest.asset.brand?.name, disposalRequest.asset.model?.name].filter(Boolean).join(" · ") || null },
+    { key: "branch", label: tAsset("branch"), value: `${disposalRequest.asset.company.nameTh} · ${disposalRequest.asset.branch.name}` },
+    { key: "currentLocation", label: t("currentLocation"), value: disposalRequest.asset.currentLocation.name },
+    { key: "custodian", label: t("custodian"), value: disposalRequest.asset.custodian?.fullNameTh },
+    { key: "currentStatus", label: t("currentStatus"), value: disposalRequest.asset.status.nameTh },
+    { key: "currentCondition", label: t("currentCondition"), value: disposalRequest.asset.condition.nameTh },
+    { key: "purchasePrice", label: tAsset("purchasePrice"), value: money(disposalRequest.asset.purchasePrice) },
+  ].filter((item) => !isBlankValue(item.value))
 
   return (
     <div className={`space-y-6 ${actionBarPagePadding.withPrimary}`}>
@@ -197,9 +271,13 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         title={disposalRequest.asset.name}
         meta={
           <>
-            <span className="tag">{disposalRequest.disposalNo}</span>
-            <StatusBadge label={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus} status={disposalRequest.requestStatus} />
-            <span className="tag">{disposalRequest.asset.assetTag}</span>
+            <span className="text-meta text-muted-foreground">
+              <span className="tag">{disposalRequest.asset.assetTag}</span>
+              {" · "}
+              {t("requestPage.metaRequest", { number: disposalRequest.disposalNo })}
+            </span>
+            <StatusBadge label={statusLabels[status as keyof typeof statusLabels] ?? status} status={status} />
+            <Chip>{method}</Chip>
           </>
         }
         back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
@@ -209,80 +287,62 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               <Printer aria-hidden="true" />
               {printLabel}
             </Link>
-            {nextActionControl}
+            <RowActions
+              code={disposalRequest.disposalNo}
+              menuLabel={tCommon("moreActionsFor", { code: disposalRequest.disposalNo })}
+              groups={[
+                {
+                  key: "more",
+                  items: [
+                    { kind: "link", key: "history", label: t("requestPage.history"), href: "#history", icon: <History aria-hidden="true" /> },
+                    { kind: "link", key: "asset", label: t("requestPage.openAssetPage"), href: assetHref, icon: <FileText aria-hidden="true" /> },
+                  ],
+                },
+              ]}
+              menu="dropdown"
+              triggerVariant="outline"
+            />
           </div>
         }
       />
-      <DisposalWorkflowStepper
-        stage={workflowStage}
-        currentStageLabel={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus}
-        ownerRoleLabel={ownerContext.roleLabel === "approver" ? t("approver") : t("executedBy")}
-        ownerLabel={ownerContext.ownerLabel}
-        stepsLabel={t("workflowStepsLabel")}
-        labels={{
-          request: t("workflowSteps.request"),
-          decision: t("workflowSteps.decision"),
-          execution: t("workflowSteps.execution"),
+      <DisposalNextStepCard
+        state={nextStepState}
+        sodReason={sodReason}
+        approverLabel={disposalRequest.approver?.fullNameTh ?? null}
+        waitingSince={formatDateTime(disposalRequest.requestDate)}
+        effect={{
+          approve: tInbox("effectApprove"),
+          reject: previousStatusName ? tInbox("effectReject", { status: previousStatusName }) : tInbox("effectRejectUnknown"),
         }}
+        actions={decisionActions}
+        executionAction={executionControl}
+        rejectRemark={disposalRequest.approvalRemark}
+        segregationRequired={workflowPolicy.segregationRequired}
+        approvedByViewer={workflowPolicy.segregationRequired && Boolean(disposalRequest.approverId) && disposalRequest.approverId === user.employeeId}
+        previousStatus={previousStatusName}
+        doneAt={disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null}
       />
-      {disposalRequest.batch ? (
-        <Notice
-          tone="info"
-          title={t("sourceBatch")}
-          action={<Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className={buttonVariants({ variant: "outline", size: "md" })}>{t("openBatch")}</Link>}
-        >
-          <span className="tag">{disposalRequest.batch.batchNo}</span>
-        </Notice>
-      ) : null}
       <ActionBar
         label={tCommon("actions")}
         primaryAction={nextActionControl}
         actions={[
-          { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: !nextActionControl },
+          { href: assetHref, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: !nextActionControl },
           { href: printHref, label: printLabel, icon: <Printer className="h-4 w-4" /> },
           { href: "#history", label: t("disposalHistory"), icon: <History className="h-4 w-4" /> },
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-6">
           <ContentPanel title={t("requestDetail")}>
-            <KeyValueList
-              items={[
-                { key: "disposalNo", label: t("disposalNo"), value: <span className="tag">{disposalRequest.disposalNo}</span> },
-                { key: "disposalType", label: t("disposalType"), value: t(`types.${disposalRequest.disposalType}`) },
-                { key: "requestDate", label: t("requestDate"), value: formatDateTime(disposalRequest.requestDate) },
-                { key: "requestedBy", label: t("requestedBy"), value: <><span className="tag">{disposalRequest.requestedBy.code}</span> - {disposalRequest.requestedBy.fullNameTh}</> },
-                {
-                  key: "approver",
-                  label: t("approver"),
-                  value: disposalRequest.approver ? <><span className="tag">{disposalRequest.approver.code}</span> - {disposalRequest.approver.fullNameTh}</> : null,
-                },
-                { key: "status", label: tCommon("status"), value: statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus },
-                {
-                  key: "saleValue",
-                  label: t("saleValue"),
-                  value: disposalRequest.saleValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.saleValue), { unit: tCommon("baht") })}</span>,
-                },
-                {
-                  key: "salvageValue",
-                  label: t("salvageValue"),
-                  value: disposalRequest.salvageValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.salvageValue), { unit: tCommon("baht") })}</span>,
-                },
-                { key: "approvedAt", label: t("approvedAt"), value: disposalRequest.approvedAt ? formatDateTime(disposalRequest.approvedAt) : null },
-                { key: "source", label: t("source"), value: sourceValue },
-              ]}
-            />
-          </ContentPanel>
-
-          <ContentPanel title={t("reason")}>
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.reason}</p>
+            <KeyValueList className={stackedKeyValues} items={requestItems} />
           </ContentPanel>
 
           {disposalRequest.requestStatus !== "pending" ? (
             <ContentPanel title={t("decisionDetail")}>
               <KeyValueList
                 items={[
+                  { key: "approvedAt", label: t("approvedAt"), value: disposalRequest.approvedAt ? formatDateTime(disposalRequest.approvedAt) : null },
                   {
                     key: "approvalRemark",
                     label: t("approvalRemark"),
@@ -305,16 +365,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                   },
                   { key: "recipientName", label: t("recipientName"), value: disposalRequest.recipientName },
                   { key: "documentNo", label: t("documentNo"), value: disposalRequest.documentNo },
-                  {
-                    key: "actualSaleValue",
-                    label: t("actualSaleValue"),
-                    value: disposalRequest.actualSaleValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.actualSaleValue), { unit: tCommon("baht") })}</span>,
-                  },
-                  {
-                    key: "actualSalvageValue",
-                    label: t("actualSalvageValue"),
-                    value: disposalRequest.actualSalvageValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.actualSalvageValue), { unit: tCommon("baht") })}</span>,
-                  },
+                  { key: "actualSaleValue", label: t("actualSaleValue"), value: money(disposalRequest.actualSaleValue) },
+                  { key: "actualSalvageValue", label: t("actualSalvageValue"), value: money(disposalRequest.actualSalvageValue) },
                   { key: "completedAt", label: t("completedAt"), value: disposalRequest.completedAt ? formatDateTime(disposalRequest.completedAt) : null },
                   {
                     key: "executionRemark",
@@ -341,7 +393,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             </ContentPanel>
           ) : null}
 
-          {/* The ActionBar's #history link scrolls here, and ContentPanel takes no id: the panel classes (2D-2 R4). */}
+          {/* The ⋯ and the ActionBar's #history link scroll here: the panel classes keep the history's own layout (2D-2 R4). */}
           <section id="history" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
             <h2 className="mb-4 break-words text-base font-semibold text-foreground">{t("disposalHistory")}</h2>
             {movements.length === 0 ? (
@@ -381,67 +433,42 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           </section>
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
+          {showNoPhoto ? (
+            <Notice tone="warning" data-disposal-no-photo={failedUploads > 0 ? "upload-failed" : "none"}>
+              {failedUploads > 0 ? t("requestPage.uploadFailedNoPhoto", { count: failedUploads }) : t("requestPage.noPhoto")}
+            </Notice>
+          ) : null}
           <ContentPanel title={t("asset")}>
             <div className="space-y-4">
-              <KeyValueList
-                items={[
-                  { key: "asset", label: t("asset"), value: <><span className="tag">{disposalRequest.asset.assetTag}</span> - {disposalRequest.asset.name}</> },
-                  { key: "serialNumber", label: tAsset("serialNumber"), value: disposalRequest.asset.serialNumber },
-                  { key: "fixedAssetCode", label: tAsset("fixedAssetCode"), value: disposalRequest.asset.fixedAssetCode },
-                  { key: "category", label: tAsset("category"), value: <><span className="tag">{disposalRequest.asset.category.code}</span> - {disposalRequest.asset.category.name}</> },
-                  { key: "brand", label: tAsset("brand"), value: disposalRequest.asset.brand?.name },
-                  { key: "model", label: tAsset("model"), value: disposalRequest.asset.model?.name },
-                  { key: "company", label: tAsset("company"), value: <><span className="tag">{disposalRequest.asset.company.code}</span> - {disposalRequest.asset.company.nameTh}</> },
-                  { key: "branch", label: tAsset("branch"), value: <><span className="tag">{disposalRequest.asset.branch.code}</span> - {disposalRequest.asset.branch.name}</> },
-                  {
-                    key: "currentLocation",
-                    label: t("currentLocation"),
-                    value: <><span className="tag">{disposalRequest.asset.currentLocation.code}</span> - {disposalRequest.asset.currentLocation.name}</>,
-                  },
-                  {
-                    key: "custodian",
-                    label: t("custodian"),
-                    value: disposalRequest.asset.custodian ? <><span className="tag">{disposalRequest.asset.custodian.code}</span> - {disposalRequest.asset.custodian.fullNameTh}</> : null,
-                    nilLabel: tAsset("noCustodian"),
-                  },
-                  { key: "currentStatus", label: t("currentStatus"), value: disposalRequest.asset.status.nameTh },
-                  { key: "currentCondition", label: t("currentCondition"), value: disposalRequest.asset.condition.nameTh },
-                  {
-                    key: "purchasePrice",
-                    label: tAsset("purchasePrice"),
-                    value: disposalRequest.asset.purchasePrice == null ? null : <span className="num">{formatMoney(Number(disposalRequest.asset.purchasePrice), { unit: tCommon("baht") })}</span>,
-                  },
-                ]}
-              />
-              <Link href={`/${locale}/assets/${disposalRequest.asset.id}`} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+              {photos.length > 0 ? (
+                <DisposalPhotoGallery
+                  photos={photos.map((photo) => ({ id: photo.id, originalName: photo.originalName }))}
+                  documents={[]}
+                  assetName={disposalRequest.asset.name}
+                  isLost={isLost}
+                />
+              ) : null}
+              <KeyValueList className={stackedKeyValues} items={assetItems} />
+              <Link href={assetHref} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
                 {t("openAsset")}
               </Link>
             </div>
           </ContentPanel>
 
-          <DisposalAttachments requestId={disposalRequest.id} attachments={attachments} canManage={canCreate || canApprove || canEdit} />
+          <DisposalAttachments
+            requestId={disposalRequest.id}
+            attachments={attachments}
+            canManage={canCreate || canApprove || canEdit}
+            canDelete={canEdit}
+            lastFileLock={{ requestStatus: status, disposalType: disposalRequest.disposalType, inheritedCount: inheritedQualifying }}
+            hint={status === "pending" ? t("requestPage.evidenceHint") : undefined}
+          />
           {disposalRequest.batch ? <DisposalAttachments requestId={disposalRequest.batch.id} attachments={batchAttachments} canManage={false} title={t("batchSharedEvidence")} /> : null}
         </aside>
       </div>
     </div>
   )
-}
-
-function getCurrentOwnerContext(request: {
-  requestStatus: string
-  requestedBy: { code: string; fullNameTh: string }
-  approver: { code: string; fullNameTh: string } | null
-  executedBy: { code: string; fullNameTh: string } | null
-}, labels: { centralApprovalQueue: string; executionQueue: string }) {
-  if (request.requestStatus === "pending") {
-    return { roleLabel: "approver" as const, ownerLabel: request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : labels.centralApprovalQueue }
-  }
-  if (request.requestStatus === "approved") return { roleLabel: "executedBy" as const, ownerLabel: labels.executionQueue }
-  if (request.requestStatus === "disposed") {
-    return { roleLabel: "executedBy" as const, ownerLabel: request.executedBy ? `${request.executedBy.code} - ${request.executedBy.fullNameTh}` : labels.executionQueue }
-  }
-  return { roleLabel: "approver" as const, ownerLabel: request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : labels.centralApprovalQueue }
 }
 
 const knownMovementTypeKeys = new Set([

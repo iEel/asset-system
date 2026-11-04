@@ -7,7 +7,8 @@ const PAGE = "src/app/[locale]/(dashboard)/admin/approvals/page.tsx"
 const FINDINGS_PAGE = "src/app/[locale]/(dashboard)/audit/findings/page.tsx"
 const DISPOSAL_PANEL = "src/components/approvals/approval-disposal-panel.tsx"
 const DECISION = "src/components/approvals/approval-disposal-decision.tsx"
-const GALLERY = "src/components/approvals/approval-photo-gallery.tsx"
+// Group 6 plan 3 P3-R2: the gallery moved to components/disposal, shared with the request page.
+const GALLERY = "src/components/disposal/disposal-photo-gallery.tsx"
 const ROUND_PANEL = "src/components/approvals/approval-round-close-panel.tsx"
 const FINDING_PANEL = "src/components/approvals/approval-finding-panel.tsx"
 const SEEN = "src/components/approvals/approval-inbox-seen.tsx"
@@ -25,7 +26,7 @@ test("disposal panel: the photo gallery on the shared photo frame and its previe
   assert.match(gallery, /size-16/)
   assert.match(gallery, /\/api\/attachments\/\$\{document\.id\}\?inline=1/)
   assert.match(gallery, /tone="warning"/)
-  assert.match(read(DISPOSAL_PANEL), /<ApprovalPhotoGallery\b/)
+  assert.match(read(DISPOSAL_PANEL), /<DisposalPhotoGallery\b/)
 })
 
 test("disposal panel: head, details, effect from previousStatusName, the separation-of-duties line, the foot", () => {

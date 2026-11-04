@@ -176,5 +176,7 @@ test("the execute words read บันทึกตัดจำหน่าย, n
   assert.equal(page.saleValue, "มูลค่าขายที่ประเมิน")
   assert.equal(page.executionDetail, "รายละเอียดการดำเนินการ")
   assert.equal(page.executeDisposal, "บันทึกตัดจำหน่าย")
-  assert.equal((page.workflowSteps as Record<string, unknown>).execution, "บันทึกตัดจำหน่าย")
+  // Task 3: the request page's rail ends at the round (spec §9.2); the stepper's workflowSteps went with the stepper.
+  assert.equal(page.workflowSteps, undefined)
+  assert.equal(((page.requestPage as Record<string, unknown>).steps as Record<string, unknown>).round, "บันทึกในรอบตัดจำหน่าย")
 })

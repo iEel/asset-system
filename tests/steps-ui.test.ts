@@ -127,26 +127,24 @@ test("the import panel shows its five steps on the shared rail, and the current-
   }
 })
 
-test("the disposal request shows its three steps on the shared rail: filed, decision, disposal (S1, batch 5)", () => {
-  const stepper = read("src/components/disposal/disposal-workflow-stepper.tsx")
-  assert.match(stepper, /import \{ Steps \} from "@\/components\/ui\/steps"/)
-  assert.match(stepper, /import \{ getLinearStepStates, type StepOutcome \} from "@\/lib\/step-states"/)
-  assert.match(stepper, /export function DisposalWorkflowStepper\(/)
-  // A request someone can open has been filed: pending waits at the decision, approved at the disposal (spec 2C §7.2.4).
-  assert.match(stepper, /const currentStepByStage: Record<DisposalStage, number> = \{\n  pending_approval: 1,\n  awaiting_execution: 2,\n  complete: 2,\n  rejected: 1,\n\}/)
-  assert.match(stepper, /const outcomeByStage: Record<DisposalStage, StepOutcome> = \{\n  pending_approval: "in_progress",\n  awaiting_execution: "in_progress",\n  complete: "complete",\n  rejected: "rejected",\n\}/)
-  assert.match(stepper, /const states = getLinearStepStates\(stepKeys\.length, currentStepByStage\[stage\], outcomeByStage\[stage\]\)/)
-  assert.match(stepper, /<Steps className="mt-4" label=\{stepsLabel\} steps=\{steps\} \/>/)
-  assert.doesNotMatch(stepper, /grid grid-cols-3|text-white|aria-current|<ol\b|\bCircle\b|XCircle/, "the rail, its states and its words come from Steps")
-  const page = read("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx")
-  assert.match(page, /stepsLabel=\{t\("workflowStepsLabel"\)\}\n\s+labels=\{\{\n\s+request: t\("workflowSteps\.request"\),\n\s+decision: t\("workflowSteps\.decision"\),\n\s+execution: t\("workflowSteps\.execution"\),\n\s+\}\}/)
+// Group 6 plan 3 Task 3 (spec §9.2): the next-step card replaced the stepper; its rail ends at บันทึกในรอบตัดจำหน่าย.
+test("the disposal request shows its three steps on the shared rail: filed, decision, the round (S1, batch 5; group 6 spec §9.2)", () => {
+  const card = read("src/components/disposal/disposal-next-step-card.tsx")
+  assert.match(card, /import \{ Steps \} from "@\/components\/ui\/steps"/)
+  assert.match(card, /import \{ getLinearStepStates, type StepOutcome \} from "@\/lib\/step-states"/)
+  // A request someone can open has been filed: pending waits at the decision, approved at the round (spec 2C §7.2.4).
+  assert.match(card, /decide: \{ current: 1, outcome: "in_progress" \},\n  own: \{ current: 1, outcome: "in_progress" \},\n  waiting: \{ current: 1, outcome: "in_progress" \},\n  approved: \{ current: 2, outcome: "in_progress" \},\n  disposed: \{ current: 2, outcome: "complete" \},\n  rejected: \{ current: 1, outcome: "rejected" \},/)
+  assert.match(card, /const states = getLinearStepStates\(stepKeys\.length, plan\.current, plan\.outcome\)/)
+  assert.match(card, /<Steps label=\{t\("workflowStepsLabel"\)\} steps=\{steps\} \/>/)
+  assert.doesNotMatch(card, /grid grid-cols-3|text-white|aria-current|<ol\b|\bCircle\b|XCircle/, "the rail, its states and its words come from Steps")
   const words = {
-    th: { label: "ขั้นตอนการตัดจำหน่าย", steps: { request: "ยื่นคำขอ", decision: "พิจารณา", execution: "บันทึกตัดจำหน่าย" } },
-    en: { label: "Disposal steps", steps: { request: "Request", decision: "Decision", execution: "Record disposal" } },
+    th: { label: "ขั้นตอนการตัดจำหน่าย", steps: { request: "ยื่นคำขอ", decision: "พิจารณา", round: "บันทึกในรอบตัดจำหน่าย" } },
+    en: { label: "Disposal steps", steps: { request: "Request", decision: "Decision", round: "Record in a disposal round" } },
   }
   for (const locale of ["th", "en"] as const) {
-    const disposal = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, unknown> }).disposalPage
+    const disposal = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, { steps?: unknown }> }).disposalPage
     assert.equal(disposal.workflowStepsLabel, words[locale].label, locale)
-    assert.deepEqual(disposal.workflowSteps, words[locale].steps, locale)
+    assert.deepEqual(disposal.requestPage.steps, words[locale].steps, locale)
+    assert.equal((disposal as Record<string, unknown>).workflowSteps, undefined, `${locale}: the stepper's words went with it`)
   }
 })

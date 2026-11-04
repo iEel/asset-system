@@ -368,7 +368,6 @@ test("N2 a dashed or dotted line is drawn only by the drop zone and the signatur
 // at the site where the plan that kept it wrote one).
 const RAW_BUTTON_OWNERS = ["src/components/ui/filter-menu-chip.tsx", "src/components/ui/row-actions.tsx", "src/components/ui/search-field.tsx", "src/components/ui/searchable-select.tsx", "src/components/ui/segmented.tsx"]
 const RAW_BUTTON_EXEMPT: ExemptList = {
-  "src/components/approvals/approval-photo-gallery.tsx": { count: 1, kind: "permanent", why: "a 64px photo thumbnail is the control that shows it as the large photo", ruling: "2D-3 R5; group 6 plan 2 Task 4" },
   "src/components/assets/asset-attachments.tsx": { count: 1, kind: "permanent", why: "the photo is the control: a photo of the files tab opens its preview", ruling: "2D-3 R5; group 1 asset detail task 11" },
   "src/components/assets/asset-component-manager.tsx": { count: 1, kind: "permanent", why: "a candidate row: a pressed list option of two lines", ruling: "2D-3 R5" },
   "src/components/assets/asset-label-queue.tsx": { count: 1, kind: "permanent", why: "a search result or label queue row (one row part): two lines that add the asset to the print list", ruling: "2D-3 R5; group 4 plan 6 Task 4" },
@@ -381,6 +380,8 @@ const RAW_BUTTON_EXEMPT: ExemptList = {
   "src/components/audit/audit-scan-room-picker.tsx": { count: 2, kind: "permanent", why: "the two-line room trigger under SheetTrigger asChild and the pressed room option", ruling: "2D-4 R5" },
   "src/components/audit/audit-scan-search.tsx": { count: 1, kind: "permanent", why: "the whole result row opens the check sheet", ruling: "2D-4 R5" },
   "src/components/auth/login-form.tsx": { count: 1, kind: "permanent", why: "the show-password toggle inside the password field, as SearchField's own clear button", ruling: "2C plan 4 Task 8, 2D-5 NG-R4" },
+  "src/components/disposal/disposal-attachments.tsx": { count: 1, kind: "permanent", why: "a 96px evidence thumbnail is the control that opens the original in the preview dialog", ruling: "2D-3 R5; group 6 plan 3 Task 3" },
+  "src/components/disposal/disposal-photo-gallery.tsx": { count: 1, kind: "permanent", why: "a 64px photo thumbnail is the control that shows it as the large photo", ruling: "2D-3 R5; group 6 plan 2 Task 4, moved by plan 3 P3-R2" },
   "src/components/disposal/disposal-asset-picker.tsx": { count: 1, kind: "permanent", why: "a listbox option with its own check box and two lines", ruling: "2D-4 R5" },
   "src/components/layout/global-search.tsx": { count: 1, kind: "phase 3", why: "the clear button of the topbar search, which phase 3 redoes", ruling: "2D D2, 2D-2 R10" },
   "src/components/layout/mobile-field-navigation.tsx": { count: 1, kind: "permanent", why: "the bottom bar's More item: a navigation item that opens the เพิ่มเติม sheet, styled as its sibling links", ruling: "2D-2 R11" },
