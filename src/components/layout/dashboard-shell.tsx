@@ -12,6 +12,8 @@ import { ShellNotificationsProvider } from "@/components/layout/shell-notificati
 import { Topbar } from "@/components/layout/topbar"
 import { ConfirmProvider } from "@/components/ui/confirm-dialog"
 import type { SessionUser } from "@/lib/auth-utils"
+import { landOnHashTarget } from "@/lib/hash-target-landing"
+import type { HashLandResult } from "@/lib/hash-target-landing"
 import type { SessionClock } from "@/lib/session-deadline"
 import type { ShellAccount } from "@/lib/user-display"
 import { sidebarCookieString, type SidebarPreference } from "@/lib/sidebar-preference"
@@ -72,11 +74,11 @@ export function DashboardShell({
     setMoreSheetOpen(true)
   }, [])
 
-  const scrollMainToHash = useCallback(() => {
+  const scrollMainToHash = useCallback((): HashLandResult => {
     const main = mainRef.current
     const hash = window.location.hash
 
-    if (!main || !hash) return
+    if (!main || !hash || hash === "#") return "none"
 
     let targetId = hash.slice(1)
 
@@ -88,7 +90,9 @@ export function DashboardShell({
 
     const target = document.getElementById(targetId)
 
-    if (!target || target === main || !main.contains(target)) return
+    // A fresh load mounts the shell under loading.tsx's skeleton: the target streams in later, so the caller waits.
+    if (!target) return "missing"
+    if (target === main || !main.contains(target)) return "none"
 
     const anchorOffset = 96
     const mainRect = main.getBoundingClientRect()
@@ -98,22 +102,61 @@ export function DashboardShell({
       top: main.scrollTop + targetRect.top - mainRect.top - anchorOffset,
       behavior: "auto",
     })
+    return "landed"
+  }, [])
+
+  // Watches main for the streamed page and ends the wait on the reader's own scroll, tap or key.
+  const watchMainForHashTarget = useCallback((retry: () => void, interrupt: () => void) => {
+    const main = mainRef.current
+
+    if (!main) return () => {}
+
+    const observer = new MutationObserver(retry)
+    observer.observe(main, { childList: true, subtree: true })
+    const readerEvents = ["wheel", "touchstart", "keydown", "pointerdown"] as const
+    for (const type of readerEvents) window.addEventListener(type, interrupt, { capture: true, passive: true })
+
+    return () => {
+      observer.disconnect()
+      for (const type of readerEvents) window.removeEventListener(type, interrupt, { capture: true })
+    }
   }, [])
 
   useEffect(() => {
+    let stopWaiting = () => {}
+    let frame = 0
+
+    const landAndResetShell = (): HashLandResult => {
+      resetShellScroll()
+      const result = scrollMainToHash()
+      window.requestAnimationFrame(resetShellScroll)
+      return result
+    }
+
     const resetAfterAnchorScroll = () => {
-      window.requestAnimationFrame(() => {
-        resetShellScroll()
-        scrollMainToHash()
-        window.requestAnimationFrame(resetShellScroll)
+      stopWaiting()
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        stopWaiting = landOnHashTarget({
+          tryLand: landAndResetShell,
+          watch: watchMainForHashTarget,
+          startTimer: (onTimeout, ms) => {
+            const timer = window.setTimeout(onTimeout, ms)
+            return () => window.clearTimeout(timer)
+          },
+        })
       })
     }
 
     resetAfterAnchorScroll()
     window.addEventListener("hashchange", resetAfterAnchorScroll)
 
-    return () => window.removeEventListener("hashchange", resetAfterAnchorScroll)
-  }, [resetShellScroll, scrollMainToHash])
+    return () => {
+      window.removeEventListener("hashchange", resetAfterAnchorScroll)
+      window.cancelAnimationFrame(frame)
+      stopWaiting()
+    }
+  }, [resetShellScroll, scrollMainToHash, watchMainForHashTarget])
 
   useEffect(() => {
     const viewport = window.visualViewport

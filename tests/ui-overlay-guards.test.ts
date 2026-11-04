@@ -69,6 +69,8 @@ test("no hand-rolled overlay backdrops outside shared ui components", () => {
 })
 
 const GLOBAL_KEY_LISTENERS = [
+  // the reader's own scroll, tap or key ends the wait for a streamed hash target; it closes nothing (hash landing fix)
+  "src/components/layout/dashboard-shell.tsx: window.addEventListener(type,",
   // the / shortcut opens the search and closes nothing (menu B shell task 8)
   'src/components/layout/global-search.tsx: window.addEventListener("keydown"',
   // the session's activity listeners extend the session and close nothing (menu B shell task 12a)

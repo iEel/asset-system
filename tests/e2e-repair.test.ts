@@ -525,6 +525,8 @@ test("the repair list's strip, status tabs and cost total, the stuck card and th
     "the strip's cells open lists of their own size",
     "a search's status tabs and cost total",
     "the stuck card",
+    // A fresh load and a reload land on the hash too, not only a click (hash landing fix, src/lib/hash-target-landing.ts).
+    "a fresh load and a reload of ?stuck=all#stuck land on the stuck card",
     "a PM card row whose asset has an open record links to the record, never บันทึกว่าทำแล้ว",
     "the repair list passes axe",
   ])

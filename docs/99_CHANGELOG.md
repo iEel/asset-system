@@ -6,6 +6,16 @@
 
 ## 2026-11-04
 
+### แก้: เปิดลิงก์ที่มี `#` ใหม่ หรือรีโหลด แล้วหน้าไม่เลื่อนไปที่ส่วนนั้น
+
+Branch `fix/hash-landing-fresh-load` (จาก `master` `fa4465c5`)
+
+- **อาการ:** เปิด `/th/maintenance#stuck` หรือ `/th/maintenance?stuck=all#stuck` ใหม่ หรือรีโหลด แล้ว `section#stuck` ค้างที่ top 523 (390) / 358 (1440) และ `main.scrollTop` = 0 (วัดบน `next start` 2026-11-04) · ลิงก์ในแอป (ช่องของแถบต้องจัดการ, ลิงก์ในกระดิ่ง `/maintenance#stuck` และ `#pm-due`, ดูทั้งหมด / แสดงน้อยลง) เลื่อนถึงอยู่แล้ว
+- **สาเหตุ:** `(dashboard)/loading.tsx` ทำให้ shell mount ขณะที่ main ยังเป็นโครงหน้ารอโหลด · `scrollMainToHash` ทำงานครั้งเดียวตอน mount ไม่เจอเป้าหมายแล้วจบ · เนื้อหาที่ stream มาทีหลังไม่มีใครเลื่อนให้
+- **แก้:** `scrollMainToHash` บอกผล `"landed"` / `"missing"` / `"none"` · ถ้า `"missing"` `landOnHashTarget` (`src/lib/hash-target-landing.ts` ใหม่) เฝ้า main ด้วย `MutationObserver` เลื่อนครั้งเดียวเมื่อเป้าหมายมาถึงแล้วหยุด · หยุดเองเมื่อครบ 10 วินาที, ผู้ใช้เลื่อน แตะ หรือกดปุ่มเอง, `hashchange` ใหม่ หรือออกจาก shell · ระยะ 96px จากขอบบน main เท่าเดิม · ลิงก์ข้ามเนื้อหา (`#main`) ไม่เข้าเงื่อนไขรอ (spec §6.9)
+- **เทสต์:** `tests/hash-target-landing.test.ts` ใหม่ 6 ข้อ · `tests/dashboard-layout-scroll.test.ts` เพิ่ม 1 ข้อ · ปรับ pin ใน `tests/menu-b-shell-topbar.test.ts` และรายการ listener ใน `tests/ui-overlay-guards.test.ts` · E2E เพิ่ม 1 ข้อใน `e2e/repair/repair-list.spec.ts` (เปิดใหม่และรีโหลด `?stuck=all#stuck`)
+- ยังไม่ merge · ยังไม่ deploy · ไม่มี migration
+
 ### กลุ่มหน้า 5 แผน 5: หน้ารายการซ่อม (MT-List)
 
 Branch `feat/group5-repair-list` (จาก `master` `3a01ee9c`) · spec `docs/superpowers/specs/2026-11-03-page-group-5-maintenance-design.md` (§11, §13 · การตัดสินใจ 6, 7, 10.8) · plan `docs/superpowers/plans/2026-11-04-group5-repair-list.md` (ข้อตัดสิน G5P5-R1..R8) · commits `27b95887..ec08f8e2`
