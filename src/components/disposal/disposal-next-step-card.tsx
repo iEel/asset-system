@@ -33,8 +33,9 @@ const stepKeys = ["request", "decision", "round"] as const
 // - decide: รอคุณพิจารณา, the separation-of-duties note when the policy asks for it, and beside it what each decision does
 //   (with the asset's real status before the request) and the actions (อนุมัติ, ปฏิเสธ).
 // - own / waiting: who it waits for and since when; own adds the warning with the reason the viewer cannot decide.
-// - approved: อนุมัติแล้ว · รอบันทึกตัดจำหน่าย, the approver's own note, and today's execution button (P3-R1).
-// - disposed: ตัดจำหน่ายแล้ว · {date}, and roundOrExecution when given (plan 4's round).
+// - approved: อนุมัติแล้ว · รอบันทึกตัดจำหน่าย, the approver's own note, and executionAction: the page's link to the
+//   queue's approved tab, where rounds are made (plan 4).
+// - disposed: ตัดจำหน่ายแล้ว · {date}, and roundOrExecution when given: the link to its round (plan 4).
 // - rejected: ไม่อนุมัติ, the remark as เหตุผล: {remark}, and the status the asset went back to.
 // The buttons show from md; below md the page's ActionBar holds them. Below lg the effect lines move to the page's asset
 // status card (board DP-Request-Phone). Server-safe: useTranslations is the only hook.

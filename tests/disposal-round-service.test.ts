@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   createDisposalRound,
   DisposalRoundServiceError,
+  getDisposalRoundTickBlocks,
   previewDisposalRound,
   type DisposalRoundActor,
   type DisposalRoundDatabase,
@@ -474,6 +475,19 @@ test("(d) a request without evidence needs the system admin's exception, logged 
   assert.equal(state.requests[1].evidenceExceptionGrantedBy, "user-actor")
   assert.deepEqual(state.requests[1].evidenceExceptionGrantedAt, now)
   assert.deepEqual(state.requests.map((request) => request.requestStatus), ["disposed", "disposed"])
+})
+
+// Task 3 (spec §10.2): the queue's ticks use the same checks, so a disabled tick says what the preview would.
+test("the approved tab's ticks: the viewer's own approval and missing evidence block, except evidence for a system admin", async () => {
+  const state = makeState(3)
+  state.evidence[uuid(3)] = 0
+  const database = makeDatabase(state)
+  const ids = [uuid(1), uuid(2), uuid(3)]
+  const approver = { ...actor, employeeId: "employee-approver-1" }
+  assert.deepEqual([...(await getDisposalRoundTickBlocks(asDb(database), ids, approver)).values()], ["DISPOSAL_SOD_CONFLICT", null, "DISPOSAL_SOD_CONFLICT"])
+  assert.deepEqual([...(await getDisposalRoundTickBlocks(asDb(database), ids, actor)).entries()], [[uuid(1), null], [uuid(2), null], [uuid(3), "DISPOSAL_EVIDENCE_REQUIRED"]])
+  assert.deepEqual([...(await getDisposalRoundTickBlocks(asDb(database), ids, admin)).values()], [null, null, null])
+  assert.equal((await getDisposalRoundTickBlocks(asDb(database), [], actor)).size, 0)
 })
 
 test("(e) a round number taken at the same moment is retried with the next sequence", async () => {

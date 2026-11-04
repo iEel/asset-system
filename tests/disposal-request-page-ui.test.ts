@@ -211,6 +211,29 @@ test("the rejected card: the title is the status word and the remark wraps in th
   assert.equal(page.assetStatusNow, "ตอนนี้:")
 })
 
+// Group 6 plan 4 Task 3 (spec §9.2): an approved request is picked in the queue's approved tab; a disposed one links
+// its round.
+test("the approved card shows ไปเลือกในแท็บอนุมัติแล้ว for disposal:edit", () => {
+  const source = read(PAGE)
+  assert.match(source, /const approvedTabLink = canEdit && status === "approved" \? \(/)
+  assert.match(source, /href=\{`\/\$\{locale\}\/disposal\?status=approved`\}/)
+  assert.match(source, /t\("requestPage\.goToApprovedTab"\)/)
+  assert.match(source, /executionAction=\{approvedTabLink\}/)
+  const page = (messages("th").disposalPage as Record<string, Record<string, string>>).requestPage
+  assert.equal(page.goToApprovedTab, "ไปเลือกในแท็บอนุมัติแล้ว")
+})
+
+test("the disposed card links รอบตัดจำหน่าย DPR-… when the request has a round", () => {
+  const source = read(PAGE)
+  assert.match(source, /round: \{ select: \{ id: true, roundNo: true \} \}/)
+  assert.match(source, /const roundLink = disposalRequest\.round \? \(/)
+  assert.match(source, /href=\{`\/\$\{locale\}\/disposal\/rounds\/\$\{disposalRequest\.round\.id\}`\}/)
+  assert.match(source, /t\("requestPage\.roundLink", \{ roundNo: disposalRequest\.round\.roundNo \}\)/)
+  assert.match(source, /roundOrExecution=\{roundLink\}/)
+  const page = (messages("th").disposalPage as Record<string, Record<string, string>>).requestPage
+  assert.equal(page.roundLink, "รอบตัดจำหน่าย {roundNo}")
+})
+
 test("final review: a lost request without a photo gets the muted note, and a failed upload is named even when a photo arrived", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx", "utf8")
   assert.match(page, /data-disposal-no-photo="lost"/)

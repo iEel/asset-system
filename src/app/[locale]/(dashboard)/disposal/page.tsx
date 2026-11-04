@@ -2,29 +2,34 @@ import type { ComponentProps } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ChevronRight, Download, ListChecks, PackagePlus, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
+import { ChevronRight, Download, Layers, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildDisposalQueryString, buildDisposalWhere, disposalStatusFilters, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, type DisposalListParams } from "@/lib/disposal-query"
+import { buildDisposalQueryString, buildDisposalWhere, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, type DisposalListParams } from "@/lib/disposal-query"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
-import { cn, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
-import { DisposalRowActions, type DisposalRowNext } from "@/components/disposal/disposal-row-actions"
+import { DisposalBatchMenu, DisposalRowActions, type DisposalRowNext } from "@/components/disposal/disposal-row-actions"
+import {
+  DisposalRoundSelectAll,
+  DisposalRoundSelectionBar,
+  DisposalRoundSelectionProvider,
+  DisposalRoundTick,
+  type DisposalRoundSelectionCopy,
+} from "@/components/disposal/disposal-round-selection"
+import { RepairDateRangeChip } from "@/components/maintenance/repair-date-range-chip"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { Button } from "@/components/ui/button"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
-import { Field } from "@/components/ui/field"
-import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
-import { Input } from "@/components/ui/input"
 import { KeyValueList } from "@/components/ui/key-value-list"
-import { orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { SearchField } from "@/components/ui/search-field"
@@ -38,6 +43,9 @@ import {
   getDisposalApprovalSodReason,
   getDisposalSegregationError,
 } from "@/lib/disposal-policy"
+import { getDisposalRoundTickBlocks, type DisposalRoundBlockCode } from "@/lib/disposal-round-service"
+import { disposalRoundSelectionScope } from "@/lib/disposal-round-selection"
+import { bangkokDayDiff } from "@/lib/preventive-maintenance"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { approvalInboxItemHref } from "@/lib/approval-inbox"
 
@@ -46,6 +54,10 @@ type DisposalPageProps = {
   searchParams: Promise<DisposalListParams>
 }
 
+// The disposal queue, board DP-Queue (group 6 spec §10): the header with ยื่นคำขอตัดจำหน่าย, รอบตัดจำหน่าย, ชุดคำขอ ▾ and
+// ส่งออก; the five status tabs with counts as the only status filter; the search, the type and the request-date chip;
+// six columns. The pending tab links each row to งานรออนุมัติ (plan 2). The approved tab (disposal:edit) takes ticks
+// across pages, up to 200, for "สร้างรอบตัดจำหน่าย" (plan 4, P4-R2); the disposed tab names each request's round.
 export default async function DisposalPage({ params, searchParams }: DisposalPageProps) {
   const { locale } = await params
   const filters = parseDisposalListParams(await searchParams)
@@ -55,12 +67,15 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const canEdit = hasPermission(user, "disposal", "edit")
   const canExport = hasPermission(user, "disposal", "export")
   const [t, tCommon] = await Promise.all([getTranslations("disposalPage"), getTranslations("common")])
+  const now = new Date()
   const query = buildDisposalQueryString(filters)
   const disposalReturnHref = `/${locale}/disposal${query ? `?${query}` : ""}`
   const requestWhere = buildDisposalWhere(filters)
   const stageWhere = buildDisposalWhere({ ...filters, status: "" })
+  // The approved tab's ticks (spec §10.2): only with disposal:edit, the permission a round needs.
+  const roundSelectionEnabled = canEdit && filters.status === "approved"
 
-  const [requests, total, stageTotal, stageCounts, savedSettings, statuses] = await Promise.all([
+  const [requests, total, stageTotal, stageCounts, savedSettings, statuses, approvedIds] = await Promise.all([
     prisma.disposalRequest.findMany({
       where: requestWhere,
       include: {
@@ -72,6 +87,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           },
         },
         batch: { select: { id: true, batchNo: true } },
+        round: { select: { id: true, roundNo: true, executionDate: true } },
         requestedBy: { select: { code: true, fullNameTh: true } },
         approver: { select: { code: true, fullNameTh: true } },
       },
@@ -94,6 +110,10 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           select: { id: true, name: true, nameTh: true },
           orderBy: { sortOrder: "asc" },
         })
+      : Promise.resolve([]),
+    // Every request of the filtered approved tab, all pages, in the list's order: "เลือกทั้ง" picks the first 200.
+    roundSelectionEnabled
+      ? prisma.disposalRequest.findMany({ where: requestWhere, select: { id: true }, orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
   ])
   // A page past the last one (an old link, or the last request of the last page decided elsewhere) shows the last
@@ -125,6 +145,33 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const pendingInboxNote = pendingInboxEnabled
     ? t("pendingInboxCount", { decidable: formatCount(Math.max(0, total - ownPendingCount)), total: formatCount(total) })
     : null
+  // A tick is disabled with the reason the round's own preview would give (spec §10.2): the viewer approved it, or it
+  // has no evidence (a system admin may record it with the round's evidence exception, so it stays tickable for them).
+  const tickBlocks = roundSelectionEnabled
+    ? await getDisposalRoundTickBlocks(prisma, approvedIds.map((request) => request.id), {
+        userId: user.id,
+        employeeId: user.employeeId,
+        roles: user.roles,
+        permissions: user.permissions,
+      })
+    : new Map<string, DisposalRoundBlockCode | null>()
+  const tickReasons: Record<DisposalRoundBlockCode, string> = {
+    DISPOSAL_SOD_CONFLICT: t("queue.roundTickApprover"),
+    DISPOSAL_EVIDENCE_REQUIRED: t("queue.roundTickNoEvidence"),
+    DISPOSAL_ASSET_INELIGIBLE: t("errors.DISPOSAL_ASSET_INELIGIBLE"),
+    DISPOSAL_INVALID_STAGE: t("errors.DISPOSAL_INVALID_STAGE"),
+    DISPOSAL_REQUEST_NOT_FOUND: t("errors.DISPOSAL_REQUEST_NOT_FOUND"),
+  }
+  const tickableIds = approvedIds.map((request) => request.id).filter((id) => tickBlocks.get(id) === null)
+  const roundSelectionCopy: DisposalRoundSelectionCopy = {
+    barLabel: t("queue.roundBarLabel"),
+    count: t.raw("queue.roundSelectedCount") as string,
+    clear: t("queue.roundClear"),
+    selectAll: t.raw("queue.roundSelectAll") as string,
+    create: t.raw("queue.roundCreate") as string,
+    limit: t("queue.roundLimit"),
+    capped: t.raw("queue.roundCapped") as string,
+  }
   const statusOptions = statuses.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
   const decisionStatuses = getDisposalDecisionStatusOptions(statusOptions)
   const stageLabels = {
@@ -142,10 +189,12 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     { status: "rejected", label: stageLabels.rejected, count: stageCountsByStatus.get("rejected") ?? 0 },
   ]
   const resultRange = paginationRange(filters.page, filters.pageSize, total)
-  const hasActiveFilters = Boolean(filters.search || filters.status || filters.disposalType || filters.dateFrom || filters.dateTo)
+  // The tabs are not a filter (spec §10.2): clearing the filters keeps the tab.
+  const hasActiveFilters = Boolean(filters.search || filters.disposalType || filters.dateFrom || filters.dateTo)
   // The phone filter summary says how many filters are on (spec 2B §5.10 #5). It used to read "ล้างตัวกรอง" but only folded the panel.
-  const activeFilterCount = [filters.search, filters.status, filters.disposalType, filters.dateFrom, filters.dateTo].filter(Boolean).length
-  const emptyState = disposalEmptyState({ locale, t, hasActiveFilters, canCreate })
+  const activeFilterCount = [filters.search, filters.disposalType, filters.dateFrom, filters.dateTo].filter(Boolean).length
+  const clearHref = `/${locale}/disposal${filters.status ? `?status=${filters.status}` : ""}`
+  const emptyState = disposalEmptyState({ locale, t, hasActiveFilters, canCreate, clearHref })
   const nextActionLabels: DisposalNextActionLabels = {
     view: tCommon("view"),
     review: t("reviewRequest"),
@@ -153,6 +202,161 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     openBatch: t("openBatch"),
   }
   const inboxStepLabels: DisposalInboxStepLabels = { review: t("reviewInInbox"), view: tCommon("view"), ownNote: t("ownRequestNote") }
+  const filterFormProps = { locale, filters, hasActiveFilters, clearHref, t, tCommon }
+  // "{date} · {n} วัน" under the request number: whole Bangkok days since the request.
+  const ageLabel = (date: Date) => {
+    const days = Math.max(0, bangkokDayDiff(date, now))
+    return days === 0 ? t("queue.ageToday") : t("queue.ageDays", { days: formatCount(days) })
+  }
+  const requesterName = (request: { requestedById: string; requestedBy: { fullNameTh: string } }) => (
+    <>
+      {request.requestedBy.fullNameTh}
+      {user.employeeId && request.requestedById === user.employeeId ? <span className="text-muted-foreground"> {t("queue.you")}</span> : null}
+    </>
+  )
+  const roundHref = (round: { id: string }) => `/${locale}/disposal/rounds/${round.id}`
+
+  const list = (
+    <ContentPanel
+      divided
+      flush
+      title={t("requestList")}
+      description={t("resultRange", { start: formatCount(resultRange.start), end: formatCount(resultRange.end), total: formatCount(total) })}
+    >
+      <div className="space-y-3 px-4 py-3 md:px-5">
+        <TabNav
+          aria-label={t("stageFilterLabel")}
+          items={stageTabs.map((stage) => ({
+            key: stage.status || "all",
+            label: stage.label,
+            count: formatCount(stage.count),
+            href: `/${locale}/disposal?${buildDisposalQueryString(filters, { status: stage.status, page: 1 })}`,
+          }))}
+          current={filters.status || "all"}
+        />
+        <div className="flex items-center justify-end gap-1 text-meta text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
+        {/* The desktop filter sits under the tabs (board DP-Queue); the phone one folds above the panel. */}
+        <div className="hidden md:block">
+          <DisposalFilterForm formId="disposal-filter-desktop" {...filterFormProps} />
+        </div>
+        {pendingInboxNote ? (
+          <p data-disposal-inbox-note className="text-meta text-muted-foreground">
+            {pendingInboxNote}
+            {" · "}
+            <Link href={`/${locale}/admin/approvals?tab=disposal`} className={linkVariants({ size: "inherit" })}>{t("pendingInboxLink")}</Link>
+          </p>
+        ) : null}
+        {roundSelectionEnabled ? <p data-disposal-round-phone-note className="text-meta text-muted-foreground md:hidden">{t("queue.roundPhoneNote")}</p> : null}
+        {/* Select all before any tick (spec §10.2): from md, while the tab has tickable rows. */}
+        {roundSelectionEnabled ? <DisposalRoundSelectAll /> : null}
+      </div>
+      <div className={`${getMobileCardListClasses()} p-3`}>
+        {requests.length === 0 ? <ActionEmptyState {...emptyState} /> : requests.map((request) => {
+          const stage = getDisposalStage(request.requestStatus)
+          const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
+          return (
+            <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0")}><span className="tag font-medium">{request.disposalNo}</span></Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}><span className="tag">{request.batch.batchNo}</span></Link> : null}</div>
+                <div><div className="text-sm font-medium text-foreground">{request.asset.name}</div><div className="mt-1 text-meta text-muted-foreground"><span className="tag">{request.asset.assetTag}</span></div></div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><Chip>{t(`types.${request.disposalType}`)}</Chip></div>
+              <KeyValueList className="mt-3" items={[{ key: "requestedBy", label: t("requestedBy"), value: requesterName(request) }, { key: "requestDate", label: t("requestDate"), value: formatDateTime(request.requestDate) }]} />
+              <details className="mt-3 border-t border-border-soft"><summary className="cursor-pointer py-3 text-sm font-medium text-primary">{t("moreDetails")}</summary><KeyValueList items={[{ key: "reason", label: t("reason"), value: request.reason }, { key: "approver", label: t("approver"), value: request.approver ? <><span className="tag">{request.approver.code}</span> - {request.approver.fullNameTh}</> : null }, { key: "value", label: t("value"), value: getRequestValue(request, tCommon("baht")) }]} /></details>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {pendingInboxEnabled ? <DisposalInboxStep own={ownSodReason(request)} inboxHref={approvalInboxItemHref(locale, "disposal", request.id)} detailHref={detailHref} labels={inboxStepLabels} />
+                  : request.round ? <Link href={roundHref(request.round)} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center gap-1 text-sm")}><span className="tag">{request.round.roundNo}</span> · {formatDate(request.round.executionDate)}</Link>
+                    : <DisposalNextAction request={request} href={detailHref} canApprove={canApprove} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} labels={nextActionLabels} />}
+              </div>
+            </article>
+          )
+        })}
+      </div>
+      <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("requestList")} scrollHint={tCommon("tableScrollHint")}>
+        <DataTableHeader>
+          <tr>
+            {roundSelectionEnabled ? <DataTableHead hideLabel className="p-0 first:pl-0 md:first:pl-0">{t("queue.colSelect")}</DataTableHead> : null}
+            <DataTableHead>{t("asset")}</DataTableHead>
+            <DataTableHead>{t("queue.colNoStatus")}</DataTableHead>
+            <DataTableHead>{t("queue.colType")}</DataTableHead>
+            <DataTableHead>{t("requestedBy")}</DataTableHead>
+            <DataTableHead align="right" sticky="right">{t("queue.colNext")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {requests.length === 0 ? (
+            <TableEmptyRow colSpan={roundSelectionEnabled ? 6 : 5} emptyState={emptyState} />
+          ) : requests.map((request) => {
+            const stage = getDisposalStage(request.requestStatus)
+            const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
+            const tickBlock = tickBlocks.get(request.id)
+            return (
+              <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
+                {roundSelectionEnabled ? (
+                  <DataTableCell className="p-0 first:pl-0 md:first:pl-0">
+                    <DisposalRoundTick
+                      id={request.id}
+                      label={t("queue.roundTickLabel", { name: `${request.asset.name} · ${request.disposalNo}` })}
+                      disabled={tickBlock !== null}
+                      reason={tickBlock ? tickReasons[tickBlock] : undefined}
+                    />
+                  </DataTableCell>
+                ) : null}
+                <DataTableCell className="min-w-48">
+                  <div className="font-medium text-foreground">{request.asset.name}</div>
+                  <div className="mt-1 text-meta text-muted-foreground"><span className="tag">{request.asset.assetTag}</span></div>
+                </DataTableCell>
+                <DataTableCell className="min-w-56">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Link href={detailHref} className={cn(linkVariants({ size: "inherit" }), "text-foreground")}><span className="tag font-medium">{request.disposalNo}</span></Link>
+                    <DisposalStageBadge stage={stage} label={stageLabels[stage]} />
+                  </div>
+                  <div className="mt-1 text-meta text-muted-foreground">{formatDateTime(request.requestDate)} · {ageLabel(request.requestDate)}</div>
+                  {request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className={cn(linkVariants(), "mt-1 block")}><span className="tag">{request.batch.batchNo}</span></Link> : null}
+                </DataTableCell>
+                <DataTableCell className="whitespace-nowrap">
+                  <div className="text-foreground">{t(`types.${request.disposalType}`)}</div>
+                  <div className="mt-1 text-meta text-muted-foreground num">{getRequestValue(request, tCommon("baht")) ?? t("queue.noValue")}</div>
+                </DataTableCell>
+                <DataTableCell className="min-w-36 text-foreground">{requesterName(request)}</DataTableCell>
+                <DataTableCell align="right" sticky="right">
+                  {pendingInboxEnabled ? <DisposalInboxStep own={ownSodReason(request)} inboxHref={approvalInboxItemHref(locale, "disposal", request.id)} detailHref={detailHref} labels={inboxStepLabels} row />
+                    : request.round ? (
+                      // The disposed tab's step is the round (spec §10.2): "DPR-… · {date}", linked.
+                      <Link data-disposal-round-link href={`/${locale}/disposal/rounds/${request.round.id}`} className={cn(linkVariants({ size: "inherit" }), "whitespace-nowrap text-meta")}>
+                        <span className="tag">{request.round.roundNo}</span> · {formatDate(request.round.executionDate)}
+                      </Link>
+                    )
+                      : <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} labels={nextActionLabels} />}
+                </DataTableCell>
+              </ClickableTableRow>
+            )
+          })}
+        </DataTableBody>
+      </DataTable>
+      {total > 0 ? (
+        <DataTableFoot>
+          <Pagination
+            page={filters.page}
+            totalPages={resultRange.totalPages}
+            previousHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { page: filters.page - 1 })}`}
+            nextHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { page: filters.page + 1 })}`}
+            pageSize={filters.pageSize}
+            pageSizes={LIST_PAGE_SIZES.map((pageSize) => ({ value: pageSize, href: `/${locale}/disposal?${buildDisposalQueryString(filters, { pageSize, page: 1 })}` }))}
+            labels={{
+              navigation: tCommon("pagination"),
+              previous: tCommon("previous"),
+              next: tCommon("next"),
+              pageOf: tCommon("pageOf", { page: filters.page, total: resultRange.totalPages }),
+              range: tCommon("showingRange", { from: formatCount(resultRange.start), to: formatCount(resultRange.end), total: formatCount(total) }),
+              pageSizeGroup: tCommon("pageSizeLabel"),
+              rowsPerPage: tCommon("rowsPerPage"),
+            }}
+          />
+        </DataTableFoot>
+      ) : null}
+    </ContentPanel>
+  )
 
   return (
     <div className="space-y-6">
@@ -161,21 +365,26 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         meta={t("subtitle")}
         actions={
           <>
-            <Link href={`/${locale}/disposal/batches`} className={buttonVariants({ variant: "outline", size: "md" })}>
-              <ListChecks aria-hidden="true" />
-              {t("batchHistory")}
-            </Link>
             {canCreate ? (
-              <>
-                <Link href={`/${locale}/disposal/batch/new`} className={buttonVariants({ variant: "outline", size: "md" })}>
-                  <PackagePlus aria-hidden="true" />
-                  {t("batchCreateTitle")}
-                </Link>
-                <Link href={`/${locale}/disposal/new`} className={buttonVariants({ size: "md" })}>
-                  <Plus aria-hidden="true" />
-                  {tCommon("create")}
-                </Link>
-              </>
+              <Link href={`/${locale}/disposal/new`} className={buttonVariants({ size: "md" })}>
+                <Plus aria-hidden="true" />
+                {t("createTitle")}
+              </Link>
+            ) : null}
+            <Link href={`/${locale}/disposal/rounds`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <Layers aria-hidden="true" />
+              {t("queue.rounds")}
+            </Link>
+            <DisposalBatchMenu
+              label={t("queue.batchMenu")}
+              create={canCreate ? { label: t("queue.batchCreate"), href: `/${locale}/disposal/batch/new` } : null}
+              history={{ label: t("batchHistory"), href: `/${locale}/disposal/batches` }}
+            />
+            {canExport ? (
+              <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
+                <Download aria-hidden="true" />
+                {tCommon("export")}
+              </a>
             ) : null}
           </>
         }
@@ -188,168 +397,67 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           {hasActiveFilters ? <span className="text-meta font-normal text-muted-foreground num">{t("activeFilterCount", { count: activeFilterCount })}</span> : null}
         </summary>
         <div className="border-t border-border p-4">
-          <DisposalFilterForm locale={locale} filters={filters} hasActiveFilters={hasActiveFilters} t={t} tCommon={tCommon} />
+          <DisposalFilterForm formId="disposal-filter-phone" {...filterFormProps} />
         </div>
       </details>
 
-      <FilterPanel className="hidden md:block">
-        <DisposalFilterForm locale={locale} filters={filters} hasActiveFilters={hasActiveFilters} t={t} tCommon={tCommon} />
-      </FilterPanel>
-
-      <ContentPanel
-        divided
-        flush
-        title={t("requestList")}
-        description={t("resultRange", { start: formatCount(resultRange.start), end: formatCount(resultRange.end), total: formatCount(total) })}
-        actions={
-          canExport ? (
-            <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
-              <Download aria-hidden="true" />
-              {t("exportRequests")}
-            </a>
-          ) : undefined
-        }
-      >
-        <TabNav
-          aria-label={t("stageFilterLabel")}
-          items={stageTabs.map((stage) => ({
-            key: stage.status || "all",
-            label: stage.label,
-            count: formatCount(stage.count),
-            href: `/${locale}/disposal?${buildDisposalQueryString(filters, { status: stage.status, page: 1 })}`,
-          }))}
-          current={filters.status || "all"}
-          className="px-4 md:px-5"
-        />
-        <div className="flex items-center justify-end gap-1 px-4 pt-2 text-meta text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
-        {pendingInboxNote ? (
-          <p data-disposal-inbox-note className="px-4 pt-3 text-meta text-muted-foreground md:px-5">
-            {pendingInboxNote}
-            {" · "}
-            <Link href={`/${locale}/admin/approvals?tab=disposal`} className={linkVariants({ size: "inherit" })}>{t("pendingInboxLink")}</Link>
-          </p>
-        ) : null}
-        <div className={`${getMobileCardListClasses()} p-3`}>
-          {requests.length === 0 ? <ActionEmptyState {...emptyState} /> : requests.map((request) => {
-            const stage = getDisposalStage(request.requestStatus)
-            const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
-            return (
-              <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                <div className="flex min-w-0 flex-col gap-2">
-                  <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0")}><span className="tag font-medium">{request.disposalNo}</span></Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}><span className="tag">{request.batch.batchNo}</span></Link> : null}</div>
-                  <div><div className="text-sm text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div><div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{request.asset.name}</div></div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><Chip>{t(`types.${request.disposalType}`)}</Chip></div>
-                <KeyValueList className="mt-3" items={[{ key: "requestedBy", label: t("requestedBy"), value: request.requestedBy.fullNameTh }, { key: "requestDate", label: t("requestDate"), value: formatDateTime(request.requestDate) }]} />
-                <details className="mt-3 border-t border-border-soft"><summary className="cursor-pointer py-3 text-sm font-medium text-primary">{t("moreDetails")}</summary><KeyValueList items={[{ key: "reason", label: t("reason"), value: request.reason }, { key: "approver", label: t("approver"), value: request.approver ? <><span className="tag">{request.approver.code}</span> - {request.approver.fullNameTh}</> : null }, { key: "value", label: t("value"), value: getRequestValue(request, tCommon("baht")) }]} /></details>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">{pendingInboxEnabled ? <DisposalInboxStep own={ownSodReason(request)} inboxHref={approvalInboxItemHref(locale, "disposal", request.id)} detailHref={detailHref} labels={inboxStepLabels} /> : <DisposalNextAction request={request} href={detailHref} canApprove={canApprove} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} labels={nextActionLabels} />}</div>
-              </article>
-            )
-          })}
-        </div>
-        <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("requestList")} scrollHint={tCommon("tableScrollHint")}>
-          <DataTableHeader>
-            <tr>
-              <DataTableHead>{t("disposalNo")}</DataTableHead>
-              <DataTableHead>{t("asset")}</DataTableHead>
-              <DataTableHead>{t("disposalType")}</DataTableHead>
-              <DataTableHead>{t("requestedBy")}</DataTableHead>
-              <DataTableHead>{tCommon("status")}</DataTableHead>
-              <DataTableHead>{t("requestDate")}</DataTableHead>
-              {canApprove || canEdit ? <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead> : null}
-            </tr>
-          </DataTableHeader>
-          <DataTableBody>
-            {requests.length === 0 ? (
-              <TableEmptyRow colSpan={canApprove || canEdit ? 7 : 6} emptyState={emptyState} />
-            ) : requests.map((request) => {
-              const stage = getDisposalStage(request.requestStatus)
-              const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
-              return (
-                <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
-                  <DataTableCell className="whitespace-nowrap">
-                    <Link href={detailHref} className={cn(linkVariants({ size: "inherit" }), "text-foreground")}><span className="tag font-medium">{request.disposalNo}</span></Link>
-                    {request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className={cn(linkVariants(), "mt-1 block")}><span className="tag">{request.batch.batchNo}</span></Link> : null}
-                  </DataTableCell>
-                  <DataTableCell className="min-w-56">
-                    <div className="text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div>
-                    <div className="mt-1 text-meta text-muted-foreground">{request.asset.name}</div>
-                  </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                    <div>{t(`types.${request.disposalType}`)}</div>
-                    <div className="mt-1 text-meta num">{orNil(getRequestValue(request, tCommon("baht")))}</div>
-                  </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground"><span className="tag">{request.requestedBy.code}</span> - {request.requestedBy.fullNameTh}</DataTableCell>
-                  <DataTableCell className="whitespace-nowrap"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /></DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(request.requestDate)}</DataTableCell>
-                  {canApprove || canEdit ? (
-                    <DataTableCell align="right" sticky="right">
-                      {pendingInboxEnabled ? <DisposalInboxStep own={ownSodReason(request)} inboxHref={approvalInboxItemHref(locale, "disposal", request.id)} detailHref={detailHref} labels={inboxStepLabels} row /> : <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} labels={nextActionLabels} />}
-                    </DataTableCell>
-                  ) : null}
-                </ClickableTableRow>
-              )
-            })}
-          </DataTableBody>
-        </DataTable>
-        {total > 0 ? (
-          <DataTableFoot>
-            <Pagination
-              page={filters.page}
-              totalPages={resultRange.totalPages}
-              previousHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { page: filters.page - 1 })}`}
-              nextHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { page: filters.page + 1 })}`}
-              pageSize={filters.pageSize}
-              pageSizes={LIST_PAGE_SIZES.map((pageSize) => ({ value: pageSize, href: `/${locale}/disposal?${buildDisposalQueryString(filters, { pageSize, page: 1 })}` }))}
-              labels={{
-                navigation: tCommon("pagination"),
-                previous: tCommon("previous"),
-                next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: filters.page, total: resultRange.totalPages }),
-                range: tCommon("showingRange", { from: formatCount(resultRange.start), to: formatCount(resultRange.end), total: formatCount(total) }),
-                pageSizeGroup: tCommon("pageSizeLabel"),
-                rowsPerPage: tCommon("rowsPerPage"),
-              }}
-            />
-          </DataTableFoot>
-        ) : null}
-      </ContentPanel>
+      {roundSelectionEnabled ? (
+        <DisposalRoundSelectionProvider
+          scope={disposalRoundSelectionScope({ search: filters.search, disposalType: filters.disposalType, dateFrom: filters.dateFrom, dateTo: filters.dateTo })}
+          tickable={tickableIds}
+          createHref={`/${locale}/disposal/rounds/new`}
+          copy={roundSelectionCopy}
+        >
+          {list}
+          {/* The last child of the list's column: it sticks to the bottom while something is ticked (from md). */}
+          <DisposalRoundSelectionBar />
+        </DisposalRoundSelectionProvider>
+      ) : list}
     </div>
   )
 }
 
-// One form, rendered twice: in the phone <details> and in the desktop FilterPanel (spec 2B §5.10 #5, §6.5 6-ฌ). Field
-// ids come from useId, so the two copies never share an id; the hidden copy is display:none, so one search landmark shows.
-function DisposalFilterForm({ locale, filters, hasActiveFilters, t, tCommon }: { locale: string; filters: ReturnType<typeof parseDisposalListParams>; hasActiveFilters: boolean; t: Awaited<ReturnType<typeof getTranslations>>; tCommon: Awaited<ReturnType<typeof getTranslations>> }) {
+// One form, rendered twice: in the phone <details> and under the tabs from md (spec 2B §5.10 #5, §6.5 6-ฌ). Each copy
+// has its own form id, which the date chip's portaled fields join; the hidden copy is display:none, so one search
+// landmark shows. The tab is not a filter (group 6 spec §10.2): a search keeps it in a hidden field.
+function DisposalFilterForm({ formId, locale, filters, hasActiveFilters, clearHref, t, tCommon }: { formId: string; locale: string; filters: ReturnType<typeof parseDisposalListParams>; hasActiveFilters: boolean; clearHref: string; t: Awaited<ReturnType<typeof getTranslations>>; tCommon: Awaited<ReturnType<typeof getTranslations>> }) {
   const dateRangeError = getDisposalDateRangeError(filters)
   return (
-    <form role="search" action={`/${locale}/disposal`} className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_auto]">
+    <form id={formId} role="search" action={`/${locale}/disposal`} className="flex flex-wrap items-center gap-2">
+      {filters.status ? <input type="hidden" name="status" value={filters.status} /> : null}
       <input type="hidden" name="pageSize" value={filters.pageSize} />
-      <Field label={tCommon("search")} className="col-span-2 lg:col-span-1">
-        <SearchField name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} />
-      </Field>
-      <FilterSelect label={tCommon("status")} name="status" defaultValue={filters.status} allLabel={tCommon("all")} options={disposalStatusFilters.map((status) => ({ value: status, label: t(`statuses.${status}`) }))} className="col-span-2 lg:col-span-1" />
-      <FilterSelect label={t("disposalType")} name="disposalType" defaultValue={filters.disposalType} allLabel={tCommon("all")} options={disposalTypeFilters.map((type) => ({ value: type, label: t(`types.${type}`) }))} className="col-span-2 lg:col-span-1" />
-      <Field label={t("dateFrom")}>
-        <Input type="date" name="dateFrom" defaultValue={filters.dateFrom} max={filters.dateTo || undefined} />
-      </Field>
-      <Field label={t("dateTo")}>
-        <Input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} />
-      </Field>
-      <FilterFormActions className="col-span-2 lg:col-span-1" submitLabel={t("filter")} clear={hasActiveFilters ? { href: `/${locale}/disposal`, label: t("clearFilters") } : undefined} />
-      {dateRangeError ? <p role="alert" className="col-span-2 text-meta text-danger lg:col-span-6">{t("invalidDateRange")}</p> : null}
+      <SearchField name="search" defaultValue={filters.search} fieldSize="md" aria-label={tCommon("search")} placeholder={t("searchPlaceholder")} className="w-full md:w-72" />
+      <FilterSelect label={t("queue.colType")} hideLabel fieldSize="md" name="disposalType" defaultValue={filters.disposalType} allLabel={`${t("queue.colType")}: ${tCommon("all")}`} options={disposalTypeFilters.map((type) => ({ value: type, label: t(`types.${type}`) }))} className="w-full md:w-44" />
+      <RepairDateRangeChip
+        key={`${filters.dateFrom}|${filters.dateTo}`}
+        formId={formId}
+        dateFrom={filters.dateFrom}
+        dateTo={filters.dateTo}
+        labels={{
+          chip: t("requestDate"),
+          applied: t("queue.dateApplied", { from: filters.dateFrom ? formatDate(filters.dateFrom) : "–", to: filters.dateTo ? formatDate(filters.dateTo) : "–" }),
+          apply: t("queue.dateApply"),
+          clear: t("queue.dateClear"),
+          from: t("dateFrom"),
+          to: t("dateTo"),
+        }}
+        clearHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { dateFrom: "", dateTo: "", page: 1 })}`}
+      />
+      <Button type="submit" variant="outline" size="md">{t("filter")}</Button>
+      {hasActiveFilters ? <Link href={clearHref} className={buttonVariants({ variant: "ghost", size: "md" })}>{t("clearFilters")}</Link> : null}
+      {dateRangeError ? <p role="alert" className="w-full text-meta text-danger">{t("invalidDateRange")}</p> : null}
     </form>
   )
 }
 
 // One empty state for the phone list and the table: while a filter is on, clear filters as an outline button;
 // otherwise the create link for users who may create (spec 2B §5.4).
-function disposalEmptyState({ locale, t, hasActiveFilters, canCreate }: { locale: string; t: Awaited<ReturnType<typeof getTranslations>>; hasActiveFilters: boolean; canCreate: boolean }): ComponentProps<typeof ActionEmptyState> {
+function disposalEmptyState({ locale, t, hasActiveFilters, canCreate, clearHref }: { locale: string; t: Awaited<ReturnType<typeof getTranslations>>; hasActiveFilters: boolean; canCreate: boolean; clearHref: string }): ComponentProps<typeof ActionEmptyState> {
   return {
     icon: <Trash2 />,
     title: t(hasActiveFilters ? "emptyTitle" : "emptyUnfilteredTitle"),
     description: t(hasActiveFilters ? "emptyHelp" : "emptyUnfilteredHelp"),
-    actionHref: hasActiveFilters ? `/${locale}/disposal` : canCreate ? `/${locale}/disposal/new` : undefined,
+    actionHref: hasActiveFilters ? clearHref : canCreate ? `/${locale}/disposal/new` : undefined,
     actionLabel: hasActiveFilters ? t("clearFilters") : canCreate ? t("createTitle") : undefined,
     actionVariant: hasActiveFilters ? "secondary" : "primary",
   }

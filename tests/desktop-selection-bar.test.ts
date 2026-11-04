@@ -34,6 +34,8 @@ test("DesktopSelectionBar's callers: three lists with ticks and the labels page'
     "src/components/assets/asset-label-batch-tool.tsx",
     "src/components/assets/asset-register-table.tsx",
     "src/components/audit/audit-findings-batch-actions.tsx",
+    // Group 6 plan 4 Task 3: the disposal queue's approved tab (spec §10.2) is the sixth caller.
+    "src/components/disposal/disposal-round-selection.tsx",
   ])
   const shell = read("src/components/assets/asset-label-batch-tool.tsx")
   assert.equal(shell.match(/<DesktopSelectionBar\n/g)?.length, 1)

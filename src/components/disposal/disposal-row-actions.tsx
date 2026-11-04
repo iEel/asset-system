@@ -1,8 +1,11 @@
 "use client"
 
 import { useRef, type ComponentProps, type KeyboardEvent, type MouseEvent } from "react"
-import { FileText, FolderOpen } from "lucide-react"
+import Link from "next/link"
+import { ChevronDown, FileText, FolderOpen, History, PackagePlus } from "lucide-react"
 import { DisposalDecisionButton, type DisposalDecisionButtonHandle } from "@/components/disposal/disposal-decision-button"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { RowActions, type RowActionItem, type RowNextAction } from "@/components/ui/row-actions"
 
 // The props the page hands to the dialog it opens: the dialog's own props, without the three this file sets.
@@ -62,5 +65,37 @@ export function DisposalRowActions({ code, menuLabel, detail, batch, next }: Dis
         {next.kind === "review" ? <DisposalDecisionButton {...next.dialog} ref={decisionRef} hideTrigger returnFocusRef={openerRef} /> : null}
       </span>
     </>
+  )
+}
+
+// The queue header's "ชุดคำขอ ▾" (group 6 spec §10.1, P4-R4): request batches keep their pages and move into this menu,
+// "สร้างชุดคำขอ" for disposal:create (create is null otherwise) and "ประวัติชุดคำขอ". A labelled trigger as the audit
+// pages' header menus (audit-round-header-menus.tsx); RowActions' trigger is the row's ⋯ and carries no words.
+export function DisposalBatchMenu({ label, create, history }: { label: string; create: { label: string; href: string } | null; history: { label: string; href: string } }) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="md" data-disposal-batch-menu>
+          {label}
+          <ChevronDown aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {create ? (
+          <DropdownMenuItem asChild>
+            <Link href={create.href}>
+              <PackagePlus aria-hidden="true" />
+              {create.label}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem asChild>
+          <Link href={history.href}>
+            <History aria-hidden="true" />
+            {history.label}
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

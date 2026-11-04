@@ -89,8 +89,10 @@ test("clear filters shows only while a filter is on, on every FilterFormActions 
 // DisposalFilterForm now renders in both places, and the phone summary counts the filters that are on.
 test("the disposal queue renders one DisposalFilterForm in two places and the page has no other form (item 8)", () => {
   const source = read("src/app/[locale]/(dashboard)/disposal/page.tsx")
-  assert.equal(source.match(/<DisposalFilterForm locale=\{locale\} filters=\{filters\} hasActiveFilters=\{hasActiveFilters\} t=\{t\} tCommon=\{tCommon\} \/>/g)?.length, 2, "the phone <details> and the desktop FilterPanel")
-  assert.match(source, /<FilterPanel className="hidden md:block">\n\s+<DisposalFilterForm /)
+  // Group 6 plan 4 Task 3 (board DP-Queue): the desktop copy moved under the tabs, and each copy has its own form id for
+  // the date chip's portaled fields.
+  assert.equal(source.match(/<DisposalFilterForm formId="disposal-filter-(?:phone|desktop)" \{\.\.\.filterFormProps\} \/>/g)?.length, 2, "the phone <details> and the desktop copy under the tabs")
+  assert.match(source, /<div className="hidden md:block">\n\s+<DisposalFilterForm formId="disposal-filter-desktop" /)
   assert.equal(source.match(/<form\b/g)?.length, 1, "one <form> in the file")
   assert.ok(source.indexOf("<form") > source.indexOf("function DisposalFilterForm("), "the one <form> is DisposalFilterForm's")
   assert.match(source, /\{hasActiveFilters \? <span className="text-meta font-normal text-muted-foreground num">\{t\("activeFilterCount", \{ count: activeFilterCount \}\)\}<\/span> : null\}/)

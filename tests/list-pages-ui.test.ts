@@ -167,9 +167,11 @@ test("the disposal queue builds on PageHeader, TabNav, a divided panel, DataTabl
   assert.match(source, /aria-label=\{t\("stageFilterLabel"\)\}/)
   assert.match(source, /current=\{filters\.status \|\| "all"\}/)
   assert.match(source, /count: formatCount\(stage\.count\)/)
-  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  // Group 6 plan 4 Task 3 (board DP-Queue): the next-step column names itself ขั้นถัดไป.
+  assert.match(source, /<DataTableHead align="right" sticky="right">\{t\("queue\.colNext"\)\}<\/DataTableHead>/)
   // Group 6 plan 2 Task 3 (spec §10.2): the pending tab's rows link to the approvals page instead.
-  assert.match(source, /<DataTableCell align="right" sticky="right">\s*\{pendingInboxEnabled \? <DisposalInboxStep [^\n]* : <DisposalNextAction /)
+  // Group 6 plan 4 Task 3 (spec §10.2): a request recorded in a round shows its round instead.
+  assert.match(source, /<DataTableCell align="right" sticky="right">\s*\{pendingInboxEnabled \? <DisposalInboxStep [^\n]*\n\s+: request\.round \? \([\s\S]*?\)\n\s+: <DisposalNextAction /)
   assert.match(source, /row=\{\{ menuLabel: tCommon\("moreActionsFor", \{ code: request\.disposalNo \}\), batchHref: /)
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/)
   assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{emptyState\} \/>/)

@@ -111,6 +111,25 @@ export async function previewDisposalRound(
   return { items: inspection.items, executorOptions }
 }
 
+/**
+ * The queue's approved tab (spec §10.2): each request's block code for this viewer by the round's own checks, so a
+ * disabled tick says what the preview would. A system admin may use the evidence exception on the round, so a request
+ * without evidence stays tickable for them.
+ */
+export async function getDisposalRoundTickBlocks(
+  db: Pick<DisposalRoundReader, "disposalRequest" | "attachment" | "systemSetting">,
+  requestIds: readonly string[],
+  actor: DisposalRoundActor,
+): Promise<Map<string, DisposalRoundBlockCode | null>> {
+  if (requestIds.length === 0) return new Map()
+  const inspection = await inspectDisposalRound(
+    db,
+    { requestIds, useHistoricalEvidenceException: canUseHistoricalDisposalEvidenceException(actor.roles) },
+    actor,
+  )
+  return new Map(inspection.items.map((item) => [item.requestId, item.code]))
+}
+
 export async function createDisposalRound(
   db: DisposalRoundDatabase,
   input: DisposalRoundCommitInput,
@@ -210,7 +229,7 @@ function assertRoundAllowed(input: { useHistoricalEvidenceException?: boolean },
 // One read of every selected request and its evidence, then the per-machine checks of today's execution, in the order
 // the ids were given. The round's method replaces each request's, so the request's own type is not checked.
 async function inspectDisposalRound(
-  db: DisposalRoundReader,
+  db: Pick<DisposalRoundReader, "disposalRequest" | "attachment" | "systemSetting">,
   input: RoundCheckInput,
   actor: DisposalRoundActor,
 ): Promise<RoundInspection> {

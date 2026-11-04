@@ -20,9 +20,10 @@ test("disposal queue communicates range, date errors, compact mobile detail, and
   assert.match(page, /getDisposalDateRangeError/)
   assert.match(page, /resultRange/)
   assert.match(page, /<details/)
-  assert.match(page, /<DataTableHead align="right" sticky="right" hideLabel>/, "the actions column stays pinned to the right (DataTable sticky, spec 2B §3.4)")
+  // Group 6 plan 4 Task 3: the next-step column names itself ขั้นถัดไป (board DP-Queue).
+  assert.match(page, /<DataTableHead align="right" sticky="right">\{t\("queue\.colNext"\)\}<\/DataTableHead>/, "the next-step column stays pinned to the right (DataTable sticky, spec 2B §3.4)")
   assert.match(page, /<DataTableCell align="right" sticky="right">/)
-  assert.match(page, /hasActiveFilters=\{hasActiveFilters\}/)
+  assert.match(page, /const filterFormProps = \{ locale, filters, hasActiveFilters, clearHref, t, tCommon \}/)
 })
 
 // Group 6 plan 2 Task 3 (spec §10.2, decision 3, ruling P2-R2): bulk approval moved to the approvals page. The pending
@@ -80,4 +81,129 @@ test("the pending tab's words exist in Thai and English; the bulk-decision reaso
       assert.equal(typeof messages.bulkErrors[code], "string", `${locale}:${code}`)
     }
   }
+})
+
+// Group 6 plan 4 Task 3 (spec §10, board DP-Queue): the tabs are the only status filter, six columns, the date chip,
+// the header with รอบตัดจำหน่าย and ชุดคำขอ ▾, and the approved tab's ticks across pages up to 200.
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const SELECTION = "src/components/disposal/disposal-round-selection.tsx"
+const ROW_ACTIONS = "src/components/disposal/disposal-row-actions.tsx"
+
+test("the five status tabs with counts are the only status filter: the filter form has no status select", () => {
+  const page = read(queuePath)
+  assert.match(page, /<TabNav\b/)
+  for (const status of ['""', '"pending"', '"approved"', '"disposed"', '"rejected"']) {
+    assert.match(page, new RegExp(`\\{ status: ${status}, label: `), `the ${status} tab`)
+  }
+  const form = page.slice(page.indexOf("function DisposalFilterForm("), page.indexOf("function disposalEmptyState("))
+  assert.ok(form.length > 0)
+  assert.doesNotMatch(form, /<NativeSelect\b|label=\{tCommon\("status"\)\}|disposalStatusFilters/)
+  assert.match(form, /\{filters\.status \? <input type="hidden" name="status" value=\{filters\.status\} \/> : null\}/, "a search keeps the tab")
+  assert.match(form, /name="disposalType"/)
+  assert.match(form, /<SearchField\b/)
+  assert.match(form, /<RepairDateRangeChip\b/)
+  assert.doesNotMatch(page, /disposalStatusFilters/)
+})
+
+test("the header: ยื่นคำขอตัดจำหน่าย, รอบตัดจำหน่าย, the ชุดคำขอ ▾ menu and ส่งออก for disposal:export", () => {
+  const page = read(queuePath)
+  const header = page.slice(page.indexOf("<PageHeader"), page.indexOf("{/* A <details> cannot be ContentPanel"))
+  assert.match(header, /href=\{`\/\$\{locale\}\/disposal\/new`\}/)
+  assert.match(header, /t\("createTitle"\)/)
+  assert.match(header, /href=\{`\/\$\{locale\}\/disposal\/rounds`\}/)
+  assert.match(header, /t\("queue\.rounds"\)/)
+  assert.match(header, /<DisposalBatchMenu\b/)
+  assert.match(header, /\{canExport \? \(\n\s+<a href=\{`\/api\/disposal-requests\/export/)
+  const menu = read(ROW_ACTIONS)
+  assert.match(menu, /export function DisposalBatchMenu\(/)
+  assert.match(menu, /<ChevronDown aria-hidden="true" \/>/)
+  const th = JSON.parse(read("messages/th.json")).disposalPage
+  assert.equal(th.createTitle, "ยื่นคำขอตัดจำหน่าย")
+  assert.equal(th.queue.rounds, "รอบตัดจำหน่าย")
+  assert.equal(th.queue.batchMenu, "ชุดคำขอ")
+  assert.equal(th.queue.batchCreate, "สร้างชุดคำขอ")
+  assert.equal(th.batchHistory, "ประวัติชุดคำขอ")
+  assert.equal(th.subtitle, "ติดตามคำขอที่รอพิจารณา รอตัดจำหน่าย และรอบตัดจำหน่าย")
+  assert.equal(th.searchPlaceholder, "ค้นหาเลขคำขอ ชื่อ รหัส ผู้ขอ")
+})
+
+test("six columns: the tick (approved tab), ทรัพย์สิน, เลขที่คำขอ · สถานะ, ประเภท, ผู้ขอ, ขั้นถัดไป", () => {
+  const page = read(queuePath)
+  const head = page.slice(page.indexOf("<DataTableHeader>"), page.indexOf("</DataTableHeader>"))
+  const order = ['t("queue.colSelect")', 't("asset")', 't("queue.colNoStatus")', 't("queue.colType")', 't("requestedBy")', 't("queue.colNext")']
+  let at = -1
+  for (const label of order) {
+    const next = head.indexOf(label)
+    assert.ok(next > at, `${label} after the previous column`)
+    at = next
+  }
+  assert.match(head, /\{roundSelectionEnabled \? <DataTableHead hideLabel/)
+  assert.doesNotMatch(head, /tCommon\("status"\)|t\("requestDate"\)/, "the status and the date sit under the request number")
+  const th = JSON.parse(read("messages/th.json")).disposalPage.queue
+  assert.equal(th.colNoStatus, "เลขที่คำขอ · สถานะ")
+  assert.equal(th.colType, "ประเภท")
+  assert.equal(th.colNext, "ขั้นถัดไป")
+  assert.equal(th.noValue, "ไม่มีมูลค่า")
+  assert.equal(th.you, "(คุณ)")
+  assert.equal(th.ageToday, "วันนี้")
+  assert.equal(th.ageDays, "{days} วัน")
+})
+
+test("the approved tab renders DisposalRoundSelectionProvider, the ticks, select all and the bar's สร้างรอบตัดจำหน่าย", () => {
+  const page = read(queuePath)
+  assert.match(page, /const roundSelectionEnabled = canEdit && filters\.status === "approved"/)
+  assert.match(page, /<DisposalRoundSelectionProvider\b/)
+  assert.match(page, /<DisposalRoundTick\b/)
+  assert.match(page, /<DisposalRoundSelectAll\b/)
+  assert.match(page, /<DisposalRoundSelectionBar\b/)
+  assert.match(page, /getDisposalRoundTickBlocks\(prisma, /, "the reasons come from the round service's own checks")
+  assert.match(page, /disposalRoundSelectionScope\(\{ search: filters\.search, disposalType: filters\.disposalType, dateFrom: filters\.dateFrom, dateTo: filters\.dateTo \}\)/)
+  assert.match(page, /createHref=\{`\/\$\{locale\}\/disposal\/rounds\/new`\}/)
+  assert.doesNotMatch(page, /DisposalBulkExecution|DisposalExecutionButton/)
+  const selection = read(SELECTION)
+  assert.match(selection, /^"use client"/)
+  assert.match(selection, /window\.sessionStorage\.setItem\(disposalRoundSelectionStorageKey, JSON\.stringify\(selection\)\)/)
+  assert.match(selection, /router\.push\(createHref\)/)
+  assert.match(selection, /<DesktopSelectionBar\b/)
+  assert.match(selection, /<ArrowRight aria-hidden="true" \/>/)
+  assert.doesNotMatch(selection, /from "@\/(?:lib|components\/approvals)\/approval-inbox-selection"/, "mirrors the inbox selection, does not import it")
+  const th = JSON.parse(read("messages/th.json")).disposalPage.queue
+  assert.equal(th.roundCreate, "สร้างรอบตัดจำหน่าย {count} รายการ")
+  assert.equal(th.roundSelectedCount, "{count} เลือกแล้ว (จากทุกหน้า)")
+  assert.equal(th.roundClear, "ล้างรายการเลือก")
+  assert.equal(th.roundSelectAll, "เลือกทั้ง {count} รายการที่เลือกได้")
+  assert.equal(th.roundTickApprover, "คุณอนุมัติรายการนี้")
+  assert.equal(th.roundTickNoEvidence, "ยังไม่มีหลักฐาน")
+  assert.equal(th.roundPhoneNote, "สร้างรอบตัดจำหน่ายได้บนคอมพิวเตอร์")
+  for (const locale of ["th", "en"] as const) {
+    const queue = JSON.parse(read(`messages/${locale}.json`)).disposalPage.queue
+    assert.deepEqual(Object.keys(queue).sort(), Object.keys(th).sort(), locale)
+  }
+})
+
+test("a disabled tick names its reason: the viewer approved it, or it has no evidence (a system admin is let through)", () => {
+  const page = read(queuePath)
+  assert.match(page, /DISPOSAL_SOD_CONFLICT: t\("queue\.roundTickApprover"\)/)
+  assert.match(page, /DISPOSAL_EVIDENCE_REQUIRED: t\("queue\.roundTickNoEvidence"\)/)
+  const service = read("src/lib/disposal-round-service.ts")
+  assert.match(service, /export async function getDisposalRoundTickBlocks\(/)
+  assert.match(service, /useHistoricalEvidenceException: canUseHistoricalDisposalEvidenceException\(actor\.roles\)/)
+})
+
+test("the disposed tab shows the round's number, linked, in the next-step column", () => {
+  const page = read(queuePath)
+  assert.match(page, /round: \{ select: \{ id: true, roundNo: true, executionDate: true \} \}/)
+  assert.match(page, /href=\{`\/\$\{locale\}\/disposal\/rounds\/\$\{request\.round\.id\}`\}/)
+  assert.match(page, /<span className="tag">\{request\.round\.roundNo\}<\/span>/)
+})
+
+test("on the phone the approved tab has no ticks and says where a round is made", () => {
+  const page = read(queuePath)
+  assert.match(page, /\{roundSelectionEnabled \? <p data-disposal-round-phone-note className="[^"]*md:hidden[^"]*">\{t\("queue\.roundPhoneNote"\)\}<\/p> : null\}/)
+  const cards = page.slice(page.indexOf("getMobileCardListClasses()"), page.indexOf("<DataTable "))
+  assert.doesNotMatch(cards, /DisposalRoundTick/)
+})
+
+test("getDisposalOptions had no caller left and is deleted", () => {
+  assert.equal(existsSync("src/lib/disposal-options.ts"), false)
 })

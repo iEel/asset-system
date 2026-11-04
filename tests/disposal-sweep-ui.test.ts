@@ -148,8 +148,9 @@ test("one set of disposal status names (critique 2026-10-20 D3)", () => {
   assert.deepEqual(th.disposalPage.statuses, { pending: "รอพิจารณา", approved: "อนุมัติแล้ว รอตัดจำหน่าย", disposed: "ตัดจำหน่ายแล้ว", rejected: "ไม่อนุมัติ" })
   assert.deepEqual(en.disposalPage.statuses, { pending: "Pending decision", approved: "Approved, awaiting disposal", disposed: "Disposed", rejected: "Not approved" })
   for (const m of [th, en]) { assert.equal(m.disposalPage.stages, undefined); assert.equal(m.workCenter.disposalStatus_pending, undefined); assert.equal(m.workCenter.disposalStatus_approved, undefined) }
-  assert.equal(th.disposalPage.subtitle, "ติดตามคำขอที่รอพิจารณา รอตัดจำหน่าย และปิดงานตัดจำหน่าย")
-  assert.equal(en.disposalPage.subtitle, "Track disposal requests pending decision, awaiting disposal, and completed.")
+  // Group 6 plan 4 Task 3 (spec §10.1): the subtitle names the rounds.
+  assert.equal(th.disposalPage.subtitle, "ติดตามคำขอที่รอพิจารณา รอตัดจำหน่าย และรอบตัดจำหน่าย")
+  assert.equal(en.disposalPage.subtitle, "Track disposal requests pending decision, awaiting disposal, and disposal rounds.")
 })
 
 test("the batch list names its first column the batch number (critique 2026-10-20 D4)", () => {

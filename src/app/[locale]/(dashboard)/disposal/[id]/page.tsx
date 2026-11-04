@@ -45,8 +45,9 @@ const stackedKeyValues = "grid-cols-1 gap-y-0.5 [&>dd+dt]:mt-3 [overflow-wrap:an
 // 380px aside with the asset's photos and facts and the evidence.
 // Below lg (board DP-Request-Phone, §9.6) the two columns dissolve (contents) and the panels take one order: the
 // next-step card, the asset status card with the effect lines, the request details, the evidence, then the rest. The
-// header's print and history go into a ⋯, and the ActionBar shows only with a next step: ปฏิเสธ and อนุมัติ to decide,
-// or บันทึกตัดจำหน่าย when approved with disposal:edit (P3-R1). It never offers the old open-asset primary.
+// header's print and history go into a ⋯, and the ActionBar shows only with a next step: ปฏิเสธ and อนุมัติ to decide.
+// An approved request is recorded only in a disposal round (plan 4, P4-R1): its card links to the queue's approved
+// tab, where rounds are made, and a disposed one links its round. It never offers the old open-asset primary.
 export default async function DisposalDetailPage({ params, searchParams }: DisposalDetailPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
@@ -63,6 +64,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     where: { id, isActive: true },
     include: {
       batch: { select: { id: true, batchNo: true } },
+      round: { select: { id: true, roundNo: true } },
       asset: {
         select: {
           id: true,
@@ -223,6 +225,20 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         />
       </div>
     ) : null
+  // Approved (spec §9.2): with disposal:edit, "ไปเลือกในแท็บอนุมัติแล้ว" to the queue's approved tab, where it is ticked
+  // into a round. Disposed in a round: "รอบตัดจำหน่าย DPR-…", linked; a request executed before rounds has none.
+  const approvedTabLink = canEdit && status === "approved" ? (
+    <Link href={`/${locale}/disposal?status=approved`} className={buttonVariants({ variant: "outline", size: "md" })}>
+      {t("requestPage.goToApprovedTab")}
+    </Link>
+  ) : null
+  const roundLink = disposalRequest.round ? (
+    <p className="text-sm">
+      <Link data-disposal-round-link href={`/${locale}/disposal/rounds/${disposalRequest.round.id}`} className={linkVariants({ size: "inherit" })}>
+        {t("requestPage.roundLink", { roundNo: disposalRequest.round.roundNo })}
+      </Link>
+    </p>
+  ) : null
   const effectItems: KeyValueItem[] = [
     { key: "approve", label: tInbox("effectIfApprove"), value: tInbox("effectApprove") },
     {
@@ -343,6 +359,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           reject: previousStatusName ? tInbox("effectReject", { status: previousStatusName }) : tInbox("effectRejectUnknown"),
         }}
         actions={decisionActions}
+        executionAction={approvedTabLink}
+        roundOrExecution={roundLink}
         rejectRemark={disposalRequest.approvalRemark}
         segregationRequired={workflowPolicy.segregationRequired}
         approvedByViewer={workflowPolicy.segregationRequired && Boolean(disposalRequest.approverId) && disposalRequest.approverId === user.employeeId}
