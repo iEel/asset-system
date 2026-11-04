@@ -1,5 +1,6 @@
 // Disposal of a batch of two (spec §6.4.1–3, §6.7): IT staff request both in one batch with shared evidence, the IT
-// head approves them in one bulk approval, and IT staff execute them. On the way: the batch form's wrong entry first;
+// head approves them in one bulk approval on the approvals page (each in its panel on the phone, which has no ticks),
+// and IT staff execute them. On the way: the batch form's wrong entry first;
 // the IT head's own request is refused approval by the same IT head (the requester cannot approve their own request);
 // the approver's bulk execution is blocked (the approver cannot execute).
 import { asUser, expect, test } from "../support/fixtures.ts"
@@ -97,30 +98,49 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
   expect(ownRequest.status(), await ownRequest.text()).toBe(201)
   const ownRequestId = ((await ownRequest.json()) as { id: string }).id
 
-  // 3. The IT head's pending queue: the batch's two are selectable, their own request is not, with the reason shown.
+  // 3. The IT head's pending queue sends them to the approvals page (group 6 plan 2: bulk approval lives there now):
+  // the batch's two have its link, their own request reads that they cannot decide it.
   await measure.visit(`/th/disposal?status=pending&search=${encodeURIComponent(prefix)}`, "IT head: pending disposals")
-  if (e2eDevice === "phone") await page.getByRole("button", { name: "เลือกหลายรายการ" }).click()
-  await expect(page.getByRole("note", { name: "ไม่สามารถอนุมัติได้เนื่องจากขัดกับการแยกหน้าที่" }).filter({ visible: true })).toHaveCount(1)
-  for (const asset of batchAssets) {
-    await page.getByRole("checkbox", { name: new RegExp(`ทรัพย์สิน ${escapeRegExp(asset.assetTag)}$`) }).filter({ visible: true }).check()
+  await expect(page.locator('[data-disposal-inbox-step="review"]').filter({ visible: true })).toHaveCount(2)
+  await expect(page.locator('[data-disposal-inbox-step="own"]').filter({ visible: true })).toHaveCount(1)
+  await expect(page.getByText("คุณเป็นผู้ขอ พิจารณาเองไม่ได้").filter({ visible: true })).toHaveCount(1)
+  const inboxQueue = `/th/admin/approvals?tab=disposal&search=${encodeURIComponent(prefix)}`
+  if (e2eDevice === "phone") {
+    // The phone has no ticks (spec §7.7): each request is approved in its panel.
+    for (const asset of batchAssets) {
+      const requestId = requestPaths[asset.assetTag].split("/").pop() as string
+      await measure.visit(`${inboxQueue}&item=${encodeURIComponent(`disposal:${requestId}`)}`, "IT head: a batch request in the approvals panel")
+      const panel = page.locator(`[data-approval-disposal-panel="${requestId}"]`)
+      await panel.locator("#approval-disposal-remark").fill(`${prefix} อนุมัติทั้งชุด`)
+      await measure.timed("IT head: approve one in the panel", async () => {
+        await panel.getByRole("button", { name: "อนุมัติ", exact: true }).click()
+        await page.waitForURL((url) => url.searchParams.get("item") !== `disposal:${requestId}`)
+      })
+      await expectToast(page, /^อนุมัติคำขอ DP-\d{8}-\d{4} แล้ว$/)
+    }
+  } else {
+    // The approvals page: the batch's two are tickable, their own request's tick is disabled with the reason.
+    await measure.visit(inboxQueue, "IT head: the batch in the approvals page")
+    await expect(page.getByRole("checkbox", { name: new RegExp(`^เลือก ${escapeRegExp(own.name)} · .*\\(คุณเป็นผู้ขอ\\)$`) })).toBeDisabled()
+    for (const asset of batchAssets) {
+      await page.getByRole("checkbox", { name: new RegExp(`^เลือก ${escapeRegExp(asset.name)} · `) }).check()
+    }
+    const bar = page.getByRole("group", { name: "รายการที่เลือก" })
+    await expect(bar).toContainText("2 เลือกแล้ว (จากทุกหน้า) · คำขอตัดจำหน่าย")
+    await bar.getByRole("button", { name: "ตรวจสอบและอนุมัติ 2 รายการ" }).click()
+    const bulk = page.getByRole("dialog", { name: "อนุมัติ 2 รายการ" })
+    await expect(bulk.getByText("อนุมัติได้ 2 รายการ · ข้ามไป 0 รายการ")).toBeVisible()
+    // Neither was opened in the panel: the confirm warns, and does not block.
+    await expect(bulk.locator("[data-approval-not-opened]")).toContainText("ยังไม่ได้เปิดดูรูป 2 รายการ")
+    await bulk.locator("#approval-inbox-bulk-remark").fill(`${prefix} อนุมัติทั้งชุด`)
+    await measure.recordPage("IT head: the bulk approval's confirm")
+    await measure.timed("IT head: approve the two", async () => {
+      await bulk.getByRole("button", { name: "อนุมัติ 2 รายการ" }).click()
+      await expect(bulk).toHaveCount(0)
+    })
+    await expectToast(page, "อนุมัติแล้ว 2 รายการ")
+    await measure.recordPage("IT head: the bulk approval's result")
   }
-  // The toolbar's count (its live region says the same to a screen reader).
-  await expect(page.locator("div").filter({ hasText: /^เลือกแล้ว 2 รายการ$/ }).filter({ visible: true })).toHaveCount(1)
-  await page.getByRole("button", { name: "ตรวจสอบและอนุมัติ" }).click()
-  const bulk = page.getByRole("dialog", { name: "ตรวจสอบก่อนอนุมัติแบบกลุ่ม" })
-  await expect(bulk.getByRole("button", { name: "ยืนยันอนุมัติ 2 รายการ" })).toBeVisible()
-  await bulk.locator("#disposal-bulk-approval-remark").fill(`${prefix} อนุมัติทั้งชุด`)
-  await measure.recordPage("IT head: the bulk approval's preview")
-  await measure.timed("IT head: approve the two", async () => {
-    await bulk.getByRole("button", { name: "ยืนยันอนุมัติ 2 รายการ" }).click()
-    await expect(page.getByRole("dialog", { name: "ผลการอนุมัติแบบกลุ่ม" })).toBeVisible()
-  })
-  const result = page.getByRole("dialog", { name: "ผลการอนุมัติแบบกลุ่ม" })
-  await expect(result.getByRole("heading", { name: "อนุมัติแล้ว (2)" })).toBeVisible()
-  for (const asset of batchAssets) await expect(result.getByText(asset.assetTag)).toBeVisible()
-  await measure.recordPage("IT head: the bulk approval's result")
-  await result.getByRole("button", { name: "ปิด" }).first().click()
-  await expect(result).toHaveCount(0)
 
   // Their own request stays pending: no review on its page, and the bulk preview blocks it for segregation of duties.
   await measure.visit(`/th/disposal/${ownRequestId}`, "IT head: their own request")

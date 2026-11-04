@@ -48,7 +48,7 @@ export async function waitingHref(page: Page, key: WaitingKey): Promise<string> 
   return href
 }
 
-// How the list a kind opens shows its total on screen (Task 3D): the approvals page's "ทั้งหมด" cell, or the
+// How the list a kind opens shows its total on screen (Task 3D): the approvals page's "รอทั้งหมด" cell, or the
 // "<from>–<to> จาก <total> รายการ" line of a list (disposal, findings, the repair list by status, the register). The
 // stuck repairs and due PM open a section of the repair page, whose list foot counts the repair records, not the
 // section, so they have none here.

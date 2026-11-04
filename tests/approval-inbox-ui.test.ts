@@ -20,7 +20,9 @@ test("approvals page: one read model, the strip, tabs, rows and two panes", () =
   assert.match(source, /data-approval-panel/)
   assert.match(source, /<Pagination\b/)
   assert.match(source, /<SearchField\b/)
-  assert.match(source, /aria-pressed=/)
+  // A link that toggles a filter is current while on, not pressed: aria-pressed is not allowed on a link (axe, Task 5).
+  assert.match(source, /aria-current=\{query\.overdue \? "true" : undefined\}/)
+  assert.doesNotMatch(source, /aria-pressed=/)
   assert.match(source, /hidden xl:block/)
   assert.match(source, /notFound\(\)/)
   assert.match(source, /redirectToLogin\(locale\)/)

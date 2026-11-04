@@ -364,7 +364,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
               <Link
                 href={href({ overdue: !query.overdue, page: 1 })}
                 scroll={false}
-                aria-pressed={query.overdue}
+                aria-current={query.overdue ? "true" : undefined}
                 data-approval-overdue-toggle
                 className={cn(buttonVariants({ variant: "outline", size: "md" }), query.overdue && "border-primary bg-primary-soft text-primary-hover hover:border-primary hover:bg-primary-soft")}
               >

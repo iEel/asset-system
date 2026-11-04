@@ -77,14 +77,25 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
     `"ยืนยันสร้างชุดคำขอ"`,
     String.raw`/^DPB-\d{8}-\d{4}$/`,
     `requestedById: readRunData().employees.itHead.id`,
-    `"ไม่สามารถอนุมัติได้เนื่องจากขัดกับการแยกหน้าที่"`,
-    `"ยืนยันอนุมัติ 2 รายการ"`,
-    `"อนุมัติแล้ว (2)"`,
     `code: "DISPOSAL_SOD_CONFLICT"`,
     `"ไม่สามารถดำเนินการได้เนื่องจากขัดกับการแยกหน้าที่"`,
   ]) assert.ok(spec.includes(step), step)
-  // The phone's queue needs its selection mode before a row can be ticked.
-  assert.ok(spec.includes(`if (e2eDevice === "phone") await page.getByRole("button", { name: "เลือกหลายรายการ" }).click()`), "the phone's selection mode")
+  // The bulk approval moved to the approvals page (group 6 plan 2, P2-R2): the pending tab links there, the computer
+  // ticks both and confirms with the not-opened warning, the phone (no ticks) approves each in the panel.
+  for (const step of [
+    `'[data-disposal-inbox-step="review"]'`,
+    `"คุณเป็นผู้ขอ พิจารณาเองไม่ได้"`,
+    "const inboxQueue = `/th/admin/approvals?tab=disposal&search=${encodeURIComponent(prefix)}`",
+    String.raw`\\(คุณเป็นผู้ขอ\\)$`,
+    `"ตรวจสอบและอนุมัติ 2 รายการ"`,
+    `page.getByRole("dialog", { name: "อนุมัติ 2 รายการ" })`,
+    `"ยังไม่ได้เปิดดูรูป 2 รายการ"`,
+    `await expectToast(page, "อนุมัติแล้ว 2 รายการ")`,
+    `panel.getByRole("button", { name: "อนุมัติ", exact: true })`,
+  ]) assert.ok(spec.includes(step), step)
+  for (const gone of [`"ยืนยันอนุมัติ 2 รายการ"`, `"ตรวจสอบก่อนอนุมัติแบบกลุ่ม"`, `"#disposal-bulk-approval-remark"`, `"ผลการอนุมัติแบบกลุ่ม"`]) {
+    assert.ok(!spec.includes(gone), `the queue's bulk approval is gone: ${gone}`)
+  }
   // Finding D3 is fixed (FX3); D2 is decided (DX2 (ก)): IT staff fill the shared reference document number.
   assert.ok(!spec.includes(`test.fail(true, "finding D3:`), "D3 is fixed")
   assert.ok(!spec.includes(`test.fail(true, "finding D2:`), "D2 is fixed")
@@ -123,4 +134,41 @@ test("the disposal specs read the request statuses by their one set of names (cr
     assert.doesNotMatch(spec, /getByText\("อนุมัติแล้ว"\)/)
   }
   for (const spec of specs.slice(0, 2)) assert.ok(spec.includes('getByText("อนุมัติแล้ว รอตัดจำหน่าย")'))
+})
+
+test("the approvals page: strip, tabs, search, the panel, reject with a remark, bulk approve across pages with the not-opened warning, own requests, the phone (group 6 plan 2 Task 5)", () => {
+  const support = read("e2e/approvals/approvals-support.ts")
+  const spec = read("e2e/approvals/approvals-inbox.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itHead")`), "the IT head walks it")
+  // Run-marked records of each test's own, made through the APIs, each with the suite's photo.
+  assert.deepEqual([...spec.matchAll(/recordPrefix\(testInfo, "(APR\d)"\)/g)].map((match) => match[1]).sort(), ["APR1", "APR2"])
+  assert.ok(support.includes(`page.request.post("/api/disposal-requests"`), "requests through the request API")
+  assert.ok(support.includes("/attachments`") && support.includes(`fromRoot("e2e/fixtures/photo.png")`), "a photo on each")
+  assert.ok(support.includes(`await actAs(page, "itStaff", theme)`), "IT staff make the requests")
+  for (const step of [
+    `"[data-approval-strip-cell]"`,
+    `expect(await stripValue(page, "total"), "the total cell and the ทั้งหมด tab").toBe(await tabCount(page, "ทั้งหมด"))`,
+    "await expect(page.getByRole(\"main\")).toContainText(`จาก ${disposalTotal}`)",
+    `expect(await tabCount(page, "ตัดจำหน่าย")).toBe("3")`,
+    `"รูปที่ 1 / 1"`,
+    `"ถ้าปฏิเสธ"`,
+    `"#approval-disposal-remark-error"`,
+    `getByText("ไม่อนุมัติ")`,
+    `"2 เลือกแล้ว (จากทุกหน้า) · คำขอตัดจำหน่าย"`,
+    `pageSize: "25", page: "2"`,
+    `"ตรวจสอบและอนุมัติ 2 รายการ"`,
+    `"ยังไม่ได้เปิดดูรูป 1 รายการ"`,
+    `await expectToast(page, "อนุมัติแล้ว 2 รายการ")`,
+    `getByText("อนุมัติแล้ว รอตัดจำหน่าย")`,
+    `"อนุมัติเองไม่ได้"`,
+    `await expect(tick(page, own)).toBeDisabled()`,
+    `'[data-approval-sod="blocked"]'`,
+    `"กลับไปงานรออนุมัติ"`,
+    `await expect(page.locator("[data-approval-tick]").filter({ visible: true })).toHaveCount(0)`,
+    `await measure.recordPage("IT head: a request in the panel")`,
+  ]) assert.ok(spec.includes(step), step)
+  // The phone has no ticks: the bulk test skips there; the three requests walk one serial chain.
+  assert.ok(spec.includes(`test.skip(e2eDevice === "phone",`), "no bulk approve on the phone")
+  assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "one chain")
 })
