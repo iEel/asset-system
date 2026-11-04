@@ -209,3 +209,11 @@ test("the rejected card: the title is the status word and the remark wraps in th
   assert.equal(page.assetStatusTitle, "สถานะทรัพย์สิน")
   assert.equal(page.assetStatusNow, "ตอนนี้:")
 })
+
+test("final review: a lost request without a photo gets the muted note, and a failed upload is named even when a photo arrived", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx", "utf8")
+  assert.match(page, /data-disposal-no-photo="lost"/)
+  assert.match(page, /requestPage\.noPhotoLost/)
+  assert.match(page, /data-disposal-no-photo="upload-failed-some"/)
+  assert.doesNotMatch(page, /formatDateTime\(disposalRequest\.executionDate\)/)
+})

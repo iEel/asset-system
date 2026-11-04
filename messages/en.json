@@ -4078,7 +4078,9 @@
       "rejectReason": "Reason: {remark}",
       "assetStatusTitle": "Asset status",
       "assetStatusNow": "Now:",
-      "addEvidence": "Tap to take a photo or choose a file"
+      "addEvidence": "Tap to take a photo or choose a file",
+      "noPhotoLost": "No photo · lost",
+      "uploadFailed": "{count} file(s) failed to upload · add them again here"
     },
     "nextStatus": "Asset Status After Review"
   },

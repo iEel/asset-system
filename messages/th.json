@@ -4078,7 +4078,9 @@
       "rejectReason": "เหตุผล: {remark}",
       "assetStatusTitle": "สถานะทรัพย์สิน",
       "assetStatusNow": "ตอนนี้:",
-      "addEvidence": "แตะเพื่อถ่ายรูปหรือเลือกไฟล์"
+      "addEvidence": "แตะเพื่อถ่ายรูปหรือเลือกไฟล์",
+      "noPhotoLost": "ไม่มีรูป · สูญหาย",
+      "uploadFailed": "อัปโหลดไม่สำเร็จ {count} ไฟล์ · แนบใหม่ได้ที่นี่"
     },
     "nextStatus": "สถานะทรัพย์สินหลังพิจารณา"
   },

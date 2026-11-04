@@ -411,7 +411,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               <ContentPanel title={t("executionDetail")}>
                 <KeyValueList
                   items={[
-                    { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null },
+                    { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDate(disposalRequest.executionDate) : null },
                     {
                       key: "executedBy",
                       label: t("executedBy"),
@@ -489,9 +489,20 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         </div>
 
         <aside className="contents lg:block lg:min-w-0 lg:space-y-6">
+          {/* The photo notice (spec §5, §8.6): no photo warns; a lost machine, which cannot be photographed, gets the muted
+              note; a failed upload is named whenever the form reported one (final review). */}
           {showNoPhoto ? (
             <Notice tone="warning" className="max-lg:order-2" data-disposal-no-photo={failedUploads > 0 ? "upload-failed" : "none"}>
               {failedUploads > 0 ? t("requestPage.uploadFailedNoPhoto", { count: failedUploads }) : t("requestPage.noPhoto")}
+            </Notice>
+          ) : isLost && photos.length === 0 ? (
+            <Notice tone="neutral" className="max-lg:order-2" data-disposal-no-photo="lost">
+              {t("requestPage.noPhotoLost")}
+              {failedUploads > 0 ? <span className="block">{t("requestPage.uploadFailed", { count: failedUploads })}</span> : null}
+            </Notice>
+          ) : failedUploads > 0 ? (
+            <Notice tone="warning" className="max-lg:order-2" data-disposal-no-photo="upload-failed-some">
+              {t("requestPage.uploadFailed", { count: failedUploads })}
             </Notice>
           ) : null}
           <div data-disposal-panel="asset" className="min-w-0 max-lg:order-4">

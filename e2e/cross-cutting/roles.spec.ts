@@ -120,7 +120,9 @@ test.describe("IT staff", () => {
     const request = (await response.json()) as { id: string }
     await measure.visit(`/th/disposal/${request.id}`, "own disposal request (IT staff)")
     await expect(page.getByRole("main").getByText(asset.assetTag).first()).toBeVisible()
-    await expect(page.getByRole("button", { name: "พิจารณาคำขอ" })).toHaveCount(0)
+    // The request page's decision buttons (group 6 plan 3): neither shows on one's own request.
+    await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: "ปฏิเสธ", exact: true })).toHaveCount(0)
   })
 
   // Finding M4, decided (DX3 (ก)): the findings page shows the approve, reject, plan and close controls only to a role
