@@ -229,6 +229,8 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 
 ## Disposal
 
+- Group 6 plan 3 (2026-11-04): the request form (board DP-New: asset card, method cards, required photo, no price, the summary) and the request page (DP-Request: the next-step card with approve / reject or the reason you cannot decide, all photos, the source link, the phone bar only with a next step).
+
 | Feature | Details |
 |---|---|
 | Disposal request | Create and list disposal requests; the queue has stage tabs, one filter form, 25/50/100 pages and a row next step that opens the review or execution dialog |

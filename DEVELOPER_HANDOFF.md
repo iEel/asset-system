@@ -1511,6 +1511,15 @@ npm run build
   - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 4 survivors fixed in `20e36b92`: from xl the next item now opens at the pane's top (`AuditFindingPaneTop pane="[data-approval-panel]"`); the photo gallery is keyed by request; "อนุมัติเองไม่ได้" shows only when separation of duties blocks the row; an empty tab says so and links to ทั้งหมด. `e2e/approvals` + the batch spec, four projects: 36 / 0.
   - **Next:** plan 3, the request form and the request page (DP-New, DP-Request); it renames `types.dispose` to "จำหน่าย" (today the method chip reads "ตัดจำหน่าย · ตัดจำหน่าย").
 
+- Page group 6, plan 3: the disposal request form and the request page (DP-New, DP-Request, DP-Request-Phone).
+  - 2026-11-04, branch `feat/group6-request-form-page` (from master `e0b22396`). Not merged, not deployed, no migration. Plan `docs/superpowers/plans/2026-11-04-group6-request-form-page.md` (P3-R1 execution stays until plan 4; P3-R2 the photo gallery is `src/components/disposal/disposal-photo-gallery.tsx`, shared with the approvals panel; P3-R3 the batch form gains only the photo rule).
+  - **User decisions during the plan:** the execute words drop "จริง" (บันทึกตัดจำหน่าย); the method keeps "ตัดจำหน่าย"; no price at request time (form, batch form and decision dialog have no sale/salvage field; `disposalRequestSchema` makes both optional; old estimates read ...ที่ประเมิน).
+  - **Rules:** `src/lib/disposal-request-form-rules.ts` (`getDisposalPhotoRequirementError`, `getDisposalQueuedFileError`, `disposalReadinessLine`, `initialDisposalAsset`, `defaultDisposalRequester`, `buildDisposalRequestSummary`); `GET /api/disposal-assets?id=` returns the card fields.
+  - **UI:** `disposal-request-form.tsx` on `OperationFormFrame` with `disposal-asset-card.tsx`; the request page with `disposal-next-step-card.tsx`; `DisposalDecisionButton` takes `initialDecision` / `triggerLabel` and sends `{ decision, approvalRemark }`; `DisposalAttachments` shows thumbnails and keeps the last qualifying file.
+  - **E2E:** `E2E-1104Y` 161 / 0 / 5 (four projects). Two app bugs found by the run and fixed (`76c61e41`).
+  - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 1 survivor fixed in `8723ae73`: a lost request without a photo shows the muted "ไม่มีรูป · สูญหาย", a failed upload is named even when a photo arrived; also the execution panel's date is a day and `e2e/cross-cutting/roles.spec.ts` checks the new decision buttons. `e2e/disposal` + roles, four projects: 74 / 0.
+  - **Next:** plan 4, the queue and disposal rounds (migration on dev, the round service, the round pages, the accounting Excel; retires per-row and bulk execution).
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
