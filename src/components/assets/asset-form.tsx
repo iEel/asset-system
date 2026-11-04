@@ -20,7 +20,7 @@ import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { AssetFormChangeList, CHANGE_LIST_TRIGGER_ID, type AssetFormChangeRow } from "@/components/assets/asset-form-change-list"
-import { AssetFormChangedField, type AssetFieldChange } from "@/components/assets/asset-form-changed-field"
+import { FormChangedField, type FormFieldChange } from "@/components/ui/form-changed-field"
 import { AssetFormCustomFields } from "@/components/assets/asset-form-custom-fields"
 import { AssetFormDocuments } from "@/components/assets/asset-form-documents"
 import { AssetFormHeader } from "@/components/assets/asset-form-header"
@@ -1144,13 +1144,13 @@ export function AssetForm({
   const changeByField = new Map(changes.map((change) => [change.field, change]))
 
   // A changed field's old value and คืนค่าเดิม. A แผนก locked to a new holder comes back with the holder, so it has none.
-  function changeOf(field: AssetDiffField): AssetFieldChange | null {
+  function changeOf(field: AssetDiffField): FormFieldChange | null {
     const change = changeByField.get(field)
     if (!change) return null
     const restorable = !change.automatic && !(field === "departmentId" && departmentLock.locked)
     return {
       was: changeValueText(field, change.from) || tCommon("noValue"),
-      automatic: change.automatic,
+      automaticLabel: change.automatic ? t("followsHolderFix") : undefined,
       onRestore: restorable ? () => restoreField(field) : undefined,
     }
   }
@@ -1234,7 +1234,7 @@ export function AssetForm({
             {/* The duplicate check stays live (spec U8); a save that finds it focuses the field and shows the same line.
                 On edit the code is text behind เปลี่ยนรหัส (P2-R6); the field's id sits on the row, so an error focuses
                 the button and the live check still reads values.assetTag. */}
-            <AssetFormChangedField change={changeOf("assetTag")}>
+            <FormChangedField change={changeOf("assetTag")}>
               <Field
                 label={t("assetTag")}
                 id="asset-tag"
@@ -1257,9 +1257,9 @@ export function AssetForm({
                   />
                 )}
               </Field>
-            </AssetFormChangedField>
+            </FormChangedField>
             <div className="grid min-w-0 gap-2">
-              <AssetFormChangedField change={changeOf("name")}>
+              <FormChangedField change={changeOf("name")}>
                 <Field label={t("assetName")} id="asset-name" required hint={t("assetNameHelp")} error={errorText("name")}>
                   <Input
                     value={values.name}
@@ -1271,7 +1271,7 @@ export function AssetForm({
                     required
                   />
                 </Field>
-              </AssetFormChangedField>
+              </FormChangedField>
               {suggestedAssetName && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-meta text-muted-foreground">
@@ -1292,25 +1292,25 @@ export function AssetForm({
                 </div>
               )}
             </div>
-            <AssetFormChangedField change={changeOf("categoryId")}>
+            <FormChangedField change={changeOf("categoryId")}>
               <SelectField label={t("category")} id="asset-category" value={values.categoryId} required error={errorText("categoryId")} onChange={handleCategoryChange}>
                 <option value="">{t("selectCategory")}</option>
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
               </SelectField>
-            </AssetFormChangedField>
-            <AssetFormChangedField change={changeOf("brandId")}>
+            </FormChangedField>
+            <FormChangedField change={changeOf("brandId")}>
               <SelectField label={t("brand")} id="asset-brand" value={values.brandId ?? ""} onChange={handleBrandChange}>
                 <option value="">{t("selectBrand")}</option>
                 {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
               </SelectField>
-            </AssetFormChangedField>
-            <AssetFormChangedField change={changeOf("modelId")}>
+            </FormChangedField>
+            <FormChangedField change={changeOf("modelId")}>
               <SelectField label={t("model")} id="asset-model" value={values.modelId ?? ""} onChange={handleModelChange}>
                 <option value="">{t("selectModel")}</option>
                 {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
               </SelectField>
-            </AssetFormChangedField>
-            <AssetFormChangedField change={changeOf("serialNumber")}>
+            </FormChangedField>
+            <FormChangedField change={changeOf("serialNumber")}>
               <Field
                 label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}
                 id="asset-serial-number"
@@ -1338,7 +1338,7 @@ export function AssetForm({
                   }}
                 />
               </Field>
-            </AssetFormChangedField>
+            </FormChangedField>
           </CardGroup>
 
           <AssetFormOwnership
@@ -1384,7 +1384,7 @@ export function AssetForm({
                 <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
               ) : null}
             </div>
-            <AssetFormChangedField change={changeOf("homeLocationId")}>
+            <FormChangedField change={changeOf("homeLocationId")}>
               <SelectField
                 label={t("homeLocation")}
                 id="asset-home-location"
@@ -1395,9 +1395,9 @@ export function AssetForm({
                 <option value="">{t("selectLocation")}</option>
                 {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
               </SelectField>
-            </AssetFormChangedField>
+            </FormChangedField>
             <div className="grid min-w-0 gap-2">
-              <AssetFormChangedField change={changeOf("currentLocationId")}>
+              <FormChangedField change={changeOf("currentLocationId")}>
                 <SelectField
                   label={t("currentLocation")}
                   id="asset-current-location"
@@ -1411,7 +1411,7 @@ export function AssetForm({
                   <option value="">{t("selectLocation")}</option>
                   {(custodyLocked ? withStoredOption(filteredLocations, values.currentLocationId, originalLabels.currentLocationId) : filteredLocations).map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
                 </SelectField>
-              </AssetFormChangedField>
+              </FormChangedField>
               {/* ใช้ที่ตั้งประจำ: the asset is back in its home room (group 4 plan 2 Task 6b); not while the room is locked. */}
               {!custodyLocked && values.homeLocationId && values.homeLocationId !== values.currentLocationId ? (
                 <div>
@@ -1422,7 +1422,7 @@ export function AssetForm({
               ) : null}
             </div>
             <div>
-              <AssetFormChangedField change={changeOf("statusId")}>
+              <FormChangedField change={changeOf("statusId")}>
                 <Field
                   label={t("status")}
                   id="asset-status"
@@ -1436,7 +1436,7 @@ export function AssetForm({
                     {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
                   </NativeSelect>
                 </Field>
-              </AssetFormChangedField>
+              </FormChangedField>
               {/* The save's reason while this change is blocked: the save names it with aria-describedby. */}
               {isProtectedStatusChange && (
                 <Notice id="asset-status-protected" tone="warning" className="mt-2" title={t("protectedStatusEditBlocked")}>
@@ -1453,7 +1453,7 @@ export function AssetForm({
                 </Notice>
               )}
             </div>
-            <AssetFormChangedField change={changeOf("conditionId")}>
+            <FormChangedField change={changeOf("conditionId")}>
               <Field
                 label={t("condition")}
                 id="asset-condition"
@@ -1467,7 +1467,7 @@ export function AssetForm({
                   {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
                 </NativeSelect>
               </Field>
-            </AssetFormChangedField>
+            </FormChangedField>
             {/* The edit page's reason (P2-R4): under the room and status rows, while the room, the holder or แผนก is changed
                 by the person; the change list repeats it. */}
             {showCorrectionReason ? (
@@ -1492,7 +1492,7 @@ export function AssetForm({
         {isSoftwareLicense && (
           <Section title={t("licenseManagement")}>
             {/* The server lets the total stay empty, so it has no star (spec §11 call 8). */}
-            <AssetFormChangedField change={changeOf("licenseTotalSeats")}>
+            <FormChangedField change={changeOf("licenseTotalSeats")}>
               <Field label={t("licenseTotalSeats")} id="asset-license-total-seats" error={errorText("licenseTotalSeats")}>
                 <Input
                   type="number"
@@ -1502,8 +1502,8 @@ export function AssetForm({
                   onChange={(event) => setField("licenseTotalSeats", event.target.value)}
                 />
               </Field>
-            </AssetFormChangedField>
-            <AssetFormChangedField change={changeOf("licenseUsedSeats")}>
+            </FormChangedField>
+            <FormChangedField change={changeOf("licenseUsedSeats")}>
               <Field label={t("licenseUsedSeats")} id="asset-license-used-seats" error={errorText("licenseUsedSeats")}>
                 <Input
                   type="number"
@@ -1513,8 +1513,8 @@ export function AssetForm({
                   onChange={(event) => setField("licenseUsedSeats", event.target.value)}
                 />
               </Field>
-            </AssetFormChangedField>
-            <AssetFormChangedField change={changeOf("licenseAssignedAssetId")}>
+            </FormChangedField>
+            <FormChangedField change={changeOf("licenseAssignedAssetId")}>
               <SelectField
                 label={t("licenseAssignedAsset")}
                 id="asset-license-assigned-asset"
@@ -1526,7 +1526,7 @@ export function AssetForm({
                   <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
                 ))}
               </SelectField>
-            </AssetFormChangedField>
+            </FormChangedField>
             <Notice
               tone="info"
               title={<>{t("licenseRemainingSeats")}: {orNil(getRemainingLicenseSeats(values.licenseTotalSeats, values.licenseUsedSeats))}</>}

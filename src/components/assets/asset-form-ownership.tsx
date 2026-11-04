@@ -8,7 +8,7 @@ import { Notice } from "@/components/ui/notice"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Segmented } from "@/components/ui/segmented"
 import { useMediaQuery } from "@/components/ui/use-media-query"
-import { AssetFormChangedField, type AssetFieldChange } from "@/components/assets/asset-form-changed-field"
+import { FormChangedField, type FormFieldChange } from "@/components/ui/form-changed-field"
 import { CardGroup, SelectField } from "@/components/assets/asset-form-section"
 import type { AssetDiffField } from "@/lib/asset-form-diff"
 import { FIELD_IDS, type AssetField, type AssetFormDepartmentLock, type AssetFormOption as Option, type AssetFormValues } from "@/lib/asset-form-rules"
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
 // on บุคคล and Stock), and the holder for every type that can have one, with the cross-company toggle. The state and the
 // handlers stay in asset-form.tsx. On edit (Task 7, P2-R3) an open handover makes the holder and แผนก read-only, and
 // without one the holder carries the hint that a real change goes through โอนย้าย. Task 8: a changed field shows its old
-// value (asset-form-changed-field.tsx), and under an open handover a แผนก that does not match the holder says so.
+// value (src/components/ui/form-changed-field.tsx), and under an open handover a แผนก that does not match the holder says so.
 export function AssetFormOwnership({
   values,
   ownershipType,
@@ -66,7 +66,7 @@ export function AssetFormOwnership({
   // An open handover keeps a แผนก that does not match the holder; it is set at the check-in or the transfer (spec §7.3).
   departmentMismatchLater: boolean
   // The edit page's change of a field (its old value and คืนค่าเดิม), null on create or without a change.
-  changeOf: (field: AssetDiffField) => AssetFieldChange | null
+  changeOf: (field: AssetDiffField) => FormFieldChange | null
   errorText: (key: AssetField) => string | undefined
   onOwnershipTypeChange: (value: string) => void
   onCompanyChange: (value: string) => void
@@ -84,7 +84,7 @@ export function AssetFormOwnership({
   return (
     <CardGroup title={t("ownership")}>
       <div className="md:col-span-2">
-        <AssetFormChangedField change={changeOf("ownershipType")}>
+        <FormChangedField change={changeOf("ownershipType")}>
           {isDesktop ? (
             <FieldGroup
               legend={t("ownershipType")}
@@ -117,9 +117,9 @@ export function AssetFormOwnership({
               ))}
             </SelectField>
           )}
-        </AssetFormChangedField>
+        </FormChangedField>
       </div>
-      <AssetFormChangedField change={changeOf("companyId")}>
+      <FormChangedField change={changeOf("companyId")}>
         <SelectField
           label={t("assetOwnerCompany")}
           id="asset-company"
@@ -132,8 +132,8 @@ export function AssetFormOwnership({
           <option value="">{t("selectCompany")}</option>
           {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
         </SelectField>
-      </AssetFormChangedField>
-      <AssetFormChangedField change={changeOf("branchId")}>
+      </FormChangedField>
+      <FormChangedField change={changeOf("branchId")}>
         <SelectField
           label={t("assetOwnerBranch")}
           id="asset-branch"
@@ -146,9 +146,9 @@ export function AssetFormOwnership({
           <option value="">{t("selectBranch")}</option>
           {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
         </SelectField>
-      </AssetFormChangedField>
+      </FormChangedField>
       {/* Locked to the holder's on บุคคล and Stock: the one option reads "ตามผู้ถือครอง: <แผนก>", as โอนย้าย's แผนก row. */}
-      <AssetFormChangedField change={changeOf("departmentId")}>
+      <FormChangedField change={changeOf("departmentId")}>
         <SelectField
           label={t("department")}
           id="asset-department"
@@ -168,10 +168,10 @@ export function AssetFormOwnership({
             </>
           )}
         </SelectField>
-      </AssetFormChangedField>
+      </FormChangedField>
       {ownershipMayHaveHolder(ownershipType) ? (
         <div>
-          <AssetFormChangedField change={changeOf("custodianId")}>
+          <FormChangedField change={changeOf("custodianId")}>
             <SearchableSelect
               id="asset-custodian"
               label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
@@ -185,7 +185,7 @@ export function AssetFormOwnership({
               disabled={custodyLocked}
               onChange={onCustodianChange}
             />
-          </AssetFormChangedField>
+          </FormChangedField>
           <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
             <input
               type="checkbox"

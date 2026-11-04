@@ -84,7 +84,10 @@
       "notWholeNumber": "กรุณากรอกเป็นจำนวนเต็ม"
     },
     "offlineBanner": "ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์",
-    "offlineBannerWith": "ออฟไลน์อยู่ · {detail}"
+    "offlineBannerWith": "ออฟไลน์อยู่ · {detail}",
+    "fieldChanged": "แก้แล้ว",
+    "fieldWas": "เดิม: {value}",
+    "restoreField": "คืนค่าเดิม"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
@@ -1491,9 +1494,6 @@
     "openHandoverLink": "เปิดใบส่งมอบ",
     "correctionHint": "ใช้แก้ข้อมูลที่บันทึกผิด ถ้าย้ายเครื่องหรือเปลี่ยนคนใช้จริง ใช้ <link>โอนย้ายทรัพย์สิน</link> เพื่อให้มีใบโอนย้ายและประวัติครบ",
     "saveCorrection": "บันทึกการแก้ไข",
-    "fieldChanged": "แก้แล้ว",
-    "fieldWas": "เดิม: {value}",
-    "restoreField": "คืนค่าเดิม",
     "changeCount": "แก้ไข {count, number} ช่อง",
     "changeTo": "เปลี่ยนเป็น",
     "goToField": "ไปที่ช่อง",

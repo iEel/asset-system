@@ -60,7 +60,10 @@ test("asset form: every button is a Button, the repeater's remove button fits an
   // Group 4 plan 2 Task 5: the repeater sits in asset-form-custom-fields.tsx, the queued documents and photos in theirs;
   // Task 6a: the documents, the other section, the header and the required card have files of their own.
   // Task 6b: the ownership block's buttons are the Segmented's. Task 8: คืนค่าเดิม, แก้ไข n ช่อง and ไปที่ช่อง are Buttons.
-  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card", "ownership", "changed-field", "change-list"].map((name) => read(`src/components/assets/asset-form-${name}.tsx`))
+  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card", "ownership", "changed-field", "change-list"].map((name) =>
+    // The changed-field part is shared now (group 5 plan 4 G5P4-R8).
+    read(name === "changed-field" ? "src/components/ui/form-changed-field.tsx" : `src/components/assets/asset-form-${name}.tsx`),
+  )
   const [, , , documents, photos, customFields] = parts
   for (const file of [source, ...parts]) assert.doesNotMatch(file, /<button\b/)
   assert.match(customFields, /sm:grid-cols-\[minmax\(0,0\.85fr\)_minmax\(0,1\.15fr\)_auto\]/)

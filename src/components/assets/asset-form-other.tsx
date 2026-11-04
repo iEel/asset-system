@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl"
 import { Field } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import { AssetFormChangedField, type AssetFieldChange } from "@/components/assets/asset-form-changed-field"
+import { FormChangedField, type FormFieldChange } from "@/components/ui/form-changed-field"
 import { FoldedSection, type AssetFormDisclosure } from "@/components/assets/asset-form-section"
 import type { AssetDiffField } from "@/lib/asset-form-diff"
 import type { AssetFormValues } from "@/lib/asset-form-rules"
@@ -19,7 +19,7 @@ export function AssetFormOther({
 }: {
   values: AssetFormValues
   setField: <K extends keyof AssetFormValues>(field: K, value: AssetFormValues[K]) => void
-  changeOf: (field: AssetDiffField) => AssetFieldChange | null
+  changeOf: (field: AssetDiffField) => FormFieldChange | null
   disclosure: AssetFormDisclosure
 }) {
   const t = useTranslations("asset")
@@ -27,11 +27,11 @@ export function AssetFormOther({
   return (
     <FoldedSection title={t("remark")} disclosure={disclosure}>
       <div className="md:col-span-2">
-        <AssetFormChangedField change={changeOf("remark")}>
+        <FormChangedField change={changeOf("remark")}>
           <Field label={t("remark")} id="asset-remark">
             <Textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
           </Field>
-        </AssetFormChangedField>
+        </FormChangedField>
       </div>
     </FoldedSection>
   )

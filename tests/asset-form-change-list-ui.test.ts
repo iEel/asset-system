@@ -12,9 +12,11 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 test("the words, as the brief gives them, in Thai and English, with a glossary row", () => {
   const th = messages("th").asset
   const en = messages("en").asset
-  assert.equal(th.fieldChanged, "แก้แล้ว")
-  assert.equal(th.fieldWas, "เดิม: {value}")
-  assert.equal(th.restoreField, "คืนค่าเดิม")
+  // แก้แล้ว, เดิม: and คืนค่าเดิม moved to common with the shared part (group 5 plan 4 G5P4-R8, tests/form-changed-field-ui.test.ts).
+  const common = messages("th").common
+  assert.equal(common.fieldChanged, "แก้แล้ว")
+  assert.equal(common.fieldWas, "เดิม: {value}")
+  assert.equal(common.restoreField, "คืนค่าเดิม")
   // The th count writes {count, number} (tests/i18n-plural-count.test.ts); it reads "แก้ไข 3 ช่อง".
   assert.equal(th.changeCount, "แก้ไข {count, number} ช่อง")
   assert.match(en.changeCount, /^\{count, plural, /)
@@ -24,7 +26,7 @@ test("the words, as the brief gives them, in Thai and English, with a glossary r
   assert.equal(th.correctionReasonRequired, "ระบุเหตุผลที่แก้")
   assert.equal(th.departmentMismatchLater, "แผนกไม่ตรงกับผู้ถือครอง จะปรับเมื่อรับคืนหรือโอนย้าย")
   assert.equal(th.changeListReason, "เหตุผลที่แก้: {reason}")
-  for (const key of ["fieldChanged", "fieldWas", "restoreField", "changeCount", "goToField", "followsHolderFix", "correctionReasonLabel", "correctionReasonRequired", "departmentMismatchLater", "changeListReason", "changeTo"]) {
+  for (const key of ["changeCount", "goToField", "followsHolderFix", "correctionReasonLabel", "correctionReasonRequired", "departmentMismatchLater", "changeListReason", "changeTo"]) {
     assert.equal(typeof th[key], "string", `th asset.${key}`)
     assert.equal(typeof en[key], "string", `en asset.${key}`)
   }
@@ -35,23 +37,11 @@ test("the words, as the brief gives them, in Thai and English, with a glossary r
 })
 
 test("a changed field: its frame, แก้แล้ว, เดิม: <old value> and คืนค่าเดิม; the automatic แผนก says ปรับตามผู้ถือครอง", () => {
-  const source = read(`${C}asset-form-changed-field.tsx`)
-  assert.match(source, /export type AssetFieldChange = \{ was: string; automatic: boolean; onRestore\?: \(\) => void \}/)
-  assert.match(source, /export function AssetFormChangedField\(\{ change, children \}: \{ change: AssetFieldChange \| null; children: ReactNode \}\)/)
-  // One wrapper element in both states (final review): a field that becomes changed keeps its DOM nodes, so the input
-  // being typed in keeps focus; only the frame's classes and the line under the field come and go.
-  assert.doesNotMatch(source, /<>\{children\}<\/>/)
-  assert.equal([...source.matchAll(/<div\n\s+data-slot="asset-changed-field"/g)].length, 1)
-  assert.equal([...source.matchAll(/\breturn \(/g)].length, 1, "one return: the same element whether changed or not")
-  assert.match(source, /data-changed=\{change \? "" : undefined\}/)
-  assert.match(source, /className=\{cn\("grid min-w-0 content-start gap-2", change && "rounded-md border border-primary-border p-3"\)\}/)
-  assert.match(source, /\{children\}\n\s+\{change \? \(/)
-  assert.match(source, /<span className="font-medium text-primary">\{t\("fieldChanged"\)\}<\/span>/)
-  assert.match(source, /\{t\("fieldWas", \{ value: change\.was \}\)\}/)
-  assert.match(source, /change\.automatic \? \(\n\s+<span>\{t\("followsHolderFix"\)\}<\/span>\n\s+\) : change\.onRestore \? \(\n\s+<Button variant="ghost" size="sm" onClick=\{change\.onRestore\}>\n\s+\{t\("restoreField"\)\}/)
+  // The part itself is shared now (src/components/ui/form-changed-field.tsx, pinned in tests/form-changed-field-ui.test.ts);
+  // the asset form passes ปรับตามผู้ถือครอง as its automaticLabel.
 
   // Every field the edit page can change in the main card, the License panel, การจัดซื้อ and the remark is wrapped.
-  const wrapped = (file: string) => [...read(file).matchAll(/<AssetFormChangedField change=\{changeOf\("(\w+)"\)\}>/g)].map((match) => match[1])
+  const wrapped = (file: string) => [...read(file).matchAll(/<FormChangedField change=\{changeOf\("(\w+)"\)\}>/g)].map((match) => match[1])
   assert.deepEqual(wrapped(`${C}asset-form.tsx`), [
     "assetTag", "name", "categoryId", "brandId", "modelId", "serialNumber", "homeLocationId", "currentLocationId", "statusId", "conditionId",
     "licenseTotalSeats", "licenseUsedSeats", "licenseAssignedAssetId",
@@ -87,7 +77,7 @@ test("the footer's แก้ไข n ช่อง opens the list: a Popover on t
   assert.match(source, /\{reason \? <p className="[^"]*">\{t\("changeListReason", \{ reason \}\)\}<\/p> : null\}/)
   assert.match(source, /<span className="sr-only">\{t\("changeTo"\)\}<\/span>/)
   // No bar of its own: the shared Sheet owns the bottom edge (tests/form-migration-guards.test.ts GL1).
-  for (const file of ["asset-form", "asset-form-change-list", "asset-form-changed-field", "asset-form-ownership", "asset-form-purchase", "asset-form-other"]) {
+  for (const file of ["asset-form", "asset-form-change-list", "asset-form-ownership", "asset-form-purchase", "asset-form-other"]) {
     const text = read(`${C}${file}.tsx`)
     assert.doesNotMatch(text, /"[^"\n]*\bfixed\b[^"\n]*\bbottom-[^"\n]*"/, file)
     assert.doesNotMatch(text, /<button\b/, file)

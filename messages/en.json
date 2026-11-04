@@ -84,7 +84,10 @@
       "notWholeNumber": "Enter a whole number"
     },
     "offlineBanner": "You're offline · Nothing can be saved until you're back online",
-    "offlineBannerWith": "You're offline · {detail}"
+    "offlineBannerWith": "You're offline · {detail}",
+    "fieldChanged": "Changed",
+    "fieldWas": "Was: {value}",
+    "restoreField": "Restore"
   },
   "globalSearch": {
     "label": "Search globally",
@@ -1491,9 +1494,6 @@
     "openHandoverLink": "Open the handover",
     "correctionHint": "Use this to fix data recorded wrongly. If the asset really moved or changed hands, use <link>Transfer asset</link> so there is a transfer document and full history.",
     "saveCorrection": "Save changes",
-    "fieldChanged": "Changed",
-    "fieldWas": "Was: {value}",
-    "restoreField": "Restore",
     "changeCount": "{count, plural, one {# field changed} other {# fields changed}}",
     "changeTo": "changed to",
     "goToField": "Go to field",
