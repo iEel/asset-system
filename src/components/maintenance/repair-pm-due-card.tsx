@@ -70,7 +70,7 @@ export function RepairPmDueCard({ rows, overdue, week, locale, returnTo, canCrea
         </ContentPanelRows>
       )}
       {footLink ? (
-        <DataTableFoot className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <DataTableFoot className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-b-lg">
           <span>{t("shownOfTotal", { shown: formatCount(rows.length), total: formatCount(total) })}</span>
           <Link href={`/${locale}/maintenance/pm?due=${footLink.due}`} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
             {t(footLink.due === "overdue" ? "pmDueOverdueLink" : "pmDueWeekLink", { count: formatCount(footLink.count) })}

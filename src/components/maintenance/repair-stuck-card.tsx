@@ -64,7 +64,7 @@ export function RepairStuckCard({ rows, total, expanded, locale, returnTo, canCr
             ))}
           </ContentPanelRows>
           {total > COLLAPSED_ROWS ? (
-            <DataTableFoot className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <DataTableFoot className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-b-lg">
               <span>{t("shownOfTotal", { shown: formatCount(rows.length), total: formatCount(total) })}</span>
               <Link href={expanded ? lessHref : moreHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
                 {expanded ? t("stuckShowLess") : t("stuckShowAll", { count: formatCount(total) })}
