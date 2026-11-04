@@ -320,9 +320,12 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
     panel = round?.ready && round.operational ? framed(<ApprovalRoundClosePanel locale={locale} panel={round} />) : stalePanel
   }
 
+  // A tab with nothing while the others hold items says so, with a way to ทั้งหมด (the empty inbox keeps its own words).
   const empty = hasFilters
     ? { title: t("emptyFilterTitle"), description: t("emptyFilterDescription"), actionHref: clearHref, actionLabel: t("clearFilters"), actionVariant: "secondary" as const }
-    : { title: t("emptyTitle"), description: t("emptyDescription") }
+    : query.tab !== "all" && data.tabs.all > 0
+      ? { title: t("emptyTabTitle"), description: t("emptyTabDescription"), actionHref: href({ tab: "all", page: 1 }), actionLabel: t("emptyTabAction"), actionVariant: "secondary" as const }
+      : { title: t("emptyTitle"), description: t("emptyDescription") }
 
   return (
     <div className="space-y-6">
@@ -478,7 +481,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
                             {block ? <div data-approval-block className="mt-1 break-words text-meta text-muted-foreground">{block}</div> : null}
                           </DataTableCell>
                           <DataTableCell>
-                            {row.isOwn ? (
+                            {/* "อนุมัติเองไม่ได้" only when separation of duties blocks it; with the rule off the viewer may decide. */}
+                            {row.isOwn && row.block?.sodReason ? (
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="font-medium text-foreground">{t("you")}</span>
                                 <StatusBadge label={t("selfApprovalBadge")} tone="muted" />
@@ -539,7 +543,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         >
           {/* Below xl the panel takes the page: each item (and the next one after a decision, sent with scroll: false)
               opens at the top of #main. From xl nothing moves (pane={null}). */}
-          {item ? <AuditFindingPaneTop key={`${item.key}:${item.id}`} pane={null} /> : null}
+          {item ? <AuditFindingPaneTop key={`${item.key}:${item.id}`} pane="[data-approval-panel]" /> : null}
           {item ? <PageBackLink href={closeHref} label={t("backToInbox")} className="mb-3 xl:hidden" /> : null}
           {panel}
         </section>

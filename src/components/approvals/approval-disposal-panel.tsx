@@ -116,6 +116,7 @@ export async function ApprovalDisposalPanel({
       </header>
 
       <ApprovalPhotoGallery
+        key={request.id}
         photos={panel.photos.map((photo) => ({ id: photo.id, originalName: photo.originalName }))}
         documents={panel.documents.map((document) => ({ id: document.id, originalName: document.originalName }))}
         assetName={asset.name}

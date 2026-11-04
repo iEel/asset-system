@@ -151,3 +151,11 @@ test("selection: select all approvable above the queue, before any tick, from md
   assert.match(source, /\{fill\(copy\.selectAll, \{ count: approvable \}\)\}/)
   assert.match(source, /<p role="status" className=\{topStatus \? "text-meta text-muted-foreground" : "sr-only"\}>\{topStatus\}<\/p>/, "the cap line is read even though the bar mounts with the click")
 })
+
+test("final review: own requests read อนุมัติเองไม่ได้ only when separation of duties blocks them, an empty tab points to ทั้งหมด, and the gallery restarts per request", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/admin/approvals/page.tsx", "utf8")
+  assert.match(page, /row\.isOwn && row\.block\?\.sodReason \?/)
+  assert.match(page, /emptyTabTitle/)
+  const panel = readFileSync("src/components/approvals/approval-disposal-panel.tsx", "utf8")
+  assert.match(panel, /<ApprovalPhotoGallery\s+key=\{request\.id\}/)
+})

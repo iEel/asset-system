@@ -124,7 +124,7 @@ test("approvals page: the panel from the chosen kind, next from approvalInboxNei
 
 test("approvals page: below xl each item, and the next after a decision, opens at the top of #main; from xl nothing moves", () => {
   const page = read(PAGE)
-  assert.match(page, /\{item \? <AuditFindingPaneTop key=\{`\$\{item\.key\}:\$\{item\.id\}`\} pane=\{null\} \/> : null\}/)
+  assert.match(page, /\{item \? <AuditFindingPaneTop key=\{`\$\{item\.key\}:\$\{item\.id\}`\} pane="\[data-approval-panel\]" \/> : null\}/)
   const paneTop = read("src/components/audit/audit-finding-pane-top.tsx")
   assert.match(paneTop, /window\.matchMedia\("\(min-width: 1280px\)"\)/)
   assert.match(paneTop, /if \(pane\) document\.querySelector\(pane\)/)

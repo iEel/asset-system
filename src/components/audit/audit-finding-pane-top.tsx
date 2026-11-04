@@ -6,7 +6,7 @@ import { useEffect } from "react"
 // the list beside the panel needs from xl. The pane mounts this once per finding (its key): below xl, where the panel
 // takes the page in place of the list, it brings the dashboard's scroll area (#main) to the top; from xl, where the
 // pane sticks and scrolls on its own, it brings the pane (`pane`, a selector) to its top and leaves the list where it
-// was. The approvals page (group 6 plan 2 Task 4) passes pane={null}: from xl nothing moves.
+// was. The approvals page passes its own pane, [data-approval-panel] (group 6 plan 2 final review).
 export function AuditFindingPaneTop({ pane = "[data-audit-finding-pane]" }: { pane?: string | null }) {
   useEffect(() => {
     if (window.matchMedia("(min-width: 1280px)").matches) {
