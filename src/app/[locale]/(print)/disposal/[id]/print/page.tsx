@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/display-format"
 import { formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
+import { readDisposalSourceLinks } from "@/lib/disposal-source"
 
 type DisposalPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -55,7 +56,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
   ])
   if (!disposalRequest) notFound()
 
-  const [batchEvidenceCount, evidenceExceptionGrantor] = await Promise.all([
+  const [batchEvidenceCount, evidenceExceptionGrantor, sourceLinks] = await Promise.all([
     batchLink?.batchId ? prisma.attachment.count({
       where: { module: "disposal_batch", referenceId: batchLink.batchId, isActive: true },
     }) : Promise.resolve(0),
@@ -65,6 +66,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
           select: { username: true, displayName: true },
         })
       : Promise.resolve(null),
+    readDisposalSourceLinks(prisma, locale, [disposalRequest]),
   ])
   const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
   const executionFields = [
@@ -92,7 +94,14 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
           : disposalRequest.requestStatus === "rejected"
             ? t("statuses.rejected")
             : disposalRequest.requestStatus
-  const sourceLabel = formatSource(disposalRequest.sourceType, disposalRequest.sourceId)
+  const sourceLink = sourceLinks.get(disposalRequest.id) ?? null
+  const sourceLabel = !sourceLink
+    ? null
+    : sourceLink.kind === "other"
+      ? sourceLink.text
+      : sourceLink.kind === "maintenance"
+        ? t("sourceMaintenance", { number: sourceLink.number })
+        : t("sourceAuditFinding", { number: sourceLink.number })
 
   return (
     <OperationDocumentPrint
@@ -156,9 +165,4 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
       ]}
     />
   )
-}
-
-function formatSource(sourceType: string | null, sourceId: string | null) {
-  if (!sourceType && !sourceId) return null
-  return [sourceType, sourceId].filter(Boolean).join(" / ")
 }

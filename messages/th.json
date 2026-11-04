@@ -4027,7 +4027,9 @@
     "bulkExecutionPermanentConfirmationRequired": "กรุณาเลือกช่องยืนยันก่อนดำเนินการ",
     "bulkExecutionSharedDocumentNo": "เลขที่เอกสารอ้างอิงร่วม",
     "bulkExecutionSharedDocumentNoHelp": "ใช้เฉพาะรายการที่ยังไม่มีเลขที่เอกสารอ้างอิง และจะไม่ทับเลขเดิมของคำขอ",
-    "batchNo": "เลขที่ชุด"
+    "batchNo": "เลขที่ชุด",
+    "sourceMaintenance": "งานซ่อม {number}",
+    "sourceAuditFinding": "รายการไม่ตรง {number}"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

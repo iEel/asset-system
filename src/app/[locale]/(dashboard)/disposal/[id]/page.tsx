@@ -28,6 +28,7 @@ import { getDisposalNextAction, getDisposalStage } from "@/lib/disposal-stage"
 import { formatMovementType } from "@/lib/asset-detail-format"
 import { getPanelClasses } from "@/lib/design-system"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
+import { readDisposalSourceLinks } from "@/lib/disposal-source"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -83,7 +84,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     : null
   const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
 
-  const [movements, attachments, batchAttachments, options, savedSettings] = await Promise.all([
+  const [movements, attachments, batchAttachments, options, savedSettings, sourceLinks] = await Promise.all([
     prisma.assetMovement.findMany({
       where: { referenceType: "disposal", referenceId: disposalRequest.id },
       orderBy: { performedAt: "desc" },
@@ -101,7 +102,20 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       where: { key: { in: [...workflowApprovalSettingKeys] } },
       select: { key: true, value: true },
     }),
+    readDisposalSourceLinks(prisma, locale, [disposalRequest]),
   ])
+  const sourceLink = sourceLinks.get(disposalRequest.id) ?? null
+  const sourceValue = !sourceLink
+    ? null
+    : sourceLink.kind === "other"
+      ? sourceLink.text
+      : (
+          <Link href={sourceLink.href} className="font-medium underline underline-offset-3 hover:decoration-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            {sourceLink.kind === "maintenance"
+              ? t("sourceMaintenance", { number: sourceLink.number })
+              : t("sourceAuditFinding", { number: sourceLink.number })}
+          </Link>
+        )
   const movementLabels = await getMovementDisplayLabels(movements)
   const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
   const canReviewDisposal = canApprove && getDisposalSegregationError({
@@ -256,7 +270,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                   value: disposalRequest.salvageValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.salvageValue), { unit: tCommon("baht") })}</span>,
                 },
                 { key: "approvedAt", label: t("approvedAt"), value: disposalRequest.approvedAt ? formatDateTime(disposalRequest.approvedAt) : null },
-                { key: "source", label: t("source"), value: formatSource(disposalRequest.sourceType, disposalRequest.sourceId) },
+                { key: "source", label: t("source"), value: sourceValue },
               ]}
             />
           </ContentPanel>
@@ -412,11 +426,6 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       </div>
     </div>
   )
-}
-
-function formatSource(sourceType?: string | null, sourceId?: string | null) {
-  if (!sourceType && !sourceId) return null
-  return [sourceType, sourceId].filter(Boolean).join(" / ")
 }
 
 function getCurrentOwnerContext(request: {

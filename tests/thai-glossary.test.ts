@@ -149,6 +149,10 @@ test("the labels page words have glossary rows before use, and the page's fixed 
   assert.deepEqual(page.mode, { unprinted: "ยังไม่เคยพิมพ์", printed: "เคยพิมพ์แล้ว", recent: "ทั้งหมดล่าสุด", reprint: "ต้องพิมพ์ใหม่" })
 })
 
+test("the disposal round word is รอบตัดจำหน่าย, never รอบจำหน่าย (group 6)", () => {
+  assert.equal(readFileSync("messages/th.json", "utf8").includes("รอบจำหน่าย"), false)
+})
+
 test("every glossary exception points at a real key and explains itself", () => {
   const keys = new Set(Object.keys(th).flatMap((namespace) => flatEntries(th[namespace], namespace).map(([key]) => key)))
   for (const [key, reason] of Object.entries(keyExceptions)) {

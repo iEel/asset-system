@@ -1,11 +1,12 @@
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
-
-const millisecondsPerDay = 24 * 60 * 60 * 1000
+import { bangkokDayDiff } from "./preventive-maintenance.ts"
 
 export type ApprovalAgeStatus = {
   ageDays: number
   daysOverdue: number
   isOverdue: boolean
+  /** The age equals the SLA: the last day before it turns overdue ("ครบ SLA วันนี้"). */
+  isDueToday: boolean
 }
 
 export function getApprovalAgeStatus(
@@ -13,15 +14,15 @@ export function getApprovalAgeStatus(
   now: Date = new Date(),
   slaDays: number,
 ): ApprovalAgeStatus {
-  const requestedDay = startOfDay(requestedAt)
-  const today = startOfDay(now)
-  const ageDays = Math.max(0, Math.floor((today.getTime() - requestedDay.getTime()) / millisecondsPerDay))
+  // Whole Bangkok days, whatever the server's time zone (group 6 spec §5).
+  const ageDays = Math.max(0, bangkokDayDiff(requestedAt, now))
   const daysOverdue = Math.max(0, ageDays - slaDays)
 
   return {
     ageDays,
     daysOverdue,
     isOverdue: daysOverdue > 0,
+    isDueToday: ageDays === slaDays,
   }
 }
 
@@ -47,10 +48,6 @@ export function sortApprovalInboxItemsByAge(
 
     return left.requestedAt.getTime() - right.requestedAt.getTime()
   })
-}
-
-function startOfDay(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate())
 }
 
 function approvalTonePriority(tone: ApprovalInboxItem["tone"]) {

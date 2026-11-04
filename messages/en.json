@@ -4027,7 +4027,9 @@
     "bulkExecutionPermanentConfirmationRequired": "Tick the confirmation box before you continue.",
     "bulkExecutionSharedDocumentNo": "Shared reference document number",
     "bulkExecutionSharedDocumentNoHelp": "Applied only to requests without a reference document number. A request's own number is not overwritten.",
-    "batchNo": "Batch No."
+    "batchNo": "Batch No.",
+    "sourceMaintenance": "Repair {number}",
+    "sourceAuditFinding": "Discrepancy {number}"
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",
