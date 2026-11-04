@@ -10,6 +10,7 @@ export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]):
   const assetIds = ids("asset")
   const maintenanceIds = ids("maintenance")
   const disposalIds = ids("disposal")
+  const disposalRoundIds = ids("disposalRound")
   const auditRoundIds = ids("auditRound")
   const auditFindingIds = ids("auditFinding")
   const auditItemIds = ids("auditItem")
@@ -32,6 +33,7 @@ export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]):
     assets,
     maintenanceTickets,
     disposalRequests,
+    disposalRounds,
     auditRounds,
     auditFindings,
     auditItems,
@@ -53,6 +55,7 @@ export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]):
     findManyWhenIds(assetIds, () => prisma.asset.findMany({ where: { id: { in: assetIds } }, select: { id: true, assetTag: true, name: true } })),
     findManyWhenIds(maintenanceIds, () => prisma.maintenanceTicket.findMany({ where: { id: { in: maintenanceIds } }, select: { id: true, repairNo: true, asset: { select: { assetTag: true } } } })),
     findManyWhenIds(disposalIds, () => prisma.disposalRequest.findMany({ where: { id: { in: disposalIds } }, select: { id: true, disposalNo: true, asset: { select: { assetTag: true } } } })),
+    findManyWhenIds(disposalRoundIds, () => prisma.disposalRound.findMany({ where: { id: { in: disposalRoundIds } }, select: { id: true, roundNo: true } })),
     findManyWhenIds(auditRoundIds, () => prisma.auditRound.findMany({ where: { id: { in: auditRoundIds } }, select: { id: true, auditNo: true, name: true } })),
     findManyWhenIds(auditFindingIds, () => prisma.auditFinding.findMany({ where: { id: { in: auditFindingIds } }, select: { id: true, findingType: true, asset: { select: { assetTag: true } }, auditRound: { select: { auditNo: true } } } })),
     findManyWhenIds(auditItemIds, () => prisma.auditItem.findMany({ where: { id: { in: auditItemIds } }, select: { id: true, asset: { select: { assetTag: true } }, auditRound: { select: { auditNo: true } } } })),
@@ -76,6 +79,7 @@ export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]):
     asset: new Map(assets.map((item) => [item.id, `${item.assetTag} - ${item.name}`])),
     maintenance: new Map(maintenanceTickets.map((item) => [item.id, `${item.repairNo} - ${item.asset.assetTag}`])),
     disposal: new Map(disposalRequests.map((item) => [item.id, `${item.disposalNo} - ${item.asset.assetTag}`])),
+    disposalRound: new Map(disposalRounds.map((item) => [item.id, item.roundNo])),
     auditRound: new Map(auditRounds.map((item) => [item.id, `${item.auditNo} - ${item.name}`])),
     auditFinding: new Map(auditFindings.map((item) => [item.id, `${item.auditRound.auditNo} - ${item.asset?.assetTag ?? item.findingType}`])),
     auditItem: new Map(auditItems.map((item) => [item.id, `${item.auditRound.auditNo} - ${item.asset.assetTag}`])),

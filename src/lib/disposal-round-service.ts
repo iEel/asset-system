@@ -40,6 +40,8 @@ export type DisposalRoundItem = {
   assetName: string | null
   // The method the request was asked under; the round's method replaces it on save.
   fromDisposalType: string | null
+  // The approver's Thai name, else their code; null when no one approved it or the id matches no request (spec §11.2).
+  approverName: string | null
   outcome: "eligible" | "blocked"
   code: DisposalRoundBlockCode | null
 }
@@ -89,6 +91,19 @@ type RoundInspection = {
   executions: DisposalRoundExecution[]
   candidates: DisposalExecutionCandidate[]
   segregationRequired: boolean
+}
+
+// Today's execution checks read the candidate; the round's rows also name each request's approver.
+const roundCandidateSelect = {
+  ...disposalExecutionCandidateSelect,
+  approver: { select: { code: true, fullNameTh: true } },
+} satisfies Prisma.DisposalRequestSelect
+
+type RoundCandidate = DisposalExecutionCandidate & { approver: { code: string; fullNameTh: string } | null }
+
+function approverNameOf(candidate: RoundCandidate): string | null {
+  if (!candidate.approver) return null
+  return candidate.approver.fullNameTh?.trim() || candidate.approver.code
 }
 
 export async function previewDisposalRound(
@@ -237,8 +252,8 @@ async function inspectDisposalRound(
   const [candidateChunks, savedSettings] = await Promise.all([
     Promise.all(chunkAuditIds(requestIds, ID_CHUNK_SIZE).map((ids) => db.disposalRequest.findMany({
       where: { id: { in: ids } },
-      select: disposalExecutionCandidateSelect,
-    }))),
+      select: roundCandidateSelect,
+    }) as Promise<RoundCandidate[]>)),
     db.systemSetting.findMany({
       where: { key: { in: [...workflowApprovalSettingKeys] } },
       select: { key: true, value: true },
@@ -255,7 +270,7 @@ async function inspectDisposalRound(
   for (const requestId of requestIds) {
     const candidate = candidatesById.get(requestId)
     if (!candidate) {
-      items.push({ requestId, disposalNo: null, assetTag: null, assetName: null, fromDisposalType: null, outcome: "blocked", code: "DISPOSAL_REQUEST_NOT_FOUND" })
+      items.push({ requestId, disposalNo: null, assetTag: null, assetName: null, fromDisposalType: null, approverName: null, outcome: "blocked", code: "DISPOSAL_REQUEST_NOT_FOUND" })
       continue
     }
     const effectiveEvidenceCount = evidenceCounts.get(candidate.id) ?? 0
@@ -271,6 +286,7 @@ async function inspectDisposalRound(
       assetTag: candidate.asset.assetTag,
       assetName: candidate.asset.name,
       fromDisposalType: candidate.disposalType,
+      approverName: approverNameOf(candidate),
       outcome: code ? "blocked" : "eligible",
       code,
     })

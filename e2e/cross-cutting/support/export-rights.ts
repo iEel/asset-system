@@ -27,6 +27,20 @@ export const EXPORTS: readonly ExportPlan[] = [
   { key: "role", permission: "role:export", label: "ส่งออกผลตรวจสิทธิ์ตามบทบาท", route: "/api/admin/roles/export" },
 ]
 
+// Reports gated by a view permission rather than an export one (group 6 decision 10): the round's accounting Excel,
+// downloaded from a round's page (disposalPage.rounds.exportReport). It is not in the reports page's catalog.
+export type ViewReportKey = "disposalRound"
+
+export const VIEW_REPORTS: ReadonlyArray<{ key: ViewReportKey; permission: string; label: string; route: string }> = [
+  { key: "disposalRound", permission: "disposal:view", label: "ส่งออกรายงานส่งบัญชี", route: "/api/disposal-rounds/[id]/report" },
+]
+
+export function mayUseViewReport(user: E2eUserKey, key: ViewReportKey): boolean {
+  const plan = VIEW_REPORTS.find((candidate) => candidate.key === key)
+  if (!plan) throw new Error(`no view report ${key}`)
+  return E2E_ROLE_PERMISSIONS[user].includes(plan.permission)
+}
+
 // The catalog's two words (reportsPage.allowed, reportsPage.notAllowed).
 export const ALLOWED = "ใช้ได้"
 export const NOT_ALLOWED = "ไม่มีสิทธิ์"

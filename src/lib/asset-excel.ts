@@ -70,19 +70,21 @@ export function createWorkbook() {
   return workbook
 }
 
-export function styleWorksheetHeader(worksheet: ExcelJS.Worksheet) {
-  worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }
-  worksheet.getRow(1).fill = {
+// The header is row 1, or a later row when a title sits above it (the round's accounting Excel).
+export function styleWorksheetHeader(worksheet: ExcelJS.Worksheet, headerRow = 1) {
+  const row = worksheet.getRow(headerRow)
+  row.font = { bold: true, color: { argb: "FFFFFFFF" } }
+  row.fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: "FF1E3A5F" },
   }
-  worksheet.getRow(1).alignment = { vertical: "middle", horizontal: "center" }
-  worksheet.getRow(1).height = 22
-  worksheet.views = [{ state: "frozen", ySplit: 1 }]
+  row.alignment = { vertical: "middle", horizontal: "center" }
+  row.height = 22
+  worksheet.views = [{ state: "frozen", ySplit: headerRow }]
   worksheet.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: 1, column: worksheet.columnCount },
+    from: { row: headerRow, column: 1 },
+    to: { row: headerRow, column: worksheet.columnCount },
   }
 }
 

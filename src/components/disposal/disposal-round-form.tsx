@@ -44,6 +44,7 @@ type RoundItem = {
   assetTag: string | null
   assetName: string | null
   fromDisposalType: string | null
+  approverName: string | null
   outcome: "eligible" | "blocked"
   code: string | null
 }
@@ -459,6 +460,7 @@ export function DisposalRoundForm({
                           <div className="mt-0.5 text-meta text-muted-foreground">
                             {item?.disposalNo ? <Link href={`/${locale}/disposal/${id}`} className={linkVariants({ size: "inherit" })}><span className="tag">{item.disposalNo}</span></Link> : null}
                             {item?.fromDisposalType ? <> · {t("rounds.form.askedAs", { method: t(`types.${item.fromDisposalType}`) })}</> : null}
+                            {item?.approverName ? <> · {t("rounds.form.approvedBy", { name: item.approverName })}</> : null}
                           </div>
                           {blocked ? <div className="mt-0.5 text-meta font-medium text-danger">{blockedReason(item?.code ?? null)}</div> : null}
                         </div>

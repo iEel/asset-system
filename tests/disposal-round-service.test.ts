@@ -133,7 +133,12 @@ function makeDatabase(state: FakeState, options: { roundNoConflicts?: number } =
     const joinRequest = (request: FakeRequest) => {
       const asset = target.assets.find((candidate) => candidate.id === request.assetId)!
       const status = statuses.find((candidate) => candidate.id === asset.statusId)!
-      return { ...structuredClone(request), asset: { assetTag: asset.assetTag, name: asset.name, statusId: asset.statusId, status: { name: status.name, nameTh: status.nameTh } } }
+      const approver = employees.find((candidate) => candidate.id === request.approverId)
+      return {
+        ...structuredClone(request),
+        asset: { assetTag: asset.assetTag, name: asset.name, statusId: asset.statusId, status: { name: status.name, nameTh: status.nameTh } },
+        approver: approver ? { code: approver.code, fullNameTh: approver.fullNameTh } : null,
+      }
     }
     return {
       disposalRequest: {
@@ -408,9 +413,23 @@ test("(b) an unknown id, an executed request and an asset no longer Pending Disp
     assetTag: "IT-0001",
     assetName: "Monitor 1",
     fromDisposalType: "donate",
+    approverName: "ผู้อนุมัติหนึ่ง",
     outcome: "eligible",
     code: null,
   })
+  assert.equal(preview.items[3].approverName, null)
+})
+
+test("each preview row names its approver by name, else by code, and none when no one approved it (spec §11.2)", async () => {
+  const state = makeState(3, { 3: { approverId: null } })
+  employees.push({ id: "employee-no-name", code: "E009", fullNameTh: "", isActive: true })
+  try {
+    state.requests[1].approverId = "employee-no-name"
+    const preview = await previewDisposalRound(asDb(makeDatabase(state)), { mode: "preview", requestIds: state.requests.map((request) => request.id) }, actor)
+    assert.deepEqual(preview.items.map((item) => item.approverName), ["ผู้อนุมัติหนึ่ง", "E009", null])
+  } finally {
+    employees.pop()
+  }
 })
 
 test("(c) the executor who approved one request blocks it; the executor options leave out every approver", async () => {

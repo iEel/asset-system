@@ -377,3 +377,40 @@ test("every field the main modules log has a label in th and en (critique 2026-1
   const disposal = JSON.parse(readFileSync("messages/th.json", "utf8")).disposalPage.statuses
   for (const code of ["pending", "approved", "rejected", "disposed"]) assert.equal(th[`value_requestStatus_${code}`], disposal[code], code)
 })
+
+test("the disposal round: its record label, its link to the round page, and the per-request execute names the round and the method asked (group 6 plan 4)", () => {
+  const roundLabels: SystemLogRecordLabels = {
+    disposalRound: new Map([["round-1", "DPR-20261105-0001"]]),
+    disposal: new Map([["dp-1", "DP-20261101-0001 - IT-0001"]]),
+  }
+  const tRound = (key: string) => ({
+    "module.disposal_round": "รอบตัดจำหน่าย",
+    "action.create_round": "สร้างรอบตัดจำหน่าย",
+    "field.roundId": "รอบตัดจำหน่าย",
+    "field.fromDisposalType": "วิธีที่ขอ",
+    "value.disposalType.sell": "ขาย",
+    "value.disposalType.donate": "บริจาค",
+  } as Record<string, string>)[key] ?? t(key)
+
+  const created = buildSystemLogPresentation(
+    logOf({ action: "create_round", module: "disposal_round", recordId: "round-1", next: { roundNo: "DPR-20261105-0001", disposalType: "sell" } }),
+    roundLabels,
+    "th",
+    tRound,
+  )
+  assert.equal(created.moduleKey, "disposalRound")
+  assert.equal(created.moduleLabel, "รอบตัดจำหน่าย")
+  assert.equal(created.actionLabel, "สร้างรอบตัดจำหน่าย")
+  assert.equal(created.recordLabel, "DPR-20261105-0001")
+  assert.equal(created.href, "/th/disposal/rounds/round-1")
+
+  const executed = buildSystemLogPresentation(
+    logOf({ action: "execute", module: "disposal", recordId: "dp-1", next: { roundId: "round-1", disposalType: "sell", fromDisposalType: "donate" } }),
+    roundLabels,
+    "th",
+    tRound,
+  )
+  const byField = new Map(executed.changes.map((change) => [change.field, change.after]))
+  assert.equal(byField.get("รอบตัดจำหน่าย"), "DPR-20261105-0001")
+  assert.equal(byField.get("วิธีที่ขอ"), "บริจาค")
+})

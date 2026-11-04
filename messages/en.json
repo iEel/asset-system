@@ -154,7 +154,7 @@
     "pendingDisposals": "Disposals pending decision",
     "pendingDisposalsDetail": "Requests waiting for approval",
     "approvedDisposals": "Approved, awaiting disposal",
-    "approvedDisposalsDetail": "Disposal not recorded yet",
+    "approvedDisposalsDetail": "Not yet recorded in a disposal round",
     "returnsDueSoon": "Returns due soon or overdue",
     "returnsDueSoonDetail": "On-loan assets not yet returned",
     "auditActionsDueSoon": "Action plans due soon",
@@ -4103,7 +4103,36 @@
         "footerNoMethod": "{count} items · no method yet",
         "footerBlocked": "{count} blocked · remove them before saving",
         "footerReviewed": "Checked · all {count} can be saved",
-        "saved": "Disposal round {roundNo} saved"
+        "saved": "Disposal round {roundNo} saved",
+        "approvedBy": "Approved by: {name}"
+      }
+    },
+    "export": {
+      "sheetName": "Disposal Requests",
+      "columns": {
+        "disposalNo": "Request No.",
+        "roundNo": "Round No.",
+        "assetTag": "Asset Tag",
+        "assetName": "Asset Name",
+        "disposalType": "Disposal Method",
+        "reason": "Reason",
+        "source": "Source",
+        "requestedBy": "Requested By",
+        "approver": "Reviewer",
+        "status": "Status",
+        "requestDate": "Request Date",
+        "approvedAt": "Reviewed At",
+        "executionDate": "Disposal Date",
+        "executedBy": "Executed By",
+        "recipientName": "Recipient / Buyer",
+        "documentNo": "Reference Document No.",
+        "saleValue": "Sale Value",
+        "salvageValue": "Salvage Value",
+        "actualSaleValue": "Recorded Sale Value",
+        "actualSalvageValue": "Recorded Salvage Value",
+        "completedAt": "Completed At",
+        "approvalRemark": "Review Remark",
+        "executionRemark": "Execution Details"
       }
     }
   },
@@ -4755,7 +4784,13 @@
     "value_auditRound_status_closed": "Closed",
     "value_auditRound_status_cancelled": "Cancelled",
     "action_link_purchase_documents": "Link purchase documents",
-    "action_unlink_purchase_documents": "Unlink purchase document"
+    "action_unlink_purchase_documents": "Unlink purchase document",
+    "module_disposal_round": "Disposal round",
+    "action_create_round": "Create disposal round",
+    "field_roundId": "Disposal round",
+    "field_roundNo": "Round No.",
+    "field_fromDisposalType": "Method requested",
+    "field_requestIds": "Requests in round"
   },
   "adminUsersPage": {
     "title": "User Management",
@@ -5606,7 +5641,8 @@
     "disposalRoundBlocked": "Some machines in this round cannot be recorded · see the list below",
     "disposalRoundSaleValueRequired": "Round sale price is required",
     "disposalDateInFuture": "Disposal date cannot be in the future",
-    "disposalEvidenceExceptionForbidden": "Only system administrators can record a disposal without evidence"
+    "disposalEvidenceExceptionForbidden": "Only system administrators can record a disposal without evidence",
+    "disposalRoundNotFound": "Disposal round not found"
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

@@ -123,6 +123,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Disposal date cannot be in the future": "disposalDateInFuture",
   "Disposal execution can only set asset status to Disposed or Retired": "disposalExecutionStatusInvalid",
   "Disposal reason must contain at least 12 characters": "disposalReasonTooShort",
+  "Disposal round not found": "disposalRoundNotFound",
   "Disposal rejection can only return the asset status to Ready": "disposalRejectReturnsReady",
   "Disposal request IDs must be unique": "disposalDuplicateRequests",
   "Disposal request is already reviewed": "disposalAlreadyDecided",

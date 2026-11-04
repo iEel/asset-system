@@ -237,6 +237,12 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     label: "Disposal rounds",
     checks: [{ module: "disposal", action: "edit" }],
   },
+  // The round's accounting Excel is a view-gated report (group 6 decision 10), not a disposal:export export.
+  {
+    filePath: "src/app/api/disposal-rounds/[id]/report/route.ts",
+    label: "Disposal round accounting report",
+    checks: [{ module: "disposal", action: "view" }],
+  },
   {
     filePath: "src/app/api/disposal-batches/[id]/route.ts",
     label: "Disposal batch detail",

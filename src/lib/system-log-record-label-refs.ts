@@ -70,6 +70,8 @@ function addReferencedValueIds(idsByModule: SystemLogRecordLabelRefs, log: Syste
     addStringReference(idsByModule, "supplier", value.vendorId)
     addStringReference(idsByModule, "location", value.actualLocationId)
     addStringReference(idsByModule, "department", value.actualDepartmentId)
+    // The round an executed request was recorded in (group 6 plan 4).
+    addStringReference(idsByModule, "disposalRound", value.roundId)
   }
 }
 

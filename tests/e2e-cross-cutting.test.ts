@@ -381,3 +381,21 @@ test("the viewer's PM page offers no ⋯ and no เพิ่มแผน PM, and
   assert.ok(walk.includes(`await expect(page.locator("[data-pm-asset-card]")).toContainText(asset.assetTag)`))
   assert.ok(!walk.includes(`await expect(page.locator("#maintenance-plan-asset")).toContainText(asset.assetTag)`))
 })
+
+test("the round's accounting Excel is a disposal:view report, not one of the six exports (group 6 plan 4, decision 10)", async () => {
+  const { EXPORTS, VIEW_REPORTS, mayUseViewReport } = await import("../e2e/cross-cutting/support/export-rights.ts")
+  const refusals = await import("../e2e/cross-cutting/support/refusals.ts")
+  const disposalPage = thai.disposalPage as Record<string, Record<string, string>>
+  assert.deepEqual(VIEW_REPORTS.map((plan) => [plan.key, plan.permission, plan.route]), [["disposalRound", "disposal:view", "/api/disposal-rounds/[id]/report"]])
+  assert.ok(!EXPORTS.some((plan) => plan.route.startsWith("/api/disposal-rounds")), "not one of the export-permission exports")
+  assert.equal(VIEW_REPORTS[0].label, disposalPage.rounds.exportReport)
+  const get = handlerBody(read(`src/app${VIEW_REPORTS[0].route}/route.ts`), "GET")
+  assert.ok(get.includes(requireCall("disposal:view")) && get.indexOf(requireCall("disposal:view")) < get.indexOf("prisma"), "disposal:view before any read")
+  // Every E2E role with disposal:view may download it; the employee may not, and no viewer refusal names it.
+  assert.deepEqual((["itStaff", "itHead", "viewer", "employee"] as const).map((user) => mayUseViewReport(user, "disposalRound")), [true, true, true, false])
+  assert.ok(!refusals.VIEWER_API_REFUSALS.some((refusal) => refusal.path.includes("/report")))
+  // The round pages: creating one needs disposal:edit (refused to the viewer), the list is a read-only list.
+  assert.ok(refusals.VIEWER_PAGE_REFUSALS.some((refusal) => refusal.path === "/th/disposal/rounds/new" && refusal.permission === "disposal:edit"))
+  assert.ok(refusals.isWriteLink("/th/disposal/rounds/new") && !refusals.isWriteLink("/th/disposal/rounds"))
+  assert.ok(refusals.READ_ONLY_LISTS.includes("/th/disposal/rounds"))
+})

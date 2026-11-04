@@ -87,3 +87,12 @@ test("collects legacy brand attachment uploads as model record labels", () => {
   assert.equal(refs.get("model")?.has("model-1"), true)
   assert.equal(refs.has("brand"), false)
 })
+
+test("collects the disposal round's own id and the round an executed request names (group 6 plan 4)", () => {
+  const refs = collectSystemLogRecordLabelRefs([
+    { recordId: "round-1", action: "create_round", module: "disposal_round", oldValue: null, newValue: JSON.stringify({ roundNo: "DPR-20261105-0001" }) },
+    { recordId: "dp-1", action: "execute", module: "disposal", oldValue: null, newValue: JSON.stringify({ roundId: "round-2" }) },
+  ])
+  assert.deepEqual(Array.from(refs.get("disposalRound") ?? []), ["round-1", "round-2"])
+  assert.deepEqual(Array.from(refs.get("disposal") ?? []), ["dp-1"])
+})

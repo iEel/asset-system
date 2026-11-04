@@ -33,6 +33,9 @@ export const VIEWER_PAGE_REFUSALS: readonly PageRefusal[] = [
   { path: `/th/maintenance/pm/${NO_RECORD}/edit`, file: "maintenance/pm/[id]/edit/page.tsx", permission: "maintenance:edit" },
   { path: "/th/disposal/new", file: "disposal/new/page.tsx", permission: "disposal:create" },
   { path: "/th/disposal/batch/new", file: "disposal/batch/new/page.tsx", permission: "disposal:create" },
+  // สร้างรอบตัดจำหน่าย (group 6 plan 4). The round page and its accounting Excel need only disposal:view, which the
+  // viewer holds, so neither has a refusal row.
+  { path: "/th/disposal/rounds/new", file: "disposal/rounds/new/page.tsx", permission: "disposal:edit" },
   { path: "/th/admin/approvals", file: "admin/approvals/page.tsx", permission: "approve-inbox" },
 ]
 
@@ -93,7 +96,7 @@ export const APPROVE_API_REFUSALS: readonly ApiRefusal[] = [
 
 // The pages a view-only person reads (spec §6.6 "sees read-only lists"): the asset register, the run's asset, the
 // asset import and export page (where the import wizard lives since page group 4 plan 1 took it off the register), the
-// audit rounds and findings, repair records, PM plans, disposal requests and batches.
+// audit rounds and findings, repair records, PM plans, disposal requests, batches and rounds.
 export const READ_ONLY_LISTS: readonly string[] = [
   "/th/assets",
   "/th/assets/:asset",
@@ -104,6 +107,7 @@ export const READ_ONLY_LISTS: readonly string[] = [
   "/th/maintenance/pm",
   "/th/disposal",
   "/th/disposal/batches",
+  "/th/disposal/rounds",
 ]
 
 // A link to one of these pages, or a control with one of these names, is an action the viewer cannot take.
@@ -116,7 +120,7 @@ export const WRITE_LINK_PATTERNS: readonly RegExp[] = [
   /^\/th\/maintenance\/new(?:[?#]|$)/,
   /^\/th\/maintenance\/pm\/new(?:[?#]|$)/,
   /^\/th\/maintenance\/pm\/[^/?#]+\/edit(?:[?#]|$)/,
-  /^\/th\/disposal\/(?:new|batch\/new)(?:[?#]|$)/,
+  /^\/th\/disposal\/(?:new|batch\/new|rounds\/new)(?:[?#]|$)/,
   /^\/th\/admin\/approvals(?:[?#]|$)/,
   // The import card's template link, which only a person with asset:create sees (the import page and the register's
   // import menu); a link, so writeControls catches it here and not by its name (plan 5 final review).

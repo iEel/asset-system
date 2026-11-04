@@ -154,7 +154,7 @@
     "pendingDisposals": "ตัดจำหน่ายรอพิจารณา",
     "pendingDisposalsDetail": "คำขอที่ยังรอผู้อนุมัติ",
     "approvedDisposals": "อนุมัติแล้ว รอตัดจำหน่าย",
-    "approvedDisposalsDetail": "ยังไม่ได้บันทึกตัดจำหน่าย",
+    "approvedDisposalsDetail": "ยังไม่ได้บันทึกในรอบตัดจำหน่าย",
     "returnsDueSoon": "ใกล้/เกินกำหนดคืน",
     "returnsDueSoonDetail": "รายการยืมใช้ชั่วคราวที่ยังไม่ได้รับคืน",
     "auditActionsDueSoon": "แผนแก้ไขใกล้ครบกำหนด",
@@ -4103,7 +4103,36 @@
         "footerNoMethod": "{count} รายการ · ยังไม่เลือกวิธี",
         "footerBlocked": "บันทึกไม่ได้ {count} รายการ · นำออกก่อนบันทึก",
         "footerReviewed": "ตรวจสอบแล้ว · บันทึกได้ทั้ง {count} รายการ",
-        "saved": "บันทึกรอบตัดจำหน่าย {roundNo} แล้ว"
+        "saved": "บันทึกรอบตัดจำหน่าย {roundNo} แล้ว",
+        "approvedBy": "ผู้อนุมัติ: {name}"
+      }
+    },
+    "export": {
+      "sheetName": "คำขอตัดจำหน่าย",
+      "columns": {
+        "disposalNo": "เลขที่คำขอ",
+        "roundNo": "เลขที่รอบ",
+        "assetTag": "รหัสทรัพย์สิน",
+        "assetName": "ชื่อทรัพย์สิน",
+        "disposalType": "วิธีจำหน่าย",
+        "reason": "เหตุผล",
+        "source": "ที่มา",
+        "requestedBy": "ผู้ขอ",
+        "approver": "ผู้พิจารณา",
+        "status": "สถานะ",
+        "requestDate": "วันที่ขอ",
+        "approvedAt": "วันที่พิจารณา",
+        "executionDate": "วันที่จำหน่าย",
+        "executedBy": "ผู้ดำเนินการ",
+        "recipientName": "ผู้ซื้อ/ผู้รับ",
+        "documentNo": "เลขที่เอกสารอ้างอิง",
+        "saleValue": "มูลค่าขาย",
+        "salvageValue": "มูลค่าซาก",
+        "actualSaleValue": "มูลค่าขายที่บันทึก",
+        "actualSalvageValue": "มูลค่าซากที่บันทึก",
+        "completedAt": "วันที่ปิดคำขอ",
+        "approvalRemark": "หมายเหตุการพิจารณา",
+        "executionRemark": "รายละเอียดการดำเนินการ"
       }
     }
   },
@@ -4755,7 +4784,13 @@
     "value_auditRound_status_closed": "ปิดรอบแล้ว",
     "value_auditRound_status_cancelled": "ยกเลิก",
     "action_link_purchase_documents": "ผูกเอกสารจัดซื้อ",
-    "action_unlink_purchase_documents": "เอาเอกสารจัดซื้อออก"
+    "action_unlink_purchase_documents": "เอาเอกสารจัดซื้อออก",
+    "module_disposal_round": "รอบตัดจำหน่าย",
+    "action_create_round": "สร้างรอบตัดจำหน่าย",
+    "field_roundId": "รอบตัดจำหน่าย",
+    "field_roundNo": "เลขที่รอบ",
+    "field_fromDisposalType": "วิธีที่ขอ",
+    "field_requestIds": "คำขอในรอบ"
   },
   "adminUsersPage": {
     "title": "จัดการผู้ใช้",
@@ -5606,7 +5641,8 @@
     "disposalRoundBlocked": "มีเครื่องที่บันทึกไม่ได้ในรอบนี้ · ดูรายการด้านล่าง",
     "disposalRoundSaleValueRequired": "กรุณากรอกราคาขายเหมา",
     "disposalDateInFuture": "วันที่จำหน่ายต้องไม่หลังวันนี้",
-    "disposalEvidenceExceptionForbidden": "เฉพาะผู้ดูแลระบบเท่านั้นที่บันทึกตัดจำหน่ายโดยไม่มีหลักฐานได้"
+    "disposalEvidenceExceptionForbidden": "เฉพาะผู้ดูแลระบบเท่านั้นที่บันทึกตัดจำหน่ายโดยไม่มีหลักฐานได้",
+    "disposalRoundNotFound": "ไม่พบรอบตัดจำหน่ายนี้"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

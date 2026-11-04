@@ -2,39 +2,25 @@ import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { getTranslations } from "next-intl/server"
 import { createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
+import { buildDisposalExportColumns } from "@/lib/disposal-export"
 import { buildDisposalWhere, parseDisposalListParams } from "@/lib/disposal-query"
+import { readDisposalSourceLinks, type DisposalSourceLink } from "@/lib/disposal-source"
 
-const disposalExportColumns = [
-  { header: "Request No.", key: "disposalNo", width: 20 },
-  { header: "Asset Tag", key: "assetTag", width: 22 },
-  { header: "Asset Name", key: "assetName", width: 32 },
-  { header: "Disposal Type", key: "disposalType", width: 18 },
-  { header: "Reason", key: "reason", width: 40 },
-  { header: "Source Type", key: "sourceType", width: 18 },
-  { header: "Source ID", key: "sourceId", width: 28 },
-  { header: "Requested By", key: "requestedBy", width: 28 },
-  { header: "Approver", key: "approver", width: 28 },
-  { header: "Status", key: "status", width: 18 },
-  { header: "Request Date", key: "requestDate", width: 18 },
-  { header: "Reviewed At", key: "approvedAt", width: 18 },
-  { header: "Execution Date", key: "executionDate", width: 18 },
-  { header: "Executed By", key: "executedBy", width: 28 },
-  { header: "Recipient / Buyer", key: "recipientName", width: 28 },
-  { header: "Reference Document No.", key: "documentNo", width: 24 },
-  { header: "Sale Value", key: "saleValue", width: 16 },
-  { header: "Salvage Value", key: "salvageValue", width: 16 },
-  { header: "Actual Sale Value", key: "actualSaleValue", width: 18 },
-  { header: "Actual Salvage Value", key: "actualSalvageValue", width: 20 },
-  { header: "Completed At", key: "completedAt", width: 18 },
-  { header: "Review Remark", key: "approvalRemark", width: 40 },
-  { header: "Execution Remark", key: "executionRemark", width: 40 },
-]
+// Thai words for the type and status (group 6 spec §12); an unknown key keeps its code.
+function word(t: (key: string) => string, key: string, fallback: string) {
+  const value = t(key)
+  return value === key || value.endsWith(`.${key}`) ? fallback : value
+}
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "disposal", "export")
+    const locale = request.nextUrl.searchParams.get("locale") === "en" ? "en" : "th"
+    const t = await getTranslations({ locale, namespace: "disposalPage" })
+    const tWord = (key: string) => t(key as never) as string
 
     const filters = parseDisposalListParams(request.nextUrl.searchParams)
     const requests = await prisma.disposalRequest.findMany({
@@ -45,26 +31,34 @@ export async function GET(request: NextRequest) {
         requestedBy: { select: { code: true, fullNameTh: true } },
         approver: { select: { code: true, fullNameTh: true } },
         executedBy: { select: { code: true, fullNameTh: true } },
+        round: { select: { roundNo: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 5000,
     })
 
+    const sources = await readDisposalSourceLinks(prisma, locale, requests)
+    const sourceText = (link: DisposalSourceLink | null | undefined) => {
+      if (!link) return ""
+      if (link.kind === "other") return link.text
+      return t(link.kind === "maintenance" ? "sourceMaintenance" : "sourceAuditFinding", { number: link.number })
+    }
+
     const workbook = createWorkbook()
-    const worksheet = workbook.addWorksheet("Disposal Requests")
-    worksheet.columns = disposalExportColumns
+    const worksheet = workbook.addWorksheet(t("export.sheetName"))
+    worksheet.columns = buildDisposalExportColumns((key) => tWord(`export.${key}`))
     worksheet.addRows(
       requests.map((item) => ({
         disposalNo: item.disposalNo,
+        roundNo: item.round?.roundNo ?? "",
         assetTag: item.asset.assetTag,
         assetName: item.asset.name,
-        disposalType: item.disposalType,
+        disposalType: word(tWord, `types.${item.disposalType}`, item.disposalType),
         reason: item.reason,
-        sourceType: item.sourceType ?? "",
-        sourceId: item.sourceId ?? "",
+        source: sourceText(sources.get(item.id)),
         requestedBy: `${item.requestedBy.code} - ${item.requestedBy.fullNameTh}`,
         approver: item.approver ? `${item.approver.code} - ${item.approver.fullNameTh}` : "",
-        status: item.requestStatus,
+        status: word(tWord, `statuses.${item.requestStatus}`, item.requestStatus),
         requestDate: toExcelDate(item.requestDate),
         approvedAt: toExcelDate(item.approvedAt),
         executionDate: toExcelDate(item.executionDate),

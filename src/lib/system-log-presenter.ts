@@ -39,6 +39,7 @@ type RecordLabelKey =
   | "asset"
   | "maintenance"
   | "disposal"
+  | "disposalRound"
   | "auditRound"
   | "auditFinding"
   | "auditItem"
@@ -71,6 +72,8 @@ const CODE_FIELDS = new Set([
   "actionTaken",
   "actionStatus",
   "disposalType",
+  // The method a request was asked under before its round's method replaced it (group 6 plan 4).
+  "fromDisposalType",
   "repairStatus",
   "outcome",
   "auditStatus",
@@ -179,6 +182,7 @@ export function normalizeLogModule(module: string, log: Pick<SystemLogPresenterI
   }
   if (module === "brand" && isBrandModelAttachmentLog(log)) return "model"
   if (module === "purchase_document") return "purchaseDocument"
+  if (module === "disposal_round") return "disposalRound"
   if (module === "asset_model") return "model"
   return module
 }
@@ -392,7 +396,10 @@ function formatValue(value: unknown, key: string, moduleKey: string, labels: Sys
   const structuredValue = parseStructuredString(value)
   if (Array.isArray(structuredValue)) return `${structuredValue.length} ${translateWithFallback(t, "value.items", "items")}`
   if (structuredValue && typeof structuredValue === "object") return translateWithFallback(t, "value.complex", "Complex data")
-  if (CODE_FIELDS.has(key)) return translateWithFallback(t, `value.${moduleKey}.${key}.${value}`, translateWithFallback(t, `value.${key}.${value}`, value))
+  if (CODE_FIELDS.has(key)) {
+    const codeKey = key === "fromDisposalType" ? "disposalType" : key
+    return translateWithFallback(t, `value.${moduleKey}.${codeKey}.${value}`, translateWithFallback(t, `value.${codeKey}.${value}`, value))
+  }
   if (ISO_DATE.test(value)) return formatDate(value)
   if (ISO_DATE_TIME.test(value)) return formatDateTime(value)
   const labelKey = getLabelKeyForField(key)
@@ -418,6 +425,7 @@ function getLabelKeyForField(key: string): RecordLabelKey | null {
   if (key === "statusId" || key === "nextStatusId" || key === "assetStatusId") return "status"
   if (key === "conditionId" || key === "conditionBefore" || key === "conditionAfter") return "condition"
   if (key === "roleId" || key === "ldap_default_role") return "role"
+  if (key === "roundId") return "disposalRound"
   return null
 }
 
@@ -431,6 +439,7 @@ function getLogHref(log: SystemLogPresenterInput, locale: string, moduleKey: str
   if (moduleKey === "asset") return `/${locale}/assets/${log.recordId}`
   if (moduleKey === "maintenance") return `/${locale}/maintenance/${log.recordId}`
   if (moduleKey === "disposal") return `/${locale}/disposal/${log.recordId}`
+  if (moduleKey === "disposalRound") return `/${locale}/disposal/rounds/${log.recordId}`
   if (moduleKey === "auditRound") return `/${locale}/audit/rounds/${log.recordId}`
   if (moduleKey === "auditFinding" || moduleKey === "auditItem") return `/${locale}/audit/findings`
   if (moduleKey === "employee") return `/${locale}/master-data/employees`
