@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, context: DisposalBatchAttachmen
     validateUploadFile(file)
     // Disposal photos are JPG, PNG or WEBP; other image types are refused here (group 6 spec §5).
     const typeError = getDisposalUploadTypeError(file.type)
-    if (typeError) return disposalApiError(typeError, "Use a JPG, PNG or WEBP photo", 400)
+    if (typeError) return disposalApiError(typeError, typeError, 400)
     await validateUploadFileContent(file)
 
     const now = new Date()

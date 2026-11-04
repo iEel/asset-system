@@ -258,3 +258,18 @@ function makeTransaction(state: FakeState, options: { forceRequestConflict?: boo
 function hasServiceCode(code: string) {
   return (error: unknown) => error instanceof DisposalApprovalServiceError && error.code === code
 }
+
+test("a reject chosen as SQL Server's deadlock victim (P2034) answers a concurrent update, not a server error", async () => {
+  const state = makeState()
+  const database = {
+    async $transaction(): Promise<never> {
+      throw Object.assign(new Error("Transaction failed due to a write conflict or a deadlock"), { code: "P2034" })
+    },
+  }
+
+  await assert.rejects(
+    rejectDisposalRequest(baseCommand, dependencies(database as unknown as ReturnType<typeof makeDatabase>, state)),
+    hasServiceCode("DISPOSAL_CONCURRENT_UPDATE"),
+  )
+  assert.equal(state.audits.length, 0)
+})

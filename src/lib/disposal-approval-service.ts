@@ -296,9 +296,20 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
     }
   }, {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-  })
+  }).catch(rethrowWriteConflictAsConcurrentUpdate(toApprovalItem(candidate)))
 
   return result
+}
+
+// Two decisions on one request at the same moment: SQL Server ends one of the serializable transactions as a
+// deadlock victim (Prisma P2034) before its guarded update runs, so it answers as the guard would.
+function rethrowWriteConflictAsConcurrentUpdate(item: { requestId: string; disposalNo: string; assetTag: string }) {
+  return (error: unknown): never => {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2034") {
+      throw new DisposalApprovalServiceError("DISPOSAL_CONCURRENT_UPDATE", item)
+    }
+    throw error
+  }
 }
 
 const rejectCandidateBaseSelect = {
@@ -432,7 +443,7 @@ export async function rejectDisposalRequest(
     }
   }, {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-  })
+  }).catch(rethrowWriteConflictAsConcurrentUpdate(missingApprovalItem(command.requestId)))
 
   await writeAudit({
     userId: command.actor.userId,

@@ -14,7 +14,7 @@ test("both disposal upload routes refuse other image types after the general upl
   ]) {
     const source = read(path)
     assert.match(source, /getDisposalUploadTypeError\(file\.type\)/, path)
-    assert.match(source, /disposalApiError\(typeError, "Use a JPG, PNG or WEBP photo", 400\)/, path)
+    assert.match(source, /disposalApiError\(typeError, typeError, 400\)/, path)
     assert.ok(source.indexOf("validateUploadFile(file)") < source.indexOf("getDisposalUploadTypeError("), `${path} checks the type after validateUploadFile`)
     assert.ok(source.indexOf("getDisposalUploadTypeError(") < source.indexOf("writeFile("), `${path} refuses before writing the file`)
   }
