@@ -35,8 +35,9 @@ test("one whole-number rule: every whole-number field reads its own sentence for
       'check("auditYear", required(values.auditYear) ?? range(values.auditYear, yearRange.min, yearRange.max) ?? wholeNumber(values.auditYear))',
       'check("sampleRate", required(values.sampleRate) ?? range(values.sampleRate, 1, 100) ?? wholeNumber(values.sampleRate))',
     ],
-    [`${C}maintenance/maintenance-plan-form.tsx`]: [
-      'check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays) : null)',
+    // Group 5 plan 4 Task 4: the PM form's checks moved to its pure rules file, which wraps this call over lines.
+    "src/lib/pm-plan-form-rules.ts": [
+      'check(\n    "intervalDays",\n    values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays) : null,\n  )',
     ],
     "src/lib/system-settings-field-rules.ts": [
       'if (key === "asset_tag_running_digits") return range(value, 1, 12) ?? wholeNumber(value)',
@@ -50,7 +51,7 @@ test("one whole-number rule: every whole-number field reads its own sentence for
     const text = read(path)
     for (const line of lines) assert.ok(text.includes(line), `${path}: ${line}`)
     // A pure rules file that tests import reads it by its relative .ts path (asset-form-rules.ts, like transfer-form-rules.ts).
-    if (path === "src/lib/asset-form-rules.ts") assert.match(text, /^import \{[^}]*\bwholeNumber\b[^}]*\} from "\.\/validation-rules\.ts"$/m, path)
+    if (path === "src/lib/asset-form-rules.ts" || path === "src/lib/pm-plan-form-rules.ts") assert.match(text, /^import \{[^}]*\bwholeNumber\b[^}]*\} from "\.\/validation-rules\.ts"$/m, path)
     else assert.match(text, /^import \{[^}]*\bwholeNumber\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
     assert.doesNotMatch(text, /pattern\(String\(|function wholeNumber\(|Number\.isInteger\(Number\(value\.trim/, `${path}: no rule of its own`)
   }

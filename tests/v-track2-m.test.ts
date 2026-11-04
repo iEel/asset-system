@@ -147,7 +147,11 @@ function assertMigratedForm(
 }
 
 test("PM plan: errors under the field, the asset select checked, whole days from 1 to 3650, and the server's refusals on the same fields (v-track2 M3)", () => {
-  const source = read(`${C}maintenance/maintenance-plan-form.tsx`)
+  // Group 5 plan 4 Task 4: the checks moved to the pure rules file (src/lib/pm-plan-form-rules.ts, validatePmPlanForm);
+  // the form keeps a local validate() over them and the field table.
+  const form = read(`${C}maintenance/maintenance-plan-form.tsx`)
+  const rulesFile = read("src/lib/pm-plan-form-rules.ts")
+  const source = `${form}\n${rulesFile}`
   assertMigratedForm(source, {
     ids: {
       assetId: "maintenance-plan-asset",
@@ -160,17 +164,18 @@ test("PM plan: errors under the field, the asset select checked, whole days from
     },
     messages: ["assetId", "title", "frequency", "nextDueDate", "vendorId", "notes"],
   })
-  assert.match(source, /^function validate\(values: PlanValues, isEdit: boolean\) \{$/m)
-  const rules = validateBody(source)
+  assert.ok(form.includes("const validate = () => validatePmPlanForm(values, isEdit)"))
+  const start = rulesFile.indexOf("export function validatePmPlanForm(")
+  const rules = rulesFile.slice(start, rulesFile.indexOf("\n}\n", start)).replace(/\n\s+/g, " ")
   for (const rule of [
     'check("assetId", isEdit ? null : required(values.assetId))',
     'check("title", required(values.title) ?? maxLength(values.title, 200))',
     'check("frequency", required(values.frequency))',
-    'check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays) : null)',
+    'check( "intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays) : null, )',
     'check("nextDueDate", required(values.nextDueDate))',
     'check("notes", maxLength(values.notes, 4000))',
   ]) assert.ok(rules.includes(rule), rule)
-  assert.match(source, /fieldErrors\.setErrors\(validate\(values, Boolean\(planId\)\)\)/)
+  assert.match(form, /fieldErrors\.setErrors\(validate\(\)\)/)
   // The days say their range (plan 1 M-R4: a field with limits says its numbers).
   assert.ok(source.includes("error={fieldErrors.errors.intervalDays ? validationMessage(fieldErrors.errors.intervalDays, { min: 1, max: 3650 }) : undefined}"))
   // The asset select was an asterisk nothing checked (spec §5): it has an id for focus and shows its error.

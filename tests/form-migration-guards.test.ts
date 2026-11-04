@@ -72,8 +72,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
   [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
   // Group 3: the frame of ส่งมอบ, รับคืน and โอนย้าย (plan 2 added /th/asset-management/checkin, plan 3 Task 6 /th/asset-management/transfer);
-  // group 5 plan 2 Task 3: บันทึกซ่อม.
-  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer", "/th/maintenance/new"],
+  // group 5 plan 2 Task 3: บันทึกซ่อม; group 5 plan 4 Task 4: the PM form's create and edit pages.
+  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer", "/th/maintenance/new", "/th/maintenance/pm/new", "/th/maintenance/pm/sample-1/edit"],
   // Group 3 plan 1 Task 7: the phone steps' own bar (P1-R4).
   [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
 }
@@ -99,7 +99,8 @@ const FIELD_CLASS_STRINGS: ExemptList = {
 // GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. Every file of src that has one of them holds
 // a row (a new form adds its row), and a floor never drops.
 const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
-  [`${C}maintenance/maintenance-plan-form.tsx`]: [4, 2, 0],
+  // Group 5 plan 4 Task 4: the frequency's NativeSelect became a Segmented (spec §10), so its required goes; the title, the days and the date keep theirs.
+  [`${C}maintenance/maintenance-plan-form.tsx`]: [3, 2, 0],
   [`${C}maintenance/repair-record-form.tsx`]: [2, 3, 0],
   [`${C}maintenance/repair-record-actions.tsx`]: [3, 6, 0],
   // Group 3 plan 2 Task 8: the three local Selects go (the room is a SearchableSelect, the condition the chips); the return date's Input and the next status's NativeSelect keep theirs.

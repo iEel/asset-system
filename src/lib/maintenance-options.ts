@@ -12,7 +12,7 @@ export type MaintenanceOption = {
   reason?: string
   /** An asset's own condition, so the record form can pre-choose ดี or พอใช้ for a finished repair (final review M1). */
   conditionId?: string
-  /** The repair's asset facts, only on the repair form's by-id read (`type: "asset"` with `id`, G5P2-R1). */
+  /** The asset's facts, only on a by-id read: the repair form's (`type: "asset"`, G5P2-R1) and the PM form's card (`type: "pmAsset"`, G5P4-R9). */
   facts?: RepairAssetFacts
 }
 
@@ -77,9 +77,9 @@ export async function searchMaintenanceOptions(
       }) as Array<{ assetId: string }>
     : []
   const openRecordAssetIds = new Set(openRecords.map((record) => record.assetId))
-  // Only the repair form's by-id read carries the facts; a search never reads them.
+  // Only a by-id read carries the facts (the repair form's and the PM form's card); a search never reads them.
   const factsById = new Map<string, RepairAssetFacts>()
-  if (id && input.type === "asset") {
+  if (id) {
     for (const asset of assets) {
       const facts = await loadRepairAssetFacts(db, asset.id)
       if (facts) factsById.set(asset.id, facts)

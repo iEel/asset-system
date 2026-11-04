@@ -74,20 +74,20 @@ test("the two disposal create pages: PageHeader with the back link they had, on 
 })
 
 // บันทึกซ่อม moved onto the operation frame (group 5 plan 2 Task 3): its own test below.
-test("the two PM create and edit pages: crumbs in PageHeader and กลับ instead of ยกเลิก (2B-1 task 22, B2)", () => {
+// Group 5 plan 4 Task 4 (spec §10): the PM form moved onto the operation frame as บันทึกซ่อม did.
+test("the two PM create and edit pages are the operation frame with the crumbs and กลับ, not ยกเลิก (2B-1 task 22, B2; group 5 spec §10)", () => {
   const D = "src/app/[locale]/(dashboard)/"
-  const pages = {
-    "maintenance/pm/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}, \{ label: t\("pmCreateTitle"\) \}\]\}\n\s+title=\{t\("pmCreateTitle"\)\}\n\s+meta=\{t\("pmSubtitle"\)\}\n/,
-    // The trail ends on the plan code, so the title is the plan's own name and the code is the first fact (spec §4.3.3 rule 6).
-    "maintenance/pm/[id]/edit/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}, \{ label: plan\.planNo, code: true \}\]\}\n\s+title=\{plan\.title\}\n\s+meta=\{<span className="tag">\{plan\.planNo\}<\/span>\}\n/,
-  }
-  for (const [file, header] of Object.entries(pages)) {
+  const crumbs = String.raw`breadcrumbs=\{\[\n\s+\{ label: tRecord\("title"\), href: ` + "`" + String.raw`\/\$\{locale\}\/maintenance` + "`" + String.raw` \},\n\s+\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, ` + "`" + String.raw`\/\$\{locale\}\/maintenance\/pm` + "`" + String.raw`\) \},\n\s+\{ label: t\("(?:pmCreateTitle|pmFormEditCrumb)"\) \},\n\s+\]\}`
+  for (const file of ["maintenance/pm/new/page.tsx", "maintenance/pm/[id]/edit/page.tsx"]) {
     const source = read(D + file)
-    assert.ok(source.includes(HEADER_IMPORT), `${file} imports PageHeader and PageBackLink`)
-    assert.match(source, header, file)
-    assert.match(source, /\n\s+back=\{<PageBackLink href=\{returnTo\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/, file)
-    assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|from "next\/link"|tCommon\("cancel"\)/, file)
+    assert.ok(source.includes('import { PageBackLink } from "@/components/ui/page-header"'), `${file} imports only the back link`)
+    assert.match(source, new RegExp(String.raw`<MaintenancePlanForm\n\s+` + crumbs + String.raw`\n\s+back=\{<PageBackLink href=\{returnTo\} label=\{tCommon\("back"\)\} \/>\}\n`), file)
+    assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|<PageHeader\b|from "next\/link"|tCommon\("cancel"\)/, file)
   }
+  const form = read(`${C}maintenance/maintenance-plan-form.tsx`)
+  assert.ok(form.includes('import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"'), "maintenance-plan-form.tsx imports OperationFormFrame")
+  assert.match(form, /<OperationFormFrame\n\s+title=\{title\}\n\s+description=\{description\}\n\s+breadcrumbs=\{breadcrumbs\}\n\s+back=\{back\}\n/)
+  assert.doesNotMatch(form, /<h1\b|PageHeader|ContentPanel/)
 })
 
 test("the check-in form is the operation frame, with T7's legacy link in its header (group 3 plan 2 Task 8)", () => {

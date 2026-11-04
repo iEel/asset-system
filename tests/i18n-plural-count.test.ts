@@ -47,7 +47,12 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // and the asset panel's repair count.
   // Group 5 plan 4 Task 3 added 4: the PM page's plan count, the overdue cell's "นานสุด n วัน", the cells' sum line and
   // its out-of-scope tail.
-  assert.equal(pluralKeys.size, 82,[...pluralKeys.keys()].join(", "))
+  // Group 5 plan 4 Task 4 added 6: the PM form's "+n เดือน" and "+n วัน" steps, the change count "แก้ n ช่อง", the edit
+  // footer with that count, the impact title "ใช้งาน n แผน" and a custom rhythm's "ทุก n วัน".
+  assert.equal(pluralKeys.size, 88,[...pluralKeys.keys()].join(", "))
+  for (const [key, arg] of [["pmFormStepMonths", "n"], ["pmFormStepDays", "n"], ["pmFormChangeCount", "count"], ["pmFormFooterEdit", "count"], ["pmFormImpactTitle", "count"], ["pmFormFrequencyCustomDays", "days"]]) {
+    assert.equal(pluralKeys.get(`maintenancePage.${key}`), arg, key)
+  }
   assert.equal(pluralKeys.get("maintenancePage.pmPlanCount"), "count")
   assert.equal(pluralKeys.get("maintenancePage.pmDueCellOverdueFoot"), "days")
   assert.equal(pluralKeys.get("maintenancePage.pmDueSum"), "total")

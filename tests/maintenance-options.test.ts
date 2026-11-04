@@ -107,8 +107,14 @@ test("the asset by-id read attaches the repair's asset facts; a search does not 
   assert.equal("facts" in (searched[0] ?? {}), false)
   assert.deepEqual(factsReads, ["asset-1"], "a search reads no facts")
 
+  // The PM form's by-id read carries the same facts for its asset card (G5P4-R9); its search does not.
   const pm = await searchMaintenanceOptions(withFacts, { type: "pmAsset", id: "a-1" })
-  assert.equal("facts" in (pm[0] ?? {}), false, "only the repair form's asset read carries facts")
+  assert.equal(pm[0]?.facts?.roomName, "ห้อง 101")
+  assert.equal(pm[0]?.facts?.branchName, "สำนักงานใหญ่")
+  assert.deepEqual(factsReads, ["asset-1", "asset-1"])
+  const pmSearched = await searchMaintenanceOptions(withFacts, { type: "pmAsset", q: "ab" })
+  assert.equal("facts" in (pmSearched[0] ?? {}), false)
+  assert.deepEqual(factsReads, ["asset-1", "asset-1"], "a PM search reads no facts")
 })
 
 test("PM asset options disable only written-off assets: an asset under repair can get a plan (G5P1-R13, decision 10.4)", async () => {

@@ -4,6 +4,10 @@ import test from "node:test"
 
 const PM_PAGE = "src/app/[locale]/(dashboard)/maintenance/pm/page.tsx"
 const ROW_ACTIONS = "src/components/maintenance/maintenance-plan-row-actions.tsx"
+const FORM = "src/components/maintenance/maintenance-plan-form.tsx"
+const ASSET_CARD = "src/components/maintenance/pm-plan-asset-card.tsx"
+const NEW_PAGE = "src/app/[locale]/(dashboard)/maintenance/pm/new/page.tsx"
+const EDIT_PAGE = "src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).maintenancePage
 
@@ -125,17 +129,19 @@ test("PM plans no longer ask for an internal assignee", () => {
   assert.match(form, /router\.push\(returnHref\)/)
 })
 
-test("the PM plan form uses the shared field primitives and a busy save button (2C batch 1a)", () => {
-  const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8").replace(/\r\n/g, "\n")
+test("the PM plan form uses the shared field primitives; the frame's footer holds the busy save (2C batch 1a; G5P4 Task 4)", () => {
+  const form = read(FORM)
   assert.match(form, /import \{ Field \} from "@\/components\/ui\/field"/)
-  assert.doesNotMatch(form, /function Field\(|<input|<select|<textarea|Loader2|ml-1 text-danger/)
+  assert.doesNotMatch(form, /function Field\(|<input|<select|<textarea|Loader2|ml-1 text-danger|NativeSelect/)
   // Each starred Field names its control and shows its error (v-track plan 2 M3); the days Field says its range.
-  assert.equal(form.match(/<Field label=\{t\("pm\w+"\)\} id="maintenance-plan-[\w-]+" required error=\{fieldErrors\.message\("\w+"\)\}>/g)?.length, 3)
+  assert.equal(form.match(/<Field label=\{t\("pm\w+"\)\} id="maintenance-plan-[\w-]+" required error=\{fieldErrors\.message\("\w+"\)\}>/g)?.length, 2)
   assert.match(form, /<Field\n\s+label=\{t\("pmIntervalDays"\)\}\n\s+id="maintenance-plan-interval-days"\n\s+required\n/)
-  // Four controls keep the browser's own required; the asset select and the days Field write theirs on a line too.
-  assert.equal(form.match(/^\s+required$/gm)?.length, 6, "each starred field keeps the browser's own required check")
-  assert.match(form, /<Textarea\n\s+value=\{values\.notes\}[\s\S]*?maxLength=\{4000\}[\s\S]*?className="min-h-20"/)
-  assert.match(form, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
+  // The title, the days and the date keep the browser's own required; the asset select and the days Field write theirs on a line too.
+  assert.equal(form.match(/^\s+required$/gm)?.length, 5, "each starred field keeps the browser's own required check")
+  assert.match(form, /<Textarea\n\s+value=\{values\.notes\}[\s\S]*?maxLength=\{4000\}/)
+  // The save is the frame's footer button, busy while the plan saves (no button of the form's own).
+  assert.match(form, /busy: saving,\n\s+formId: PM_PLAN_FORM_ID,/)
+  assert.doesNotMatch(form, /<Button type="submit"/)
 })
 
 test("the PM plan state confirm keeps a busy verb confirm in a fixed footer, now opened from ⋯ (2C batch 3, K12; G5P4-R6)", () => {
@@ -161,4 +167,124 @@ test("the PM form offers PM asset options with their reasons and sends the plan'
   assert.match(form, /expectedUpdatedAt\?: string/)
   assert.match(form, /\{ action: "update", expectedUpdatedAt \}/)
   assert.match(edit, /expectedUpdatedAt=\{plan\.updatedAt\.toISOString\(\)\}/)
+})
+
+// Group 5 plan 4 Task 4 (spec §10, G5P4-R8..R10, Review Focus 3): the PM form on the operation frame.
+test("the PM form sits on OperationFormFrame with three sections, a Segmented frequency, the preview, changed fields and the summary with the impact (spec §10)", () => {
+  const form = read(FORM)
+  assert.match(form, /^"use client"/)
+  assert.match(form, /<form onSubmit=\{handleSubmit\} noValidate id=\{PM_PLAN_FORM_ID\}>\n\s+<OperationFormFrame\n/)
+  assert.match(form, /breadcrumbs=\{breadcrumbs\}/)
+  assert.match(form, /back=\{back\}/)
+  assert.equal(form.match(/<FormSection number=\{\d\}/g)?.length, 3)
+  for (const key of ["pmFormSectionAsset", "pmFormSectionDetails", "pmFormSectionSchedule"]) assert.match(form, new RegExp(`<FormSection number=\\{\\d\\} title=\\{t\\("${key}"\\)\\}>`), key)
+  // Section 1: the locked card and its hint on edit; on create the pmAsset picker until an asset is picked (G5P4-R9).
+  assert.match(form, /<PmPlanAssetCard facts=\{currentFacts\} locked=\{isEdit\} onChange=\{isEdit \? undefined : clearAsset\} \/>/)
+  assert.match(form, /t\("pmFormAssetHint"\)/)
+  assert.match(form, /fetch\(`\/api\/maintenance-options\?type=pmAsset&id=\$\{encodeURIComponent\(assetId\)\}`/)
+  // Section 3: the frequency is a Segmented inside the FieldGroup that keeps the stable id (spec §5 "Stable hooks").
+  assert.match(form, /<FieldGroup legend=\{t\("pmFrequencyLabel"\)\} id="maintenance-plan-frequency" required error=\{fieldErrors\.message\("frequency"\)\}>\n\s+<Segmented\n\s+labelledBy="maintenance-plan-frequency-legend"/)
+  assert.match(form, /hint=\{t\("pmFormIntervalHint"\)\}/)
+  assert.match(form, /buildPmPreview\(values\.nextDueDate, values\.frequency, /)
+  assert.match(form, /t\("pmFormPreviewNote"\)/)
+  // Changed fields on edit (G5P4-R8), counted in the summary and the footer.
+  assert.match(form, /import \{ FormChangedField, type FormFieldChange \} from "@\/components\/ui\/form-changed-field"/)
+  for (const field of ["title", "vendorId", "notes", "frequency", "intervalDays", "nextDueDate"]) {
+    assert.match(form, new RegExp(`<FormChangedField change=\\{changeOf\\("${field}"\\)\\}>`), field)
+  }
+  assert.match(form, /pmPlanChangedFields\(initial, values\)/)
+  // The summary and the impact on the PM page (G5P4-R10).
+  assert.match(form, /<OperationSummaryCard\n/)
+  assert.match(form, /buildPmPlanImpact\(\{/)
+  assert.match(form, /t\("pmFormImpactTitle", \{ count: impact\.total \}\)/)
+  assert.match(form, /t\("pmFormPaused"\)/)
+  assert.match(form, /t\(impact\.inWeek \? "pmFormInWeek" : "pmFormNotInWeek"\)/)
+})
+
+test("the PM form's footer reads its words through pmPlanFooterKey: บันทึกการแก้ไข on edit", () => {
+  const form = read(FORM)
+  assert.match(form, /const footerKeys = pmPlanFooterKey\(isEdit\)/)
+  assert.match(form, /submitLabel: tRoot\(footerKeys\.submit\),/)
+  assert.match(form, /cancelLabel: tRoot\(footerKeys\.cancel\),/)
+  assert.match(form, /cancelHref: returnHref,/)
+  const th = messages("th")
+  assert.equal(th.pmFormSaveEdit, "บันทึกการแก้ไข")
+  assert.equal(th.pmFormCancelEdit, "ยกเลิกการแก้ไข")
+})
+
+test("a refused save keeps the values: the catch only toasts, nothing resets the form (Review Focus 3)", () => {
+  const form = read(FORM)
+  assert.match(form, /\} catch \(error\) \{\n\s+apiError\.toast\(error\)\n\s+\} finally \{\n\s+setSaving\(false\)\n\s+\}/)
+  // The PATCH carries the plan's updatedAt as the page read it; a 409 MAINTENANCE_PLAN_CONFLICT is its message.
+  assert.match(form, /throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, t, tCommon\("error"\)\)\)/)
+  assert.doesNotMatch(form, /setValues\(initial\)|setValues\(\{ \.\.\.initial|\.reset\(\)/)
+})
+
+test("the PM asset card: photo, name, tag, status badge, room · branch, and on edit แก้ไขไม่ได้ with the lock (G5P4-R9)", () => {
+  const card = read(ASSET_CARD)
+  assert.match(card, /export function PmPlanAssetCard\(\{ facts, locked, onChange \}: \{\n\s+facts: RepairAssetFacts\n\s+locked: boolean\n\s+onChange\?: \(\) => void\n\}\)/)
+  assert.match(card, /<AssetThumbnail photo=\{facts\.photo\}/)
+  assert.match(card, /<StatusBadge label=\{facts\.statusLabel\} tone=\{getAssetStateTone\(facts\.statusName\)\} \/>/)
+  assert.match(card, /\[facts\.roomName, facts\.branchName\]\.filter/)
+  assert.match(card, /<Lock aria-hidden="true"/)
+  assert.match(card, /t\("pmFormLocked"\)/)
+  assert.match(card, /onChange && !locked \?/)
+})
+
+test("the PM pages pass the facts, the edit meta, the three due counts and todayKey (spec §10)", () => {
+  const edit = read(EDIT_PAGE)
+  const create = read(NEW_PAGE)
+  for (const source of [edit, create]) {
+    assert.match(source, /loadRepairAssetFacts\(prisma as unknown as RepairAssetFactsDb, /)
+    assert.match(source, /readPmDueCounts\(prisma, now\)/)
+    assert.match(source, /todayKey=\{getBangkokDateKey\(now\)\}/)
+    assert.match(source, /<MaintenancePlanForm\n/)
+  }
+  assert.match(edit, /t\("pmFormEditTitle", \{ title: plan\.title \}\)/)
+  assert.match(edit, /t\("pmFormEditCrumb"\)/)
+  assert.match(edit, /t\("pmFormWasDue", \{ date: formatDate\(plan\.nextDueDate\) \}\)/)
+  assert.match(edit, /t\("pmFormStateHint"\)/)
+  assert.match(edit, /<StatusBadge label=\{t\(`pmPlanStates\.\$\{plan\.planState\}`\)\}/)
+  // An ended plan stays a 404 (Appendix A).
+  assert.match(edit, /where: \{ id, planState: \{ not: "ended" \} \}/)
+  assert.match(create, /t\("pmCreateTitle"\)/)
+})
+
+test("the PM form words follow spec §13 verbatim", () => {
+  const th = messages("th")
+  const expected: Record<string, string> = {
+    pmFormEditCrumb: "แก้ไขแผน PM",
+    pmFormEditTitle: "แก้ไขแผน PM · {title}",
+    pmFormWasDue: "เดิมกำหนด {date}",
+    pmFormStateHint: "พักแผนหรือจบแผนทำจากเมนู ⋯ ในหน้ารายการแผน",
+    pmFormSectionAsset: "ทรัพย์สินของแผน",
+    pmFormLocked: "แก้ไขไม่ได้",
+    pmFormAssetHint: "ถ้าจะใช้แผนนี้กับทรัพย์สินอื่น ให้จบแผนนี้แล้วเพิ่มแผนใหม่",
+    pmFormSectionDetails: "รายละเอียดแผน",
+    pmFormSectionSchedule: "รอบและกำหนด",
+    pmFormIntervalHint: "ใส่จำนวนวันต่อรอบได้ 1–3,650 วัน",
+    pmFormPreviewTitle: "กำหนดรอบถัดไป",
+    pmFormPreviewHint: "ถ้าบันทึกว่าทำแล้วตรงวันทุกรอบ",
+    pmFormPreviewFirst: "ครั้งถัดไป",
+    pmFormPreviewRound: "รอบที่ {n}",
+    pmFormStepMonths: "+{n, number} เดือน",
+    pmFormStepYear: "+1 ปี",
+    pmFormStepDays: "+{n, number} วัน",
+    pmFormPreviewNote: "ระบบนับรอบถัดไปจากวันที่บันทึกว่าทำแล้วจริง ถ้าทำช้าหรือเร็วกว่ากำหนด วันรอบต่อไปจะเลื่อนตาม",
+    pmFormChangeCount: "แก้ {count, number} ช่อง",
+    pmFormBefore: "ก่อนแก้",
+    pmFormAfter: "หลังแก้",
+    pmFormDueState: "สถานะกำหนด",
+    pmFormImpactTitle: "ผลต่อหน้าแผน PM (ใช้งาน {count, number} แผน)",
+    pmFormInWeek: "อยู่ในกล่อง PM ครบกำหนดใน 7 วันของหน้าซ่อมบำรุง",
+    pmFormNotInWeek: "ไม่อยู่ในกล่อง PM ครบกำหนดใน 7 วันของหน้าซ่อมบำรุง",
+    pmFormPaused: "แผนพักอยู่ ไม่นับในหน้าแผน PM",
+    pmFormFooterEdit: "แก้ไขแผน {title} {planNo} · แก้ {count, number} ช่อง",
+    pmFormCancelEdit: "ยกเลิกการแก้ไข",
+    pmFormSaveEdit: "บันทึกการแก้ไข",
+    pmFormFooterCreate: "เพิ่มแผน PM {title} · {asset}",
+  }
+  for (const [key, value] of Object.entries(expected)) assert.equal(th[key], value, key)
+  const en = messages("en")
+  for (const key of Object.keys(expected)) assert.equal(typeof en[key], "string", key)
 })

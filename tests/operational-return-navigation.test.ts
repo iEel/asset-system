@@ -197,6 +197,7 @@ test("the repair create page and the PM create page read the wider returnTo; the
   assert.match(pmNew, /searchParams: Promise<\{ assetId\?: string; returnTo\?: string \| string\[\] \}>/)
   assert.match(pmNew, /const returnTo = normalizeMaintenanceReturnTo\(locale, query\.returnTo, "maintenance-pm"\)/)
   assert.match(pmNew, /\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}/)
-  assert.match(pmNew, /<MaintenancePlanForm locale=\{locale\} returnHref=\{returnTo\} initialAsset=\{initialAsset\} \/>/)
+  // Group 5 plan 4 Task 4: the form saves back to that returnTo; its ?assetId= asset comes as the card's facts.
+  assert.match(pmNew, /\n\s+returnHref=\{returnTo\}\r?\n\s+initialFacts=\{facts\}\r?\n/)
   assert.doesNotMatch(pmNew, /const returnTo = `/)
 })

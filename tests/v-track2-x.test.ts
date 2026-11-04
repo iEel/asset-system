@@ -197,7 +197,8 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
     else assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
   }
   // Whole numbers have their own rule and sentence, wholeNumber and notWholeNumber: the PM days (v-track final task 1).
-  assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays)"))
+  // Group 5 plan 4 Task 4: the PM form's checks live in its rules file.
+  assert.ok(read("src/lib/pm-plan-form-rules.ts").includes("range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays)"))
 })
 
 test("the batch's row limits and its duplicate check stay focusable and say why beside the row count (v-track plan 2 task 31d, A8)", () => {

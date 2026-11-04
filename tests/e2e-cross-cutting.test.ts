@@ -262,7 +262,7 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   assert.ok(spec.includes('page.locator("[data-checkout-read-back]")'), "on the phone the review is the read-back (group 3 spec §7.4)")
   assert.ok(read("e2e/cross-cutting/support/forms.ts").includes("export function handoverForward(page: Page, device: E2eDevice): Promise<void>"))
   // Each form checks the field the test leaves wrong, with the code that sentence reads (the V track's validate()).
-  const forms: [string, string, string][] = [
+  const forms: [string, string, string, string?][] = [
     ["src/lib/asset-form-rules.ts", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],
     ["src/lib/asset-form-rules.ts", `check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))`, "asset-tag"],
     ["src/components/asset-operations/checkout-form.tsx", `if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")`, "checkout-handover-mode"],
@@ -270,14 +270,15 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
     ["src/components/asset-operations/transfer-form.tsx", `check("reason", required(values.reason) ?? maxLength(values.reason, 500))`, "transfer-reason"],
     // Group 5 plan 2: the repair form's checks and its field ids live in its rules file.
     ["src/lib/repair-record-form-rules.ts", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
-    ["src/components/maintenance/maintenance-plan-form.tsx", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title"],
+    // Group 5 plan 4 Task 4: the PM form's checks live in its rules file; its field ids stay in the form.
+    ["src/lib/pm-plan-form-rules.ts", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title", "src/components/maintenance/maintenance-plan-form.tsx"],
     ["src/components/disposal/disposal-request-form.tsx", `check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))`, "disposal-request-reason"],
     ["src/components/audit/audit-round-form.tsx", `check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))`, "audit-round-end-date"],
   ]
-  for (const [file, rule, id] of forms) {
+  for (const [file, rule, id, idFile = file] of forms) {
     const source = read(file)
     assert.ok(source.includes(rule), `${file}: ${rule}`)
-    assert.ok(source.includes(`"${id}"`), `${file}: ${id}`)
+    assert.ok(read(idFile).includes(`"${id}"`), `${idFile}: ${id}`)
     assert.ok(spec.includes(`expectFieldError(page, "${id}", `), `the spec checks ${id}`)
   }
   // Every other id the spec fills is a control of its form.
