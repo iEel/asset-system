@@ -287,25 +287,6 @@ test("disposal execution: the executor, the type's own rules and the historical 
   assert.match(source, /if \(key === "evidenceExceptionReason" \|\| key === "evidenceExceptionAcknowledged"\) return values\.useHistoricalEvidenceException\n/)
 })
 
-test("disposal bulk approval: the shared remark shows its error under the field, and nothing eligible says why approve waits (v-track D6)", () => {
-  const source = read(`${C}disposal/disposal-bulk-approval.tsx`)
-  assertMigratedForm(source, { ids: { approvalRemark: "disposal-bulk-approval-remark" } })
-  assert.ok(validateBody(source).includes('check("approvalRemark", maxLength(values.approvalRemark, 4000))'))
-  assert.match(source, /<form data-disposal-bulk-dialog="true" onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/)
-  // The prerequisite keeps its gate, focusable and tied to the zero-eligible Notice (spec §4.4).
-  assert.match(source, /const nothingEligible = eligible\.length === 0\n/)
-  assert.match(source, /event\.preventDefault\(\)\n\s+if \(dialogState !== "preview" \|\| nothingEligible\) return\n\s+fieldErrors\.setErrors\(validate\(\{ approvalRemark \}\)\)/)
-  assert.ok(source.includes('<Notice tone="warning" role="alert" id="disposal-bulk-approval-zero-eligible">{copy.zeroEligible}</Notice>'))
-  assert.match(source, /aria-disabled=\{nothingEligible \|\| undefined\}\n\s+aria-describedby=\{nothingEligible \? "disposal-bulk-approval-zero-eligible" : undefined\}/)
-  // The commit hands a refusal of the remark back to the dialog (plan 1 M-R9's pattern); every other refusal keeps the
-  // dialog's danger Notice.
-  assert.match(source, /commit: \(\) => Promise<unknown>/)
-  assert.ok(source.includes("throw new Error(mode === \"preview\" ? copy.requestFailed : copy.approvalFailed, { cause: payload })"))
-  assert.match(source, /if \(caught instanceof Error && readFieldErrors\(caught\.cause\)\?\.approvalRemark\) \{\n\s+setDialogState\("preview"\)\n\s+return caught\.cause\n\s+\}\n\s+setError\(/)
-  assert.match(source, /const refusal = await commit\(\)\n\s+if \(fieldErrors\.applyServer\(refusal\) && focusFirstError\(\)\) return/)
-  assert.match(source, /setApprovalRemark\(event\.target\.value\)\n\s+fieldErrors\.clear\("approvalRemark"\)/)
-})
-
 test("disposal bulk execution: the shared values, the exception and the confirmation are errors on submit, a field refusal goes back to the review step, and nothing eligible says why (v-track D7)", () => {
   const source = read(`${C}disposal/disposal-bulk-execution.tsx`)
   assertMigratedForm(source, {

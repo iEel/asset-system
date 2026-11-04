@@ -42,7 +42,7 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 1,
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 1,
+  [`${C}approvals/approval-inbox-selection.tsx`]: 1,
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1,
   [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 1,
@@ -75,7 +75,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
   `${C}disposal/disposal-bulk-execution.tsx`,
-  `${C}disposal/disposal-bulk-approval.tsx`,
+  `${C}approvals/approval-inbox-selection.tsx`,
   `${C}disposal/disposal-execution-button.tsx`,
   `${C}disposal/disposal-decision-button.tsx`,
   `${C}disposal/disposal-batch-form.tsx`,
@@ -136,6 +136,7 @@ const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: strin
   [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, why: "the batch is saved and some shared evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}assets/asset-form.tsx`]: { count: 1, why: "the asset is saved and the page moves to it (to its edit page with เอกสารจัดซื้อ open when a document step failed, group 4 plan 3 Task 5); a follow-up step that failed (install, documents, photos) can be finished there", ruling: "asset partial save fix 2026-10-19" },
+  [`${C}approvals/approval-inbox-selection.tsx`]: { count: 1, why: "the bulk approve's result when nothing was approved (every item skipped or left to the panel): the dialog has closed and the selection cleared, so the toast is the only place left to say it", ruling: "group 6 plan 2 Task 3" },
   [`${C}asset-operations/transfer-form.tsx`]: { count: 1, why: "a 409 ASSET_CHANGED_DURING_OPERATION from the save, not a field: the form has read the asset again and says so in its own words", ruling: "group 3 plan 3 final review ui-4" },
 }
 

@@ -168,7 +168,8 @@ test("the disposal queue builds on PageHeader, TabNav, a divided panel, DataTabl
   assert.match(source, /current=\{filters\.status \|\| "all"\}/)
   assert.match(source, /count: formatCount\(stage\.count\)/)
   assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
-  assert.match(source, /<DataTableCell align="right" sticky="right">\s*<DisposalNextAction /)
+  // Group 6 plan 2 Task 3 (spec §10.2): the pending tab's rows link to the approvals page instead.
+  assert.match(source, /<DataTableCell align="right" sticky="right">\s*\{pendingInboxEnabled \? <DisposalInboxStep [^\n]* : <DisposalNextAction /)
   assert.match(source, /row=\{\{ menuLabel: tCommon\("moreActionsFor", \{ code: request\.disposalNo \}\), batchHref: /)
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/)
   assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{emptyState\} \/>/)
@@ -182,7 +183,7 @@ test("the disposal queue builds on PageHeader, TabNav, a divided panel, DataTabl
   }
   assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
   assert.match(source, /const lastPage = lastListPage\(total, filters\.pageSize\)\n\s+if \(requests\.length === 0 && total > 0 && filters\.page > lastPage\) \{\n\s+redirect\(`\/\$\{locale\}\/disposal\?\$\{buildDisposalQueryString\(filters, \{ page: lastPage \}\)\}`\)/)
-  assert.match(source, /const bulkApprovalCopy: DisposalBulkApprovalCopy = \{/, "2C plan 5 adds keys to bulkApprovalCopy and bulkExecutionCopy")
+  assert.doesNotMatch(source, /DisposalBulkApproval|bulkApprovalCopy/, "group 6 plan 2 Task 3: bulk approval lives in the approvals page")
   assert.match(source, /const bulkExecutionCopy: DisposalBulkExecutionCopy = \{/)
   assert.equal(existsSync(`${C}disposal/disposal-pagination.tsx`), false, "the queue was the last caller of DisposalPagination")
 })

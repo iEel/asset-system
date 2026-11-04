@@ -120,9 +120,8 @@ const BATCH_5_VERBS: Array<{ key: string; th: string; en: string; reads: Array<[
     th: "ละทิ้งรายการที่เลือก",
     en: "Discard selection",
     reads: [
-      ["src/components/disposal/disposal-bulk-approval.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
       ["src/components/disposal/disposal-bulk-execution.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
-      ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 2],
+      ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 1],
     ],
   },
   {

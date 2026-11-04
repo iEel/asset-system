@@ -15,14 +15,6 @@ import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
 import { DisposalRowActions, type DisposalRowNext } from "@/components/disposal/disposal-row-actions"
 import {
-  DisposalBulkApprovalCheckbox,
-  DisposalBulkApprovalProvider,
-  DisposalBulkApprovalSelectPageControl,
-  DisposalBulkApprovalToolbar,
-  DisposalBulkSelectionToggle,
-} from "@/components/disposal/disposal-bulk-approval"
-import type { DisposalBulkApprovalCopy } from "@/components/disposal/disposal-bulk-approval"
-import {
   DisposalBulkExecutionCheckbox,
   DisposalBulkExecutionProvider,
   DisposalBulkExecutionSelectPageControl,
@@ -54,10 +46,11 @@ import {
   filterDisposalExecutorOptions,
   getDisposalDecisionStatusOptions,
   getDisposalExecutionStatusOptions,
+  getDisposalApprovalSodReason,
   getDisposalSegregationError,
 } from "@/lib/disposal-policy"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
-import { getDisposalBulkApprovalBlockCode } from "@/lib/disposal-bulk-approval"
+import { approvalInboxItemHref } from "@/lib/approval-inbox"
 import { disposalBulkExecutionErrorCodes } from "@/lib/disposal-bulk-execution"
 
 type DisposalPageProps = {
@@ -153,33 +146,29 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     effectiveEvidenceCount: (itemEvidenceCounts.get(request.id) ?? 0) + (batchEvidenceCounts.get(request.batchId ?? "") ?? 0),
   }))
   const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
-  const bulkApprovalEnabled = canApprove && filters.status === "pending"
   const bulkExecutionEnabled = canEdit && filters.status === "approved"
-  const bulkItems = bulkApprovalEnabled ? requests.map((request) => {
-    const blockedCode = getDisposalBulkApprovalBlockCode({
-      id: request.id,
-      disposalNo: request.disposalNo,
-      isActive: request.isActive,
-      requestStatus: request.requestStatus,
+  // The pending tab (group 6 spec §10.2, decision 3): no ticks here; each row links to its item in งานรออนุมัติ, where
+  // bulk approval lives. A request the viewer asked for or created shows "ดู" with why they cannot decide it.
+  const pendingInboxEnabled = canApprove && filters.status === "pending"
+  const ownSodReason = (request: { requestedById: string; createdBy: string }) => {
+    const reason = getDisposalApprovalSodReason({
+      segregationRequired: workflowPolicy.segregationRequired,
+      actorEmployeeId: user.employeeId,
+      actorUserId: user.id,
       requestedById: request.requestedById,
-      createdBy: request.createdBy,
-      asset: {
-        assetTag: request.asset.assetTag,
-        status: request.asset.status,
-      },
-    }, {
-      userId: user.id,
-      employeeId: user.employeeId,
-    }, workflowPolicy.segregationRequired)
-
-    return {
-      requestId: request.id,
-      disposalNo: request.disposalNo,
-      assetTag: request.asset.assetTag,
-      selectable: blockedCode === null,
-      blockedCode,
-    }
-  }) : []
+      createdByUserId: request.createdBy,
+    })
+    return reason === "requester" || reason === "creator"
+  }
+  // "คุณพิจารณาได้ {a} จาก {b} รายการ": the filtered pending requests, less the viewer's own under segregation of duties.
+  const ownPendingCount = pendingInboxEnabled && workflowPolicy.segregationRequired
+    ? user.employeeId
+      ? await prisma.disposalRequest.count({ where: { AND: [requestWhere, { OR: [{ requestedById: user.employeeId }, { createdBy: user.id }] }] } })
+      : total
+    : 0
+  const pendingInboxNote = pendingInboxEnabled
+    ? t("pendingInboxCount", { decidable: formatCount(Math.max(0, total - ownPendingCount)), total: formatCount(total) })
+    : null
   const bulkExecutionItems = bulkExecutionEnabled ? requestsWithEvidence.map((request) => ({
     requestId: request.id,
     disposalNo: request.disposalNo,
@@ -204,49 +193,6 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     awaiting_execution: t("statuses.approved"),
     complete: t("statuses.disposed"),
     rejected: t("statuses.rejected"),
-  }
-  const bulkApprovalCopy: DisposalBulkApprovalCopy = {
-    toolbarLabel: t("bulkToolbarLabel"),
-    selectionLabel: t("bulkSelection"),
-    selectionMode: t("bulkSelectionMode"),
-    cancelSelectionMode: t("bulkCancelSelectionMode"),
-    selectedCount: t.raw("bulkSelectedCount"),
-    selectionLimit: t("bulkSelectionLimit"),
-    selectPage: t("bulkSelectPage"),
-    clearSelection: t("bulkClearSelection"),
-    reviewAndApprove: t("bulkReviewAndApprove"),
-    selectItem: t.raw("bulkSelectItem"),
-    requestFailed: t("bulkRequestFailed"),
-    approvalFailed: t("bulkApprovalFailed"),
-    previewTitle: t("bulkPreviewTitle"),
-    previewLoading: t("bulkPreviewLoading"),
-    preflightHelp: t("bulkPreflightHelp"),
-    sharedRemark: t("bulkSharedRemark"),
-    sharedRemarkHelp: t("bulkSharedRemarkHelp"),
-    remarkLimit: t.raw("bulkRemarkLimit"),
-    confirmApproval: t.raw("bulkConfirmApproval"),
-    committing: t("bulkCommitting"),
-    resultTitle: t("bulkResultTitle"),
-    selected: t("bulkSelected"),
-    eligible: t("bulkEligible"),
-    blocked: t("bulkBlocked"),
-    approved: t("bulkApproved"),
-    failed: t("bulkFailed"),
-    retry: t("bulkRetry"),
-    close: t("bulkClose"),
-    cancel: t("bulkCancel"),
-    zeroEligible: t("bulkZeroEligible"),
-    discardSelection: t("bulkDiscardSelection"),
-    discardSelectionAction: t("bulkDiscardSelectionAction"),
-    errors: {
-      DISPOSAL_REQUEST_NOT_FOUND: t("bulkErrors.DISPOSAL_REQUEST_NOT_FOUND"),
-      DISPOSAL_INVALID_STAGE: t("bulkErrors.DISPOSAL_INVALID_STAGE"),
-      DISPOSAL_SOD_CONFLICT: t("bulkErrors.DISPOSAL_SOD_CONFLICT"),
-      DISPOSAL_ASSET_INELIGIBLE: t("bulkErrors.DISPOSAL_ASSET_INELIGIBLE"),
-      DISPOSAL_CONCURRENT_UPDATE: t("bulkErrors.DISPOSAL_CONCURRENT_UPDATE"),
-      DISPOSAL_FORBIDDEN: t("bulkErrors.DISPOSAL_FORBIDDEN"),
-      DISPOSAL_APPROVAL_FAILED: t("bulkErrors.DISPOSAL_APPROVAL_FAILED"),
-    },
   }
   const bulkExecutionErrors = Object.fromEntries(
     disposalBulkExecutionErrorCodes.map((code) => [code, t(`bulkExecutionErrors.${code}`)]),
@@ -277,10 +223,10 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     openRequest: t("openRequest"),
     openBatch: t("openBatch"),
   }
+  const inboxStepLabels: DisposalInboxStepLabels = { review: t("reviewInInbox"), view: tCommon("view"), ownNote: t("ownRequestNote") }
 
   return (
     <div className="space-y-6">
-      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy}>
       <DisposalBulkExecutionProvider items={bulkExecutionItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkExecutionCopy} executionStatuses={executionStatuses} employees={employeeOptions} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} className="space-y-6">
       <PageHeader
         title={t("title")}
@@ -328,9 +274,9 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         title={t("requestList")}
         description={t("resultRange", { start: formatCount(resultRange.start), end: formatCount(resultRange.end), total: formatCount(total) })}
         actions={
-          bulkApprovalEnabled || bulkExecutionEnabled || canExport ? (
+          bulkExecutionEnabled || canExport ? (
             <>
-              {bulkApprovalEnabled ? <DisposalBulkSelectionToggle /> : bulkExecutionEnabled ? <DisposalBulkExecutionSelectionToggle /> : null}
+              {bulkExecutionEnabled ? <DisposalBulkExecutionSelectionToggle /> : null}
               {canExport ? (
                 <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
                   <Download aria-hidden="true" />
@@ -341,7 +287,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           ) : undefined
         }
       >
-        {bulkApprovalEnabled ? <DisposalBulkApprovalToolbar /> : bulkExecutionEnabled ? <DisposalBulkExecutionToolbar /> : null}
+        {bulkExecutionEnabled ? <DisposalBulkExecutionToolbar /> : null}
         <TabNav
           aria-label={t("stageFilterLabel")}
           items={stageTabs.map((stage) => ({
@@ -354,6 +300,13 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           className="px-4 md:px-5"
         />
         <div className="flex items-center justify-end gap-1 px-4 pt-2 text-meta text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
+        {pendingInboxNote ? (
+          <p data-disposal-inbox-note className="px-4 pt-3 text-meta text-muted-foreground md:px-5">
+            {pendingInboxNote}
+            {" · "}
+            <Link href={`/${locale}/admin/approvals?tab=disposal`} className={linkVariants({ size: "inherit" })}>{t("pendingInboxLink")}</Link>
+          </p>
+        ) : null}
         <div className={`${getMobileCardListClasses()} p-3`}>
           {requestsWithEvidence.length === 0 ? <ActionEmptyState {...emptyState} /> : requestsWithEvidence.map((request) => {
             const stage = getDisposalStage(request.requestStatus)
@@ -367,8 +320,8 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><Chip>{t(`types.${request.disposalType}`)}</Chip></div>
                 <KeyValueList className="mt-3" items={[{ key: "requestedBy", label: t("requestedBy"), value: request.requestedBy.fullNameTh }, { key: "requestDate", label: t("requestDate"), value: formatDateTime(request.requestDate) }]} />
                 <details className="mt-3 border-t border-border-soft"><summary className="cursor-pointer py-3 text-sm font-medium text-primary">{t("moreDetails")}</summary><KeyValueList items={[{ key: "reason", label: t("reason"), value: request.reason }, { key: "approver", label: t("approver"), value: request.approver ? <><span className="tag">{request.approver.code}</span> - {request.approver.fullNameTh}</> : null }, { key: "value", label: t("value"), value: getRequestValue(request, tCommon("baht")) }]} /></details>
-                {bulkApprovalEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : bulkExecutionEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="mobile" /></div> : null}
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} /></div>
+                {bulkExecutionEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="mobile" /></div> : null}
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">{pendingInboxEnabled ? <DisposalInboxStep own={ownSodReason(request)} inboxHref={approvalInboxItemHref(locale, "disposal", request.id)} detailHref={detailHref} labels={inboxStepLabels} /> : <DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} />}</div>
               </article>
             )
           })}
@@ -376,9 +329,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("requestList")} scrollHint={tCommon("tableScrollHint")}>
           <DataTableHeader>
             <tr>
-              {bulkApprovalEnabled ? (
-                <DataTableHead className="w-12 py-0"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></DataTableHead>
-              ) : bulkExecutionEnabled ? (
+              {bulkExecutionEnabled ? (
                 <DataTableHead className="w-12 py-0"><span className="sr-only">{t("bulkExecutionSelection")}</span><DisposalBulkExecutionSelectPageControl /></DataTableHead>
               ) : null}
               <DataTableHead>{t("disposalNo")}</DataTableHead>
@@ -392,15 +343,13 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           </DataTableHeader>
           <DataTableBody>
             {requestsWithEvidence.length === 0 ? (
-              <TableEmptyRow colSpan={((bulkApprovalEnabled || bulkExecutionEnabled) ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} emptyState={emptyState} />
+              <TableEmptyRow colSpan={(bulkExecutionEnabled ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} emptyState={emptyState} />
             ) : requestsWithEvidence.map((request) => {
               const stage = getDisposalStage(request.requestStatus)
               const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
               return (
                 <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
-                  {bulkApprovalEnabled ? (
-                    <DataTableCell className="w-12 py-0" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="desktop" /></DataTableCell>
-                  ) : bulkExecutionEnabled ? (
+                  {bulkExecutionEnabled ? (
                     <DataTableCell className="w-12 py-0" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="desktop" /></DataTableCell>
                   ) : null}
                   <DataTableCell className="whitespace-nowrap">
@@ -420,7 +369,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                   <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(request.requestDate)}</DataTableCell>
                   {canApprove || canEdit ? (
                     <DataTableCell align="right" sticky="right">
-                      <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} />
+                      {pendingInboxEnabled ? <DisposalInboxStep own={ownSodReason(request)} inboxHref={approvalInboxItemHref(locale, "disposal", request.id)} detailHref={detailHref} labels={inboxStepLabels} row /> : <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} />}
                     </DataTableCell>
                   ) : null}
                 </ClickableTableRow>
@@ -451,7 +400,6 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         ) : null}
       </ContentPanel>
       </DisposalBulkExecutionProvider>
-      </DisposalBulkApprovalProvider>
     </div>
   )
 }
@@ -527,6 +475,26 @@ function DisposalNextAction({ request, href, row, canApprove, canExecute, canUse
   if (review) return <DisposalDecisionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={decisionStatuses} defaultSaleValue={defaultSaleValue} defaultSalvageValue={defaultSalvageValue} />
   if (execute) return <DisposalExecutionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={executionStatuses} employees={filterDisposalExecutorOptions(employees, request.approverId, segregationRequired)} defaultActualSaleValue={defaultSaleValue} defaultActualSalvageValue={defaultSalvageValue} effectiveEvidenceCount={request.effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} />
   return <Link href={href} className={buttonVariants({ variant: "outline", size: "sm" })}>{labels.view}</Link>
+}
+
+type DisposalInboxStepLabels = { review: string; view: string; ownNote: string }
+
+// The pending tab's next step (group 6 spec §10.2): "พิจารณาในงานรออนุมัติ" to the item in the approvals page, or, for the
+// viewer's own request, "ดู" with "คุณเป็นผู้ขอ พิจารณาเองไม่ได้" under it.
+function DisposalInboxStep({ own, inboxHref, detailHref, labels, row = false }: { own: boolean; inboxHref: string; detailHref: string; labels: DisposalInboxStepLabels; row?: boolean }) {
+  if (own) {
+    return (
+      <div data-disposal-inbox-step="own" className={row ? "flex flex-col items-end gap-0.5" : "flex flex-col items-start gap-1"}>
+        <Link href={detailHref} className={buttonVariants({ variant: "outline", size: "sm" })}>{labels.view}</Link>
+        <span className="text-meta text-muted-foreground">{labels.ownNote}</span>
+      </div>
+    )
+  }
+  return (
+    <Link data-disposal-inbox-step="review" href={inboxHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+      {labels.review}
+    </Link>
+  )
 }
 
 // The money line under the type is a secondary line, not a money column, so it keeps its unit (spec 2B §5.7).

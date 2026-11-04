@@ -45,7 +45,6 @@ test("no browser confirm dialogs", () => {
 
 test("navigation guards ask with the in-app confirm and let new-tab clicks through", () => {
   for (const path of [
-    "src/components/disposal/disposal-bulk-approval.tsx",
     "src/components/disposal/disposal-bulk-execution.tsx",
     "src/components/master-data/supplier-form.tsx",
   ]) {

@@ -25,52 +25,36 @@ test("disposal queue communicates range, date errors, compact mobile detail, and
   assert.match(page, /hasActiveFilters=\{hasActiveFilters\}/)
 })
 
-test("disposal queue exposes bulk approval only through the approval workspace", () => {
+// Group 6 plan 2 Task 3 (spec §10.2, decision 3, ruling P2-R2): bulk approval moved to the approvals page. The pending
+// tab has no ticks; each row links to its item there, and a note above the table counts what the viewer may decide.
+test("the pending tab links each request to the approvals page, with no ticks and no bulk approval provider", () => {
   const page = readFileSync(queuePath, "utf8")
 
-  assert.match(page, /<DisposalBulkApprovalProvider/)
-  assert.match(page, /<DisposalBulkApprovalToolbar/)
-  assert.match(page, /<DisposalBulkApprovalCheckbox/)
-  assert.match(page, /<DisposalBulkSelectionToggle/)
-  assert.match(page, /canApprove/)
-  assert.match(page, /asset:\s*\{\s*select:[\s\S]*?status:/)
-  assert.match(page, /selectionKey=\{`\$\{filters\.page\}:\$\{filters\.pageSize\}:\$\{query\}`\}/)
-  assert.match(page, /data-no-row-click/)
+  assert.doesNotMatch(page, /DisposalBulkApproval|bulkApprovalCopy|bulkApprovalEnabled|disposal-bulk-approval"/)
+  assert.equal(existsSync("src/components/disposal/disposal-bulk-approval.tsx"), false, "the provider is deleted once nothing imports it")
+  assert.match(page, /const pendingInboxEnabled = canApprove && filters\.status === "pending"/)
+  assert.equal(page.match(/approvalInboxItemHref\(locale, "disposal", request\.id\)/g)?.length, 2, "the phone card and the table row")
+  assert.match(page, /return reason === "requester" \|\| reason === "creator"/, "the viewer's own request: ดู, with why")
+  assert.match(page, /t\("pendingInboxCount", \{ decidable: formatCount\(Math\.max\(0, total - ownPendingCount\)\), total: formatCount\(total\) \}\)/)
+  assert.match(page, /href=\{`\/\$\{locale\}\/admin\/approvals\?tab=disposal`\}/)
+  assert.match(page, /review: t\("reviewInInbox"\), view: tCommon\("view"\), ownNote: t\("ownRequestNote"\)/)
 })
 
-test("bulk approval navigation guard wraps filters as well as the queue", () => {
+test("bulk execution keeps its provider around the filters and the queue (the approved tab, until plan 4)", () => {
   const page = readFileSync(queuePath, "utf8")
-  const providerStart = page.indexOf("<DisposalBulkApprovalProvider")
+  const providerStart = page.indexOf("<DisposalBulkExecutionProvider")
   const mobileFilter = page.indexOf("<DisposalFilterForm")
   // One DisposalFilterForm renders twice (spec 2B §5.10 #5): the phone <details> copy first, then the desktop FilterPanel copy.
   const desktopFilter = page.indexOf("<DisposalFilterForm", mobileFilter + 1)
-  const providerEnd = page.lastIndexOf("</DisposalBulkApprovalProvider>")
+  const providerEnd = page.lastIndexOf("</DisposalBulkExecutionProvider>")
 
   assert.ok(providerStart >= 0)
   assert.ok(mobileFilter >= 0 && desktopFilter > mobileFilter, "two DisposalFilterForm call sites")
-  assert.ok(providerStart < mobileFilter)
-  assert.ok(providerStart < desktopFilter)
-  assert.ok(providerEnd > mobileFilter)
-  assert.ok(providerEnd > desktopFilter)
+  assert.ok(providerStart < mobileFilter && providerEnd > desktopFilter)
   assert.match(page, /<DisposalBulkExecutionProvider[^>]*className="space-y-6"/)
-})
-
-test("disposal queue passes the complete localized bulk approval copy and exposes initial desktop select-page control", () => {
-  const page = readFileSync(queuePath, "utf8")
-
-  assert.match(page, /import type \{ DisposalBulkApprovalCopy \}/)
-  assert.match(page, /const bulkApprovalCopy: DisposalBulkApprovalCopy = \{[\s\S]*?errors:/)
-  assert.match(page, /<DisposalBulkApprovalProvider[\s\S]*?copy=\{bulkApprovalCopy\}/)
-  assert.match(page, /<DisposalBulkApprovalSelectPageControl \/>/)
-})
-
-test("disposal queue retrieves ICU bulk approval templates through next-intl raw", () => {
-  const page = readFileSync(queuePath, "utf8")
-
-  for (const key of ["bulkSelectedCount", "bulkSelectItem", "bulkRemarkLimit", "bulkConfirmApproval"]) {
-    assert.match(page, new RegExp(`\\bt\\.raw\\("${key}"\\)`), `${key} must use raw template retrieval`)
-    assert.doesNotMatch(page, new RegExp(`\\bt\\("${key}"\\)`), `${key} must not be evaluated without variables`)
-  }
+  assert.match(page, /selectionKey=\{`\$\{filters\.page\}:\$\{filters\.pageSize\}:\$\{query\}`\}/)
+  assert.match(page, /asset:\s*\{\s*select:[\s\S]*?status:/)
+  assert.match(page, /data-no-row-click/)
 })
 
 test("disposal messages cover queue states in both locales", () => {
@@ -83,33 +67,19 @@ test("disposal messages cover queue states in both locales", () => {
   }
 })
 
-test("bulk approval copy exists in Thai and English", () => {
+test("the pending tab's words exist in Thai and English; the bulk-decision reasons stay for the approvals page", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).disposalPage
+  assert.equal(th.reviewInInbox, "พิจารณาในงานรออนุมัติ")
+  assert.equal(th.ownRequestNote, "คุณเป็นผู้ขอ พิจารณาเองไม่ได้")
+  assert.equal(th.pendingInboxCount, "คุณพิจารณาได้ {decidable} จาก {total} รายการ")
+  assert.equal(th.pendingInboxLink, "อนุมัติหลายรายการได้ที่งานรออนุมัติ")
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
-    for (const key of [
-      "bulkToolbarLabel",
-      "bulkSelection",
-      "bulkSelectionMode",
-      "bulkCancelSelectionMode",
-      "bulkSelectedCount",
-      "bulkReviewAndApprove",
-      "bulkPreviewTitle",
-      "bulkPreviewLoading",
-      "bulkPreflightHelp",
-      "bulkSelectPage",
-      "bulkClearSelection",
-      "bulkSharedRemark",
-      "bulkSharedRemarkHelp",
-      "bulkRemarkLimit",
-      "bulkCommitting",
-      "bulkResultTitle",
-      "bulkRetry",
-      "bulkClose",
-      "bulkCancel",
-      "bulkZeroEligible",
-      "bulkSelectItem",
-    ]) {
+    for (const key of ["reviewInInbox", "ownRequestNote", "pendingInboxCount", "pendingInboxLink"]) {
       assert.equal(typeof messages[key], "string", `${locale}:${key}`)
+    }
+    for (const key of ["bulkToolbarLabel", "bulkReviewAndApprove", "bulkPreviewTitle", "bulkSelectPage"]) {
+      assert.equal(messages[key], undefined, `${locale}:${key} went with the disposal queue's bulk approval`)
     }
     for (const code of ["DISPOSAL_REQUEST_NOT_FOUND", "DISPOSAL_INVALID_STAGE", "DISPOSAL_SOD_CONFLICT", "DISPOSAL_ASSET_INELIGIBLE", "DISPOSAL_CONCURRENT_UPDATE", "DISPOSAL_FORBIDDEN", "DISPOSAL_APPROVAL_FAILED"]) {
       assert.equal(typeof messages.bulkErrors[code], "string", `${locale}:${code}`)

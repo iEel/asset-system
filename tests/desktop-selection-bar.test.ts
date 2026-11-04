@@ -27,7 +27,9 @@ test("DesktopSelectionBar: the count, ล้าง, then the actions with the pr
 // list holds a label; no fixed phone bar comes with it.
 test("DesktopSelectionBar's callers: three lists with ticks and the labels page's print bar (P6-R10)", () => {
   const callers = readSourceFiles("src").filter((file) => file.source.includes("<DesktopSelectionBar")).map((file) => file.path).sort()
+  // Group 6 plan 2 Task 3: the approvals page's selection (spec §7.4) is the fifth caller.
   assert.deepEqual(callers, [
+    "src/components/approvals/approval-inbox-selection.tsx",
     "src/components/asset-operations/bulk-move-form.tsx",
     "src/components/assets/asset-label-batch-tool.tsx",
     "src/components/assets/asset-register-table.tsx",

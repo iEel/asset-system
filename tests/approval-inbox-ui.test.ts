@@ -79,3 +79,59 @@ test("approvals page words are in both message files", () => {
   }
   for (const value of Object.values(th)) assert.doesNotMatch(String(value), /Inbox/i)
 })
+
+// Group 6 plan 2 Task 3 (spec §7.4): the ticks, the selection kept across pages, the bar and the bulk approve.
+const SELECTION = "src/components/approvals/approval-inbox-selection.tsx"
+
+test("approvals page: the selection provider wraps the list column, ticks skip close rows, the bar is the column's last child", () => {
+  const source = read(PAGE)
+  assert.match(source, /<ApprovalInboxSelectionProvider scope=\{approvalInboxSelectionScope\(query\)\} tickable=\{tickable\} titles=\{data\.titles\} copy=\{selectionCopy\}>/)
+  assert.match(source, /\{row\.key === "round" \? null : \(\n\s+<ApprovalInboxTick\n\s+kind=\{row\.key\}\n\s+id=\{row\.id\}/)
+  assert.match(source, /disabled=\{!row\.tickable\}\n\s+reason=\{block \?\? undefined\}/)
+  assert.match(source, /<ApprovalInboxSelectionBar \/>\n\s+<\/ApprovalInboxSelectionProvider>\n\s+<\/div>/)
+  assert.match(source, /tDisposal\(`bulkErrors\.\$\{code\}`\)/)
+})
+
+test("selection: sessionStorage in try/catch, restored on scope or tickable change, one bar from md, a preview-first confirm", () => {
+  const source = read(SELECTION)
+  assert.match(source, /^"use client"/)
+  assert.equal(source.match(/window\.sessionStorage\./g)?.length, 3, "one read, one write, one remove")
+  assert.equal(source.match(/try \{\n\s+(?:return window\.sessionStorage|if \(selection\) window\.sessionStorage)/g)?.length, 2, "every storage access is inside a try")
+  assert.match(source, /restoreSelection\(parseStoredSelection\(readStorage\(approvalInboxSelectionStorageKey\)\), scope, JSON\.parse\(tickableKey\) as TickableIds\)/)
+  assert.match(source, /\}, \[scope, tickableKey\]\)/)
+  assert.match(source, /<DesktopSelectionBar\b/)
+  assert.match(source, /<label data-no-row-click [^>]*className=\{`hidden min-h-11 w-11 items-center justify-center md:flex/)
+  assert.match(source, /<AccessibleDialog open title=\{fill\(copy\.confirmTitle, \{ count: ids\.length \}\)\}/)
+  assert.match(source, /sendBulkDecision\(\{ mode: "preview", requestIds: ids \}, copy\)/)
+  assert.match(source, /sendBulkDecision\(\{ mode: "commit", requestIds: eligibleIds, approvalRemark: remark\.trim\(\) \|\| null \}, copy\)/)
+  assert.match(source, /runAuditFindingBatchReview\(ids, \{ action: "approve", reviewRemark \}, sendFindingReview,/)
+  assert.match(source, /failure\.reason === "assetChanged" \|\| failure\.reason === "alreadyDecided"/, "a 409 or an already-decided finding goes to the panel")
+  assert.match(source, /const NOT_OPENED_SHOWN = 8\n/)
+  assert.match(source, /maxLength\(values\.approvalRemark, 4000\)/)
+  assert.match(source, /router\.refresh\(\)/)
+  assert.match(source, /toast\.success\(message\)/)
+})
+
+test("selection: the 200 limit matches the bulk-decision schema", async () => {
+  const { APPROVAL_INBOX_SELECTION_MAX } = await import("../src/lib/approval-inbox-selection.ts")
+  const { MAX_DISPOSAL_BULK_DECISION_ITEMS } = await import("../src/lib/validations/disposal.ts")
+  assert.equal(APPROVAL_INBOX_SELECTION_MAX, 200)
+  assert.equal(MAX_DISPOSAL_BULK_DECISION_ITEMS, APPROVAL_INBOX_SELECTION_MAX)
+})
+
+test("selection: the bar's words are the spec's (§7.4)", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).approvalInboxPage
+  assert.equal(th.selectionCount, "{count} เลือกแล้ว (จากทุกหน้า) · {kind}")
+  assert.equal(th.clearSelection, "ล้างรายการเลือก")
+  assert.equal(th.selectionNote, "อนุมัติแบบกลุ่มทำได้ทีละประเภท · คำขอตัดจำหน่ายปฏิเสธทีละรายการเพราะต้องระบุเหตุผล · เลือกได้สูงสุด 200 รายการต่อครั้ง")
+  assert.equal(th.selectAllApprovable, "เลือกทั้งหมดที่อนุมัติได้ ({count})")
+  assert.equal(th.reviewAndApprove, "ตรวจสอบและอนุมัติ {count} รายการ")
+  assert.equal(th.selectionRestarted, "เลือกได้ทีละประเภท · เริ่มเลือกใหม่เป็น{kind}")
+  assert.equal(th.bulkTitle, "อนุมัติ {count} รายการ")
+  assert.equal(th.bulkNotOpened, "ยังไม่ได้เปิดดูรูป {count} รายการ")
+  assert.equal(th.bulkNotOpenedMore, "และอีก {count} รายการ")
+  assert.equal(th.bulkConfirm, "อนุมัติ {count} รายการ")
+  assert.equal(th.bulkDone, "อนุมัติแล้ว {count} รายการ")
+  assert.equal(th.bulkSkipped, "ข้ามไป {count} รายการ")
+  assert.equal(th.bulkToPanel, "ต้องตัดสินในแผงด้านขวา {count} รายการ")
+})
