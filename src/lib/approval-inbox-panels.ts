@@ -3,6 +3,7 @@
 // audit-findings-page-data.ts, shared with the findings page. Nothing here writes.
 import { getApprovalAgeStatus, type ApprovalAgeStatus } from "@/lib/approval-aging"
 import { getAuditRoundCloseChecklist, type AuditRoundCloseChecklist } from "@/lib/audit-round-close"
+import { isAuditRoundOperationalStatus } from "@/lib/audit-round-status"
 import { bangkokYear } from "@/lib/audit-rounds-list-rules"
 import { getDisposalApprovalBlock, type DisposalApprovalBlock } from "@/lib/disposal-bulk-approval"
 import { isDisposalPhotoFile, listDisposalPhotos, type DisposalPhotoDb, type DisposalPhotoRef } from "@/lib/disposal-photo"
@@ -217,14 +218,16 @@ export type AuditRoundClosePanel = {
   createdByName: string
   checklist: AuditRoundCloseChecklist
   ready: boolean
+  /** Active and not closed or cancelled (the inbox query's auditRoundOperationalWhere): only then is it in the queue. */
+  operational: boolean
 }
 
 /** One audit round for the close panel, with the close API's own checklist; null when it is missing or inactive. */
 export async function loadAuditRoundClosePanel(db: AuditRoundClosePanelDb, roundId: string): Promise<AuditRoundClosePanel | null> {
   const round = (await db.auditRound.findFirst({
     where: { id: roundId, isActive: true },
-    select: { id: true, auditNo: true, name: true, startDate: true, endDate: true, createdBy: true },
-  })) as { id: string; auditNo: string; name: string; startDate: Date; endDate: Date | null; createdBy: string } | null
+    select: { id: true, auditNo: true, name: true, startDate: true, endDate: true, createdBy: true, status: true, isActive: true },
+  })) as { id: string; auditNo: string; name: string; startDate: Date; endDate: Date | null; createdBy: string; status: string; isActive: boolean } | null
   if (!round) return null
 
   const [creator, checklist] = await Promise.all([
@@ -241,5 +244,6 @@ export async function loadAuditRoundClosePanel(db: AuditRoundClosePanelDb, round
     createdByName: creator?.displayName || round.createdBy,
     checklist,
     ready: checklist.canClose,
+    operational: round.isActive && isAuditRoundOperationalStatus(round.status),
   }
 }

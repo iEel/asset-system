@@ -262,7 +262,7 @@ test("(d) a missing or inactive request is null; no previous status and no sourc
 })
 
 test("loadAuditRoundClosePanel: nothing pending is ready; the opener's name, else the id; a missing round is null", async () => {
-  state.rounds = [{ id: "rnd-1", auditNo: "AUD-2026-0009", name: "HQ count", startDate: new Date("2026-10-01T00:00:00Z"), endDate: new Date("2026-10-31T00:00:00Z"), createdBy: "user-a", isActive: true }]
+  state.rounds = [{ id: "rnd-1", auditNo: "AUD-2026-0009", name: "HQ count", startDate: new Date("2026-10-01T00:00:00Z"), endDate: new Date("2026-10-31T00:00:00Z"), createdBy: "user-a", isActive: true, status: "open" }]
   state.users = [{ id: "user-a", displayName: "Narin A." }]
   const panel = await loadAuditRoundClosePanel(fakeDb, "rnd-1")
   assert.ok(panel)
@@ -270,6 +270,7 @@ test("loadAuditRoundClosePanel: nothing pending is ready; the opener's name, els
   assert.deepEqual(panel.checklist, { pendingItems: 0, pendingFindings: 0, openActions: 0, canClose: true })
   assert.equal(panel.createdByName, "Narin A.")
   assert.equal(panel.auditNo, "AUD-2026-0009")
+  assert.equal(panel.operational, true)
 
   state.users = []
   state.counts = { pendingFindings: 2 }
@@ -278,4 +279,19 @@ test("loadAuditRoundClosePanel: nothing pending is ready; the opener's name, els
   assert.equal(blocked?.createdByName, "user-a")
 
   assert.equal(await loadAuditRoundClosePanel(fakeDb, "rnd-gone"), null)
+})
+
+test("loadAuditRoundClosePanel: a closed or cancelled round with a clear checklist is not operational (the page's stale notice)", async () => {
+  state.counts = {}
+  state.users = []
+  for (const status of ["closed", "cancelled"]) {
+    state.rounds = [{ id: "rnd-2", auditNo: "AUD-2026-0010", name: "Done", startDate: new Date("2026-10-01T00:00:00Z"), endDate: null, createdBy: "user-a", isActive: true, status }]
+    const panel = await loadAuditRoundClosePanel(fakeDb, "rnd-2")
+    assert.ok(panel)
+    assert.equal(panel.ready, true)
+    assert.equal(panel.operational, false, status)
+  }
+  const select = state.calls.filter((entry) => entry.call === "auditRound.findFirst").at(-1)?.args.select as Record<string, unknown>
+  assert.equal(select.status, true)
+  assert.equal(select.isActive, true)
 })

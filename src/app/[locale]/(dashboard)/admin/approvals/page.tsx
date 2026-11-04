@@ -37,6 +37,7 @@ import { ApprovalDisposalPanel } from "@/components/approvals/approval-disposal-
 import { ApprovalFindingPanel } from "@/components/approvals/approval-finding-panel"
 import { ApprovalInboxPolicy, ApprovalInboxPolicyLine } from "@/components/approvals/approval-inbox-policy"
 import { ApprovalRoundClosePanel } from "@/components/approvals/approval-round-close-panel"
+import { AuditFindingPaneTop } from "@/components/audit/audit-finding-pane-top"
 import {
   ApprovalInboxSelectAll,
   ApprovalInboxSelectionBar,
@@ -314,7 +315,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
     }
   } else if (item?.key === "round") {
     const round = access.canApproveAudit ? await loadAuditRoundClosePanel(prisma, item.id) : null
-    panel = round?.ready ? framed(<ApprovalRoundClosePanel locale={locale} panel={round} />) : stalePanel
+    // A closed or cancelled round has left the queue even with a clear checklist: the stale notice.
+    panel = round?.ready && round.operational ? framed(<ApprovalRoundClosePanel locale={locale} panel={round} />) : stalePanel
   }
 
   const empty = hasFilters
@@ -533,6 +535,9 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
           aria-label={t("title")}
           className={cn("min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] xl:overflow-y-auto", !item && "max-xl:hidden")}
         >
+          {/* Below xl the panel takes the page: each item (and the next one after a decision, sent with scroll: false)
+              opens at the top of #main. From xl nothing moves (pane={null}). */}
+          {item ? <AuditFindingPaneTop key={`${item.key}:${item.id}`} pane={null} /> : null}
           {item ? <PageBackLink href={closeHref} label={t("backToInbox")} className="mb-3 xl:hidden" /> : null}
           {panel}
         </section>

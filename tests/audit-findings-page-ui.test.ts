@@ -79,7 +79,10 @@ test("two panes from xl: the list, then the 420px pane with its one panel slot, 
   assert.match(page, /<div data-audit-findings-panes className="grid min-w-0 gap-6 xl:grid-cols-\[minmax\(0,1fr\)_420px\] xl:items-start xl:gap-4">/)
   assert.match(page, /<div data-audit-findings-list className=\{cn\("min-w-0 space-y-4", chosen && "max-xl:hidden"\)\}>/)
   assert.match(page, /<div data-audit-finding-pane className=\{cn\("min-w-0 xl:sticky xl:top-4 xl:max-h-\[calc\(100dvh_-_var\(--shell-top\)_-_3rem\)\] xl:overflow-y-auto", !chosen && "max-xl:hidden"\)\}>\n\s+\{chosen \? <AuditFindingPaneTop key=\{chosen\.id\} \/> : null\}\n\s+\{chosen \? <PageBackLink href=\{closeHref\} label=\{t\("backToList"\)\} className="mb-3 xl:hidden" \/> : null\}\n\s+\{panel\}\n\s+<\/div>/)
-  assert.match(read("src/components/audit/audit-finding-pane-top.tsx"), /if \(window\.matchMedia\("\(min-width: 1280px\)"\)\.matches\) document\.querySelector\("\[data-audit-finding-pane\]"\)\?\.scrollTo\(\{ top: 0 \}\)\n\s+else document\.getElementById\("main"\)\?\.scrollTo\(\{ top: 0 \}\)/, "each finding opens at its top: the page below xl, the pane from xl (P4-R31)")
+  // Group 6 plan 2 Task 4: the pane is a prop whose default is this page's pane.
+  const paneTop = read("src/components/audit/audit-finding-pane-top.tsx")
+  assert.match(paneTop, /pane = "\[data-audit-finding-pane\]"/)
+  assert.match(paneTop, /if \(window\.matchMedia\("\(min-width: 1280px\)"\)\.matches\) \{\n\s+if \(pane\) document\.querySelector\(pane\)\?\.scrollTo\(\{ top: 0 \}\)\n\s+\} else document\.getElementById\("main"\)\?\.scrollTo\(\{ top: 0 \}\)/, "each finding opens at its top: the page below xl, the pane from xl (P4-R31)")
   assert.ok(page.indexOf("<div data-audit-findings-list") < page.indexOf("<div data-audit-finding-pane "), "the list comes first")
   assert.doesNotMatch(page, /<aside\b|fixed inset-0/, "a section, not a landmark aside; full screen is the content area, not an overlay")
 })

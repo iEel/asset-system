@@ -118,6 +118,19 @@ test("approvals page: the panel from the chosen kind, next from approvalInboxNei
   assert.match(page, /t\("staleNotice"\)/)
   assert.match(page, /t\("panelEmpty"\)/)
   assert.match(page, /<PageBackLink href=\{closeHref\} label=\{t\("backToInbox"\)\}/)
+  // A closed or cancelled round reads the stale notice even with a clear checklist.
+  assert.match(page, /round\?\.ready && round\.operational \? framed\(/)
+})
+
+test("approvals page: below xl each item, and the next after a decision, opens at the top of #main; from xl nothing moves", () => {
+  const page = read(PAGE)
+  assert.match(page, /\{item \? <AuditFindingPaneTop key=\{`\$\{item\.key\}:\$\{item\.id\}`\} pane=\{null\} \/> : null\}/)
+  const paneTop = read("src/components/audit/audit-finding-pane-top.tsx")
+  assert.match(paneTop, /window\.matchMedia\("\(min-width: 1280px\)"\)/)
+  assert.match(paneTop, /if \(pane\) document\.querySelector\(pane\)/)
+  assert.match(paneTop, /else document\.getElementById\("main"\)\?\.scrollTo\(\{ top: 0 \}\)/)
+  // The decision still replaces with scroll: false, so the list beside the panel keeps its place from xl.
+  assert.match(read(DECISION), /router\.replace\(nextHref \?\? closeHref, \{ scroll: false \}\)/)
 })
 
 test("panel words are in both message files", () => {
