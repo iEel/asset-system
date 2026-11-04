@@ -22,7 +22,9 @@ test("the PM page reads one page through readPmPlanPage and renders tabs, search
   assert.match(source, /data: \{ "data-pm-due-cell": bucket \}/)
   assert.match(source, /current: query\.due === bucket/)
   assert.match(source, /attention: bucket === "overdue" && due\.overdue\.count > 0/)
-  assert.match(source, /filterNote: dueSum/)
+  // The sum is one line under the strip (spec §9, Appendix B), not each cell's filterNote (that explains the filter).
+  assert.match(source, /<p data-pm-due-sum className="mt-2 text-meta text-muted-foreground">\{dueSum\}<\/p>/)
+  assert.doesNotMatch(source, /filterNote: dueSum/)
   assert.match(source, /t\("pmDueOutOfScope", \{ count: due\.outOfScope \}\)/)
   // The week value is a removable chip (spec §9).
   assert.match(source, /<FilterChipList\b/)

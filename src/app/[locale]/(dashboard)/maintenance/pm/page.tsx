@@ -90,7 +90,6 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
             : bucket === "soon"
               ? due.soon.earliest ? t("pmDueCellSoonFoot", { date: formatDate(due.soon.earliest) }) : t("pmDueCellSoonWindow")
               : t("pmDueCellLaterFoot"),
-        filterNote: dueSum,
         data: { "data-pm-due-cell": bucket },
       }))
     : []
@@ -167,7 +166,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
             <StatStrip
               items={dueItems}
             />
-            <p className="mt-2 text-meta text-muted-foreground">{dueSum}</p>
+            <p data-pm-due-sum className="mt-2 text-meta text-muted-foreground">{dueSum}</p>
           </div>
         ) : null}
         {query.due === "week" ? (
