@@ -7,7 +7,7 @@ import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getDisposalOptions } from "@/lib/disposal-options"
 import { formatMoney, isBlankValue } from "@/lib/display-format"
-import { cn, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
@@ -367,7 +367,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         segregationRequired={workflowPolicy.segregationRequired}
         approvedByViewer={workflowPolicy.segregationRequired && Boolean(disposalRequest.approverId) && disposalRequest.approverId === user.employeeId}
         previousStatus={previousStatusName}
-        doneAt={disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null}
+        // The execution date is a day (stored at midnight), not a time.
+        doneAt={disposalRequest.executionDate ? formatDate(disposalRequest.executionDate) : null}
       />
       {/* Below lg: what the asset is now and what each decision does to it (board DP-Request-Phone). */}
       <section data-disposal-asset-status className={cn(getPanelClasses(), "p-4 sm:p-5 lg:hidden")}>
