@@ -5,6 +5,7 @@ import test from "node:test"
 import {
   buildMaintenanceQueryString,
   buildMaintenanceWhere,
+  buildMaintenanceWhereWithoutStatus,
   parseMaintenanceListParams,
 } from "../src/lib/maintenance-query.ts"
 
@@ -54,4 +55,29 @@ test("the date range is Bangkok days, and an impossible date is dropped", () => 
   assert.equal(parseMaintenanceListParams({ dateTo: "2026-13-01" }).dateTo, "")
   const source = readFileSync("src/lib/maintenance-query.ts", "utf8")
   assert.doesNotMatch(source, /setDate|getDate\(\)|getFullYear|T00:00:00\.000`/)
+})
+
+// Group 5 plan 5 Task 1 (G5P5-R3, R4; Review Focus 5): stuck=all rides in the query; the tab counts use the where
+// without its status.
+test("stuck=all is read and written, and the where ignores it", () => {
+  assert.equal(parseMaintenanceListParams({ stuck: "all" }).stuck, "all")
+  assert.equal(parseMaintenanceListParams({ stuck: "x" }).stuck, "")
+  assert.equal(parseMaintenanceListParams({}).stuck, "")
+  assert.equal(parseMaintenanceListParams(new URLSearchParams("stuck=all")).stuck, "all")
+  const filters = parseMaintenanceListParams({ search: "UPS", stuck: "all" })
+  assert.equal(buildMaintenanceQueryString(filters), "search=UPS&stuck=all&page=1&pageSize=25")
+  assert.equal(buildMaintenanceQueryString(filters, { stuck: "" }), "search=UPS&page=1&pageSize=25")
+  assert.deepEqual(buildMaintenanceWhere(filters), buildMaintenanceWhere(parseMaintenanceListParams({ search: "UPS" })))
+})
+
+test("the where without status is the where less its repairStatus", () => {
+  for (const status of ["in_progress", "closed", "cancelled", ""]) {
+    const filters = parseMaintenanceListParams({ status, search: "UPS", assetId: "asset-1", dateFrom: "2026-10-01" })
+    const expected = { ...buildMaintenanceWhere(filters) }
+    delete expected.repairStatus
+    assert.deepEqual(buildMaintenanceWhereWithoutStatus(filters), expected)
+    assert.equal("repairStatus" in buildMaintenanceWhereWithoutStatus(filters), false)
+  }
+  const inverted = parseMaintenanceListParams({ status: "closed", dateFrom: "2026-10-08", dateTo: "2026-10-01" })
+  assert.equal("reportedDate" in buildMaintenanceWhereWithoutStatus(inverted), false)
 })

@@ -9,6 +9,8 @@ export type MaintenanceListParams = {
   assetId?: string
   dateFrom?: string
   dateTo?: string
+  // The stuck card's "ดูทั้งหมด" (G5P5-R3): rides in the query, never in the where.
+  stuck?: string
   page?: QueryValue
   pageSize?: QueryValue
 }
@@ -31,6 +33,7 @@ export function parseMaintenanceListParams(input: URLSearchParams | MaintenanceL
     assetId: getValue("assetId") ?? "",
     dateFrom: normalizeDate(getValue("dateFrom")),
     dateTo: normalizeDate(getValue("dateTo")),
+    stuck: getValue("stuck") === "all" ? "all" as const : "" as const,
     page: normalizePositiveInteger(getValue("page"), 1),
     pageSize: normalizePageSize(getValue("pageSize")),
   }
@@ -74,6 +77,11 @@ export function buildMaintenanceWhere(filters: ParsedMaintenanceListParams): Pri
   }
 }
 
+// The where without its status: the status tabs' counts (G5P5-R4). Search, asset and date range still apply.
+export function buildMaintenanceWhereWithoutStatus(filters: ParsedMaintenanceListParams): Prisma.MaintenanceTicketWhereInput {
+  return buildMaintenanceWhere({ ...filters, status: "" })
+}
+
 export function buildMaintenanceQueryString(
   filters: ParsedMaintenanceListParams,
   overrides: Partial<ParsedMaintenanceListParams> = {},
@@ -85,6 +93,7 @@ export function buildMaintenanceQueryString(
   if (values.assetId) params.set("assetId", values.assetId)
   if (values.dateFrom) params.set("dateFrom", values.dateFrom)
   if (values.dateTo) params.set("dateTo", values.dateTo)
+  if (values.stuck) params.set("stuck", values.stuck)
   params.set("page", String(values.page))
   params.set("pageSize", String(values.pageSize))
   return params.toString()
