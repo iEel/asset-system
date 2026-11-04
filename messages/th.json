@@ -3849,7 +3849,9 @@
       "DISPOSAL_PHOTO_TYPE": "ใช้ไฟล์ JPG, PNG หรือ WEBP",
       "DISPOSAL_LAST_PHOTO": "ต้องเหลือรูปอย่างน้อย 1 รูป",
       "DISPOSAL_USE_ROUND": "บันทึกตัดจำหน่ายผ่านรอบตัดจำหน่าย",
-      "DISPOSAL_ROUND_BLOCKED": "มีเครื่องที่บันทึกไม่ได้ในรอบนี้ · ดูรายการด้านล่าง"
+      "DISPOSAL_ROUND_BLOCKED": "มีเครื่องที่บันทึกไม่ได้ในรอบนี้ · ดูรายการด้านล่าง",
+      "DISPOSAL_CONCURRENT_UPDATE": "คำขอตัดจำหน่ายนี้ถูกเปลี่ยนแปลงโดยผู้ใช้อื่น กรุณาตรวจสอบใหม่",
+      "DISPOSAL_APPROVAL_FAILED": "ไม่สามารถอนุมัติคำขอตัดจำหน่ายนี้ได้"
     },
     "readinessBlockers": {
       "lifecycle_status": "สถานะไม่อนุญาต",

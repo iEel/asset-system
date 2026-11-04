@@ -3849,7 +3849,9 @@
       "DISPOSAL_PHOTO_TYPE": "Use a JPG, PNG or WEBP file",
       "DISPOSAL_LAST_PHOTO": "At least one photo must remain",
       "DISPOSAL_USE_ROUND": "Record disposals through a disposal round",
-      "DISPOSAL_ROUND_BLOCKED": "Some machines in this round cannot be recorded · see the list below"
+      "DISPOSAL_ROUND_BLOCKED": "Some machines in this round cannot be recorded · see the list below",
+      "DISPOSAL_CONCURRENT_UPDATE": "This disposal request was changed by another user. Review it again.",
+      "DISPOSAL_APPROVAL_FAILED": "This disposal request failed to be approved."
     },
     "readinessBlockers": {
       "lifecycle_status": "Lifecycle status is not eligible",
