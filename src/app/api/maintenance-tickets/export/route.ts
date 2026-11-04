@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
+import { chunkAuditIds } from "@/lib/audit-round-counts-rules"
 import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 
 const statusText: Record<string, string> = { in_progress: "ยังซ่อมไม่เสร็จ", closed: "ซ่อมเสร็จแล้ว", cancelled: "ยกเลิก" }
@@ -78,12 +79,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// SQL Server takes at most 2,100 parameters per query, and the export reads up to 5,000 records, so the IN list
+// goes in chunks of 2,000 (as audit-finding-labels does); one record's files never span two chunks.
 async function getMaintenanceAttachmentCounts(ticketIds: string[]) {
   if (ticketIds.length === 0) return new Map<string, number>()
-  const rows = await prisma.attachment.groupBy({
+  const chunks = await Promise.all(chunkAuditIds(ticketIds).map((chunk) => prisma.attachment.groupBy({
     by: ["referenceId"],
-    where: { module: "maintenance", referenceId: { in: ticketIds }, isActive: true },
+    where: { module: "maintenance", referenceId: { in: chunk }, isActive: true },
     _count: { _all: true },
-  })
-  return new Map(rows.map((row) => [row.referenceId, row._count._all]))
+  })))
+  return new Map(chunks.flat().map((row) => [row.referenceId, row._count._all]))
 }

@@ -277,3 +277,9 @@ test("the export uses the repair record columns", () => {
   assert.match(source, /key: "outcome"/)
   assert.doesNotMatch(source, /assignedTo|dueDate|laborCost|partsCost|inspectedBy/)
 })
+
+test("the repair export counts files in IN-list chunks under SQL Server's 2,100-parameter limit", () => {
+  const route = readFileSync("src/app/api/maintenance-tickets/export/route.ts", "utf8")
+  assert.match(route, /chunkAuditIds\(ticketIds\)/)
+  assert.doesNotMatch(route, /referenceId: \{ in: ticketIds \}/)
+})
