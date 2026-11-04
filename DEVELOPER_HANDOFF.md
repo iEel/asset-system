@@ -1501,6 +1501,16 @@ npm run build
   - **E2E:** `E2E-1104N` (disposal, dashboard, cross-cutting, smoke; four projects) 170 / 1 / 3. The failure was the repair Excel export answering 500 (P2029): the dev DB has over 2,100 repair records, past SQL Server's parameter limit, an old bug. Fixed in `7d516ba1` (the attachment count reads the IN list in chunks of 2,000); the reports spec then passed 23 / 0.
   - **Next:** plan 2, the approvals page (boards AP, AP-Phone) on `getApprovalInboxPage`.
 
+- Page group 6, plan 2: the approvals inbox (AP, AP-Phone).
+  - 2026-11-04, branch `feat/group6-approvals-inbox` (from master `e94c4929`). Not merged, not deployed, no migration. Plan `docs/superpowers/plans/2026-11-04-group6-approvals-inbox.md` (rulings P2-R1 phone pages with 25/50/100, P2-R2 the disposal queue's bulk approval removed, P2-R3 a new selection provider over the bulk-decision API).
+  - **Read model:** `ApprovalInboxPage` gains `order`, `tickable`, `titles`; `approvalInboxNeighbours`; `buildApprovalInboxHref`. Panels: `loadDisposalInboxPanel`, `loadAuditRoundClosePanel` (`src/lib/approval-inbox-panels.ts`), `loadAuditFindingPanel` (audit-findings-page-data, shared with the findings page).
+  - **UI:** the page `src/app/[locale]/(dashboard)/admin/approvals/page.tsx`; `src/components/approvals/` (policy and its disclosure, selection provider and bar, disposal panel, decision, photo gallery, finding panel, round-close panel, seen marker); `src/lib/approval-inbox-selection.ts` (storage keys, restore, toggle, select-all, unopened, `selectAllKind`). `AuditFindingPaneTop` takes a `pane` selector; the findings evidence list is `src/components/audit/audit-finding-evidence-list.tsx`.
+  - **Removed:** `src/components/disposal/disposal-bulk-approval.tsx`, `src/lib/approval-inbox-filter.ts`, the `disposalPage.bulk*` approval keys.
+  - **E2E:** `E2E-1104S` (desktop-light) 60 / 0, the VPN dropped mid-run; `E2E-1104T` (desktop-dark, both phones) 119 / 2 / 3: the 2 were the spec's phone panel-width check measuring the card's padded content, fixed in the spec (`5f59233c`); `e2e/approvals` on both phones then 10 / 0.
+  - **Look step:** the SLA badge wraps instead of truncating; the phone strip stacks (`956e1588`).
+  - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 4 survivors fixed in `20e36b92`: from xl the next item now opens at the pane's top (`AuditFindingPaneTop pane="[data-approval-panel]"`); the photo gallery is keyed by request; "อนุมัติเองไม่ได้" shows only when separation of duties blocks the row; an empty tab says so and links to ทั้งหมด. `e2e/approvals` + the batch spec, four projects: 36 / 0.
+  - **Next:** plan 3, the request form and the request page (DP-New, DP-Request); it renames `types.dispose` to "จำหน่าย" (today the method chip reads "ตัดจำหน่าย · ตัดจำหน่าย").
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
