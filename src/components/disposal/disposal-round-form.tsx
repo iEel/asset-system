@@ -459,8 +459,9 @@ export function DisposalRoundForm({
                           </div>
                           <div className="mt-0.5 text-meta text-muted-foreground">
                             {item?.disposalNo ? <Link href={`/${locale}/disposal/${id}`} className={linkVariants({ size: "inherit" })}><span className="tag">{item.disposalNo}</span></Link> : null}
-                            {item?.fromDisposalType ? <> · {t("rounds.form.askedAs", { method: t(`types.${item.fromDisposalType}`) })}</> : null}
-                            {item?.approverName ? <> · {t("rounds.form.approvedBy", { name: item.approverName })}</> : null}
+                            {item?.fromDisposalType ? <> · <span className="inline-block">{t("rounds.form.askedAs", { method: t(`types.${item.fromDisposalType}`) })}</span></> : null}
+                            {/* Each part wraps as a unit: Thai line breaking would split ผู้|อนุมัติ. */}
+                            {item?.approverName ? <> · <span className="inline-block">{t("rounds.form.approvedBy", { name: item.approverName })}</span></> : null}
                           </div>
                           {blocked ? <div className="mt-0.5 text-meta font-medium text-danger">{blockedReason(item?.code ?? null)}</div> : null}
                         </div>

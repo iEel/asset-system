@@ -157,6 +157,7 @@ test("the approved tab renders DisposalRoundSelectionProvider, the ticks, select
   assert.match(page, /<DisposalRoundSelectAll\b/)
   assert.match(page, /<DisposalRoundSelectionBar\b/)
   assert.match(page, /getDisposalRoundTickBlocks\(prisma, /, "the reasons come from the round service's own checks")
+  assert.match(page, /roundSelectionEnabled && tickBlock \? <p data-disposal-round-block className="[^"]*md:block">\{tickReasons\[tickBlock\]\}<\/p>/, "a disabled tick says why in words under the next step")
   assert.match(page, /disposalRoundSelectionScope\(\{ search: filters\.search, disposalType: filters\.disposalType, dateFrom: filters\.dateFrom, dateTo: filters\.dateTo \}\)/)
   assert.match(page, /createHref=\{`\/\$\{locale\}\/disposal\/rounds\/new`\}/)
   assert.doesNotMatch(page, /DisposalBulkExecution|DisposalExecutionButton/)

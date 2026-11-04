@@ -171,7 +171,7 @@ test("the disposal queue builds on PageHeader, TabNav, a divided panel, DataTabl
   assert.match(source, /<DataTableHead align="right" sticky="right">\{t\("queue\.colNext"\)\}<\/DataTableHead>/)
   // Group 6 plan 2 Task 3 (spec §10.2): the pending tab's rows link to the approvals page instead.
   // Group 6 plan 4 Task 3 (spec §10.2): a request recorded in a round shows its round instead.
-  assert.match(source, /<DataTableCell align="right" sticky="right">\s*\{pendingInboxEnabled \? <DisposalInboxStep [^\n]*\n\s+: request\.round \? \([\s\S]*?\)\n\s+: <DisposalNextAction /)
+  assert.match(source, /<DataTableCell align="right" sticky="right">\s*\{pendingInboxEnabled \? <DisposalInboxStep [^\n]*\n\s+: request\.round \? \([\s\S]*?\)\n\s+: \(\s*<>\s*<DisposalNextAction /)
   assert.match(source, /row=\{\{ menuLabel: tCommon\("moreActionsFor", \{ code: request\.disposalNo \}\), batchHref: /)
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/)
   assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{emptyState\} \/>/)

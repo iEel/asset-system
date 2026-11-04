@@ -327,7 +327,13 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                         <span className="tag">{request.round.roundNo}</span> · {formatDate(request.round.executionDate)}
                       </Link>
                     )
-                      : <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} labels={nextActionLabels} />}
+                      : (
+                        <>
+                          <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} labels={nextActionLabels} />
+                          {/* A disabled tick says why in words, not only in its tooltip (spec §10.2); ticks are md+ only. */}
+                          {roundSelectionEnabled && tickBlock ? <p data-disposal-round-block className="mt-1 hidden max-w-48 text-meta text-muted-foreground md:block">{tickReasons[tickBlock]}</p> : null}
+                        </>
+                      )}
                 </DataTableCell>
               </ClickableTableRow>
             )

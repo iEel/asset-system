@@ -135,12 +135,12 @@ export default async function DisposalRoundsPage({ params, searchParams }: Dispo
                     return (
                       <ClickableTableRow key={row.id} href={href} label={`${t("rounds.openRound")}: ${row.roundNo}`}>
                         <DataTableCell className="whitespace-nowrap"><span className="tag font-medium text-foreground">{row.roundNo}</span></DataTableCell>
-                        <DataTableCell>
+                        <DataTableCell className="min-w-56">
                           <div className="font-medium text-foreground [overflow-wrap:anywhere]">{row.title}</div>
                           <div className="text-meta text-muted-foreground">{t("rounds.machineCount", { count: row.machineCount })}</div>
                         </DataTableCell>
-                        <DataTableCell className="text-muted-foreground">{t(`types.${row.disposalType}`)}</DataTableCell>
-                        <DataTableCell className="text-muted-foreground [overflow-wrap:anywhere]">{row.recipientName ?? "–"}</DataTableCell>
+                        <DataTableCell className="whitespace-nowrap text-muted-foreground">{t(`types.${row.disposalType}`)}</DataTableCell>
+                        <DataTableCell className="min-w-40 text-muted-foreground [overflow-wrap:anywhere]">{row.recipientName ?? "–"}</DataTableCell>
                         <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDate(row.executionDate)}</DataTableCell>
                         <DataTableCell align="right" className="whitespace-nowrap"><span className="num">{money(row.saleValue) ?? "–"}</span></DataTableCell>
                         <DataTableCell align="right" sticky="right">
