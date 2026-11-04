@@ -76,7 +76,9 @@ export const VIEWER_API_REFUSALS: readonly ApiRefusal[] = [
   { method: "PATCH", path: `/api/maintenance-plans/${NO_RECORD}`, file: "maintenance-plans/[id]/route.ts", permission: "maintenance:edit", body: {} },
   { method: "POST", path: "/api/disposal-requests", file: "disposal-requests/route.ts", permission: "disposal:create", body: {} },
   { method: "POST", path: "/api/disposal-batches", file: "disposal-batches/route.ts", permission: "disposal:create", body: {} },
+  // Retired (410 DISPOSAL_USE_ROUND, group 6 plan 4) but still refuses a viewer first.
   { method: "POST", path: "/api/disposal-requests/bulk-execution", file: "disposal-requests/bulk-execution/route.ts", permission: "disposal:edit", body: {} },
+  { method: "POST", path: "/api/disposal-rounds", file: "disposal-rounds/route.ts", permission: "disposal:edit", body: {} },
 ]
 
 // Spec §6.6 "IT staff are refused the approve and review actions": the review of a finding (approve, reject, plan and

@@ -94,7 +94,7 @@ test("searches eligible disposal assets remotely instead of rendering the full a
 test("guards disposal creation against inactive actors and concurrent asset claims", () => {
   const requestRoute = readFileSync("src/app/api/disposal-requests/route.ts", "utf8")
   const batchRoute = readFileSync("src/app/api/disposal-batches/route.ts", "utf8")
-  const executionService = readFileSync("src/lib/disposal-execution-service.ts", "utf8")
+  const roundService = readFileSync("src/lib/disposal-round-service.ts", "utf8")
 
   assert.match(requestRoute, /DISPOSAL_EMPLOYEE_NOT_FOUND/)
   assert.match(requestRoute, /tx\.asset\.updateMany/)
@@ -103,7 +103,7 @@ test("guards disposal creation against inactive actors and concurrent asset clai
   assert.match(batchRoute, /tx\.asset\.updateMany/)
   assert.match(batchRoute, /orderedAssetIds = \[\.\.\.packet\.assetIds\]\.sort\(\)/)
   assert.match(batchRoute, /withPrismaUniqueRetry/)
-  assert.match(executionService, /id: command\.input\.executedById, isActive: true/)
+  assert.match(roundService, /id: input\.executedById, isActive: true/)
   assert.match(requestRoute, /getDisposalReadinessBlockers/)
   assert.match(batchRoute, /getDisposalReadinessBlockers/)
 })
@@ -226,18 +226,30 @@ test("bulk commit preserves DISPOSAL_FORBIDDEN as a typed blocked service error"
   assert.match(source, /outcome: code === "DISPOSAL_APPROVAL_FAILED" \? "failed" : "blocked"/)
 })
 
-test("execution enforces shared evidence policy and writes its audit transactionally", () => {
+// Group 6 plan 4 (P4-R1, spec §9.4): an actual disposal is recorded only through a disposal round. The two old paths
+// answer 410 DISPOSAL_USE_ROUND; the round counts request and batch evidence and writes its audit in its transaction.
+test("execution happens only in a round, which enforces the evidence policy and writes its audit transactionally", () => {
   const route = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
-  const service = readFileSync("src/lib/disposal-execution-service.ts", "utf8")
+  const bulkRoute = readFileSync("src/app/api/disposal-requests/bulk-execution/route.ts", "utf8")
+  const roundRoute = readFileSync("src/app/api/disposal-rounds/route.ts", "utf8")
+  const roundService = readFileSync("src/lib/disposal-round-service.ts", "utf8")
+  const executionService = readFileSync("src/lib/disposal-execution-service.ts", "utf8")
 
-  assert.match(route, /executeDisposalRequest/)
-  assert.match(service, /module:\s*"disposal_batch"/)
-  assert.match(service, /getDisposalExecutionEvidenceError/)
-  assert.match(service, /execute_historical_without_evidence/)
-  assert.match(service, /writeAuditLog\(transaction/)
-  assert.match(service, /isolationLevel:\s*"Serializable"/)
-  assert.match(service, /requestStatus:\s*"approved"/)
-  assert.doesNotMatch(route, /await logAudit\([\s\S]*?action:\s*"execute"/)
+  assert.match(route, /if \(action === "execute"\) return disposalApiError\("DISPOSAL_USE_ROUND", "DISPOSAL_USE_ROUND", 410\)/)
+  assert.doesNotMatch(route, /executeDisposalRequest/)
+  assert.match(bulkRoute, /requirePermission\(user, "disposal", "edit"\)\n\s+return disposalApiError\("DISPOSAL_USE_ROUND", "DISPOSAL_USE_ROUND", 410\)/)
+  assert.doesNotMatch(bulkRoute, /disposal-bulk-execution/)
+  assert.match(roundRoute, /requirePermission\(user, "disposal", "edit"\)/)
+  assert.match(roundRoute, /status: 201/)
+  assert.match(roundRoute, /code: error\.code, error: error\.code, items: error\.items \}, \{ status: 409 \}/)
+  assert.match(roundService, /module, referenceId: \{ in: chunk \}, isActive: true/)
+  assert.match(roundService, /groupBy\("disposal_batch", batchIds\)/)
+  assert.match(roundService, /isolationLevel: "Serializable", timeout: 120_000, maxWait: 10_000/)
+  assert.match(roundService, /withPrismaUniqueRetry\(save\)/)
+  assert.match(executionService, /execute_historical_without_evidence/)
+  assert.match(executionService, /writeAuditLogs\(tx, audits\)/)
+  assert.match(executionService, /requestStatus: "approved", isActive: true/)
+  assert.doesNotMatch(executionService, /export async function executeDisposalRequest\(/)
 })
 
 test("execution sanitizes unexpected infrastructure failures", () => {

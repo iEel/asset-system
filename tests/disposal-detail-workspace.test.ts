@@ -15,8 +15,8 @@ test("disposal detail surfaces one stage-aware next action in the next-step card
   assert.match(source, /getDisposalNextAction/)
   assert.match(source, /nextAction === "review"/)
   assert.match(source, /<DisposalDecisionButton/)
-  assert.match(source, /nextAction === "execute"/)
-  assert.match(source, /<DisposalExecutionButton/)
+  // An approved request is recorded only in a disposal round (group 6 plan 4, P4-R1): no execution dialog here.
+  assert.doesNotMatch(source, /DisposalExecutionButton/)
   assert.match(source, /centralApprovalQueue/)
   assert.doesNotMatch(source, /getCurrentOwnerContext|executionQueue/)
 })
@@ -70,20 +70,16 @@ test("disposal history uses existing movement translations rather than raw under
   assert.doesNotMatch(source, /movement\.movementType\.replaceAll\("_", " "\)/)
 })
 
-test("decision and execution dialogs use the shared accessible dialog", () => {
+test("the decision dialog uses the shared accessible dialog", () => {
   for (const path of [
     "src/components/disposal/disposal-decision-button.tsx",
-    "src/components/disposal/disposal-execution-button.tsx",
   ]) {
     const dialogSource = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
     assert.match(dialogSource, /<AccessibleDialog[\s\S]*?busy=\{saving\}/, path)
     assert.match(dialogSource, /returnFocusRef=\{triggerRef\}/, path)
     assert.doesNotMatch(dialogSource, /fixed inset-0|role="dialog"|restoreFocusRef|event\.key === "Tab"|handleKeyDown/, path)
   }
-  assert.match(
-    readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8"),
-    /initialFocusRef=\{executionDateRef\}/,
-  )
+  assert.ok(!existsSync("src/components/disposal/disposal-execution-button.tsx"))
 })
 
 test("the print action is structured for pending-request versus final-document copy", () => {

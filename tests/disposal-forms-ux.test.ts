@@ -34,8 +34,11 @@ test("disposal money fields name the unit in their own keys, and the read-only l
   const units = { th: "(บาท)", en: "(THB)" } as const
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
-    for (const key of ["saleValue", "salvageValue", "actualSaleValue", "actualSalvageValue"]) {
+    for (const key of ["saleValue", "salvageValue"]) {
       assert.equal(messages[`${key}Baht`], `${messages[key]} ${units[locale]}`, `${locale}.${key}Baht`)
+    }
+    // The actual values' money fields went with the execution dialog (group 6 plan 4, P4-R1); their read-only labels stay.
+    for (const key of ["saleValue", "salvageValue", "actualSaleValue", "actualSalvageValue"]) {
       assert.doesNotMatch(messages[key], /บาท|THB/, `${locale}.${key} also labels read-only values that already show ฿`)
     }
     assert.equal(typeof messages.requestEvidenceDescription, "string", `${locale}.requestEvidenceDescription`)

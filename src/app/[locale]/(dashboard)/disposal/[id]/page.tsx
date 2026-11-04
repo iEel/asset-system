@@ -5,13 +5,11 @@ import { FileText, History, Printer } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { getDisposalOptions } from "@/lib/disposal-options"
 import { formatMoney, isBlankValue } from "@/lib/display-format"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
-import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
 import { DisposalNextStepCard, type DisposalNextStepState } from "@/components/disposal/disposal-next-step-card"
 import { DisposalPhotoGallery } from "@/components/disposal/disposal-photo-gallery"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
@@ -26,7 +24,7 @@ import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { filterDisposalExecutorOptions, getDisposalApprovalSodReason, getDisposalExecutionStatusOptions, getDisposalSegregationError } from "@/lib/disposal-policy"
+import { getDisposalApprovalSodReason, getDisposalSegregationError } from "@/lib/disposal-policy"
 import { getDisposalNextAction } from "@/lib/disposal-stage"
 import { listDisposalPhotos, isDisposalPhotoFile } from "@/lib/disposal-photo"
 import { formatMovementType } from "@/lib/asset-detail-format"
@@ -100,7 +98,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     : null
   const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
 
-  const [movements, attachments, batchAttachments, options, savedSettings, sourceLinks, photoLists] = await Promise.all([
+  const [movements, attachments, batchAttachments, savedSettings, sourceLinks, photoLists] = await Promise.all([
     prisma.assetMovement.findMany({
       where: { referenceType: "disposal", referenceId: disposalRequest.id },
       orderBy: { performedAt: "desc" },
@@ -113,7 +111,6 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       where: { module: "disposal_batch", referenceId: disposalRequest.batch.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
     }) : Promise.resolve([]),
-    canEdit ? getDisposalOptions() : Promise.resolve(null),
     prisma.systemSetting.findMany({
       where: { key: { in: [...workflowApprovalSettingKeys] } },
       select: { key: true, value: true },
@@ -152,8 +149,6 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     createdByUserId: disposalRequest.createdBy,
     approverId: disposalRequest.approverId,
   }) === null
-  const executionStatuses = getDisposalExecutionStatusOptions(options?.statuses ?? [])
-  const executorOptions = filterDisposalExecutorOptions(options?.employees ?? [], disposalRequest.approverId, workflowPolicy.segregationRequired)
 
   const statusLabels = {
     pending: t("statuses.pending"),
@@ -194,19 +189,6 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   const showNoPhoto = photos.length === 0 && !isLost
   const inheritedQualifying = batchAttachments.filter((file) => isLost || isDisposalPhotoFile(file.fileType)).length
 
-  const executionControl = nextAction === "execute" && options && executionStatuses.length > 0 ? (
-    <DisposalExecutionButton
-      requestId={disposalRequest.id}
-      disposalNo={disposalRequest.disposalNo}
-      disposalType={disposalRequest.disposalType}
-      statuses={executionStatuses}
-      employees={executorOptions}
-      defaultActualSaleValue={disposalRequest.actualSaleValue?.toString() ?? disposalRequest.saleValue?.toString()}
-      defaultActualSalvageValue={disposalRequest.actualSalvageValue?.toString() ?? disposalRequest.salvageValue?.toString()}
-      effectiveEvidenceCount={attachments.length + batchAttachments.length}
-      canUseHistoricalEvidenceException={user.roles.includes("system_admin")}
-    />
-  ) : null
   const decisionActions = nextAction === "review" ? (
     <>
       <DisposalDecisionButton
@@ -240,8 +222,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           triggerLabel={t("approve")}
         />
       </div>
-    ) : nextStepState === "approved" && canEdit && executionControl ? executionControl
-      : null
+    ) : null
   const effectItems: KeyValueItem[] = [
     { key: "approve", label: tInbox("effectIfApprove"), value: tInbox("effectApprove") },
     {
@@ -362,7 +343,6 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           reject: previousStatusName ? tInbox("effectReject", { status: previousStatusName }) : tInbox("effectRejectUnknown"),
         }}
         actions={decisionActions}
-        executionAction={executionControl}
         rejectRemark={disposalRequest.approvalRemark}
         segregationRequired={workflowPolicy.segregationRequired}
         approvedByViewer={workflowPolicy.segregationRequired && Boolean(disposalRequest.approverId) && disposalRequest.approverId === user.employeeId}

@@ -8,13 +8,11 @@ import test from "node:test"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
 const decision = "src/components/disposal/disposal-decision-button.tsx"
-const execution = "src/components/disposal/disposal-execution-button.tsx"
 const notFound = "src/components/audit/audit-mark-not-found-button.tsx"
 const cancelRound = "src/components/audit/audit-round-cancel-button.tsx"
 
 for (const [path, handle] of [
   [decision, "DisposalDecisionButtonHandle"],
-  [execution, "DisposalExecutionButtonHandle"],
   [notFound, "AuditMarkNotFoundButtonHandle"],
   [cancelRound, "AuditRoundCancelButtonHandle"],
 ] as const) {
@@ -32,7 +30,8 @@ for (const [path, handle] of [
 }
 
 test("the disposal dialogs give focus back to the owner's button when there is one", () => {
-  for (const path of [decision, execution]) {
+  // The execution dialog went with per-row execution (group 6 plan 4, P4-R1): a disposal is recorded only in a round.
+  for (const path of [decision]) {
     const source = read(path)
     assert.match(source, /useImperativeHandle\(ref, \(\) => \(\{ open: \(\) => setOpen\(true\) \}\)\)/, path)
     assert.match(source, /\{hideTrigger \? null : \(/, path)

@@ -54,6 +54,11 @@ test("bulk disposal execution is registered for disposal edit permission", () =>
   assert.deepEqual(entry?.checks, [{ module: "disposal", action: "edit" }])
 })
 
+test("the disposal round is registered for disposal edit permission (group 6 plan 4)", () => {
+  const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/disposal-rounds/route.ts")
+  assert.deepEqual(entry?.checks, [{ module: "disposal", action: "edit" }])
+})
+
 test("the transaction pickers' search is registered for asset edit, as the four pages and their save routes (server search spec 6.2)", () => {
   const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/asset-operations/search/route.ts")
   assert.deepEqual(entry?.checks, [{ module: "asset", action: "edit" }])

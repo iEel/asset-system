@@ -1,20 +1,8 @@
+import { getBangkokDateKey } from "./preventive-maintenance.ts"
+
 export const disposalTypeValues = ["sell", "donate", "destroy", "lost", "dispose"] as const
 
 export type DisposalType = (typeof disposalTypeValues)[number]
-
-type DisposalExecutionFields = {
-  disposalType: DisposalType
-  recipientName?: string | null
-  documentNo?: string | null
-  useHistoricalEvidenceException?: boolean
-  actualSaleValue?: number | null
-  executionRemark?: string | null
-}
-
-export type DisposalFieldError = {
-  field: "recipientName" | "documentNo" | "actualSaleValue" | "executionRemark"
-  message: string
-}
 
 export type DisposalDecisionFieldError = {
   field: "approvalRemark"
@@ -32,25 +20,40 @@ export function getDisposalDecisionFieldErrors(input: { decision: "approve" | "r
   return []
 }
 
-export function getDisposalExecutionFieldErrors(input: DisposalExecutionFields): DisposalFieldError[] {
-  const errors: DisposalFieldError[] = []
-  const hasRecipient = Boolean(input.recipientName?.trim())
-  const hasDocument = Boolean(input.documentNo?.trim())
-  const hasRemark = Boolean(input.executionRemark?.trim())
+export type DisposalRoundFieldError = {
+  field: "recipientName" | "documentNo" | "saleValue" | "remark" | "executionDate"
+  message: string
+}
 
-  if (["sell", "donate", "dispose"].includes(input.disposalType) && !hasRecipient) {
+// The round's field rules (group 6 spec §11.2): one method for the whole round, so the rules follow the round's method,
+// not each request's. The lump price replaces the per-request actual sale value; the date is not after the Bangkok today.
+export function getDisposalRoundFieldErrors(
+  input: {
+    disposalType: DisposalType
+    executionDate?: Date | null
+    recipientName?: string | null
+    documentNo?: string | null
+    saleValue?: number | null
+    remark?: string | null
+  },
+  now: Date = new Date(),
+): DisposalRoundFieldError[] {
+  const errors: DisposalRoundFieldError[] = []
+  if (requiresDisposalExecutionRecipient(input.disposalType) && !input.recipientName?.trim()) {
     errors.push({ field: "recipientName", message: "Recipient, buyer, or destination is required" })
   }
-  if (!hasDocument && !input.useHistoricalEvidenceException) {
+  if (!input.documentNo?.trim()) {
     errors.push({ field: "documentNo", message: "Reference document number is required" })
   }
-  if (input.disposalType === "sell" && input.actualSaleValue == null) {
-    errors.push({ field: "actualSaleValue", message: "Actual sale value is required" })
+  if (input.disposalType === "sell" && input.saleValue == null) {
+    errors.push({ field: "saleValue", message: "Round sale price is required" })
   }
-  if (["destroy", "lost"].includes(input.disposalType) && !hasRemark) {
-    errors.push({ field: "executionRemark", message: "Execution or incident detail is required" })
+  if (requiresDisposalExecutionRemark(input.disposalType) && !input.remark?.trim()) {
+    errors.push({ field: "remark", message: "Execution or incident detail is required" })
   }
-
+  if (input.executionDate && !Number.isNaN(input.executionDate.getTime()) && getBangkokDateKey(input.executionDate) > getBangkokDateKey(now)) {
+    errors.push({ field: "executionDate", message: "Disposal date cannot be in the future" })
+  }
   return errors
 }
 

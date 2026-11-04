@@ -115,16 +115,6 @@ const BATCH_5_VERBS: Array<{ key: string; th: string; en: string; reads: Array<[
     ],
   },
   {
-    // One key for both bulk confirms: they mean the same thing (spec 2C §5, ruling ด17).
-    key: "disposalPage.bulkDiscardSelectionAction",
-    th: "ละทิ้งรายการที่เลือก",
-    en: "Discard selection",
-    reads: [
-      ["src/components/disposal/disposal-bulk-execution.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
-      ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 1],
-    ],
-  },
-  {
     key: "supplier.unsavedChangesLeave",
     th: "ออกโดยไม่บันทึก",
     en: "Leave without saving",

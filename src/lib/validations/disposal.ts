@@ -3,9 +3,7 @@ import { optionalText } from "./shared.ts"
 import {
   disposalTypeValues,
   getDisposalDecisionFieldErrors,
-  getDisposalExecutionFieldErrors,
 } from "../disposal-type-policy.ts"
-import { normalizeDisposalBulkExecutionIds } from "../disposal-bulk-execution.ts"
 
 const optionalDecimal = z.preprocess(
   (value) => (value === "" || value == null ? null : value),
@@ -40,57 +38,9 @@ export const disposalDecisionSchema = z.object({
   }
 })
 
-export const disposalExecutionSchema = z.object({
-  disposalType: z.enum(disposalTypes),
-  executionDate: z.coerce.date(),
-  executedById: z.string().trim().min(1),
-  nextStatusId: z.string().trim().min(1),
-  recipientName: optionalText,
-  documentNo: optionalText,
-  useHistoricalEvidenceException: z.boolean().optional().default(false),
-  evidenceExceptionReason: z.preprocess(
-    (value) => typeof value === "string" ? value.trim() || null : value,
-    z.string().max(2000).nullable().optional(),
-  ),
-  evidenceExceptionAcknowledged: z.boolean().optional().default(false),
-  actualSaleValue: optionalDecimal,
-  actualSalvageValue: optionalDecimal,
-  executionRemark: optionalText,
-}).superRefine((input, context) => {
-  for (const error of getDisposalExecutionFieldErrors(input)) {
-    context.addIssue({ code: "custom", path: [error.field], message: error.message })
-  }
-})
-
 export const MAX_DISPOSAL_BULK_DECISION_ITEMS = 200
 
 const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(MAX_DISPOSAL_BULK_DECISION_ITEMS)
-const disposalBulkExecutionRequestIds = z.array(z.string().trim().min(1))
-  .transform(normalizeDisposalBulkExecutionIds)
-  .pipe(z.array(z.string().min(1)).min(1).max(20))
-
-export const disposalBulkExecutionSchema = z.object({
-  mode: z.enum(["preview", "commit"]),
-  requestIds: disposalBulkExecutionRequestIds,
-  executionDate: z.coerce.date(),
-  executedById: z.string().trim().min(1),
-  nextStatusId: z.string().trim().min(1),
-  sharedRecipientName: z.preprocess(
-    (value) => typeof value === "string" ? value.trim() || null : value,
-    z.string().max(200).nullable(),
-  ).optional(),
-  // One reference document number for the rows that have none of their own (e2e decision DX2), as the recipient above.
-  sharedDocumentNo: z.preprocess(
-    (value) => typeof value === "string" ? value.trim() || null : value,
-    z.string().max(100).nullable(),
-  ).optional(),
-  useHistoricalEvidenceException: z.boolean().optional().default(false),
-  evidenceExceptionReason: z.preprocess(
-    (value) => (value === "" || value == null ? null : value),
-    z.string().trim().max(2000).nullable(),
-  ).optional(),
-  evidenceExceptionAcknowledged: z.boolean().optional().default(false),
-})
 
 export const disposalBulkDecisionSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("preview"), requestIds: disposalBulkRequestIds }).strict(),
@@ -107,6 +57,4 @@ export const disposalBulkDecisionSchema = z.discriminatedUnion("mode", [
 
 export type DisposalRequestInput = z.infer<typeof disposalRequestSchema>
 export type DisposalDecisionInput = z.infer<typeof disposalDecisionSchema>
-export type DisposalExecutionInput = z.infer<typeof disposalExecutionSchema>
 export type DisposalBulkDecisionInput = z.infer<typeof disposalBulkDecisionSchema>
-export type DisposalBulkExecutionInput = z.infer<typeof disposalBulkExecutionSchema>

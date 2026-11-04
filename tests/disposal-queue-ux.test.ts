@@ -40,21 +40,16 @@ test("the pending tab links each request to the approvals page, with no ticks an
   assert.match(page, /review: t\("reviewInInbox"\), view: tCommon\("view"\), ownNote: t\("ownRequestNote"\)/)
 })
 
-test("bulk execution keeps its provider around the filters and the queue (the approved tab, until plan 4)", () => {
+// Group 6 plan 4 (P4-R1): bulk execution is retired; an approved request is recorded only in a disposal round.
+test("the queue no longer carries bulk execution or a per-row execution", () => {
   const page = readFileSync(queuePath, "utf8")
-  const providerStart = page.indexOf("<DisposalBulkExecutionProvider")
   const mobileFilter = page.indexOf("<DisposalFilterForm")
   // One DisposalFilterForm renders twice (spec 2B §5.10 #5): the phone <details> copy first, then the desktop FilterPanel copy.
   const desktopFilter = page.indexOf("<DisposalFilterForm", mobileFilter + 1)
-  const providerEnd = page.lastIndexOf("</DisposalBulkExecutionProvider>")
 
-  assert.ok(providerStart >= 0)
   assert.ok(mobileFilter >= 0 && desktopFilter > mobileFilter, "two DisposalFilterForm call sites")
-  assert.ok(providerStart < mobileFilter && providerEnd > desktopFilter)
-  assert.match(page, /<DisposalBulkExecutionProvider[^>]*className="space-y-6"/)
-  assert.match(page, /selectionKey=\{`\$\{filters\.page\}:\$\{filters\.pageSize\}:\$\{query\}`\}/)
+  assert.doesNotMatch(page, /DisposalBulkExecution|DisposalExecutionButton|bulkExecution/)
   assert.match(page, /asset:\s*\{\s*select:[\s\S]*?status:/)
-  assert.match(page, /data-no-row-click/)
 })
 
 test("disposal messages cover queue states in both locales", () => {

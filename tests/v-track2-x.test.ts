@@ -164,8 +164,7 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
     [`${C}assets/asset-form-documents.tsx`]: ["purchaseDocument.totalAmount"],
     [`${C}assets/asset-batch-form.tsx`]: ["common.purchasePrice"],
     // Group 6 plan 3 Tasks 2 and 3: the request and batch forms and the decision dialog ask for no price (the user,
-    // 2026-11-04), so they have no money control.
-    [`${C}disposal/disposal-execution-button.tsx`]: ["values.actualSaleValue", "values.actualSalvageValue"],
+    // 2026-11-04), so they have no money control; group 6 plan 4 retired the execution dialog and its two.
     [`${C}maintenance/repair-record-form.tsx`]: ["values.repairCost"],
     [`${C}maintenance/repair-record-actions.tsx`]: ["values.repairCost"],
   }

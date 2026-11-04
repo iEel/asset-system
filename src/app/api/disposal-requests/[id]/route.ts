@@ -5,17 +5,14 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { issuesToFieldErrors } from "@/lib/field-errors"
 import { getDisposalStatusTargetError } from "@/lib/disposal-policy"
-import { disposalDecisionSchema, disposalExecutionSchema } from "@/lib/validations/disposal"
+import { disposalDecisionSchema } from "@/lib/validations/disposal"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { disposalApiError } from "@/lib/disposal-api-errors"
-import { getDisposalEvidenceFieldErrors } from "@/lib/disposal-evidence-exception"
 import {
   approveDisposalRequest,
   DisposalApprovalServiceError,
   rejectDisposalRequest,
 } from "@/lib/disposal-approval-service"
-import { getDisposalBatchSchemaReadiness } from "@/lib/disposal-schema-readiness"
-import { executeDisposalRequest, DisposalExecutionServiceError } from "@/lib/disposal-execution-service"
 
 type DisposalRequestContext = {
   params: Promise<{ id: string }>
@@ -33,30 +30,8 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       requirePermission(user, "disposal", "approve")
     }
 
-    if (action === "execute") {
-      const input = disposalExecutionSchema.parse(body)
-      try {
-        const result = await executeDisposalRequest({
-          requestId: id,
-          actor: {
-            userId: user.id,
-            employeeId: user.employeeId,
-            roles: user.roles,
-            permissions: user.permissions,
-          },
-          input,
-        }, {
-          database: prisma,
-          batchSchemaReadiness: await getDisposalBatchSchemaReadiness(),
-        })
-        return NextResponse.json(result.request)
-      } catch (error) {
-        if (error instanceof DisposalExecutionServiceError) {
-          return disposalApiError(error.code, error.message, getDisposalExecutionErrorStatus(error.code), getDisposalEvidenceFieldErrors(error.code, input))
-        }
-        throw error
-      }
-    }
+    // Retired (group 6 plan 4, P4-R1): an actual disposal is recorded only through a disposal round.
+    if (action === "execute") return disposalApiError("DISPOSAL_USE_ROUND", "DISPOSAL_USE_ROUND", 410)
 
     const [disposalRequest, savedSettings] = await Promise.all([
       prisma.disposalRequest.findFirst({
@@ -171,13 +146,5 @@ function getDisposalDecisionErrorStatus(code: DisposalApprovalServiceError["code
   ) return 409
   if (code === "DISPOSAL_SOD_CONFLICT" || code === "DISPOSAL_FORBIDDEN") return 403
   if (code === "DISPOSAL_REQUEST_NOT_FOUND") return 404
-  return 400
-}
-
-function getDisposalExecutionErrorStatus(code: DisposalExecutionServiceError["code"]) {
-  if (code === "DISPOSAL_CONCURRENT_UPDATE") return 409
-  if (code === "DISPOSAL_BATCH_SCHEMA_CHECK_FAILED") return 503
-  if (code === "DISPOSAL_FORBIDDEN" || code === "DISPOSAL_SOD_CONFLICT" || code === "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN") return 403
-  if (code === "DISPOSAL_REQUEST_NOT_FOUND" || code === "DISPOSAL_STATUS_NOT_FOUND" || code === "DISPOSAL_EMPLOYEE_NOT_FOUND") return 404
   return 400
 }

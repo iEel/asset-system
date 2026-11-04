@@ -250,8 +250,7 @@ test("the disposal request form and the request page: the form's errors and phot
   assert.equal(page.photoTypeRefused, "ใช้ไฟล์ JPG, PNG หรือ WEBP")
   assert.equal(page.submitRequest, "ส่งคำขอตัดจำหน่าย")
   assert.equal(page.executeDisposal, "บันทึกตัดจำหน่าย")
-  assert.equal(page.executionTitle, "บันทึกตัดจำหน่าย")
-  assert.equal(page.executionSuccess, "บันทึกตัดจำหน่ายแล้ว")
+  // The execution dialog's title and toast went with it (group 6 plan 4, P4-R1); plan 4 Task 6 records through a round.
   assert.equal(page.errors.DISPOSAL_EVIDENCE_REQUIRED, "กรุณาแนบหลักฐานก่อนบันทึกตัดจำหน่าย")
   assert.equal(page.requestPage.titleOwn, "คุณพิจารณาคำขอนี้เองไม่ได้")
   assert.equal(page.requestPage.noPhoto, "คำขอนี้ยังไม่มีรูป · แนบรูปได้ที่นี่")

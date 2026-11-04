@@ -175,17 +175,18 @@ test("the 400 for invalid input names its fields, and field refusals and duplica
 
 test("the disposal recipient rule has its catalog key, and the catalog test reads message: literals too (V spec §6.3)", async () => {
   const { getApiErrorKey } = await load<typeof import("../src/lib/api-error-catalog.ts")>("src/lib/api-error-catalog.ts")
-  const { disposalExecutionSchema } = await load<typeof import("../src/lib/validations/disposal.ts")>("src/lib/validations/disposal.ts")
+  const { disposalRoundInputSchema } = await load<typeof import("../src/lib/validations/disposal-round.ts")>("src/lib/validations/disposal-round.ts")
   assert.equal(getApiErrorKey("Recipient, buyer, or destination is required"), "recipientRequired")
   const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors.recipientRequired
   assert.equal(messages("th"), "กรุณาระบุผู้รับ ผู้ซื้อ หรือปลายทาง")
   assert.equal(messages("en"), "Recipient, buyer, or destination is required")
-  // Every field rule of a disposal execution reaches its field as a catalog key (the form sends every key, empty or not).
-  const issues = issuesOf(disposalExecutionSchema, {
-    disposalType: "sell", executionDate: "2026-10-17", executedById: "e1", nextStatusId: "s1", recipientName: "", documentNo: "",
-    evidenceExceptionReason: "", actualSaleValue: "", actualSalvageValue: "", executionRemark: "",
+  // Every field rule of a disposal round reaches its field as a catalog key (the form sends every key, empty or not);
+  // the round replaced the per-request execution (group 6 plan 4).
+  const issues = issuesOf(disposalRoundInputSchema, {
+    mode: "commit", requestIds: ["00000000-0000-4000-8000-000000000001"], disposalType: "sell", executionDate: "2026-10-17",
+    executedById: "e1", recipientName: "", documentNo: "", evidenceExceptionReason: "", saleValue: "", remark: "",
   })
-  assert.deepEqual(issuesToFieldErrors(issues), { recipientName: "recipientRequired", documentNo: "referenceDocumentRequired", actualSaleValue: "saleValueRequired" })
+  assert.deepEqual(issuesToFieldErrors(issues), { recipientName: "recipientRequired", documentNo: "referenceDocumentRequired", saleValue: "disposalRoundSaleValueRequired" })
   assert.ok(read("tests/api-error-catalog.test.ts").includes(String.raw`/(?:\berror:\s*|\bmessage:\s*|new\s+\w*Error\(`), "the catalog test reads message: literals")
 })
 

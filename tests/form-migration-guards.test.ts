@@ -114,7 +114,6 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   // Group 6 plan 3 Task 2: the type's Select and its NativeSelect became ChoiceCard radios (spec §8.3), which keep one required; the reason keeps its three.
   [`${C}disposal/disposal-request-form.tsx`]: [2, 1, 1],
   [`${C}disposal/disposal-batch-form.tsx`]: [1, 1, 1],
-  [`${C}disposal/disposal-execution-button.tsx`]: [8, 4, 1],
   // Group 6 plan 3 Task 3: the decision select shows only without a preset decision and the status select went; it keeps
   // the select's required, the remark's required (to reject) and its maxLength.
   [`${C}disposal/disposal-decision-button.tsx`]: [2, 1, 0],
@@ -154,7 +153,6 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}master-data/employee-form.tsx`]: [6, 5, 0],
   [`${C}master-data/location-form.tsx`]: [4, 3, 0],
   [`${C}master-data/supplier-form.tsx`]: [2, 6, 0],
-  [`${C}disposal/disposal-bulk-execution.tsx`]: [5, 2, 1],
   [`${C}audit/audit-round-form.tsx`]: [6, 1, 0],
   [`${C}audit/audit-round-cancel-button.tsx`]: [1, 0, 0],
   [`${C}admin/admin-user-form.tsx`]: [3, 4, 1],
@@ -191,7 +189,6 @@ const LOADER2: ExemptList = {
   [`${C}audit/audit-scan-lookup-card.tsx`]: { count: 1, kind: "permanent", why: "the register search status line", ruling: "2C I27" },
   [`${C}disposal/disposal-asset-picker.tsx`]: { count: 1, kind: "permanent", why: "the spinner inside the picker's search field", ruling: "2C I27" },
   [`${C}approvals/approval-inbox-selection.tsx`]: { count: 2, kind: "permanent", why: "the bulk approve's preview and commit status lines in the dialog body (group 6 plan 2 Task 3)", ruling: "2C I27" },
-  [`${C}disposal/disposal-bulk-execution.tsx`]: { count: 1, kind: "permanent", why: "BusyLabel, the status line in the dialog body", ruling: "2C I27" },
   [`${C}layout/global-search.tsx`]: { count: 2, kind: "phase 3", why: "the topbar search: the spinner in its field and its results loading line", ruling: "2D D2" },
   [`${C}ui/scanner-text-input.tsx`]: { count: 4, kind: "permanent", why: "the shared scanner while the camera starts or the torch switches: the start and torch buttons, the line on the camera image and the line under it", ruling: "2C I27" },
 }

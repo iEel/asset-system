@@ -3,16 +3,13 @@
 import { useRef, type ComponentProps, type KeyboardEvent, type MouseEvent } from "react"
 import { FileText, FolderOpen } from "lucide-react"
 import { DisposalDecisionButton, type DisposalDecisionButtonHandle } from "@/components/disposal/disposal-decision-button"
-import { DisposalExecutionButton, type DisposalExecutionButtonHandle } from "@/components/disposal/disposal-execution-button"
 import { RowActions, type RowActionItem, type RowNextAction } from "@/components/ui/row-actions"
 
 // The props the page hands to the dialog it opens: the dialog's own props, without the three this file sets.
 type DisposalDecisionDialogProps = Omit<ComponentProps<typeof DisposalDecisionButton>, "ref" | "hideTrigger" | "returnFocusRef">
-type DisposalExecutionDialogProps = Omit<ComponentProps<typeof DisposalExecutionButton>, "ref" | "hideTrigger" | "returnFocusRef">
 
 export type DisposalRowNext =
   | { kind: "review"; label: string; dialog: DisposalDecisionDialogProps }
-  | { kind: "execute"; label: string; dialog: DisposalExecutionDialogProps }
   | { kind: "view"; label: string }
 
 export type DisposalRowActionsProps = {
@@ -33,13 +30,12 @@ function stopPortalEvent(event: MouseEvent<HTMLSpanElement> | KeyboardEvent<HTML
 }
 
 // RowActions for a row of the disposal queue (spec 2B §5.4, R-m). The page is a server component and cannot hold a
-// handle, so this client file does: the next step opens the 2C decision or execution dialog through ref.current?.open(),
+// handle, so this client file does: the next step opens the 2C decision dialog through ref.current?.open(),
 // the dialog renders outside the menu with hideTrigger, and returnFocusRef={openerRef} gives focus back to the button
 // that opened it. The table shows from md only, so the menu is always the dropdown.
 export function DisposalRowActions({ code, menuLabel, detail, batch, next }: DisposalRowActionsProps) {
   const openerRef = useRef<HTMLElement | null>(null)
   const decisionRef = useRef<DisposalDecisionButtonHandle | null>(null)
-  const executionRef = useRef<DisposalExecutionButtonHandle | null>(null)
   // A "view" row's next step already opens the request, so ⋯ does not repeat it.
   const items: RowActionItem[] = [
     ...(next.kind === "view" ? [] : [{ kind: "link" as const, key: "request", label: detail.label, href: detail.href, icon: <FileText aria-hidden="true" /> }]),
@@ -50,9 +46,7 @@ export function DisposalRowActions({ code, menuLabel, detail, batch, next }: Dis
   const rowNext: RowNextAction =
     next.kind === "review"
       ? { label: next.label, onSelect: () => decisionRef.current?.open() }
-      : next.kind === "execute"
-        ? { label: next.label, onSelect: () => executionRef.current?.open() }
-        : { label: next.label, href: detail.href }
+      : { label: next.label, href: detail.href }
 
   return (
     <>
@@ -66,7 +60,6 @@ export function DisposalRowActions({ code, menuLabel, detail, batch, next }: Dis
       />
       <span hidden onClick={stopPortalEvent} onKeyDown={stopPortalEvent}>
         {next.kind === "review" ? <DisposalDecisionButton {...next.dialog} ref={decisionRef} hideTrigger returnFocusRef={openerRef} /> : null}
-        {next.kind === "execute" ? <DisposalExecutionButton {...next.dialog} ref={executionRef} hideTrigger returnFocusRef={openerRef} /> : null}
       </span>
     </>
   )

@@ -134,12 +134,15 @@ test("the request page words, Thai first", () => {
 })
 
 // Group 6 plan 3 Task 4 (spec §9.6): the request page on the phone, board DP-Request-Phone.
-test("the phone action bar shows only with a next step: ปฏิเสธ and อนุมัติ to decide, or บันทึกตัดจำหน่าย when approved with disposal:edit", () => {
+// Group 6 plan 4 (P4-R1): an approved request is recorded only in a disposal round, so the approved state has no
+// phone action until Task 3 links it to the approved tab.
+test("the phone action bar shows only with a next step: ปฏิเสธ and อนุมัติ to decide", () => {
   const source = read(PAGE)
   assert.match(source, /const phoneAction =\n\s+nextStepState === "decide" \? \(/)
-  assert.match(source, /: nextStepState === "approved" && canEdit && executionControl \? executionControl\n\s+: null/)
+  assert.match(source, /<\/div>\n\s+\) : null\n/)
+  assert.doesNotMatch(source, /DisposalExecutionButton|executionControl/)
   assert.match(source, /\{phoneAction \? <ActionBar label=\{tCommon\("actions"\)\} primaryAction=\{phoneAction\} actions=\{\[\]\} \/> : null\}/)
-  const bar = source.slice(source.indexOf("const phoneAction ="), source.indexOf(': nextStepState === "approved"'))
+  const bar = source.slice(source.indexOf("const phoneAction ="), source.indexOf("const effectItems"))
   assert.ok(bar.indexOf('initialDecision="reject"') > 0, "the bar holds ปฏิเสธ")
   assert.ok(bar.indexOf('initialDecision="reject"') < bar.indexOf('initialDecision="approve"'), "ปฏิเสธ comes before อนุมัติ")
   assert.equal((source.match(/<ActionBar\b/g) ?? []).length, 1)
@@ -148,8 +151,6 @@ test("the phone action bar shows only with a next step: ปฏิเสธ and �
   assert.doesNotMatch(source, /primary: !/)
   assert.doesNotMatch(source, /<DisposalDecisionButton requestId=\{disposalRequest\.id\} disposalNo=\{disposalRequest\.disposalNo\} \/>/)
   assert.match(source, /className=\{`space-y-6 \$\{phoneAction \? actionBarPagePadding\.withPrimary : ""\}`\}/)
-  // The approved step's execution word has no จริง.
-  assert.equal((messages("th").disposalPage as Record<string, string>).executeDisposal, "บันทึกตัดจำหน่าย")
 })
 
 test("the phone header holds a ⋯ with print and history", () => {

@@ -72,31 +72,6 @@ test("disposal decision dialog: what a rejection does is a neutral Notice, not a
   assert.doesNotMatch(source, /rounded-md border border-border bg-background/)
 })
 
-test("disposal execution dialog: the missing-evidence and historical warnings are warning Notices (spec 2D D7)", () => {
-  const source = read(`${C}disposal/disposal-execution-button.tsx`)
-  assert.match(source, /<Notice tone="warning" role="alert" id="disposal-execution-evidence-reason" className="md:col-span-2">\{t\("errors\.DISPOSAL_EVIDENCE_REQUIRED"\)\}<\/Notice>/)
-  assert.match(source, /<Notice tone="warning" id=\{historicalEvidenceWarningId\} hidden=\{!values\.useHistoricalEvidenceException\} role="alert" className="mt-2">\{t\("historicalEvidenceWarning"\)\}<\/Notice>/)
-  assert.doesNotMatch(source, /AlertTriangle|bg-warning-soft|border-warning-border/)
-})
-
-test("bulk execution: a quiet toolbar, danger and warning Notices, KeyValueList reviews with Nil, a StatStrip and outcome StatusBadges (spec 2D M26, D7, D19, M22)", () => {
-  const source = read(`${C}disposal/disposal-bulk-execution.tsx`)
-  assert.match(source, /className="mx-4 mt-3 flex flex-col gap-3 rounded-md border border-border bg-background p-3 md:mx-5 md:flex-row md:items-center md:justify-between"\n\s+aria-label=\{copy\.toolbarLabel\}/)
-  assert.match(source, /\{error \? <Notice tone="danger" role="alert" className="mx-4 mt-3 md:mx-5">\{error\}<\/Notice> : null\}/)
-  assert.match(source, /<AccessibleDialogBody className="space-y-5">\n\s+\{error \? <Notice tone="danger" role="alert">\{error\}<\/Notice> : null\}\n\s+<div aria-live="polite" className="min-h-5 text-sm">/, "a dialog error is the first thing in its body")
-  assert.match(source, /<section className="space-y-3">\n\s+<Notice tone="warning" id=\{historicalWarningId\}>\n\s+\{copy\.historicalWarning\}\n\s+<\/Notice>/, "the warning is a Notice and the controls sit outside its fill")
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the shared values and each request's values")
-  assert.equal(source.match(/nilLabel: copy\.notProvided/g)?.length, 7)
-  // The number a row uses, and whether it is the request's own or the shared one (e2e decision DX2), as the recipient.
-  assert.match(source, /\{ key: "documentNo", label: copy\.documentNo, value: documentReview\.documentNo \? <><span className="tag">\{documentReview\.documentNo\}<\/span>\{documentSource \? <span className="mt-1 block text-meta text-muted-foreground">\{documentSource\}<\/span> : null\}<\/> : null, nilLabel: copy\.notProvided \}/)
-  assert.match(source, /<h4 className="text-sm text-foreground"><span className="tag font-medium">\{item\.disposalNo\}<\/span><\/h4>/)
-  assert.equal(source.match(/value: formatCount\(response\.(?:selected|eligible|executed|blocked|failed)Count\) \}/g)?.length, 5)
-  assert.match(source, /<StatusBadge label=\{copy\[item\.outcome\]\} tone=\{outcomeTones\[item\.outcome\]\} \/>/)
-  assert.match(source, /eligible: "success",\n\s+executed: "primary",\n\s+blocked: "warning",\n\s+failed: "danger",/)
-  assert.equal(source.match(/divide-y divide-border-soft rounded-md border border-border/g)?.length, 2, "the request list and the result list")
-  assert.doesNotMatch(source, /function (?:ReviewValue|SummaryValue)\b|bg-warning-soft|border-warning-border|text-success|text-danger|border-y border-border|\btext-xs\b|text-lg|h-4 w-4 text-primary|copy\.notProvided\}/)
-})
-
 test("disposal queue: the phone filter on the panel classes, text links with a 44px phone target, the type a Chip and the phone facts KeyValueLists (spec 2D D9, D19, M22, M29)", () => {
   const source = read("src/app/[locale]/(dashboard)/disposal/page.tsx")
   assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "group md:hidden"\)\} open=\{hasActiveFilters\}>/)

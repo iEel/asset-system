@@ -3,378 +3,215 @@ import test from "node:test"
 import type { Prisma } from "@prisma/client"
 
 import {
-  buildDisposalExecutionInput,
   DisposalExecutionServiceError,
-  executeDisposalRequest,
-  type DisposalExecutionCommand,
+  executeDisposalRequestInTransaction,
+  hasDisposalExecutionPermission,
+  isPrismaWriteConflict,
+  type DisposalExecutionCandidate,
+  type DisposalRoundExecution,
+  type DisposalRoundExecutionTarget,
 } from "../src/lib/disposal-execution-service.ts"
 
-type FakeState = {
-  request: ReturnType<typeof makeCandidate>
-  itemEvidenceCount: number
-  batchEvidenceCount: number
-  assetStatusId: string
-  movements: Array<Record<string, unknown>>
-  logs: Array<Record<string, unknown>>
-  endedPlans: Array<Record<string, unknown>>
+// The single-request execution is retired (group 6 plan 4, P4-R1): only a disposal round executes requests, through
+// executeDisposalRequestInTransaction inside the round's transaction. These tests drive the helper with a recording tx.
+
+const actor = { userId: "user-executor", employeeId: "employee-actor", roles: ["asset_admin"], permissions: ["disposal:edit"] }
+const now = new Date("2026-11-05T03:00:00.000Z")
+
+const round: DisposalRoundExecutionTarget = {
+  id: "round-1",
+  roundNo: "DPR-20261105-0001",
+  disposalType: "destroy",
+  executionDate: new Date("2026-11-04T00:00:00.000Z"),
+  executedById: "employee-executor",
+  recipientName: null,
+  documentNo: "DOC-001",
+  remark: "ทุบทำลายตามขั้นตอน",
+  disposedStatusId: "status-disposed",
 }
 
-const baseCommand: DisposalExecutionCommand = {
-  requestId: "request-1",
-  actor: {
-    userId: "user-executor",
-    employeeId: "employee-actor",
-    roles: ["asset_admin"],
-    permissions: ["disposal:edit"],
-  },
-  input: {
-    disposalType: "destroy",
-    executionDate: new Date("2026-07-13T00:00:00.000Z"),
-    executedById: "employee-executor",
-    nextStatusId: "status-disposed",
-    recipientName: null,
-    documentNo: "DOC-001",
-    useHistoricalEvidenceException: false,
-    evidenceExceptionReason: null,
-    evidenceExceptionAcknowledged: false,
-    actualSaleValue: null,
-    actualSalvageValue: null,
-    executionRemark: "Destroyed under approved process",
-  },
-}
-
-test("revalidates the approved stage inside the serializable transaction", async () => {
-  const state = makeState()
-  state.request.requestStatus = "disposed"
-  const database = makeDatabase(state)
-
-  await assert.rejects(
-    executeDisposalRequest(baseCommand, { database, batchSchemaReadiness: "absent" }),
-    hasServiceCode("DISPOSAL_INVALID_STAGE"),
-  )
-  assert.equal(state.movements.length, 0)
-  assert.equal(state.logs.length, 0)
-})
-
-test("revalidates active evidence before granting the historical exception", async () => {
-  const state = makeState({ itemEvidenceCount: 1 })
-  const database = makeDatabase(state)
-
-  await assert.rejects(
-    executeDisposalRequest(historicalCommand(), { database, batchSchemaReadiness: "absent" }),
-    hasServiceCode("DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE"),
-  )
-  assert.equal(state.request.requestStatus, "approved")
-})
-
-test("returns a stable concurrency conflict when the guarded request update loses the race", async () => {
-  const state = makeState()
-  const database = makeDatabase(state, { forceRequestConflict: true })
-
-  await assert.rejects(
-    executeDisposalRequest(baseCommand, { database, batchSchemaReadiness: "absent" }),
-    hasServiceCode("DISPOSAL_CONCURRENT_UPDATE"),
-  )
-  assert.equal(state.request.requestStatus, "approved")
-  assert.equal(state.movements.length, 0)
-  assert.equal(state.logs.length, 0)
-})
-
-test("persists exception metadata and one historical audit action atomically", async () => {
-  const state = makeState({ itemEvidenceCount: 0 })
-  const database = makeDatabase(state)
-
-  const result = await executeDisposalRequest(historicalCommand(), {
-    database,
-    batchSchemaReadiness: "absent",
-    now: () => new Date("2026-07-13T08:30:00.000Z"),
-  })
-
-  assert.equal(result.request.requestStatus, "disposed")
-  assert.equal(state.request.evidenceExceptionGrantedBy, "user-executor")
-  assert.equal(state.request.evidenceExceptionGrantedAt?.toISOString(), "2026-07-13T08:30:00.000Z")
-  assert.match(state.request.evidenceExceptionReason ?? "", /ไม่มีหลักฐาน/)
-  assert.equal(state.movements.length, 1)
-  assert.equal(state.logs.length, 1)
-  assert.equal(state.logs[0].action, "execute_historical_without_evidence")
-  assert.equal(database.isolationLevel, "Serializable")
-})
-
-test("rolls back request, asset, movement, and metadata when audit persistence fails", async () => {
-  const state = makeState({ itemEvidenceCount: 0 })
-  const database = makeDatabase(state, { failAudit: true })
-
-  await assert.rejects(
-    executeDisposalRequest(historicalCommand(), { database, batchSchemaReadiness: "absent" }),
-    /audit unavailable/,
-  )
-  assert.equal(state.request.requestStatus, "approved")
-  assert.equal(state.request.evidenceExceptionReason, null)
-  assert.equal(state.assetStatusId, "status-pending")
-  assert.equal(state.movements.length, 0)
-  assert.equal(state.logs.length, 0)
-})
-
-test("executing a disposal ends the asset's PM plans in the same transaction", async () => {
-  const state = makeState()
-  const database = makeDatabase(state)
-
-  await executeDisposalRequest(baseCommand, { database, batchSchemaReadiness: "absent" })
-
-  assert.deepEqual(state.endedPlans, [{
-    where: { assetId: "asset-1", planState: { not: "ended" } },
-    data: { planState: "ended", isActive: false, updatedBy: "user-executor" },
-  }])
-})
-
-test("fails closed without opening a transaction when batch schema readiness is unknown", async () => {
-  const state = makeState({ itemEvidenceCount: 0 })
-  const database = makeDatabase(state)
-
-  await assert.rejects(
-    executeDisposalRequest(historicalCommand(), { database, batchSchemaReadiness: "unknown" }),
-    hasServiceCode("DISPOSAL_BATCH_SCHEMA_CHECK_FAILED"),
-  )
-  assert.equal(database.transactionCalls, 0)
-})
-
-test("builds execution inputs from request-specific candidate fields", () => {
-  const candidate = makeCandidate()
-  Object.assign(candidate, {
-    disposalType: "sell",
-    recipientName: "Buyer One",
-    documentNo: "SALE-001",
-    saleValue: 1200.5,
-    salvageValue: 100,
-    executionRemark: "Recorded buyer handover",
-  })
-
-  const input = buildDisposalExecutionInput(candidate, {
-    executionDate: new Date("2026-07-13T00:00:00.000Z"),
-    executedById: "employee-executor",
-    nextStatusId: "status-disposed",
-    useHistoricalEvidenceException: false,
-    evidenceExceptionReason: null,
-    evidenceExceptionAcknowledged: false,
-  })
-
-  assert.deepEqual(input, {
-    disposalType: "sell",
-    executionDate: new Date("2026-07-13T00:00:00.000Z"),
-    executedById: "employee-executor",
-    nextStatusId: "status-disposed",
-    recipientName: "Buyer One",
-    documentNo: "SALE-001",
-    actualSaleValue: 1200.5,
-    actualSalvageValue: 100,
-    executionRemark: "Recorded buyer handover",
-    useHistoricalEvidenceException: false,
-    evidenceExceptionReason: null,
-    evidenceExceptionAcknowledged: false,
-  })
-})
-
-test("preserves the exact authoritative recipient instead of normalizing it", () => {
-  const candidate = makeCandidate()
-  Object.assign(candidate, {
-    disposalType: "sell",
-    recipientName: "  Buyer One  ",
-  })
-
-  const input = buildDisposalExecutionInput(candidate, {
-    executionDate: new Date("2026-07-13T00:00:00.000Z"),
-    executedById: "employee-executor",
-    nextStatusId: "status-disposed",
-    sharedRecipientName: "Fallback Buyer",
-    useHistoricalEvidenceException: false,
-    evidenceExceptionReason: null,
-    evidenceExceptionAcknowledged: false,
-  })
-
-  assert.equal(input.recipientName, "  Buyer One  ")
-})
-
-test("does not apply a shared recipient to a type that has no recipient field", () => {
-  const candidate = makeCandidate()
-  Object.assign(candidate, {
-    disposalType: "destroy",
-    recipientName: null,
-  })
-
-  const input = buildDisposalExecutionInput(candidate, {
-    executionDate: new Date("2026-07-13T00:00:00.000Z"),
-    executedById: "employee-executor",
-    nextStatusId: "status-disposed",
-    sharedRecipientName: "Fallback Destination",
-    useHistoricalEvidenceException: false,
-    evidenceExceptionReason: null,
-    evidenceExceptionAcknowledged: false,
-  })
-
-  assert.equal(input.recipientName, null)
-})
-
-function historicalCommand(): DisposalExecutionCommand {
+function candidate(index: number, overrides: Partial<DisposalExecutionCandidate> = {}): DisposalExecutionCandidate {
   return {
-    ...baseCommand,
-    actor: { ...baseCommand.actor, roles: ["system_admin"] },
-    input: {
-      ...baseCommand.input,
-      documentNo: null,
-      useHistoricalEvidenceException: true,
-      evidenceExceptionReason: "ทรัพย์สินถูกตัดจำหน่ายจริงในอดีตและไม่มีหลักฐานหลงเหลือ",
-      evidenceExceptionAcknowledged: true,
-    },
-  }
-}
-
-function makeCandidate() {
-  return {
-    id: "request-1",
-    disposalNo: "DP-20260713-0001",
+    id: `request-${index}`,
+    disposalNo: `DP-20261101-000${index}`,
+    disposalType: "donate",
     isActive: true,
     requestStatus: "approved",
     requestedById: "employee-requester",
     createdBy: "user-requester",
     approverId: "employee-approver",
-    assetId: "asset-1",
-    reason: "Asset was approved for disposal",
-    disposalType: "destroy",
-    saleValue: null as number | null,
-    salvageValue: null as number | null,
-    batchId: null as string | null,
-    executionDate: null as Date | null,
-    executedById: null as string | null,
-    recipientName: null as string | null,
-    documentNo: null as string | null,
-    actualSaleValue: null as number | null,
-    actualSalvageValue: null as number | null,
-    executionRemark: null as string | null,
-    evidenceExceptionReason: null as string | null,
-    evidenceExceptionGrantedBy: null as string | null,
-    evidenceExceptionGrantedAt: null as Date | null,
-    completedAt: null as Date | null,
-    asset: {
-      assetTag: "IT-001",
-      statusId: "status-pending",
-      status: { name: "Pending Disposal", nameTh: "รอตัดจำหน่าย" },
-    },
-  }
-}
-
-function makeState(overrides: Partial<FakeState> = {}): FakeState {
-  return {
-    request: makeCandidate(),
-    itemEvidenceCount: 1,
-    batchEvidenceCount: 0,
-    assetStatusId: "status-pending",
-    movements: [],
-    logs: [],
-    endedPlans: [],
+    assetId: `asset-${index}`,
+    batchId: null,
+    reason: "เครื่องเสื่อมสภาพ",
+    completedAt: null,
+    asset: { assetTag: `IT-00${index}`, name: `Monitor ${index}`, statusId: "status-pending", status: { name: "Pending Disposal", nameTh: "รอตัดจำหน่าย" } },
     ...overrides,
   }
 }
 
-function makeDatabase(
-  state: FakeState,
-  options: { forceRequestConflict?: boolean; failAudit?: boolean } = {},
-) {
-  const database = {
-    transactionCalls: 0,
-    isolationLevel: "",
-    async $transaction<T>(
-      callback: (transaction: Prisma.TransactionClient) => Promise<T>,
-      transactionOptions?: { isolationLevel?: Prisma.TransactionIsolationLevel },
-    ) {
-      database.transactionCalls += 1
-      database.isolationLevel = transactionOptions?.isolationLevel ?? ""
-      const draft = structuredClone(state)
-      const transaction = makeTransaction(draft, options)
-      const result = await callback(transaction as unknown as Prisma.TransactionClient)
-      Object.assign(state, draft)
-      return result
-    },
-  }
-  return database
+function execution(index: number, effectiveEvidenceCount = 1, overrides: Partial<DisposalExecutionCandidate> = {}): DisposalRoundExecution {
+  return { candidate: candidate(index, overrides), effectiveEvidenceCount }
 }
 
-function makeTransaction(state: FakeState, options: { forceRequestConflict?: boolean; failAudit?: boolean }) {
-  return {
-    disposalRequest: {
-      async findUnique() {
-        return structuredClone(state.request)
-      },
-      async updateMany({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) {
-        if (options.forceRequestConflict) return { count: 0 }
-        if (where.id !== state.request.id || where.requestStatus !== state.request.requestStatus || !state.request.isActive) {
-          return { count: 0 }
-        }
-        Object.assign(state.request, data)
-        return { count: 1 }
-      },
-      async findUniqueOrThrow() {
-        return structuredClone(state.request)
-      },
-      async findMany() {
-        return [{ requestStatus: state.request.requestStatus }]
-      },
-    },
-    systemSetting: {
-      async findMany() {
-        return []
-      },
-    },
-    assetStatus: {
-      async findFirst({ where }: { where: { id: string } }) {
-        return where.id === "status-disposed"
-          ? { id: "status-disposed", name: "Disposed", nameTh: "ตัดจำหน่ายแล้ว" }
-          : null
-      },
-    },
-    employee: {
-      async findFirst({ where }: { where: { id: string } }) {
-        return where.id === "employee-executor" ? { id: where.id } : null
-      },
-    },
-    attachment: {
-      async count({ where }: { where: { module: string } }) {
-        return where.module === "disposal" ? state.itemEvidenceCount : state.batchEvidenceCount
-      },
-    },
-    asset: {
-      async updateMany({ where, data }: { where: { id: string; statusId: string }; data: { statusId: string } }) {
-        if (where.id !== state.request.assetId || where.statusId !== state.assetStatusId) return { count: 0 }
-        state.assetStatusId = data.statusId
-        return { count: 1 }
-      },
-    },
-    assetMovement: {
-      async create({ data }: { data: Record<string, unknown> }) {
-        state.movements.push(data)
-        return data
-      },
-    },
-    maintenancePlan: {
-      async updateMany(args: Record<string, unknown>) {
-        state.endedPlans.push(args)
-        return { count: 1 }
-      },
-    },
-    disposalBatch: {
-      async update() {
-        return null
-      },
-    },
-    systemLog: {
-      async create({ data }: { data: Record<string, unknown> }) {
-        if (options.failAudit) throw new Error("audit unavailable")
-        state.logs.push(data)
-        return data
-      },
-    },
+function recordingTx(options: { requestCount?: (ids: string[]) => number; assetCount?: (ids: string[]) => number; children?: Array<{ batchId: string; requestStatus: string }> } = {}) {
+  const calls: Array<{ call: string; args: Record<string, unknown> }> = []
+  const record = (call: string) => async (args: Record<string, unknown>) => {
+    calls.push({ call, args })
+    if (call === "disposalRequest.updateMany") {
+      const ids = ((args.where as { id: { in: string[] } }).id.in)
+      return { count: options.requestCount ? options.requestCount(ids) : ids.length }
+    }
+    if (call === "asset.updateMany") {
+      const ids = ((args.where as { id: { in: string[] } }).id.in)
+      return { count: options.assetCount ? options.assetCount(ids) : ids.length }
+    }
+    if (call === "disposalRequest.findMany") return options.children ?? []
+    if (call.endsWith("createMany")) return { count: (args.data as unknown[]).length }
+    return { count: 0 }
   }
+  const tx = {
+    disposalRequest: { updateMany: record("disposalRequest.updateMany"), findMany: record("disposalRequest.findMany") },
+    asset: { updateMany: record("asset.updateMany") },
+    assetMovement: { createMany: record("assetMovement.createMany") },
+    maintenancePlan: { updateMany: record("maintenancePlan.updateMany") },
+    disposalBatch: { update: record("disposalBatch.update") },
+    systemLog: { createMany: record("systemLog.createMany") },
+  }
+  return { tx: tx as unknown as Prisma.TransactionClient, calls }
 }
 
-function hasServiceCode(code: string) {
-  return (error: unknown) => error instanceof DisposalExecutionServiceError && error.code === code
-}
+test("executes every request of the round with one statement per table", async () => {
+  const { tx, calls } = recordingTx()
+
+  await executeDisposalRequestInTransaction(tx, [execution(1), execution(2)], round, actor, now)
+
+  assert.deepEqual(calls.map((entry) => entry.call), [
+    "disposalRequest.updateMany",
+    "asset.updateMany",
+    "assetMovement.createMany",
+    "maintenancePlan.updateMany",
+    "systemLog.createMany",
+  ])
+  const [requests, assets, movements, plans, audits] = calls.map((entry) => entry.args)
+  assert.deepEqual(requests.where, { id: { in: ["request-1", "request-2"] }, requestStatus: "approved", isActive: true })
+  assert.deepEqual(requests.data, {
+    requestStatus: "disposed",
+    disposalType: "destroy",
+    roundId: "round-1",
+    executionDate: new Date("2026-11-04T00:00:00.000Z"),
+    executedById: "employee-executor",
+    recipientName: null,
+    documentNo: "DOC-001",
+    actualSaleValue: null,
+    executionRemark: "ทุบทำลายตามขั้นตอน",
+    completedAt: now,
+    updatedBy: "user-executor",
+    evidenceExceptionReason: null,
+    evidenceExceptionGrantedBy: null,
+    evidenceExceptionGrantedAt: null,
+  })
+  assert.deepEqual(assets, {
+    where: { id: { in: ["asset-1", "asset-2"] }, isActive: true, statusId: { in: ["status-pending"] } },
+    data: { statusId: "status-disposed", updatedBy: "user-executor" },
+  })
+  assert.deepEqual((movements.data as Array<Record<string, unknown>>)[0], {
+    assetId: "asset-1",
+    movementType: "disposal_execute",
+    fromValue: "status-pending",
+    toValue: "status-disposed",
+    reason: "ทุบทำลายตามขั้นตอน",
+    referenceType: "disposal",
+    referenceId: "request-1",
+    performedBy: "user-executor",
+    performedAt: new Date("2026-11-04T00:00:00.000Z"),
+    remark: "round=DPR-20261105-0001",
+  })
+  // A disposed asset needs no more PM reminders.
+  assert.deepEqual(plans, {
+    where: { assetId: { in: ["asset-1", "asset-2"] }, planState: { not: "ended" } },
+    data: { planState: "ended", isActive: false, updatedBy: "user-executor" },
+  })
+  const auditRows = audits.data as Array<Record<string, unknown>>
+  assert.deepEqual(auditRows.map((row) => [row.action, row.module, row.recordId]), [
+    ["execute", "disposal", "request-1"],
+    ["execute", "disposal", "request-2"],
+  ])
+  const newValue = JSON.parse(String(auditRows[0].newValue))
+  assert.equal(newValue.fromDisposalType, "donate")
+  assert.equal(newValue.disposalType, "destroy")
+  assert.equal(newValue.roundNo, "DPR-20261105-0001")
+})
+
+test("the evidence exception is granted only to the requests without evidence, and logged as such", async () => {
+  const { tx, calls } = recordingTx()
+
+  await executeDisposalRequestInTransaction(
+    tx,
+    [execution(1, 2), execution(2, 0)],
+    { ...round, evidenceException: { reason: "ทรัพย์สินถูกตัดจำหน่ายจริงในอดีตและไม่มีหลักฐานหลงเหลือ" } },
+    actor,
+    now,
+  )
+
+  const updates = calls.filter((entry) => entry.call === "disposalRequest.updateMany").map((entry) => entry.args)
+  assert.equal(updates.length, 2)
+  assert.deepEqual((updates[0].where as { id: unknown }).id, { in: ["request-1"] })
+  assert.equal((updates[0].data as Record<string, unknown>).evidenceExceptionReason, null)
+  assert.deepEqual((updates[1].where as { id: unknown }).id, { in: ["request-2"] })
+  assert.equal((updates[1].data as Record<string, unknown>).evidenceExceptionReason, "ทรัพย์สินถูกตัดจำหน่ายจริงในอดีตและไม่มีหลักฐานหลงเหลือ")
+  assert.equal((updates[1].data as Record<string, unknown>).evidenceExceptionGrantedBy, "user-executor")
+  assert.deepEqual((updates[1].data as Record<string, unknown>).evidenceExceptionGrantedAt, now)
+  const audits = calls.find((entry) => entry.call === "systemLog.createMany")!.args.data as Array<Record<string, unknown>>
+  assert.deepEqual(audits.map((row) => row.action), ["execute", "execute_historical_without_evidence"])
+})
+
+test("a guarded request update that matches fewer rows than were checked is a concurrent update", async () => {
+  const { tx, calls } = recordingTx({ requestCount: (ids) => ids.length - 1 })
+
+  await assert.rejects(
+    executeDisposalRequestInTransaction(tx, [execution(1), execution(2)], round, actor, now),
+    (error: unknown) => error instanceof DisposalExecutionServiceError && error.code === "DISPOSAL_CONCURRENT_UPDATE",
+  )
+  assert.deepEqual(calls.map((entry) => entry.call), ["disposalRequest.updateMany"])
+})
+
+test("an asset that left Pending Disposal meanwhile is a concurrent update", async () => {
+  const { tx } = recordingTx({ assetCount: (ids) => ids.length - 1 })
+
+  await assert.rejects(
+    executeDisposalRequestInTransaction(tx, [execution(1), execution(2)], round, actor, now),
+    (error: unknown) => error instanceof DisposalExecutionServiceError && error.code === "DISPOSAL_CONCURRENT_UPDATE",
+  )
+})
+
+test("a request batch's status follows its executed children", async () => {
+  const { tx, calls } = recordingTx({
+    children: [
+      { batchId: "batch-1", requestStatus: "disposed" },
+      { batchId: "batch-1", requestStatus: "disposed" },
+    ],
+  })
+
+  await executeDisposalRequestInTransaction(tx, [execution(1, 1, { batchId: "batch-1" }), execution(2, 1, { batchId: "batch-1" })], round, actor, now)
+
+  const batchUpdates = calls.filter((entry) => entry.call === "disposalBatch.update")
+  assert.equal(batchUpdates.length, 1)
+  assert.deepEqual(batchUpdates[0].args.where, { id: "batch-1" })
+})
+
+test("a long request reason fits the movement's 500 characters", async () => {
+  const { tx, calls } = recordingTx()
+
+  await executeDisposalRequestInTransaction(tx, [execution(1, 1, { reason: "ก".repeat(900) })], { ...round, remark: null }, actor, now)
+
+  const movement = (calls.find((entry) => entry.call === "assetMovement.createMany")!.args.data as Array<Record<string, unknown>>)[0]
+  assert.equal(String(movement.reason).length, 500)
+})
+
+test("only disposal:edit or a system admin may execute; P2034 is a write conflict", () => {
+  assert.equal(hasDisposalExecutionPermission(actor), true)
+  assert.equal(hasDisposalExecutionPermission({ ...actor, permissions: ["disposal:view"] }), false)
+  assert.equal(hasDisposalExecutionPermission({ ...actor, roles: ["system_admin"], permissions: [] }), true)
+  assert.equal(isPrismaWriteConflict({ code: "P2034" }), true)
+  assert.equal(isPrismaWriteConflict({ code: "P2002" }), false)
+})

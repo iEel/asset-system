@@ -197,7 +197,8 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
   },
   {
     filePath: "src/app/api/disposal-requests/[id]/route.ts",
-    label: "Disposal decision/execution",
+    // action:"execute" is retired (410 DISPOSAL_USE_ROUND, group 6 plan 4) but still checks disposal:edit first.
+    label: "Disposal decision (execution retired)",
     checks: [
       { module: "disposal", action: "approve" },
       { module: "disposal", action: "edit" },
@@ -227,7 +228,13 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
   },
   {
     filePath: "src/app/api/disposal-requests/bulk-execution/route.ts",
-    label: "Disposal bulk execution",
+    // Retired: answers 410 DISPOSAL_USE_ROUND after the disposal:edit check (group 6 plan 4).
+    label: "Disposal bulk execution (retired)",
+    checks: [{ module: "disposal", action: "edit" }],
+  },
+  {
+    filePath: "src/app/api/disposal-rounds/route.ts",
+    label: "Disposal rounds",
     checks: [{ module: "disposal", action: "edit" }],
   },
   {

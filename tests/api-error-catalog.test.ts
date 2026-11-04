@@ -63,7 +63,6 @@ function walk(dir: string, out: string[] = []) {
 // `message:`, where the zod issue messages of src/lib/validations and src/lib/disposal-type-policy.ts live). Each entry needs a reason.
 const nonErrorMessageFiles: Record<string, string> = {
   "src/app/api/audit-rounds/[id]/scan/route.ts": "the 202 out-of-scope scan result; the scan screen shows its own text",
-  "src/lib/disposal-bulk-execution-ui.ts": "selection codes (mixed, limit) that the bulk execution screen turns into its own text",
   "src/lib/ldap-auth.ts": "the LDAP connection test result, which the settings screen shows as sent",
 }
 

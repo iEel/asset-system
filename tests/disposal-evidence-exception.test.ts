@@ -6,7 +6,6 @@ import {
   canUseHistoricalDisposalEvidenceException,
   getDisposalExecutionEvidenceError,
 } from "../src/lib/disposal-evidence-exception.ts"
-import { disposalExecutionSchema } from "../src/lib/validations/disposal.ts"
 
 const baseException = {
   roles: ["system_admin"],
@@ -41,28 +40,6 @@ test("rejects forbidden, inapplicable, incomplete, and stray exceptions", () => 
   assert.equal(getDisposalExecutionEvidenceError({ ...baseException, evidenceExceptionReason: "สั้นเกินไป" }), "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED")
   assert.equal(getDisposalExecutionEvidenceError({ ...baseException, evidenceExceptionAcknowledged: false }), "DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED")
   assert.equal(getDisposalExecutionEvidenceError({ ...baseException, useHistoricalEvidenceException: false }), "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE")
-})
-
-test("normalizes exception metadata before validating the schema", () => {
-  const result = disposalExecutionSchema.safeParse({
-    disposalType: "destroy",
-    executionDate: "2026-07-13",
-    executedById: "employee-executor",
-    nextStatusId: "status-retired",
-    actualSaleValue: null,
-    actualSalvageValue: null,
-    executionRemark: "Recorded incident detail",
-    useHistoricalEvidenceException: true,
-    evidenceExceptionReason: "   ",
-    evidenceExceptionAcknowledged: false,
-  })
-
-  assert.equal(result.success, true)
-  if (result.success) {
-    assert.equal(result.data.useHistoricalEvidenceException, true)
-    assert.equal(result.data.evidenceExceptionReason, null)
-    assert.equal(result.data.evidenceExceptionAcknowledged, false)
-  }
 })
 
 test("persists disposal evidence exception metadata with an idempotent migration", () => {
@@ -107,22 +84,13 @@ test("registers the execution failure code with localized client messages", () =
   assert.notEqual(englishMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "DISPOSAL_EXECUTION_FAILED")
 })
 
-test("passes evidence context and submits localized historical evidence exception fields", () => {
-  const detailPage = readFileSync("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx", "utf8")
-  const executionButton = readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8")
-
-  assert.match(detailPage, /effectiveEvidenceCount=\{attachments\.length \+ batchAttachments\.length\}/)
-  assert.match(detailPage, /canUseHistoricalEvidenceException=\{user\.roles\.includes\("system_admin"\)\}/)
-  assert.match(executionButton, /useHistoricalEvidenceException/)
-  assert.match(executionButton, /evidenceExceptionReason/)
-  assert.match(executionButton, /evidenceExceptionAcknowledged/)
-
+// The per-row execution dialog that sent these fields is retired (group 6 plan 4, P4-R1); the round form takes the
+// exception from Task 4 on. The refusal words stay.
+test("the historical evidence exception's refusals keep their localized words", () => {
   const thMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const enMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
   for (const messages of [thMessages, enMessages]) {
-    assert.equal(typeof messages.disposalPage.historicalEvidenceException, "string")
     assert.equal(typeof messages.disposalPage.historicalEvidenceReason, "string")
-    assert.equal(typeof messages.disposalPage.historicalEvidenceAcknowledgement, "string")
     for (const code of [
       "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN",
       "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
@@ -132,56 +100,12 @@ test("passes evidence context and submits localized historical evidence exceptio
   }
 })
 
-test("passes batched item and batch evidence context to every queue execution action", () => {
-  const listPage = readFileSync("src/app/[locale]/(dashboard)/disposal/page.tsx", "utf8")
-
-  assert.match(listPage, /prisma\.attachment\.groupBy/)
-  assert.match(listPage, /module: "disposal"/)
-  assert.match(listPage, /module: "disposal_batch"/)
-  assert.match(listPage, /referenceId: \{ in: requestIds \}/)
-  assert.match(listPage, /referenceId: \{ in: batchIds \}/)
-  assert.match(listPage, /effectiveEvidenceCount: \(itemEvidenceCounts\.get\(request\.id\) \?\? 0\) \+ \(batchEvidenceCounts\.get\(request\.batchId \?\? ""\) \?\? 0\)/)
-  assert.match(listPage, /effectiveEvidenceCount=\{request\.effectiveEvidenceCount\}/)
-  assert.match(listPage, /canUseHistoricalEvidenceException=\{user\.roles\.includes\("system_admin"\)\}/)
-})
-
-test("resets historical exception state on every dialog close and describes the reason minimum", () => {
-  const executionButton = readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8")
-  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
-
-  assert.match(executionButton, /function resetHistoricalEvidenceException\(\)/)
-  assert.match(executionButton, /function closeExecutionDialog\(\)/)
-  assert.match(executionButton, /resetHistoricalEvidenceException\(\)/)
-  assert.match(executionButton, /onClose=\{closeExecutionDialog\}/)
-  assert.match(executionButton, /aria-describedby=\{evidenceExceptionReasonHelpId\}/)
-  assert.match(executionButton, /historicalEvidenceWarningId/)
-  assert.match(executionButton, /aria-describedby=\{historicalEvidenceWarningId\}/)
-  assert.match(executionButton, /t\("historicalEvidenceWarning"\)/)
-  assert.match(executionButton, /minLength=\{20\}/)
-  assert.match(executionButton, /maxLength=\{2000\}/)
-  assert.match(executionButton, /t\("historicalEvidenceReasonHelp"/)
-  assert.equal(typeof thaiMessages.disposalPage.historicalEvidenceReasonHelp, "string")
-  assert.equal(typeof englishMessages.disposalPage.historicalEvidenceReasonHelp, "string")
-})
-
-test("execution dialog resets and refreshes after evidence policy rejections", () => {
-  const executionButton = readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8")
-
-  assert.match(executionButton, /evidencePolicyErrorCodes/)
-  assert.match(executionButton, /resetHistoricalEvidenceException\(\)/)
-  assert.match(executionButton, /router\.refresh\(\)/)
-  assert.match(executionButton, /setOpen\(false\)/)
-})
-
 test("historical exception copy explicitly says without evidence and describes permanent audit logging", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
     const disposal = messages.disposalPage
     const systemLog = messages.systemLogPage
-    assert.match(disposal.historicalEvidenceException, locale === "th" ? /ไม่มีหลักฐาน/ : /without evidence/i)
     assert.match(disposal.historicalEvidenceBadge, locale === "th" ? /ไม่มีหลักฐาน/ : /without evidence/i)
-    assert.equal(typeof disposal.historicalEvidenceWarning, "string")
     assert.equal(typeof systemLog.action_execute_historical_without_evidence, "string")
     assert.equal(typeof systemLog.field_evidenceExceptionReason, "string")
     assert.equal(typeof systemLog.field_useHistoricalEvidenceException, "string")

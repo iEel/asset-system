@@ -41,9 +41,7 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 1,
-  [`${C}disposal/disposal-execution-button.tsx`]: 1,
   [`${C}approvals/approval-inbox-selection.tsx`]: 1,
-  [`${C}disposal/disposal-bulk-execution.tsx`]: 1,
   [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 1,
   [`${C}maintenance/repair-record-actions.tsx`]: 3,
@@ -74,9 +72,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
-  `${C}disposal/disposal-bulk-execution.tsx`,
   `${C}approvals/approval-inbox-selection.tsx`,
-  `${C}disposal/disposal-execution-button.tsx`,
   `${C}disposal/disposal-decision-button.tsx`,
   `${C}disposal/disposal-batch-form.tsx`,
   `${C}disposal/disposal-request-form.tsx`,
@@ -174,7 +170,8 @@ test("the V readers skip comments and see a catch block, a .catch() handler and 
   assert.deepEqual(starOnlySelects(select).map((tag) => tag.line), [2, 3])
 })
 
-test("V1 the scope list names every form a person submits, 52 in all (spec §5)", () => {
+// Group 6 plan 4 (P4-R1) retired the two execution dialogs' forms: 52 became 50.
+test("V1 the scope list names every form a person submits, 50 in all (spec §5)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
   for (const path of [...Object.keys(V_SCOPE), ...Object.keys(NOT_IN_SCOPE), ...V_FORMS, ...Object.keys(SELECT_STAR_ONLY)]) if (!exists(path)) problems.push(`${path} not found`)
@@ -190,7 +187,7 @@ test("V1 the scope list names every form a person submits, 52 in all (spec §5)"
     else if (forms > V_SCOPE[file.path]) problems.push(`${file.path}: ${forms} <form>, V_SCOPE counts ${V_SCOPE[file.path]}`)
   }
   assert.deepEqual(problems, [])
-  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 52)
+  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 50)
 })
 
 // Group 4 plan 6 Task 5: the labels page's note and print actions are no form. Print opens the print route, whose one
