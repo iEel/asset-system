@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils"
 import { getPanelClasses } from "@/lib/design-system"
 
 type ContentPanelProps = {
+  // The section's id, for an anchor that lands on the panel (the repair list's #stuck and #pm-due, group 5 plan 5).
+  id?: string
   title?: string
   // The heading's id. It also makes the heading a focus target (tabIndex -1), so a client part can move focus there
   // when the control that had it goes away (the repair record, group 5 plan 3 final review 10).
@@ -19,10 +21,10 @@ type ContentPanelProps = {
   | { divided: true; flush?: boolean }
 )
 
-export function ContentPanel({ title, titleId, description, actions, children, className, divided = false, flush = false }: ContentPanelProps) {
+export function ContentPanel({ id, title, titleId, description, actions, children, className, divided = false, flush = false }: ContentPanelProps) {
   if (divided) {
     return (
-      <section className={cn(getPanelClasses(), className)}>
+      <section id={id} className={cn(getPanelClasses(), className)}>
         {title || description || actions ? (
           <div data-slot="content-panel-head" className="flex min-h-14 min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5 md:px-5">
             {title || description ? (
@@ -40,7 +42,7 @@ export function ContentPanel({ title, titleId, description, actions, children, c
   }
 
   return (
-    <section className={cn(getPanelClasses(), "p-4 sm:p-5", className)}>
+    <section id={id} className={cn(getPanelClasses(), "p-4 sm:p-5", className)}>
       {title || description || actions ? (
         <div className="mb-4 flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">

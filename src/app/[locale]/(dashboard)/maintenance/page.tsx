@@ -7,22 +7,20 @@ import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import {
   buildMaintenanceQueryString,
-  buildMaintenanceWhere,
   getMaintenanceDateRangeError,
   maintenanceStatusFilters,
   parseMaintenanceListParams,
 } from "@/lib/maintenance-query"
 import { buildMaintenancePagination } from "@/lib/maintenance-list"
 import { buildMaintenancePageHref } from "@/lib/maintenance-view"
-import { buildDuePmPlanWhere, getBangkokDateKey } from "@/lib/preventive-maintenance"
+import { readRepairListPage } from "@/lib/repair-list-page-data"
 import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
-import { stuckRepairsWhere } from "@/lib/waiting-work-rules"
-import { cn, formatDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
@@ -36,12 +34,15 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
+import { RepairListStrip } from "@/components/maintenance/repair-list-strip"
+import { RepairPmDueCard } from "@/components/maintenance/repair-pm-due-card"
+import { RepairStuckCard } from "@/components/maintenance/repair-stuck-card"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; assetId?: string; dateFrom?: string; dateTo?: string; page?: string; pageSize?: string }>
+  searchParams: Promise<{ search?: string; status?: string; assetId?: string; dateFrom?: string; dateTo?: string; page?: string; pageSize?: string; stuck?: string }>
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -52,49 +53,24 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const t = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
   const filters = parseMaintenanceListParams(await searchParams)
-  const where = buildMaintenanceWhere(filters)
   const listQuery = buildMaintenanceQueryString(filters)
   const returnHref = `/${locale}/maintenance?${listQuery}`
   const now = new Date()
-  const todayKey = getBangkokDateKey(now)
-  // D2: the box lists the first 20 due plans but counts every one, as the notifications do.
-  const duePmWhere = buildDuePmPlanWhere(now)
-
-  const [records, total, duePlans, dueTotal, stuckAssets, stuckTotal] = await Promise.all([
-    prisma.maintenanceTicket.findMany({
-      where,
-      include: {
-        asset: { select: { assetTag: true, name: true } },
-        reportedBy: { select: { code: true, fullNameTh: true } },
-        vendor: { select: { name: true } },
-      },
-      orderBy: [{ reportedDate: "desc" }, { createdAt: "desc" }],
-      skip: (filters.page - 1) * filters.pageSize,
-      take: filters.pageSize,
-    }),
-    prisma.maintenanceTicket.count({ where }),
-    prisma.maintenancePlan.findMany({
-      where: duePmWhere,
-      select: {
-        id: true,
-        planNo: true,
-        title: true,
-        nextDueDate: true,
-        asset: { select: { assetTag: true, name: true } },
-        vendor: { select: { name: true } },
-      },
-      orderBy: { nextDueDate: "asc" },
-      take: 20,
-    }),
-    prisma.maintenancePlan.count({ where: duePmWhere }),
-    prisma.asset.findMany({
-      where: stuckRepairsWhere,
-      select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } },
-      orderBy: { assetTag: "asc" },
-      take: 20,
-    }),
-    prisma.asset.count({ where: stuckRepairsWhere }),
-  ])
+  // One read for the records, the strip and both cards (group 5 plan 5). Until Task 3 rebuilds the records part, it
+  // reads the row views in the shape today's markup uses.
+  const { rows, total, strip, stuck, pm } = await readRepairListPage(prisma, filters, now)
+  const records = rows.map((row) => ({
+    id: row.id,
+    repairNo: row.repairNo,
+    reportedDate: row.reportedDate,
+    asset: row.asset,
+    problem: row.problem,
+    repairStatus: row.status,
+    outcome: row.line?.kind === "outcome" && row.line.key !== "unknown" ? row.line.key : null,
+    vendor: row.vendorName == null ? null : { name: row.vendorName },
+    repairCost: row.cost,
+    reportedBy: { fullNameTh: row.reporterName },
+  }))
   // A page past the last one (an old link, or a narrower filter) shows the last page, not an empty table (spec 2B I21).
   const lastPage = lastListPage(total, filters.pageSize)
   if (records.length === 0 && total > 0 && filters.page > lastPage) {
@@ -123,81 +99,48 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         title={t("title")}
         meta={t("subtitle")}
         actions={
-          canCreate ? (
-            <Link href={createHref} className={buttonVariants({ size: "md" })}>
-              <Plus aria-hidden="true" />
-              {t("createTitle")}
+          <>
+            <Link href={`/${locale}/maintenance/pm`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              {t("pmManage")}
             </Link>
-          ) : undefined
+            {canCreate ? (
+              <Link href={createHref} className={buttonVariants({ size: "md" })}>
+                <Plus aria-hidden="true" />
+                {t("createTitle")}
+              </Link>
+            ) : null}
+          </>
         }
       />
 
-      {stuckTotal > 0 ? (
-        <section id="stuck" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
-          <h2 className="text-base font-semibold text-foreground">{t("stuckTitle")} ({formatCount(stuckTotal)})</h2>
-          <Notice tone="warning" className="mt-3">{t("stuckHelp")}</Notice>
-          <ul className="mt-3 grid gap-2 md:grid-cols-2">
-            {stuckAssets.map((asset) => (
-              <li key={asset.id} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
-                <Link href={`/${locale}/assets/${asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 min-w-0 items-center md:min-h-0")}>
-                  <span className="truncate">
-                    <span className="tag">{asset.assetTag}</span> - {asset.name} <span className="text-meta text-muted-foreground">({asset.status.nameTh})</span>
-                  </span>
-                </Link>
-                {canCreate ? (
-                  <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${asset.id}`, returnHref)} className={cn(buttonVariants({ variant: "outline" }), "shrink-0")}>
-                    {t("createTitle")}
-                  </Link>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          {stuckTotal > stuckAssets.length ? <p className="mt-2 text-meta text-muted-foreground">{t("stuckMore", { count: stuckTotal - stuckAssets.length })}</p> : null}
-        </section>
-      ) : null}
+      <RepairListStrip strip={strip} locale={locale} current={filters.status === "in_progress"} />
 
-      <section id="pm-due" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("pmDueTitle")} ({formatCount(dueTotal)})</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("pmDueHelp")}</p>
-          </div>
-          <Link href={`/${locale}/maintenance/pm`} className={buttonVariants({ variant: "outline" })}>
-            {t("pmManage")}
-          </Link>
-        </div>
-        {duePlans.length > 0 ? (
-          <ul className="mt-3 divide-y divide-border-soft rounded-md border border-border bg-background">
-            {duePlans.map((plan) => {
-              const overdue = getBangkokDateKey(plan.nextDueDate) < todayKey
-              return (
-                <li key={plan.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-foreground">{plan.title}</div>
-                    <div className="truncate text-meta text-muted-foreground">
-                      <span className="tag">{plan.planNo}</span> · <span className="tag">{plan.asset.assetTag}</span> - {plan.asset.name}{plan.vendor ? ` · ${plan.vendor.name}` : ""}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge label={overdue ? t("pmOverdue") : t("pmDueOn", { date: formatDate(plan.nextDueDate) })} tone={overdue ? "danger" : "warning"} />
-                    {canCreate ? (
-                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className={buttonVariants()}>
-                        {t("pmRecordDone")}
-                      </Link>
-                    ) : null}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        ) : null}
-        {dueTotal > duePlans.length ? <p className="mt-2 text-meta text-muted-foreground">{t("pmDueMore", { count: dueTotal - duePlans.length })}</p> : null}
-      </section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <RepairStuckCard
+          rows={stuck.rows}
+          total={stuck.total}
+          expanded={filters.stuck === "all"}
+          locale={locale}
+          returnTo={returnHref}
+          canCreate={canCreate}
+          moreHref={`/${locale}/maintenance?${buildMaintenanceQueryString(filters, { stuck: "all" })}#stuck`}
+          lessHref={`/${locale}/maintenance?${buildMaintenanceQueryString(filters, { stuck: "" })}#stuck`}
+        />
+        <RepairPmDueCard
+          rows={pm.rows}
+          overdue={pm.overdue}
+          week={pm.week}
+          locale={locale}
+          returnTo={returnHref}
+          canCreate={canCreate}
+        />
+      </div>
 
       <FilterPanel>
         <form role="search" className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(150px,180px))_auto]" action={`/${locale}/maintenance`}>
           {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
           <input type="hidden" name="pageSize" value={filters.pageSize} />
+          {filters.stuck ? <input type="hidden" name="stuck" value={filters.stuck} /> : null}
           <Field label={tCommon("search")}>
             <SearchField name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} />
           </Field>

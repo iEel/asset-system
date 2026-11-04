@@ -48,18 +48,25 @@ test("PM plan form: the operation frame's plain panel with no tinted frame and n
 
 const D = "src/app/[locale]/(dashboard)/"
 
-test("repair-record list: the stuck and PM-due sections keep their ids on the panel classes with a warning Notice and quiet rows, the list is a divided ContentPanel, and outcomes are StatusBadges (spec 2D D7, D9, M22, M25, M29, M33)", () => {
+// Group 5 plan 5 Task 2: the stuck and PM-due sections became RepairStuckCard and RepairPmDueCard, divided ContentPanels
+// that keep the ids, with rows split by soft lines (ContentPanelRows) and the count as a badge. Until Task 3 the
+// records part keeps its 2D-4 markup.
+test("repair-record list: the stuck and PM-due cards keep their ids on divided ContentPanels with a warning Notice and quiet rows, the list is a divided ContentPanel, and outcomes are StatusBadges (spec 2D D7, D9, M22, M25, M29, M33; group 5 spec §11.2)", () => {
   const source = read(`${D}maintenance/page.tsx`)
-  assert.match(source, /<section id="stuck" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>\n\s+<h2 className="text-base font-semibold text-foreground">\{t\("stuckTitle"\)\} \(\{formatCount\(stuckTotal\)\}\)<\/h2>/)
-  assert.match(source, /<Notice tone="warning" className="mt-3">\{t\("stuckHelp"\)\}<\/Notice>/)
-  assert.match(source, /<li key=\{asset\.id\} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">/)
-  assert.match(source, /<span className="tag">\{asset\.assetTag\}<\/span> - \{asset\.name\} <span className="text-meta text-muted-foreground">\(\{asset\.status\.nameTh\}\)<\/span>/)
-  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "shrink-0"\)\}>\n\s+\{t\("createTitle"\)\}/)
-  assert.match(source, /<section id="pm-due" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
-  assert.match(source, /<h2 className="text-base font-semibold text-foreground">\{t\("pmDueTitle"\)\} \(\{formatCount\(dueTotal\)\}\)<\/h2>/)
-  assert.match(source, /<ul className="mt-3 divide-y divide-border-soft rounded-md border border-border bg-background">/)
-  assert.match(source, /<span className="tag">\{plan\.planNo\}<\/span> · <span className="tag">\{plan\.asset\.assetTag\}<\/span> - \{plan\.asset\.name\}/)
-  assert.match(source, /href=\{appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`, returnHref\)\} className=\{buttonVariants\(\)\}/)
+  const stuck = read(`${C}maintenance/repair-stuck-card.tsx`)
+  const pm = read(`${C}maintenance/repair-pm-due-card.tsx`)
+  assert.match(stuck, /<ContentPanel\n\s+id="stuck"\n\s+divided\n\s+flush\n/)
+  assert.match(stuck, /<Notice tone="warning" className="mx-4 mt-3 md:mx-5">\{t\("stuckHelp"\)\}<\/Notice>/)
+  assert.match(stuck, /<ContentPanelRows>/)
+  assert.match(stuck, /<li key=\{asset\.id\} data-repair-stuck-row className="flex min-w-0 items-center justify-between gap-3">/)
+  assert.match(stuck, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "shrink-0"\)\}>\n\s+\{t\("createTitle"\)\}/)
+  assert.match(pm, /<ContentPanel\n\s+id="pm-due"\n\s+divided\n\s+flush\n/)
+  assert.match(pm, /<ContentPanelRows>/)
+  assert.match(pm, /<StatusBadge\s+label=\{row\.badge\.kind === "overdue"/)
+  assert.match(pm, /className=\{cn\(buttonVariants\(\), "shrink-0"\)\}>\n\s+\{t\("pmRecordDone"\)\}/)
+  for (const card of [stuck, pm]) {
+    assert.doesNotMatch(card, /AlertTriangle|CalendarClock|bg-warning-soft|border-warning-border|text-(?:warning|success|danger|primary)\b|hover:bg-accent|\bbg-primary\b|\btext-xs\b|rounded-lg|border-dashed|dark:|#[0-9a-fA-F]{3,6}\b|rgba?\(|<section\b/)
+  }
   assert.match(source, /<Notice tone="danger" role="alert" className="mt-3">\{t\("invalidDateRange"\)\}<\/Notice>/)
   assert.match(source, /<ContentPanel\s+divided\s+flush\s+className="overflow-hidden"\s+title=\{t\("listTitle"\)\}\s+description=\{t\("resultCount", \{ count: total \}\)\}\s+actions=\{/)
   assert.match(source, /className="block min-w-0 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"/)
@@ -68,12 +75,12 @@ test("repair-record list: the stuck and PM-due sections keep their ids on the pa
   assert.doesNotMatch(source, /AlertTriangle|CalendarClock|bg-warning-soft|border-warning-border|text-(?:warning|success|primary)\b|hover:bg-accent|hover:text-primary|\bbg-primary\b|\btext-xs\b|rounded-lg|divide-border(?![\w-])|<section className=/)
 })
 
-test("review focus 1: a stuck asset with a long Thai name stays one cut line beside its button on a 375px phone (plan 2D-4)", () => {
-  const source = read(`${D}maintenance/page.tsx`)
-  const start = source.indexOf("{stuckAssets.map((asset) => (")
+test("review focus 1: a stuck asset with a long Thai name stays one cut line beside its button on a 375px phone (plan 2D-4; group 5 plan 5)", () => {
+  const source = read(`${C}maintenance/repair-stuck-card.tsx`)
+  const start = source.indexOf("{rows.map((asset) => (")
   const row = source.slice(start, source.indexOf('{t("createTitle")}', start))
-  assert.match(row, /<li key=\{asset\.id\} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">/)
-  assert.match(row, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 min-w-0 items-center md:min-h-0"\)\}>\n\s+<span className="truncate">\n\s+<span className="tag">\{asset\.assetTag\}<\/span>/)
+  assert.match(row, /<li key=\{asset\.id\} data-repair-stuck-row className="flex min-w-0 items-center justify-between gap-3">\n\s+<div className="min-w-0">/)
+  assert.match(row, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 min-w-0 max-w-full items-center md:min-h-0"\)\}>\n\s+<span className="truncate">\{asset\.name\}<\/span>/)
   assert.match(row, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "shrink-0"\)\}/, "the button keeps its width; the name gives way")
 })
 
@@ -125,12 +132,16 @@ test("formatCurrency is gone from src/lib/utils.ts once both print pages show mo
   }
 })
 
-test("PM due box counts every due plan and says how many more (critique 2026-10-20 D2)", () => {
-  const source = read(`${D}maintenance/page.tsx`)
-  assert.match(source, /const duePmWhere = buildDuePmPlanWhere\(now\)/)
-  assert.match(source, /prisma\.maintenancePlan\.findMany\(\{\n\s+where: duePmWhere,/)
-  assert.match(source, /prisma\.maintenancePlan\.count\(\{ where: duePmWhere \}\)/)
-  assert.doesNotMatch(source, /formatCount\(duePlans\.length\)/)
-  assert.ok(source.includes('{t("pmDueMore", { count: dueTotal - duePlans.length })}'))
-  for (const l of ["th", "en"]) assert.equal(typeof JSON.parse(read(`messages/${l}.json`)).repairRecord.pmDueMore, "string")
+// Group 5 plan 5 Task 2 (G5P5-R7): the PM card counts the reminder set as its overdue and week buckets and shows 3
+// rows; its foot links to the PM page filtered to the list it names, so "และอีก N แผน" (pmDueMore) and stuckMore went.
+test("PM due card counts the reminder set and its foot names the list it opens (critique 2026-10-20 D2; group 5 decision 6)", () => {
+  const pm = read(`${C}maintenance/repair-pm-due-card.tsx`)
+  assert.match(pm, /const total = overdue \+ week/)
+  assert.match(pm, /const footLink = pmCardFootLink\(overdue, week\)/)
+  assert.doesNotMatch(read(`${D}maintenance/page.tsx`), /pmDueMore|stuckMore|formatCount\(duePlans\.length\)/)
+  for (const l of ["th", "en"]) {
+    const record = JSON.parse(read(`messages/${l}.json`)).repairRecord
+    assert.equal(record.pmDueMore, undefined)
+    assert.equal(record.stuckMore, undefined)
+  }
 })

@@ -23,7 +23,9 @@ test("maintenance list and detail preserve filtered list context", () => {
 
   assert.match(listSource, /const returnHref = `\/\$\{locale\}\/maintenance\?\$\{listQuery\}`/)
   assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{id\}`, returnHref\)/)
-  assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`, returnHref\)/)
+  // The PM card (group 5 plan 5) gets the list's way back as returnTo.
+  assert.match(listSource, /returnTo=\{returnHref\}/)
+  assert.match(readFileSync("src/components/maintenance/repair-pm-due-card.tsx", "utf8"), /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/new\?planId=\$\{row\.id\}`, returnTo\)/)
 
   assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
   assert.match(detailSource, /const returnToHref = normalizeMaintenanceReturnTo\(locale, rawSearchParams\.returnTo, "maintenance"\)/)

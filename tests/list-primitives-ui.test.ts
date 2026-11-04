@@ -289,13 +289,14 @@ test("ContentPanel divided has a 56px head over a line and a padded or flush bod
   assertListPrimitiveRules(path, source)
   assert.match(source, /\| \{ divided\?: false; flush\?: never \}/)
   assert.match(source, /\| \{ divided: true; flush\?: boolean \}/)
-  assert.match(source, /export function ContentPanel\(\{ title, titleId, description, actions, children, className, divided = false, flush = false \}: ContentPanelProps\)/)
-  // The default path renders exactly as before 2B.
-  assert.match(source, /<section className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5", className\)\}>/)
+  assert.match(source, /export function ContentPanel\(\{ id, title, titleId, description, actions, children, className, divided = false, flush = false \}: ContentPanelProps\)/)
+  // The default path renders exactly as before 2B; id names the section for an anchor (the repair list's #stuck and
+  // #pm-due, group 5 plan 5).
+  assert.match(source, /<section id=\{id\} className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5", className\)\}>/)
   assert.match(source, /<div className="mb-4 flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">/)
   assert.match(source, /\{actions \? <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">\{actions\}<\/div> : null\}/)
   // divided
-  assert.match(source, /<section className=\{cn\(getPanelClasses\(\), className\)\}>/)
+  assert.match(source, /<section id=\{id\} className=\{cn\(getPanelClasses\(\), className\)\}>/)
   assert.match(source, /<div data-slot="content-panel-head" className="flex min-h-14 min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2\.5 md:px-5">/)
   // titleId makes the heading a focus target (group 5 plan 3 final review 10).
   assert.match(source, /<h2 id=\{titleId\} tabIndex=\{titleId \? -1 : undefined\} className="text-base font-semibold text-foreground text-balance outline-none">\{title\}<\/h2>/)

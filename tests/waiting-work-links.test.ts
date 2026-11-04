@@ -73,12 +73,20 @@ test("the findings, maintenance and disposal kinds: the link's own filter builds
 })
 
 test("the maintenance boxes and the approvals total count with the source's own rule", () => {
+  // Group 5 plan 5: the page reads through readRepairListPage; the PM card lists the bell's reminder set and counts it
+  // as readPmDueCounts' overdue and week buckets, and the stuck card counts with the bell's where. Both cards keep the
+  // anchors the bell links to (#pm-due, #stuck) and always render.
   const maintenance = read(`${D}maintenance/page.tsx`)
-  assert.match(maintenance, /const duePmWhere = buildDuePmPlanWhere\(now\)/)
-  assert.match(maintenance, /prisma\.maintenancePlan\.count\(\{ where: duePmWhere \}\)/)
-  assert.match(maintenance, /<section id="pm-due"[\s\S]*?\{t\("pmDueTitle"\)\} \(\{formatCount\(dueTotal\)\}\)/)
-  assert.match(maintenance, /prisma\.asset\.count\(\{ where: stuckRepairsWhere \}\)/)
-  assert.match(maintenance, /<section id="stuck"[\s\S]*?\{t\("stuckTitle"\)\} \(\{formatCount\(stuckTotal\)\}\)/)
+  assert.match(maintenance, /await readRepairListPage\(prisma, filters, now\)/)
+  const data = read("src/lib/repair-list-page-data.ts")
+  assert.match(data, /db\.maintenancePlan\.findMany\(\{ where: buildDuePmPlanWhere\(now\),/)
+  assert.match(data, /readPmDueCounts\(db, now\)/)
+  assert.match(data, /db\.asset\.count\(\{ where: stuckRepairsWhere \}\)/)
+  const pm = read("src/components/maintenance/repair-pm-due-card.tsx")
+  assert.match(pm, /<ContentPanel\n\s+id="pm-due"[\s\S]*?title=\{t\("pmDueTitle"\)\}[\s\S]*?t\("pmDueCount", \{ count: formatCount\(total\) \}\)/)
+  const stuck = read("src/components/maintenance/repair-stuck-card.tsx")
+  assert.match(stuck, /<ContentPanel\n\s+id="stuck"[\s\S]*?title=\{t\("stuckTitle"\)\}[\s\S]*?t\("stuckCount", \{ count: formatCount\(total\) \}\)/)
+  assert.match(maintenance, /<RepairStuckCard\n\s+rows=\{stuck\.rows\}\n\s+total=\{stuck\.total\}/)
   assert.match(read(`${D}admin/approvals/page.tsx`), /\{ key: "total", label: t\("total"\), value: formatCount\(summary\.total\) \}/)
   assert.equal(read("src/lib/approval-inbox-query.ts").match(/countApprovalInbox\(user, access, policy\)/g)?.length, 2, "the page's total and the source's count are one function")
 })
