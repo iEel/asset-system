@@ -121,7 +121,7 @@ test("disposal request page: ContentPanels, the batch a request detail row, the 
   assert.match(source, /<section aria-label=\{t\("historicalEvidenceSummary"\)\} className="mt-5 space-y-4">\n\s+<Notice tone="warning" title=\{t\("historicalEvidenceBadge"\)\}>/)
   assert.match(source, /key: "approvalRemark",\n\s+label: t\("approvalRemark"\),/)
   assert.match(source, /key: "executionRemark",\n\s+label: t\("executionRemark"\),/)
-  assert.match(source, /<section id="history" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<section id="history" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5 max-lg:order-7"\)\}>/)
   assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-2 -left-1"\)\} \/>/)
   assert.match(source, /const assetHref = `\/\$\{locale\}\/assets\/\$\{disposalRequest\.asset\.id\}`/)
   assert.match(source, /<Link href=\{assetHref\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)

@@ -4067,15 +4067,18 @@
       "titleApproved": "อนุมัติแล้ว · รอบันทึกตัดจำหน่าย",
       "approverCannotExecute": "คุณอนุมัติคำขอนี้ จึงบันทึกตัดจำหน่ายรายการนี้เองไม่ได้",
       "titleDisposed": "ตัดจำหน่ายแล้ว · {date}",
-      "titleRejected": "ไม่อนุมัติ · {remark}",
-      "titleRejectedNoRemark": "ไม่อนุมัติ",
+      "titleRejected": "ไม่อนุมัติ",
       "restoredTo": "ทรัพย์สินกลับเป็น{status}",
       "restoredToUnknown": "ทรัพย์สินกลับเป็นสถานะก่อนยื่นคำขอ",
       "method": "วิธี",
       "reviewer": "ผู้พิจารณา",
       "noPhoto": "คำขอนี้ยังไม่มีรูป · แนบรูปได้ที่นี่",
       "uploadFailedNoPhoto": "อัปโหลดไม่สำเร็จ {count} ไฟล์ · คำขอนี้ยังไม่มีรูป",
-      "evidenceHint": "เพิ่มรูปได้ระหว่างรอพิจารณา ผู้พิจารณาจะเห็นทันที"
+      "evidenceHint": "เพิ่มรูปได้ระหว่างรอพิจารณา ผู้พิจารณาจะเห็นทันที",
+      "rejectReason": "เหตุผล: {remark}",
+      "assetStatusTitle": "สถานะทรัพย์สิน",
+      "assetStatusNow": "ตอนนี้:",
+      "addEvidence": "แตะเพื่อถ่ายรูปหรือเลือกไฟล์"
     }
   },
   "approvalInboxPage": {

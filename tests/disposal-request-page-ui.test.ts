@@ -122,7 +122,7 @@ test("the request page words, Thai first", () => {
   assert.equal(page.titleApproved, "อนุมัติแล้ว · รอบันทึกตัดจำหน่าย")
   assert.equal(page.approverCannotExecute, "คุณอนุมัติคำขอนี้ จึงบันทึกตัดจำหน่ายรายการนี้เองไม่ได้")
   assert.equal(page.titleDisposed, "ตัดจำหน่ายแล้ว · {date}")
-  assert.equal(page.titleRejected, "ไม่อนุมัติ · {remark}")
+  assert.equal(page.titleRejected, "ไม่อนุมัติ")
   assert.equal(page.restoredTo, "ทรัพย์สินกลับเป็น{status}")
   assert.equal(page.noPhoto, "คำขอนี้ยังไม่มีรูป · แนบรูปได้ที่นี่")
   assert.equal(page.uploadFailedNoPhoto, "อัปโหลดไม่สำเร็จ {count} ไฟล์ · คำขอนี้ยังไม่มีรูป")
@@ -131,4 +131,81 @@ test("the request page words, Thai first", () => {
   const en = messages("en").disposalPage as Record<string, Record<string, unknown>>
   assert.deepEqual(Object.keys(en.requestPage).sort(), Object.keys(page).sort())
   assert.doesNotMatch(JSON.stringify(page), /จริง/)
+})
+
+// Group 6 plan 3 Task 4 (spec §9.6): the request page on the phone, board DP-Request-Phone.
+test("the phone action bar shows only with a next step: ปฏิเสธ and อนุมัติ to decide, or บันทึกตัดจำหน่าย when approved with disposal:edit", () => {
+  const source = read(PAGE)
+  assert.match(source, /const phoneAction =\n\s+nextStepState === "decide" \? \(/)
+  assert.match(source, /: nextStepState === "approved" && canEdit && executionControl \? executionControl\n\s+: null/)
+  assert.match(source, /\{phoneAction \? <ActionBar label=\{tCommon\("actions"\)\} primaryAction=\{phoneAction\} actions=\{\[\]\} \/> : null\}/)
+  const bar = source.slice(source.indexOf("const phoneAction ="), source.indexOf(': nextStepState === "approved"'))
+  assert.ok(bar.indexOf('initialDecision="reject"') > 0, "the bar holds ปฏิเสธ")
+  assert.ok(bar.indexOf('initialDecision="reject"') < bar.indexOf('initialDecision="approve"'), "ปฏิเสธ comes before อนุมัติ")
+  assert.equal((source.match(/<ActionBar\b/g) ?? []).length, 1)
+  // Never the old open-asset primary, and no generic "พิจารณาคำขอ" trigger.
+  assert.doesNotMatch(source, /nextActionControl/)
+  assert.doesNotMatch(source, /primary: !/)
+  assert.doesNotMatch(source, /<DisposalDecisionButton requestId=\{disposalRequest\.id\} disposalNo=\{disposalRequest\.disposalNo\} \/>/)
+  assert.match(source, /className=\{`space-y-6 \$\{phoneAction \? actionBarPagePadding\.withPrimary : ""\}`\}/)
+  // The approved step's execution word has no จริง.
+  assert.equal((messages("th").disposalPage as Record<string, string>).executeDisposal, "บันทึกตัดจำหน่าย")
+})
+
+test("the phone header holds a ⋯ with print and history", () => {
+  const source = read(PAGE)
+  const start = source.indexOf('<div className="md:hidden">')
+  assert.ok(start > 0)
+  const phone = source.slice(start, source.indexOf('<div className="hidden items-center gap-2 md:flex">'))
+  assert.match(phone, /<RowActions\b/)
+  assert.match(phone, /key: "print", label: printLabel, href: printHref/)
+  assert.match(phone, /key: "history", label: t\("requestPage\.history"\), href: "#history"/)
+})
+
+test("below lg: the next-step card, the asset status card, the request details, then the evidence", () => {
+  const source = read(PAGE)
+  const card = source.indexOf("<DisposalNextStepCard")
+  const status = source.indexOf("data-disposal-asset-status")
+  assert.ok(card > 0 && status > card, "the status card follows the next-step card")
+  assert.match(source, /<section data-disposal-asset-status className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5 lg:hidden"\)\}>/)
+  assert.match(source, /t\("requestPage\.assetStatusTitle"\)/)
+  assert.match(source, /t\("requestPage\.assetStatusNow"\)/)
+  assert.match(source, /tInbox\("effectIfApprove"\)/)
+  assert.match(source, /tInbox\("effectIfReject"\)/)
+  // The two columns dissolve below lg so their panels take one order.
+  assert.equal((source.match(/className="contents lg:block lg:min-w-0 lg:space-y-6"/g) ?? []).length, 2)
+  const order = (marker: string) => {
+    const at = source.indexOf(marker)
+    assert.ok(at > 0, marker)
+    return Number(/max-lg:order-(\d)/.exec(source.slice(at, at + 400))?.[1])
+  }
+  const details = order('data-disposal-panel="details"')
+  const evidence = order('data-disposal-panel="evidence"')
+  const asset = order('data-disposal-panel="asset"')
+  const history = order('id="history"')
+  assert.ok(details < evidence && evidence < asset && asset < history, `order ${details} ${evidence} ${asset} ${history}`)
+  // The card's own effect lines give way to the status card below lg.
+  assert.match(read(CARD), /<div className="hidden lg:block">\n\s+<KeyValueList/)
+})
+
+test("the evidence below lg: 64px tiles, and the add tile (camera) after them", () => {
+  const source = read(ATTACHMENTS)
+  assert.match(source, /size-16 lg:size-24/)
+  assert.match(source, /w-16 lg:w-24/)
+  assert.match(source, /max-lg:order-last/)
+  assert.match(source, /<span className="lg:hidden">\{t\("requestPage\.addEvidence"\)\}<\/span>/)
+  assert.equal((messages("th").disposalPage as Record<string, Record<string, string>>).requestPage.addEvidence, "แตะเพื่อถ่ายรูปหรือเลือกไฟล์")
+})
+
+test("the rejected card: the title is the status word and the remark wraps in the body", () => {
+  const source = read(CARD)
+  assert.match(source, /title = t\("requestPage\.titleRejected"\)/)
+  assert.match(source, /t\("requestPage\.rejectReason", \{ remark: rejectRemark \}\)/)
+  assert.match(source, /data-disposal-reject-remark className="whitespace-pre-wrap \[overflow-wrap:anywhere\]/)
+  const page = (messages("th").disposalPage as Record<string, Record<string, unknown>>).requestPage
+  assert.equal(page.titleRejected, "ไม่อนุมัติ")
+  assert.equal(page.rejectReason, "เหตุผล: {remark}")
+  assert.equal(page.titleRejectedNoRemark, undefined)
+  assert.equal(page.assetStatusTitle, "สถานะทรัพย์สิน")
+  assert.equal(page.assetStatusNow, "ตอนนี้:")
 })

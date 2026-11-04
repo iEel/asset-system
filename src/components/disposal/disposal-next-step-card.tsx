@@ -35,8 +35,9 @@ const stepKeys = ["request", "decision", "round"] as const
 // - own / waiting: who it waits for and since when; own adds the warning with the reason the viewer cannot decide.
 // - approved: อนุมัติแล้ว · รอบันทึกตัดจำหน่าย, the approver's own note, and today's execution button (P3-R1).
 // - disposed: ตัดจำหน่ายแล้ว · {date}, and roundOrExecution when given (plan 4's round).
-// - rejected: ไม่อนุมัติ · {remark}, and the status the asset went back to.
-// The buttons show from md; the phone keeps the ActionBar (Task 4). Server-safe: useTranslations is the only hook.
+// - rejected: ไม่อนุมัติ, the remark as เหตุผล: {remark}, and the status the asset went back to.
+// The buttons show from md; below md the page's ActionBar holds them. Below lg the effect lines move to the page's asset
+// status card (board DP-Request-Phone). Server-safe: useTranslations is the only hook.
 export function DisposalNextStepCard({
   state,
   sodReason,
@@ -93,12 +94,15 @@ export function DisposalNextStepCard({
     body = segregationRequired ? <Notice tone="info" data-disposal-sod="allowed">{tInbox("sodAllowed")}</Notice> : null
     side = (
       <div className="space-y-4">
-        <KeyValueList
-          items={[
-            { key: "approve", label: tInbox("effectIfApprove"), value: effect.approve },
-            { key: "reject", label: tInbox("effectIfReject"), value: effect.reject },
-          ]}
-        />
+        {/* Below lg the page's asset status card carries these lines (board DP-Request-Phone). */}
+        <div className="hidden lg:block">
+          <KeyValueList
+            items={[
+              { key: "approve", label: tInbox("effectIfApprove"), value: effect.approve },
+              { key: "reject", label: tInbox("effectIfReject"), value: effect.reject },
+            ]}
+          />
+        </div>
         {actions ? <div className="hidden md:flex md:flex-wrap md:gap-2 [&>*]:flex-1">{actions}</div> : null}
       </div>
     )
@@ -122,11 +126,19 @@ export function DisposalNextStepCard({
     title = t("requestPage.titleDisposed", { date: doneAt ?? "–" })
     body = roundOrExecution ?? null
   } else {
-    title = rejectRemark ? t("requestPage.titleRejected", { remark: rejectRemark }) : t("requestPage.titleRejectedNoRemark")
+    // The title is the status word; the remark, however long, wraps in the body.
+    title = t("requestPage.titleRejected")
     body = (
-      <p className="text-sm text-muted-foreground">
-        {previousStatus ? t("requestPage.restoredTo", { status: previousStatus }) : t("requestPage.restoredToUnknown")}
-      </p>
+      <div className="space-y-1 text-sm">
+        {rejectRemark ? (
+          <p data-disposal-reject-remark className="whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground">
+            {t("requestPage.rejectReason", { remark: rejectRemark })}
+          </p>
+        ) : null}
+        <p className="text-muted-foreground">
+          {previousStatus ? t("requestPage.restoredTo", { status: previousStatus }) : t("requestPage.restoredToUnknown")}
+        </p>
+      </div>
     )
   }
 

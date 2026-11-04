@@ -98,7 +98,8 @@ test("the four detail pages use ActionBar with its page padding, and the two old
     "assets/[id]": [page("assets/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
     // Group 5 plan 3 G5P3-R8: the repair page's bar lives in its client part, with ซ่อมเสร็จ as primaryAction.
     "maintenance/[id]": [page("maintenance/[id]"), /<div className=\{`space-y-6 \$\{canComplete \? actionBarPagePadding\.withPrimary : actionBarPagePadding\.single\}`\}>/],
-    "disposal/[id]": [page("disposal/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/],
+    // Group 6 plan 3 Task 4: the bar and its room only with a next step (DP-Request-Phone).
+    "disposal/[id]": [page("disposal/[id]"), /<div className=\{`space-y-6 \$\{phoneAction \? actionBarPagePadding\.withPrimary : ""\}`\}>/],
     "audit/rounds/[id]": [page("audit/rounds/[id]"), /<div className=\{!isRoundReadOnly \? actionBarPagePadding\.single : undefined\}>/], // the bar's room only where the bar renders (final review M7)
   }
   for (const [route, [source, root]] of Object.entries(pages)) {
@@ -115,8 +116,8 @@ test("the four detail pages use ActionBar with its page padding, and the two old
   assert.match(assetActions, /<ActionBar\s+label=\{tCommon\("actions"\)\}/)
   assert.doesNotMatch(asset + assetActions, /MobileActionBar|\bpb-(?:24|36)\b/)
   const [disposal] = pages["disposal/[id]"]
-  assert.match(disposal, /<ActionBar\n\s+label=\{tCommon\("actions"\)\}\n\s+primaryAction=\{nextActionControl\}\n/)
-  assert.match(disposal, /label: t\("openAsset"\), icon: <FileText className="h-4 w-4" \/>, primary: !nextActionControl \}/)
+  assert.match(disposal, /\{phoneAction \? <ActionBar label=\{tCommon\("actions"\)\} primaryAction=\{phoneAction\} actions=\{\[\]\} \/> : null\}/)
+  assert.doesNotMatch(disposal, /nextActionControl|primary: !/)
   assert.doesNotMatch(pages["maintenance/[id]"][0], /label: tCommon\("back"\)|ArrowLeft/, "the repair header's PageBackLink is its one back control")
   const repair = pages["maintenance/[id]"][0]
   assert.match(repair, /^import \{ actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m)

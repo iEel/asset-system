@@ -42,7 +42,8 @@ test("mobile disposal detail promotes the stage action without duplicating deskt
   const source = detailSource()
   const actionBar = readFileSync("src/components/ui/action-bar.tsx", "utf8")
 
-  assert.match(source, /primaryAction=\{nextActionControl\}/)
+  // Group 6 plan 3 Task 4: the bar holds the next step only, and only when there is one (DP-Request-Phone).
+  assert.match(source, /primaryAction=\{phoneAction\}/)
   assert.match(source, /hidden[^\"]*md:flex/)
   assert.match(actionBar, /primaryAction/)
   assert.match(actionBar, /fixed inset-x-0 bottom-0/)
@@ -111,9 +112,10 @@ test("disposal request header is PageHeader with the asset name and a back butto
 
   assert.match(source, /breadcrumbs=\{\[\s*\{ label: t\("title"\), href: returnToHref \},\s*\{ label: disposalRequest\.disposalNo, code: true \},\s*\]\}\s*title=\{disposalRequest\.asset\.name\}/)
   assert.match(source, /meta=\{\s*<>\s*<span className="text-meta text-muted-foreground">\s*<span className="tag">\{disposalRequest\.asset\.assetTag\}<\/span>\s*\{" · "\}\s*\{t\("requestPage\.metaRequest", \{ number: disposalRequest\.disposalNo \}\)\}\s*<\/span>\s*<StatusBadge [^\n]*\/>\s*<Chip>\{method\}<\/Chip>/)
-  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\s*actions=\{\s*<div className="hidden items-center gap-2 md:flex">/)
+  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\s*actions=\{\s*<>\s*<div className="md:hidden">/)
+  assert.match(source, /<div className="hidden items-center gap-2 md:flex">/)
   assert.ok(source.indexOf("<PageHeader") < source.indexOf("<DisposalNextStepCard"), "the next-step card sits under the header")
-  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/, "room for the ActionBar and its next step (2C plan 5, O11)")
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 6, "request, decision, execution, the historical exception, a history row, the asset")
+  assert.match(source, /<div className=\{`space-y-6 \$\{phoneAction \? actionBarPagePadding\.withPrimary : ""\}`\}>/, "room for the ActionBar only when it shows (2C plan 5, O11; DP-Request-Phone)")
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 7, "the phone's asset status, request, decision, execution, the historical exception, a history row, the asset")
   assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|ArrowLeft|formatCurrency|function Info\b|"-"/)
 })

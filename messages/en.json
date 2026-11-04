@@ -4067,15 +4067,18 @@
       "titleApproved": "Approved · awaiting disposal record",
       "approverCannotExecute": "You approved this request, so you cannot record its disposal yourself",
       "titleDisposed": "Disposed · {date}",
-      "titleRejected": "Not approved · {remark}",
-      "titleRejectedNoRemark": "Not approved",
+      "titleRejected": "Not approved",
       "restoredTo": "The asset returned to {status}",
       "restoredToUnknown": "The asset returned to its status before the request",
       "method": "Method",
       "reviewer": "Reviewer",
       "noPhoto": "This request has no photo yet · attach one here",
       "uploadFailedNoPhoto": "{count} files failed to upload · this request has no photo yet",
-      "evidenceHint": "Add photos while the request waits for a decision; the reviewer sees them at once"
+      "evidenceHint": "Add photos while the request waits for a decision; the reviewer sees them at once",
+      "rejectReason": "Reason: {remark}",
+      "assetStatusTitle": "Asset status",
+      "assetStatusNow": "Now:",
+      "addEvidence": "Tap to take a photo or choose a file"
     }
   },
   "approvalInboxPage": {

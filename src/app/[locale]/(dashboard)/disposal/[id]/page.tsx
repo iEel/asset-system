@@ -30,7 +30,7 @@ import { filterDisposalExecutorOptions, getDisposalApprovalSodReason, getDisposa
 import { getDisposalNextAction } from "@/lib/disposal-stage"
 import { listDisposalPhotos, isDisposalPhotoFile } from "@/lib/disposal-photo"
 import { formatMovementType } from "@/lib/asset-detail-format"
-import { getPanelClasses } from "@/lib/design-system"
+import { getAssetStateTone, getPanelClasses } from "@/lib/design-system"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { readDisposalSourceLinks } from "@/lib/disposal-source"
 
@@ -44,7 +44,11 @@ const stackedKeyValues = "grid-cols-1 gap-y-0.5 [&>dd+dt]:mt-3 [overflow-wrap:an
 
 // The disposal request page, board DP-Request (group 6 spec §9.1–9.3, §9.5): the header with print and ⋯, the next-step
 // card, the request details with the source link and the reason, the decision, execution and history panels, and a
-// 380px aside with the asset's photos and facts and the evidence. The phone keeps the ActionBar until Task 4.
+// 380px aside with the asset's photos and facts and the evidence.
+// Below lg (board DP-Request-Phone, §9.6) the two columns dissolve (contents) and the panels take one order: the
+// next-step card, the asset status card with the effect lines, the request details, the evidence, then the rest. The
+// header's print and history go into a ⋯, and the ActionBar shows only with a next step: ปฏิเสธ and อนุมัติ to decide,
+// or บันทึกตัดจำหน่าย when approved with disposal:edit (P3-R1). It never offers the old open-asset primary.
 export default async function DisposalDetailPage({ params, searchParams }: DisposalDetailPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
@@ -74,7 +78,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           category: { select: { code: true, name: true } },
           brand: { select: { name: true } },
           model: { select: { name: true } },
-          status: { select: { nameTh: true, colorCode: true } },
+          status: { select: { name: true, nameTh: true, colorCode: true } },
           condition: { select: { nameTh: true, colorCode: true } },
           currentLocation: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
@@ -219,10 +223,33 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       />
     </>
   ) : null
-  // The phone's ActionBar keeps one next step until the phone board (Task 4): the decision dialog that asks, or execution.
-  const nextActionControl = nextAction === "review" ? (
-    <DisposalDecisionButton requestId={disposalRequest.id} disposalNo={disposalRequest.disposalNo} />
-  ) : executionControl
+  // The phone's next step, or nothing: then the page has no ActionBar (§9.6).
+  const phoneAction =
+    nextStepState === "decide" ? (
+      <div className="grid grid-cols-2 gap-2 [&_button]:w-full">
+        <DisposalDecisionButton
+          requestId={disposalRequest.id}
+          disposalNo={disposalRequest.disposalNo}
+          initialDecision="reject"
+          triggerLabel={t("reject")}
+        />
+        <DisposalDecisionButton
+          requestId={disposalRequest.id}
+          disposalNo={disposalRequest.disposalNo}
+          initialDecision="approve"
+          triggerLabel={t("approve")}
+        />
+      </div>
+    ) : nextStepState === "approved" && canEdit && executionControl ? executionControl
+      : null
+  const effectItems: KeyValueItem[] = [
+    { key: "approve", label: tInbox("effectIfApprove"), value: tInbox("effectApprove") },
+    {
+      key: "reject",
+      label: tInbox("effectIfReject"),
+      value: previousStatusName ? tInbox("effectReject", { status: previousStatusName }) : tInbox("effectRejectUnknown"),
+    },
+  ]
 
   const money = (value: unknown) => (value == null ? null : <span className="num">{formatMoney(Number(value), { unit: tCommon("baht") })}</span>)
   const person = (row: { code: string; fullNameTh: string } | null) => (row ? <>{row.fullNameTh} <span className="tag">{row.code}</span></> : null)
@@ -262,7 +289,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   ].filter((item) => !isBlankValue(item.value))
 
   return (
-    <div className={`space-y-6 ${actionBarPagePadding.withPrimary}`}>
+    <div className={`space-y-6 ${phoneAction ? actionBarPagePadding.withPrimary : ""}`}>
       <PageHeader
         breadcrumbs={[
           { label: t("title"), href: returnToHref },
@@ -282,27 +309,47 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         }
         back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
         actions={
-          <div className="hidden items-center gap-2 md:flex">
-            <Link href={printHref} className={buttonVariants({ variant: "outline", size: "md" })}>
-              <Printer aria-hidden="true" />
-              {printLabel}
-            </Link>
-            <RowActions
-              code={disposalRequest.disposalNo}
-              menuLabel={tCommon("moreActionsFor", { code: disposalRequest.disposalNo })}
-              groups={[
-                {
-                  key: "more",
-                  items: [
-                    { kind: "link", key: "history", label: t("requestPage.history"), href: "#history", icon: <History aria-hidden="true" /> },
-                    { kind: "link", key: "asset", label: t("requestPage.openAssetPage"), href: assetHref, icon: <FileText aria-hidden="true" /> },
-                  ],
-                },
-              ]}
-              menu="dropdown"
-              triggerVariant="outline"
-            />
-          </div>
+          <>
+            <div className="md:hidden">
+              <RowActions
+                code={disposalRequest.disposalNo}
+                menuLabel={tCommon("moreActionsFor", { code: disposalRequest.disposalNo })}
+                groups={[
+                  {
+                    key: "more",
+                    items: [
+                      { kind: "link", key: "print", label: printLabel, href: printHref, icon: <Printer aria-hidden="true" /> },
+                      { kind: "link", key: "history", label: t("requestPage.history"), href: "#history", icon: <History aria-hidden="true" /> },
+                      { kind: "link", key: "asset", label: t("requestPage.openAssetPage"), href: assetHref, icon: <FileText aria-hidden="true" /> },
+                    ],
+                  },
+                ]}
+                menu="sheet"
+                triggerVariant="outline"
+              />
+            </div>
+            <div className="hidden items-center gap-2 md:flex">
+              <Link href={printHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                <Printer aria-hidden="true" />
+                {printLabel}
+              </Link>
+              <RowActions
+                code={disposalRequest.disposalNo}
+                menuLabel={tCommon("moreActionsFor", { code: disposalRequest.disposalNo })}
+                groups={[
+                  {
+                    key: "more",
+                    items: [
+                      { kind: "link", key: "history", label: t("requestPage.history"), href: "#history", icon: <History aria-hidden="true" /> },
+                      { kind: "link", key: "asset", label: t("requestPage.openAssetPage"), href: assetHref, icon: <FileText aria-hidden="true" /> },
+                    ],
+                  },
+                ]}
+                menu="dropdown"
+                triggerVariant="outline"
+              />
+            </div>
+          </>
         }
       />
       <DisposalNextStepCard
@@ -322,79 +369,86 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         previousStatus={previousStatusName}
         doneAt={disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null}
       />
-      <ActionBar
-        label={tCommon("actions")}
-        primaryAction={nextActionControl}
-        actions={[
-          { href: assetHref, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: !nextActionControl },
-          { href: printHref, label: printLabel, icon: <Printer className="h-4 w-4" /> },
-          { href: "#history", label: t("disposalHistory"), icon: <History className="h-4 w-4" /> },
-        ]}
-      />
+      {/* Below lg: what the asset is now and what each decision does to it (board DP-Request-Phone). */}
+      <section data-disposal-asset-status className={cn(getPanelClasses(), "p-4 sm:p-5 lg:hidden")}>
+        <h2 className="mb-3 break-words text-base font-semibold text-foreground">{t("requestPage.assetStatusTitle")}</h2>
+        <p className="flex flex-wrap items-center gap-2 text-sm text-foreground">
+          {t("requestPage.assetStatusNow")}
+          <StatusBadge label={disposalRequest.asset.status.nameTh} tone={getAssetStateTone(disposalRequest.asset.status.name)} />
+        </p>
+        {status === "pending" ? <KeyValueList className="mt-3" items={effectItems} /> : null}
+      </section>
+      {phoneAction ? <ActionBar label={tCommon("actions")} primaryAction={phoneAction} actions={[]} /> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 space-y-6">
-          <ContentPanel title={t("requestDetail")}>
-            <KeyValueList className={stackedKeyValues} items={requestItems} />
-          </ContentPanel>
+        <div className="contents lg:block lg:min-w-0 lg:space-y-6">
+          <div data-disposal-panel="details" className="min-w-0 max-lg:order-1">
+            <ContentPanel title={t("requestDetail")}>
+              <KeyValueList className={stackedKeyValues} items={requestItems} />
+            </ContentPanel>
+          </div>
 
           {disposalRequest.requestStatus !== "pending" ? (
-            <ContentPanel title={t("decisionDetail")}>
-              <KeyValueList
-                items={[
-                  { key: "approvedAt", label: t("approvedAt"), value: disposalRequest.approvedAt ? formatDateTime(disposalRequest.approvedAt) : null },
-                  {
-                    key: "approvalRemark",
-                    label: t("approvalRemark"),
-                    value: disposalRequest.approvalRemark ? <span className="whitespace-pre-wrap">{disposalRequest.approvalRemark}</span> : null,
-                  },
-                ]}
-              />
-            </ContentPanel>
+            <div data-disposal-panel="decision" className="min-w-0 max-lg:order-5">
+              <ContentPanel title={t("decisionDetail")}>
+                <KeyValueList
+                  items={[
+                    { key: "approvedAt", label: t("approvedAt"), value: disposalRequest.approvedAt ? formatDateTime(disposalRequest.approvedAt) : null },
+                    {
+                      key: "approvalRemark",
+                      label: t("approvalRemark"),
+                      value: disposalRequest.approvalRemark ? <span className="whitespace-pre-wrap">{disposalRequest.approvalRemark}</span> : null,
+                    },
+                  ]}
+                />
+              </ContentPanel>
+            </div>
           ) : null}
 
           {disposalRequest.requestStatus === "disposed" ? (
-            <ContentPanel title={t("executionDetail")}>
-              <KeyValueList
-                items={[
-                  { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null },
-                  {
-                    key: "executedBy",
-                    label: t("executedBy"),
-                    value: disposalRequest.executedBy ? <><span className="tag">{disposalRequest.executedBy.code}</span> - {disposalRequest.executedBy.fullNameTh}</> : null,
-                  },
-                  { key: "recipientName", label: t("recipientName"), value: disposalRequest.recipientName },
-                  { key: "documentNo", label: t("documentNo"), value: disposalRequest.documentNo },
-                  { key: "actualSaleValue", label: t("actualSaleValue"), value: money(disposalRequest.actualSaleValue) },
-                  { key: "actualSalvageValue", label: t("actualSalvageValue"), value: money(disposalRequest.actualSalvageValue) },
-                  { key: "completedAt", label: t("completedAt"), value: disposalRequest.completedAt ? formatDateTime(disposalRequest.completedAt) : null },
-                  {
-                    key: "executionRemark",
-                    label: t("executionRemark"),
-                    value: disposalRequest.executionRemark ? <span className="whitespace-pre-wrap">{disposalRequest.executionRemark}</span> : null,
-                  },
-                ]}
-              />
-              {disposalRequest.evidenceExceptionReason ? (
-                <section aria-label={t("historicalEvidenceSummary")} className="mt-5 space-y-4">
-                  <Notice tone="warning" title={t("historicalEvidenceBadge")}><p className="whitespace-pre-wrap">{disposalRequest.evidenceExceptionReason}</p></Notice>
-                  <KeyValueList
-                    items={[
-                      { key: "grantedBy", label: t("historicalEvidenceGrantedBy"), value: evidenceExceptionGrantorLabel },
-                      {
-                        key: "grantedAt",
-                        label: t("historicalEvidenceGrantedAt"),
-                        value: disposalRequest.evidenceExceptionGrantedAt ? formatDateTime(disposalRequest.evidenceExceptionGrantedAt) : null,
-                      },
-                    ]}
-                  />
-                </section>
-              ) : null}
-            </ContentPanel>
+            <div data-disposal-panel="execution" className="min-w-0 max-lg:order-6">
+              <ContentPanel title={t("executionDetail")}>
+                <KeyValueList
+                  items={[
+                    { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null },
+                    {
+                      key: "executedBy",
+                      label: t("executedBy"),
+                      value: disposalRequest.executedBy ? <><span className="tag">{disposalRequest.executedBy.code}</span> - {disposalRequest.executedBy.fullNameTh}</> : null,
+                    },
+                    { key: "recipientName", label: t("recipientName"), value: disposalRequest.recipientName },
+                    { key: "documentNo", label: t("documentNo"), value: disposalRequest.documentNo },
+                    { key: "actualSaleValue", label: t("actualSaleValue"), value: money(disposalRequest.actualSaleValue) },
+                    { key: "actualSalvageValue", label: t("actualSalvageValue"), value: money(disposalRequest.actualSalvageValue) },
+                    { key: "completedAt", label: t("completedAt"), value: disposalRequest.completedAt ? formatDateTime(disposalRequest.completedAt) : null },
+                    {
+                      key: "executionRemark",
+                      label: t("executionRemark"),
+                      value: disposalRequest.executionRemark ? <span className="whitespace-pre-wrap">{disposalRequest.executionRemark}</span> : null,
+                    },
+                  ]}
+                />
+                {disposalRequest.evidenceExceptionReason ? (
+                  <section aria-label={t("historicalEvidenceSummary")} className="mt-5 space-y-4">
+                    <Notice tone="warning" title={t("historicalEvidenceBadge")}><p className="whitespace-pre-wrap">{disposalRequest.evidenceExceptionReason}</p></Notice>
+                    <KeyValueList
+                      items={[
+                        { key: "grantedBy", label: t("historicalEvidenceGrantedBy"), value: evidenceExceptionGrantorLabel },
+                        {
+                          key: "grantedAt",
+                          label: t("historicalEvidenceGrantedAt"),
+                          value: disposalRequest.evidenceExceptionGrantedAt ? formatDateTime(disposalRequest.evidenceExceptionGrantedAt) : null,
+                        },
+                      ]}
+                    />
+                  </section>
+                ) : null}
+              </ContentPanel>
+            </div>
           ) : null}
 
-          {/* The ⋯ and the ActionBar's #history link scroll here: the panel classes keep the history's own layout (2D-2 R4). */}
-          <section id="history" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+          {/* The ⋯'s #history link scrolls here: the panel classes keep the history's own layout (2D-2 R4). */}
+          <section id="history" className={cn(getPanelClasses(), "p-4 sm:p-5 max-lg:order-7")}>
             <h2 className="mb-4 break-words text-base font-semibold text-foreground">{t("disposalHistory")}</h2>
             {movements.length === 0 ? (
               <ActionEmptyState
@@ -433,38 +487,42 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           </section>
         </div>
 
-        <aside className="min-w-0 space-y-6">
+        <aside className="contents lg:block lg:min-w-0 lg:space-y-6">
           {showNoPhoto ? (
-            <Notice tone="warning" data-disposal-no-photo={failedUploads > 0 ? "upload-failed" : "none"}>
+            <Notice tone="warning" className="max-lg:order-2" data-disposal-no-photo={failedUploads > 0 ? "upload-failed" : "none"}>
               {failedUploads > 0 ? t("requestPage.uploadFailedNoPhoto", { count: failedUploads }) : t("requestPage.noPhoto")}
             </Notice>
           ) : null}
-          <ContentPanel title={t("asset")}>
-            <div className="space-y-4">
-              {photos.length > 0 ? (
-                <DisposalPhotoGallery
-                  photos={photos.map((photo) => ({ id: photo.id, originalName: photo.originalName }))}
-                  documents={[]}
-                  assetName={disposalRequest.asset.name}
-                  isLost={isLost}
-                />
-              ) : null}
-              <KeyValueList className={stackedKeyValues} items={assetItems} />
-              <Link href={assetHref} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
-                {t("openAsset")}
-              </Link>
-            </div>
-          </ContentPanel>
+          <div data-disposal-panel="asset" className="min-w-0 max-lg:order-4">
+            <ContentPanel title={t("asset")}>
+              <div className="space-y-4">
+                {photos.length > 0 ? (
+                  <DisposalPhotoGallery
+                    photos={photos.map((photo) => ({ id: photo.id, originalName: photo.originalName }))}
+                    documents={[]}
+                    assetName={disposalRequest.asset.name}
+                    isLost={isLost}
+                  />
+                ) : null}
+                <KeyValueList className={stackedKeyValues} items={assetItems} />
+                <Link href={assetHref} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+                  {t("openAsset")}
+                </Link>
+              </div>
+            </ContentPanel>
+          </div>
 
-          <DisposalAttachments
-            requestId={disposalRequest.id}
-            attachments={attachments}
-            canManage={canCreate || canApprove || canEdit}
-            canDelete={canEdit}
-            lastFileLock={{ requestStatus: status, disposalType: disposalRequest.disposalType, inheritedCount: inheritedQualifying }}
-            hint={status === "pending" ? t("requestPage.evidenceHint") : undefined}
-          />
-          {disposalRequest.batch ? <DisposalAttachments requestId={disposalRequest.batch.id} attachments={batchAttachments} canManage={false} title={t("batchSharedEvidence")} /> : null}
+          <div data-disposal-panel="evidence" className="min-w-0 space-y-6 max-lg:order-3">
+            <DisposalAttachments
+              requestId={disposalRequest.id}
+              attachments={attachments}
+              canManage={canCreate || canApprove || canEdit}
+              canDelete={canEdit}
+              lastFileLock={{ requestStatus: status, disposalType: disposalRequest.disposalType, inheritedCount: inheritedQualifying }}
+              hint={status === "pending" ? t("requestPage.evidenceHint") : undefined}
+            />
+            {disposalRequest.batch ? <DisposalAttachments requestId={disposalRequest.batch.id} attachments={batchAttachments} canManage={false} title={t("batchSharedEvidence")} /> : null}
+          </div>
         </aside>
       </div>
     </div>

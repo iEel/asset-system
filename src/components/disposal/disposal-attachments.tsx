@@ -37,7 +37,7 @@ function lockedFileId(attachments: readonly Attachment[], lock: DisposalLastFile
   return qualifying.length === 1 && lock.inheritedCount === 0 ? qualifying[0].id : null
 }
 
-// The request's evidence (group 6 spec §9.3, §9.5): images as 96px thumbnails that open the original in the preview
+// The request's evidence (group 6 spec §9.3, §9.5, §9.6): images as 96px thumbnails (64px below lg) that open the original in the preview
 // dialog, other files (PDFs) as rows with their download. The upload takes JPG, PNG, WEBP or PDF and refuses HEIC before
 // sending. The × shows only with canDelete (disposal:edit on the request page), and not on the last qualifying file; the
 // server refuses that anyway with DISPOSAL_LAST_PHOTO, whose words the toast shows.
@@ -135,70 +135,79 @@ export function DisposalAttachments({
     )
   }
 
+  // Below lg (board DP-Request-Phone) the tiles are 64px and the upload, a dashed tile that opens the camera, follows
+  // them; from lg it leads with 96px tiles. One input either way, so the page has a single file field.
   return (
     <ContentPanel title={title ?? t("requestEvidence")}>
-      {canManage ? (
-        <div className="mb-4">
-          <Field label={t("dropEvidenceTitle")} hideLabel hint={hint} error={typeError ?? undefined}>
-            <FileDropzone
-              file={file}
-              onFileChange={upload}
-              disabled={uploading}
-              accept={disposalEvidenceAccept}
-              capture="environment"
-              title={t("dropEvidenceTitle")}
-              hint={uploading ? t("uploadingEvidence") : t("dropEvidenceSelected")}
-              browseLabel={t("dropEvidenceHint")}
-            />
-          </Field>
-        </div>
-      ) : null}
-      {attachments.length === 0 ? (
-        <EmptyNote>{tCommon("noData")}</EmptyNote>
-      ) : (
-        <div className="space-y-4">
-          {images.length > 0 ? (
-            <ul className="flex flex-wrap gap-3">
-              {images.map((attachment) => (
-                <li key={attachment.id} className="flex w-24 flex-col items-start gap-1.5">
-                  {/* The thumbnail is the control that opens the original (2D-3 R5, the N3 EXEMPT row). */}
-                  <button
-                    type="button"
-                    onClick={() => setPreview(attachment)}
-                    aria-label={tAsset("filesTab.openPhoto", { name: attachment.originalName })}
-                    title={attachment.originalName}
-                    className="block size-24 overflow-hidden rounded-md border border-border bg-muted transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- already resized by the thumbnail route */}
-                    <img src={thumbnailUrl(attachment.id)} alt="" width={96} height={96} loading="lazy" decoding="async" className="size-full object-cover bg-image-stage" />
-                  </button>
-                  {deleteButton(attachment)}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {documents.length > 0 ? (
-            <ul className="divide-y divide-border-soft">
-              {documents.map((attachment) => (
-                <li key={attachment.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                  <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
-                    <FileText className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">{attachment.originalName}</div>
-                    <div className="text-meta text-muted-foreground">{formatFileSize(attachment.fileSize)}</div>
-                  </div>
-                  <a href={`/api/attachments/${attachment.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                    <Download aria-hidden="true" />
-                    {t("download")}
-                  </a>
-                  {deleteButton(attachment)}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      )}
+      <div className="flex flex-col gap-4">
+        {canManage ? (
+          <div className="max-lg:order-last">
+            <Field label={t("dropEvidenceTitle")} hideLabel hint={hint} error={typeError ?? undefined}>
+              <FileDropzone
+                file={file}
+                onFileChange={upload}
+                disabled={uploading}
+                accept={disposalEvidenceAccept}
+                capture="environment"
+                title={t("dropEvidenceTitle")}
+                hint={uploading ? t("uploadingEvidence") : t("dropEvidenceSelected")}
+                browseLabel={
+                  <>
+                    <span className="lg:hidden">{t("requestPage.addEvidence")}</span>
+                    <span className="hidden lg:inline">{t("dropEvidenceHint")}</span>
+                  </>
+                }
+              />
+            </Field>
+          </div>
+        ) : null}
+        {attachments.length === 0 ? (
+          <EmptyNote>{tCommon("noData")}</EmptyNote>
+        ) : (
+          <div className="space-y-4">
+            {images.length > 0 ? (
+              <ul className="flex flex-wrap gap-3">
+                {images.map((attachment) => (
+                  <li key={attachment.id} className="flex w-16 lg:w-24 flex-col items-start gap-1.5">
+                    {/* The thumbnail is the control that opens the original (2D-3 R5, the N3 EXEMPT row). */}
+                    <button
+                      type="button"
+                      onClick={() => setPreview(attachment)}
+                      aria-label={tAsset("filesTab.openPhoto", { name: attachment.originalName })}
+                      title={attachment.originalName}
+                      className="block size-16 lg:size-24 overflow-hidden rounded-md border border-border bg-muted transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- already resized by the thumbnail route */}
+                      <img src={thumbnailUrl(attachment.id)} alt="" width={96} height={96} loading="lazy" decoding="async" className="size-full object-cover bg-image-stage" />
+                    </button>
+                    {deleteButton(attachment)}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {documents.length > 0 ? (
+              <ul className="divide-y divide-border-soft">
+                {documents.map((attachment) => (
+                  <li key={attachment.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                      <FileText className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">{attachment.originalName}</div>
+                      <div className="text-meta text-muted-foreground">{formatFileSize(attachment.fileSize)}</div>
+                    </div>
+                    <a href={`/api/attachments/${attachment.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                      <Download aria-hidden="true" />
+                      {t("download")}
+                    </a>
+                    {deleteButton(attachment)}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        )}
+      </div>
 
       {/* The original, only when a person opens a thumbnail. */}
       <AttachmentPreviewDialog
