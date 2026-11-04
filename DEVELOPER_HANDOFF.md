@@ -1520,6 +1520,17 @@ npm run build
   - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 1 survivor fixed in `8723ae73`: a lost request without a photo shows the muted "ไม่มีรูป · สูญหาย", a failed upload is named even when a photo arrived; also the execution panel's date is a day and `e2e/cross-cutting/roles.spec.ts` checks the new decision buttons. `e2e/disposal` + roles, four projects: 74 / 0.
   - **Next:** plan 4, the queue and disposal rounds (migration on dev, the round service, the round pages, the accounting Excel; retires per-row and bulk execution).
 
+- Page group 6, plan 4: the disposal queue (DP-Queue) and disposal rounds; group 6 is complete with it.
+  - 2026-11-05, branch `feat/group6-disposal-rounds` (from master `3200a939`). Not merged, not deployed. **Migration** `prisma/manual-migrations/2026-11-05-add-disposal-rounds.sql`: applied to `asset_management_dev` (checksum `4d072a8fed67`); Production must apply it **before** the deploy (every `DisposalRequest` read selects `roundId`). Deploy-day order and the line-ending note: `docs/03_DATABASE.md`.
+  - Plan rulings: P4-R1 per-request and bulk execution answer 410 `DISPOSAL_USE_ROUND`, their UI and 73 message keys deleted; P4-R2 the selection travels to `/disposal/rounds/new` in `sessionStorage` (`disposal-round-selection`); P4-R3 no round files (photos stay on the requests); P4-R4 request batches move into the ชุดคำขอ ▾ menu, their pages unchanged.
+  - **Server:** `src/lib/disposal-round-service.ts` (`previewDisposalRound`, `createDisposalRound`: one Serializable transaction, 120 s, set-based, guarded counts → `DISPOSAL_CONCURRENT_UPDATE`; `getDisposalRoundTickBlocks` for the queue), `executeDisposalRequestInTransaction` takes a list, `POST /api/disposal-rounds` (preview / commit; blocked → 409 `DISPOSAL_ROUND_BLOCKED`), `GET /api/disposal-rounds/[id]/report` (`src/lib/disposal-round-report.ts`, sharp JPEG 240 px, pool of 4).
+  - **UI:** the queue page; `disposal-round-selection.tsx`; `/disposal/rounds/new` (`disposal-round-form.tsx`), `/disposal/rounds/[id]`, `/disposal/rounds` (`src/lib/disposal-round-page-data.ts`).
+  - **Timing on dev (200 machines, one photo each):** preview 0.93 s, commit 1.5 s, report 656 KB in 0.9 s. Known, not this plan's: bulk approval of 200 takes about 40 s (one transaction per item); six parallel request creates can exhaust the DP- number retry.
+  - **E2E:** `E2E-1105E` whole suite, four projects: 575 passed, 0 failed, 47 skipped (1.4 h). After the review and look fixes, `E2E-1105F` (`e2e/disposal`, four projects): 54 / 0.
+  - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 1 survivor fixed in `12f07313` (two codes had no `disposalPage.errors` text; a test now pins every localized code). Refuted but worth knowing: two rounds saved at the same moment on the same day can deadlock on the number count and one gets "changed by another user" (retry works).
+  - **Look step** fixes in `ed57bcbc`.
+  - **Next:** other page groups; ยืนยันผลตรวจ last; consumables after that.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
