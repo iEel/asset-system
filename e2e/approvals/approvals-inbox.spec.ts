@@ -123,7 +123,8 @@ test.describe("three requests of IT staff", () => {
       // The list waits behind the back link; the panel is the page's width (the 16px gutters aside).
       await expect(page.locator("[data-approval-list]")).toBeHidden()
       await expect(back).toBeVisible()
-      const width = (await panel.boundingBox())?.width ?? 0
+      // The panel's section (its card fills it), not the card's padded content.
+      const width = (await page.locator('[data-approval-panel="disposal"]').boundingBox())?.width ?? 0
       expect(width, "the panel spans the phone").toBeGreaterThan((page.viewportSize()?.width ?? 0) - 48)
       await back.click()
       await page.waitForURL((url) => !url.searchParams.has("item"))
