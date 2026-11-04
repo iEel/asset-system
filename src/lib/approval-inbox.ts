@@ -1,4 +1,11 @@
+// client-safe: `import type` and relative .ts imports only, so node --test loads it.
 import type { WorkflowApprovalPolicy } from "@/lib/workflow-approval"
+import { getApprovalAgeStatus, type ApprovalAgeStatus } from "./approval-aging.ts"
+import {
+  getDisposalApprovalBlock,
+  type DisposalApprovalBlock,
+  type DisposalBulkApprovalCandidate,
+} from "./disposal-bulk-approval.ts"
 
 export type ApprovalInboxKind =
   | "disposal_review"
@@ -19,8 +26,65 @@ export type ApprovalInboxItem = {
   tone: "danger" | "warning" | "primary"
 }
 
+export type ApprovalInboxAccess = {
+  canApproveDisposal: boolean
+  canApproveAudit: boolean
+  canAnyApproval: boolean
+}
+
+/** The inbox's words, built by the caller from the `approvalInboxPage` messages (getTranslations). */
+export type ApprovalInboxCopy = {
+  kindDisposal: string
+  kindAudit: string
+  actionDisposal: string
+  actionFinding: string
+  actionRound: string
+  roundReady: string
+  findingReview: string
+  disposalReady: (assetName: string) => string
+}
+
+type ApprovalInboxTranslate = (key: string, values?: Record<string, string>) => string
+
+/** The copy from an `approvalInboxPage` translator: `getTranslations({ locale, namespace: "approvalInboxPage" })`. */
+export function buildApprovalInboxCopy(t: ApprovalInboxTranslate): ApprovalInboxCopy {
+  return {
+    kindDisposal: t("kindDisposal"),
+    kindAudit: t("kindAudit"),
+    actionDisposal: t("actionDisposal"),
+    actionFinding: t("actionFinding"),
+    actionRound: t("actionRound"),
+    roundReady: t("roundReady"),
+    findingReview: t("findingReview"),
+    disposalReady: (assetName: string) => t("disposalReady", { assetName }),
+  }
+}
+
+// ?item=<key>:<id> on the approvals page (group 6 spec §7.3, §7.5).
+export const approvalInboxItemKeys = ["disposal", "finding", "round"] as const
+export type ApprovalInboxItemKey = (typeof approvalInboxItemKeys)[number]
+
+export function approvalInboxItemHref(locale: string, key: ApprovalInboxItemKey, id: string): string {
+  return `/${locale}/admin/approvals?item=${key}:${id}`
+}
+
+const approvalInboxItemIdPattern = /^[A-Za-z0-9-]{1,100}$/
+
+/** A known key and an id of letters, digits and dashes (up to 100); anything else, an array included, is null. */
+export function parseApprovalInboxItemParam(value: string | string[] | undefined): { key: ApprovalInboxItemKey; id: string } | null {
+  if (typeof value !== "string") return null
+  const separator = value.indexOf(":")
+  if (separator < 0) return null
+  const key = value.slice(0, separator)
+  const id = value.slice(separator + 1)
+  if (!(approvalInboxItemKeys as readonly string[]).includes(key)) return null
+  if (!approvalInboxItemIdPattern.test(id)) return null
+  return { key: key as ApprovalInboxItemKey, id }
+}
+
 export type ApprovalInboxSource = {
   locale: string
+  copy: ApprovalInboxCopy
   policy: WorkflowApprovalPolicy
   disposalRequests: Array<{
     id: string
@@ -47,9 +111,11 @@ export type ApprovalInboxSource = {
   }>
 }
 
+// The work center's list and today's approvals page. Disposal items no longer hang on policy.disposalRequired: approval
+// is always required in code (group 6 spec §7.2).
 export function buildApprovalInboxItems(source: ApprovalInboxSource): ApprovalInboxItem[] {
   const items: ApprovalInboxItem[] = []
-  const copy = approvalInboxCopy(source.locale)
+  const { copy } = source
 
   if (source.policy.auditCloseRequired) {
     for (const round of source.auditRoundsReadyToClose) {
@@ -59,11 +125,11 @@ export function buildApprovalInboxItems(source: ApprovalInboxSource): ApprovalIn
         module: "audit",
         recordId: round.id,
         title: `${round.auditNo} - ${round.name}`,
-        description: copy.auditRoundReady,
+        description: copy.roundReady,
         requestedBy: round.createdBy,
         requestedAt: round.updatedAt,
-        actionLabel: copy.auditRoundAction,
-        href: `/${source.locale}/audit/rounds/${round.id}`,
+        actionLabel: copy.actionRound,
+        href: approvalInboxItemHref(source.locale, "round", round.id),
         tone: "primary",
       })
     }
@@ -79,28 +145,26 @@ export function buildApprovalInboxItems(source: ApprovalInboxSource): ApprovalIn
       description: `${copy.findingReview}: ${humanizeApprovalKey(finding.findingType)}`,
       requestedBy: finding.reportedBy,
       requestedAt: finding.reportedAt,
-      actionLabel: copy.findingAction,
-      href: `/${source.locale}/audit/findings?status=pending`,
+      actionLabel: copy.actionFinding,
+      href: approvalInboxItemHref(source.locale, "finding", finding.id),
       tone: "warning",
     })
   }
 
-  if (source.policy.disposalRequired) {
-    for (const request of source.disposalRequests) {
-      items.push({
-        id: `disposal-review:${request.id}`,
-        kind: "disposal_review",
-        module: "disposal",
-        recordId: request.id,
-        title: `${request.disposalNo} - ${request.assetTag}`,
-        description: copy.disposalReady(request.assetName),
-        requestedBy: request.requestedBy,
-        requestedAt: request.requestDate,
-        actionLabel: copy.disposalAction,
-        href: `/${source.locale}/disposal/${request.id}`,
-        tone: "danger",
-      })
-    }
+  for (const request of source.disposalRequests) {
+    items.push({
+      id: `disposal-review:${request.id}`,
+      kind: "disposal_review",
+      module: "disposal",
+      recordId: request.id,
+      title: `${request.disposalNo} - ${request.assetTag}`,
+      description: copy.disposalReady(request.assetName),
+      requestedBy: request.requestedBy,
+      requestedAt: request.requestDate,
+      actionLabel: copy.actionDisposal,
+      href: approvalInboxItemHref(source.locale, "disposal", request.id),
+      tone: "danger",
+    })
   }
 
   return items.sort((a, b) => {
@@ -127,24 +191,263 @@ function humanizeApprovalKey(value: string) {
   return value.replaceAll("_", " ")
 }
 
-function approvalInboxCopy(locale: string) {
-  if (locale === "th") {
-    return {
-      auditRoundReady: "รอบตรวจนับพร้อมปิดแล้ว ไม่มีรายการค้างที่ต้องตัดสินใจ",
-      auditRoundAction: "อนุมัติปิดรอบตรวจนับ",
-      findingReview: "รายการไม่ตรงรอพิจารณา",
-      findingAction: "พิจารณารายการไม่ตรง",
-      disposalReady: (assetName: string) => `คำขอตัดจำหน่าย ${assetName} รออนุมัติ`,
-      disposalAction: "พิจารณาตัดจำหน่าย",
-    }
+// ---------------------------------------------------------------------------------------------------------------------
+// The read model of the approvals page (group 6 spec §7.2–7.3): every pending item, sorted, filtered and paged in memory.
+
+export type ApprovalInboxTab = "all" | "disposal" | "audit"
+export const approvalInboxTabs = ["all", "disposal", "audit"] as const satisfies readonly ApprovalInboxTab[]
+export const approvalInboxPageSizes = [25, 50, 100] as const
+export type ApprovalInboxPageSize = (typeof approvalInboxPageSizes)[number]
+
+export type ApprovalInboxQuery = {
+  tab: ApprovalInboxTab
+  search: string
+  overdue: boolean
+  page: number
+  pageSize: ApprovalInboxPageSize
+}
+
+const approvalInboxSearchMax = 100
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export function parseApprovalInboxQuery(searchParams: Record<string, string | string[] | undefined>): ApprovalInboxQuery {
+  const tab = firstParam(searchParams.tab)
+  const page = Number.parseInt(firstParam(searchParams.page) ?? "", 10)
+  const pageSize = Number(firstParam(searchParams.pageSize))
+  return {
+    tab: tab && (approvalInboxTabs as readonly string[]).includes(tab) ? (tab as ApprovalInboxTab) : "all",
+    search: (firstParam(searchParams.search) ?? "").trim().slice(0, approvalInboxSearchMax),
+    overdue: firstParam(searchParams.overdue) === "1",
+    page: Number.isFinite(page) && page >= 1 ? page : 1,
+    pageSize: (approvalInboxPageSizes as readonly number[]).includes(pageSize) ? (pageSize as ApprovalInboxPageSize) : 25,
+  }
+}
+
+export type ApprovalInboxRow = {
+  key: ApprovalInboxItemKey
+  id: string
+  href: string
+  kind: ApprovalInboxKind
+  subtype: { kind: "method"; disposalType: string } | { kind: "finding"; findingType: string } | { kind: "close" }
+  /** The asset's name, or the round's name. */
+  title: string
+  /** "tag · DP-/AUD- no", or the round's AUD- no. */
+  codes: string
+  /** Lowercased once: what the search matches. */
+  searchText: string
+  requesterName: string
+  isOwn: boolean
+  requestedAt: Date
+  age: ApprovalAgeStatus
+  /** Disposal only: why the viewer may not approve it. */
+  block: DisposalApprovalBlock | null
+  /** Disposal only, filled for the visible rows; null for the other kinds. */
+  photoCount: number | null
+  /** False for close rows and for blocked rows. */
+  tickable: boolean
+}
+
+export type ApprovalInboxStrip = {
+  overdue: { total: number; disposal: number; audit: number }
+  oldest: { key: ApprovalInboxItemKey; id: string; title: string; ageDays: number; requestedAt: Date } | null
+  total: { total: number; overdue: number; within: number }
+}
+
+export type ApprovalInboxTabCounts = { all: number; disposal: number; audit: number; findings: number; rounds: number }
+
+export type ApprovalInboxPage = {
+  access: ApprovalInboxAccess
+  policy: WorkflowApprovalPolicy
+  /** Every pending item the viewer may see; it does not follow the tab, the search or the overdue filter. */
+  strip: ApprovalInboxStrip
+  /** Follows the search and the overdue filter. */
+  tabs: ApprovalInboxTabCounts
+  /** The current page. */
+  rows: ApprovalInboxRow[]
+  filteredTotal: number
+  page: number
+  pageSize: ApprovalInboxPageSize
+}
+
+/** Every pending row already loaded: unsorted and before photo counts. */
+export type ApprovalInboxPageSource = { rows: ApprovalInboxRow[] }
+
+const rowKeyOrder: Record<ApprovalInboxItemKey, number> = { disposal: 0, finding: 1, round: 2 }
+
+// Overdue first, then the oldest, then the kind (spec §7.3).
+function compareApprovalInboxRows(a: ApprovalInboxRow, b: ApprovalInboxRow) {
+  if (a.age.isOverdue !== b.age.isOverdue) return a.age.isOverdue ? -1 : 1
+  if (a.age.ageDays !== b.age.ageDays) return b.age.ageDays - a.age.ageDays
+  const time = a.requestedAt.getTime() - b.requestedAt.getTime()
+  if (time !== 0) return time
+  const kind = rowKeyOrder[a.key] - rowKeyOrder[b.key]
+  if (kind !== 0) return kind
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+}
+
+function isAuditRow(row: ApprovalInboxRow) {
+  return row.key === "finding" || row.key === "round"
+}
+
+/**
+ * The page from every pending row: the strip counts everything, the tab counts follow the search and the overdue
+ * filter, and the rows are the current tab's page (clamped to the last page). The ages are already on the rows, taken
+ * at `now`.
+ */
+export function buildApprovalInboxPage(
+  source: ApprovalInboxPageSource,
+  query: ApprovalInboxQuery,
+  now: Date,
+): Omit<ApprovalInboxPage, "access" | "policy"> {
+  void now
+  const all = [...source.rows].sort(compareApprovalInboxRows)
+
+  const overdueRows = all.filter((row) => row.age.isOverdue)
+  const oldestRow = all.reduce<ApprovalInboxRow | null>(
+    (oldest, row) => (!oldest || row.requestedAt.getTime() < oldest.requestedAt.getTime() ? row : oldest),
+    null,
+  )
+  const strip: ApprovalInboxStrip = {
+    overdue: {
+      total: overdueRows.length,
+      disposal: overdueRows.filter((row) => row.key === "disposal").length,
+      audit: overdueRows.filter(isAuditRow).length,
+    },
+    oldest: oldestRow
+      ? { key: oldestRow.key, id: oldestRow.id, title: oldestRow.title, ageDays: oldestRow.age.ageDays, requestedAt: oldestRow.requestedAt }
+      : null,
+    total: { total: all.length, overdue: overdueRows.length, within: all.length - overdueRows.length },
   }
 
-  return {
-    auditRoundReady: "Audit round is ready to close with no pending decision items.",
-    auditRoundAction: "Approve Round Closure",
-    findingReview: "Discrepancy awaiting decision",
-    findingAction: "Decide Discrepancy",
-    disposalReady: (assetName: string) => `Disposal request for ${assetName} is awaiting approval.`,
-    disposalAction: "Decide Disposal",
+  const search = query.search.trim().toLocaleLowerCase()
+  const filtered = all.filter((row) => (!query.overdue || row.age.isOverdue) && (!search || row.searchText.includes(search)))
+  const findings = filtered.filter((row) => row.key === "finding").length
+  const rounds = filtered.filter((row) => row.key === "round").length
+  const disposal = filtered.filter((row) => row.key === "disposal").length
+  const tabs: ApprovalInboxTabCounts = { all: filtered.length, disposal, audit: findings + rounds, findings, rounds }
+
+  const inTab = query.tab === "disposal"
+    ? filtered.filter((row) => row.key === "disposal")
+    : query.tab === "audit"
+      ? filtered.filter(isAuditRow)
+      : filtered
+  const lastPage = Math.max(1, Math.ceil(inTab.length / query.pageSize))
+  const page = Math.min(Math.max(1, Math.floor(query.page) || 1), lastPage)
+  const rows = inTab.slice((page - 1) * query.pageSize, page * query.pageSize)
+
+  return { strip, tabs, rows, filteredTotal: inTab.length, page, pageSize: query.pageSize }
+}
+
+export type ApprovalInboxDisposalRecord = DisposalBulkApprovalCandidate & {
+  disposalType: string
+  requestDate: Date
+  requesterName: string
+  asset: DisposalBulkApprovalCandidate["asset"] & { name: string }
+}
+
+export type ApprovalInboxRowsInput = {
+  locale: string
+  now: Date
+  slaDays: number
+  viewer: { userId: string; employeeId?: string | null }
+  segregationRequired: boolean
+  /** User id → User.displayName; an id with no row (a removed account) shows as the raw id. */
+  userNames: ReadonlyMap<string, string>
+  /** The Thai short word of a finding type, for the search. */
+  findingTypeLabel: (findingType: string) => string
+  disposalRequests: ApprovalInboxDisposalRecord[]
+  auditFindings: Array<{
+    id: string
+    auditNo: string
+    findingType: string
+    assetTag: string | null
+    assetName: string | null
+    reportedBy: string
+    reportedAt: Date
+  }>
+  auditRounds: Array<{ id: string; auditNo: string; name: string; createdBy: string; updatedAt: Date }>
+}
+
+function searchTextOf(parts: Array<string | null | undefined>) {
+  return parts.filter((part): part is string => Boolean(part)).join(" ").toLocaleLowerCase()
+}
+
+function codesOf(parts: Array<string | null | undefined>) {
+  return parts.filter((part): part is string => Boolean(part)).join(" · ")
+}
+
+/** The page's rows from the loaded records: names, codes, search text, ages and block reasons; photo counts come later. */
+export function buildApprovalInboxRows(input: ApprovalInboxRowsInput): ApprovalInboxRow[] {
+  const { locale, now, slaDays, viewer } = input
+  const nameOf = (userId: string) => input.userNames.get(userId) || userId
+  const rows: ApprovalInboxRow[] = []
+
+  for (const request of input.disposalRequests) {
+    const block = getDisposalApprovalBlock(request, { userId: viewer.userId, employeeId: viewer.employeeId }, input.segregationRequired)
+    const isOwn = Boolean(viewer.employeeId && request.requestedById === viewer.employeeId) || request.createdBy === viewer.userId
+    rows.push({
+      key: "disposal",
+      id: request.id,
+      href: approvalInboxItemHref(locale, "disposal", request.id),
+      kind: "disposal_review",
+      subtype: { kind: "method", disposalType: request.disposalType },
+      title: request.asset.name,
+      codes: codesOf([request.asset.assetTag, request.disposalNo]),
+      searchText: searchTextOf([request.asset.name, request.asset.assetTag, request.disposalNo]),
+      requesterName: request.requesterName,
+      isOwn,
+      requestedAt: request.requestDate,
+      age: getApprovalAgeStatus(request.requestDate, now, slaDays),
+      block,
+      photoCount: null,
+      tickable: block === null,
+    })
   }
+
+  for (const finding of input.auditFindings) {
+    const typeLabel = input.findingTypeLabel(finding.findingType)
+    rows.push({
+      key: "finding",
+      id: finding.id,
+      href: approvalInboxItemHref(locale, "finding", finding.id),
+      kind: "audit_finding_review",
+      subtype: { kind: "finding", findingType: finding.findingType },
+      title: finding.assetName || finding.assetTag || typeLabel,
+      codes: codesOf([finding.assetTag, finding.auditNo]),
+      searchText: searchTextOf([finding.assetName, finding.assetTag, finding.auditNo, typeLabel]),
+      requesterName: nameOf(finding.reportedBy),
+      isOwn: finding.reportedBy === viewer.userId,
+      requestedAt: finding.reportedAt,
+      age: getApprovalAgeStatus(finding.reportedAt, now, slaDays),
+      block: null,
+      photoCount: null,
+      tickable: true,
+    })
+  }
+
+  // A round's "sent" time is when it last changed (approximate, spec §7.3).
+  for (const round of input.auditRounds) {
+    rows.push({
+      key: "round",
+      id: round.id,
+      href: approvalInboxItemHref(locale, "round", round.id),
+      kind: "audit_round_close",
+      subtype: { kind: "close" },
+      title: round.name,
+      codes: round.auditNo,
+      searchText: searchTextOf([round.name, round.auditNo]),
+      requesterName: nameOf(round.createdBy),
+      isOwn: round.createdBy === viewer.userId,
+      requestedAt: round.updatedAt,
+      age: getApprovalAgeStatus(round.updatedAt, now, slaDays),
+      block: null,
+      photoCount: null,
+      tickable: false,
+    })
+  }
+
+  return rows
 }

@@ -4039,7 +4039,7 @@
     "total": "ทั้งหมด",
     "disposal": "ตัดจำหน่าย",
     "audit": "ตรวจนับ",
-    "policyTitle": "นโยบายที่ใช้กับ Inbox นี้",
+    "policyTitle": "นโยบายที่ใช้กับงานรออนุมัติ",
     "policyDescription": "ดึงค่าจาก System Settings > การอนุมัติ และกรองตามสิทธิ์ของผู้ใช้",
     "policyDisposal": "ตัดจำหน่าย",
     "policyAuditClose": "ปิดรอบตรวจนับ",
@@ -4078,7 +4078,15 @@
     "requestedBy": "ผู้ทำรายการ",
     "requestedAt": "วันที่ส่งเรื่อง",
     "waitingDays": "รอ {days} วัน",
-    "overdueDays": "เกิน SLA {days} วัน"
+    "overdueDays": "เกิน SLA {days} วัน",
+    "kindDisposal": "ตัดจำหน่าย",
+    "kindAudit": "ตรวจนับ",
+    "actionDisposal": "พิจารณาตัดจำหน่าย",
+    "actionFinding": "พิจารณารายการไม่ตรง",
+    "actionRound": "เปิดรอบตรวจนับ",
+    "roundReady": "รอบตรวจนับพร้อมปิด ไม่มีรายการค้าง",
+    "findingReview": "รายการไม่ตรงรอพิจารณา",
+    "disposalReady": "คำขอตัดจำหน่าย {assetName} รอพิจารณา"
   },
   "approvalHistoryPage": {
     "title": "ประวัติการตัดสินใจอนุมัติ",

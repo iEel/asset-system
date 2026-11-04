@@ -4078,7 +4078,15 @@
     "requestedBy": "Requested By",
     "requestedAt": "Requested At",
     "waitingDays": "Waiting {days} days",
-    "overdueDays": "{days} days overdue"
+    "overdueDays": "{days} days overdue",
+    "kindDisposal": "Disposal",
+    "kindAudit": "Audit",
+    "actionDisposal": "Decide Disposal",
+    "actionFinding": "Decide Discrepancy",
+    "actionRound": "Open Audit Round",
+    "roundReady": "Audit round is ready to close, with no pending items.",
+    "findingReview": "Discrepancy awaiting decision",
+    "disposalReady": "Disposal request for {assetName} is awaiting a decision."
   },
   "approvalHistoryPage": {
     "title": "Approval Decision History",

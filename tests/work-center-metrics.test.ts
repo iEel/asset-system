@@ -77,7 +77,7 @@ test("the page takes each shared kind's count, title, link and gate from the wai
   assert.match(source, /applyPlanWorkCenterScope\(duePmWhere\(today\), true, userScope\)/)
   assert.match(source, /applyAssetWorkCenterScope\(stuckRepairsWhere, true, userScope\)/)
   assert.match(source, /applyMaintenanceWorkCenterScope\(\{ \.\.\.openRepairsWhere \}, isMineView, userScope\)/, "the repair panel lists the same kind it counts")
-  assert.match(source, /approvalInboxAccess\.canAnyApproval && isPanelFocused\("approvals"\) \? getApprovalInboxSnapshot\(user, locale\) : Promise\.resolve\(null\)/)
+  assert.match(source, /approvalInboxAccess\.canAnyApproval && isPanelFocused\("approvals"\) \? getApprovalInboxSnapshot\(user, locale, approvalInboxCopy\) : Promise\.resolve\(null\)/)
   assert.doesNotMatch(source, /openRepairRecordWhere|buildDuePmPlanWhere|getNotificationCenter|recordCountDrops/)
   assert.doesNotMatch(source, /t\("(?:approvalInboxDetail|(?:openRepairs|duePm|pendingAuditFindings|openAuditActions|pendingDisposals|approvedDisposals)(?:Detail)?)"\)/)
 })

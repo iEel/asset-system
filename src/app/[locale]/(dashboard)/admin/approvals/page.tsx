@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server"
 import { ChevronRight, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import { redirectToLogin } from "@/lib/page-auth"
-import type { ApprovalInboxItem } from "@/lib/approval-inbox"
+import { buildApprovalInboxCopy, type ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
 import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
 import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
@@ -35,7 +35,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
   const user = await getSessionUser()
   if (!user) return redirectToLogin(locale)
 
-  const snapshot = await getApprovalInboxSnapshot(user, locale)
+  const snapshot = await getApprovalInboxSnapshot(user, locale, buildApprovalInboxCopy(await getTranslations({ locale, namespace: "approvalInboxPage" })))
   if (!snapshot.access.canAnyApproval) notFound()
 
   const [t, approverUsers] = await Promise.all([
@@ -52,7 +52,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
     label: t(`filter_${filter}`),
     count: filter === "all" ? summary.total : summary[filter],
   }))
-  const disposalPolicyOn = policy.disposalRequired && access.canApproveDisposal
+  // The inbox no longer hides disposal behind policy.disposalRequired (group 6 spec §7.2): approval is always required.
+  const disposalPolicyOn = access.canApproveDisposal
   const auditPolicyOn = policy.auditCloseRequired && access.canApproveAudit
 
   return (

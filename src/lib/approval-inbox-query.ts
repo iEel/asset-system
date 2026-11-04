@@ -1,7 +1,17 @@
 import type { Prisma } from "@prisma/client"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
-import { buildApprovalInboxCounts, buildApprovalInboxItems } from "@/lib/approval-inbox"
+import {
+  buildApprovalInboxCounts,
+  buildApprovalInboxItems,
+  buildApprovalInboxPage,
+  buildApprovalInboxRows,
+  type ApprovalInboxAccess,
+  type ApprovalInboxCopy,
+  type ApprovalInboxPage,
+  type ApprovalInboxQuery,
+} from "@/lib/approval-inbox"
 import {
   parseWorkflowApprovalPolicy,
   workflowApprovalDefaults,
@@ -9,13 +19,12 @@ import {
   type WorkflowApprovalPolicy,
 } from "@/lib/workflow-approval"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { auditFindingTypeShortLabelKeys, resolveAuditFindingType } from "@/lib/audit-finding-filters"
+import { listDisposalPhotos } from "@/lib/disposal-photo"
+import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 import { earliestDate } from "@/lib/waiting-work-rules"
 
-export type ApprovalInboxAccess = {
-  canApproveDisposal: boolean
-  canApproveAudit: boolean
-  canAnyApproval: boolean
-}
+export type { ApprovalInboxAccess } from "@/lib/approval-inbox"
 
 export type ApprovalInboxCounts = {
   total: number
@@ -23,28 +32,34 @@ export type ApprovalInboxCounts = {
   audit: number
 }
 
-// The queues the inbox holds: the snapshot list, the count and the oldest all read these.
+// The queues the inbox holds: the pending loader, the count and the oldest all read these. The disposal-approval
+// setting no longer hides anything (group 6 spec §7.2): approval is always required in code. The viewer's own disposal requests
+// are in (blocked, as the bell counts them); their own findings and rounds are not.
 const pendingDisposalApprovalWhere: Prisma.DisposalRequestWhereInput = { isActive: true, requestStatus: "pending" }
 
 function pendingFindingApprovalWhere(userId: string): Prisma.AuditFindingWhereInput {
   return { reviewStatus: "pending", reportedBy: { not: userId }, auditRound: { isActive: true, status: auditRoundOperationalWhere } }
 }
 
-export async function getApprovalInboxSnapshot(user: SessionUser, locale: string) {
-  const access = getApprovalInboxAccess(user)
-  const policy = await getWorkflowApprovalPolicy()
-
-  const [disposalRequests, auditFindings, auditRoundsReadyToClose, summary] = await Promise.all([
-    access.canApproveDisposal && policy.disposalRequired
+// Every pending record of the three sources the user may see, uncapped, with the audit user ids resolved to names.
+async function loadPendingApprovalRecords(user: SessionUser, access: ApprovalInboxAccess, policy: WorkflowApprovalPolicy) {
+  const [disposalRequests, auditFindings, auditRounds] = await Promise.all([
+    access.canApproveDisposal
       ? prisma.disposalRequest.findMany({
           where: pendingDisposalApprovalWhere,
-          omit: { batchId: true },
-          include: {
-            asset: { select: { assetTag: true, name: true } },
+          select: {
+            id: true,
+            disposalNo: true,
+            disposalType: true,
+            isActive: true,
+            requestStatus: true,
+            requestedById: true,
+            createdBy: true,
+            requestDate: true,
+            asset: { select: { assetTag: true, name: true, status: { select: { name: true, nameTh: true, isActive: true } } } },
             requestedBy: { select: { code: true, fullNameTh: true } },
           },
           orderBy: { requestDate: "asc" },
-          take: 50,
         })
       : Promise.resolve([]),
     access.canApproveAudit
@@ -52,22 +67,41 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
           where: pendingFindingApprovalWhere(user.id),
           include: {
             auditRound: { select: { auditNo: true } },
-            asset: { select: { assetTag: true } },
+            asset: { select: { assetTag: true, name: true } },
           },
           orderBy: { reportedAt: "asc" },
-          take: 50,
         })
       : Promise.resolve([]),
     access.canApproveAudit && policy.auditCloseRequired
       ? getAuditRoundsReadyToClose(user.id)
       : Promise.resolve([]),
+  ])
+
+  const userIds = [...new Set([...auditFindings.map((finding) => finding.reportedBy), ...auditRounds.map((round) => round.createdBy)])]
+  const users = userIds.length > 0
+    ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, displayName: true } })
+    : []
+  const userNames = new Map(users.filter((row) => row.displayName).map((row) => [row.id, row.displayName]))
+
+  return { disposalRequests, auditFindings, auditRounds, userNames }
+}
+
+/** Today's list for the work center and the approvals page; the copy comes from the caller's `approvalInboxPage` messages. */
+export async function getApprovalInboxSnapshot(user: SessionUser, locale: string, copy: ApprovalInboxCopy) {
+  const access = getApprovalInboxAccess(user)
+  const policy = await getWorkflowApprovalPolicy()
+
+  const [records, summary] = await Promise.all([
+    loadPendingApprovalRecords(user, access, policy),
     countApprovalInbox(user, access, policy),
   ])
+  const nameOf = (userId: string) => records.userNames.get(userId) || userId
 
   const items = buildApprovalInboxItems({
     locale,
+    copy,
     policy,
-    disposalRequests: disposalRequests.map((request) => ({
+    disposalRequests: records.disposalRequests.map((request) => ({
       id: request.id,
       disposalNo: request.disposalNo,
       assetTag: request.asset.assetTag,
@@ -75,15 +109,15 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
       requestedBy: `${request.requestedBy.code} - ${request.requestedBy.fullNameTh}`,
       requestDate: request.requestDate,
     })),
-    auditFindings: auditFindings.map((finding) => ({
+    auditFindings: records.auditFindings.map((finding) => ({
       id: finding.id,
       auditNo: finding.auditRound.auditNo,
       findingType: finding.findingType,
       assetTag: finding.asset?.assetTag ?? null,
-      reportedBy: finding.reportedBy,
+      reportedBy: nameOf(finding.reportedBy),
       reportedAt: finding.reportedAt,
     })),
-    auditRoundsReadyToClose,
+    auditRoundsReadyToClose: records.auditRounds.map((round) => ({ ...round, createdBy: nameOf(round.createdBy) })),
   })
 
   return {
@@ -92,6 +126,76 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
     items,
     summary,
   }
+}
+
+/**
+ * The approvals page's read model (group 6 spec §7.2–7.3): every pending item the user may see, sorted, filtered and
+ * paged in memory, with Bangkok ages, names, block reasons, and photo counts for the visible disposal rows.
+ */
+export async function getApprovalInboxPage(
+  user: SessionUser,
+  locale: string,
+  query: ApprovalInboxQuery,
+  now: Date = new Date(),
+): Promise<ApprovalInboxPage> {
+  const access = getApprovalInboxAccess(user)
+  const policy = await getWorkflowApprovalPolicy()
+  const [records, tRound] = await Promise.all([
+    loadPendingApprovalRecords(user, access, policy),
+    getTranslations({ locale: "th", namespace: "auditRound" }),
+  ])
+
+  const rows = buildApprovalInboxRows({
+    locale,
+    now,
+    slaDays: policy.slaDays,
+    viewer: { userId: user.id, employeeId: user.employeeId },
+    segregationRequired: policy.segregationRequired,
+    userNames: records.userNames,
+    findingTypeLabel: (findingType) => {
+      const type = resolveAuditFindingType(findingType)
+      return type ? tRound(auditFindingTypeShortLabelKeys[type]) : findingType
+    },
+    disposalRequests: records.disposalRequests.map((request) => ({
+      id: request.id,
+      disposalNo: request.disposalNo,
+      disposalType: request.disposalType,
+      isActive: request.isActive,
+      requestStatus: request.requestStatus,
+      requestedById: request.requestedById,
+      createdBy: request.createdBy,
+      requestDate: request.requestDate,
+      requesterName: request.requestedBy.fullNameTh || request.requestedBy.code,
+      asset: { assetTag: request.asset.assetTag, name: request.asset.name, status: request.asset.status },
+    })),
+    auditFindings: records.auditFindings.map((finding) => ({
+      id: finding.id,
+      auditNo: finding.auditRound.auditNo,
+      findingType: finding.findingType,
+      assetTag: finding.asset?.assetTag ?? null,
+      assetName: finding.asset?.name ?? null,
+      reportedBy: finding.reportedBy,
+      reportedAt: finding.reportedAt,
+    })),
+    auditRounds: records.auditRounds,
+  })
+
+  const page = buildApprovalInboxPage({ rows }, query, now)
+
+  // Photo counts for the visible disposal rows only; batchId is read only where the column exists.
+  const visibleDisposalIds = page.rows.filter((row) => row.key === "disposal").map((row) => row.id)
+  if (visibleDisposalIds.length > 0) {
+    const batchIds = (await isDisposalBatchSchemaReady())
+      ? new Map(
+          (await prisma.disposalRequest.findMany({ where: { id: { in: visibleDisposalIds } }, select: { id: true, batchId: true } }))
+            .map((request) => [request.id, request.batchId]),
+        )
+      : new Map<string, string | null>()
+    const photos = await listDisposalPhotos(prisma, visibleDisposalIds.map((id) => ({ id, batchId: batchIds.get(id) ?? null })))
+    page.rows = page.rows.map((row) => (row.key === "disposal" ? { ...row, photoCount: photos.get(row.id)?.length ?? 0 } : row))
+  }
+
+  return { access, policy, ...page }
 }
 
 export async function getApprovalInboxCounts(user: SessionUser): Promise<ApprovalInboxCounts> {
@@ -109,7 +213,7 @@ export async function getApprovalInboxOldest(user: SessionUser): Promise<{ oldes
 
   const policy = await getWorkflowApprovalPolicy()
   const [disposal, auditFindings, rounds] = await Promise.all([
-    access.canApproveDisposal && policy.disposalRequired
+    access.canApproveDisposal
       ? prisma.disposalRequest.aggregate({ where: pendingDisposalApprovalWhere, _min: { requestDate: true } })
       : Promise.resolve(null),
     access.canApproveAudit
@@ -126,10 +230,10 @@ export async function getApprovalInboxOldest(user: SessionUser): Promise<{ oldes
   }
 }
 
-// The real database counts. The lists in the snapshot are capped (take: 50 / 100), so counting their rows stops at the cap.
+// The real database counts, the same queues as the read model's strip total (the viewer's own disposal requests in).
 async function countApprovalInbox(user: SessionUser, access: ApprovalInboxAccess, policy: WorkflowApprovalPolicy): Promise<ApprovalInboxCounts> {
   const [disposal, auditFindings, auditRoundsReady] = await Promise.all([
-    access.canApproveDisposal && policy.disposalRequired
+    access.canApproveDisposal
       ? prisma.disposalRequest.count({ where: pendingDisposalApprovalWhere })
       : Promise.resolve(0),
     access.canApproveAudit
@@ -162,12 +266,12 @@ async function getWorkflowApprovalPolicy() {
   return parseWorkflowApprovalPolicy(savedSettings)
 }
 
+// Every round ready to close, uncapped, with what the rows show.
 async function getAuditRoundsReadyToClose(currentUserId: string) {
   const rounds = await prisma.auditRound.findMany({
     where: { isActive: true, status: auditRoundOperationalWhere, createdBy: { not: currentUserId } },
     select: { id: true, auditNo: true, name: true, createdBy: true, updatedAt: true },
     orderBy: { updatedAt: "desc" },
-    take: 100,
   })
   const readyRoundIds = await getReadyAuditRoundIds(rounds.map((round) => round.id))
 

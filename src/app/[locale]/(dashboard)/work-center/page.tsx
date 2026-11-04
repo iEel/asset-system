@@ -17,7 +17,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
 import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
-import type { ApprovalInboxItem } from "@/lib/approval-inbox"
+import { buildApprovalInboxCopy, type ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalInboxAccess, getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { getWaitingWork } from "@/lib/waiting-work"
 import {
@@ -91,6 +91,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
   const tCommon = await getTranslations("common")
   const tDisposal = await getTranslations("disposalPage")
   const tNotifications = await getTranslations("notifications")
+  const approvalInboxCopy = buildApprovalInboxCopy(await getTranslations({ locale, namespace: "approvalInboxPage" }))
   const approvalInboxAccess = getApprovalInboxAccess(user)
   const now = new Date()
   // getWaitingWork only reads (R10): the work center never records count drops.
@@ -205,7 +206,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     prisma.asset.count({ where: missingPhotoWhere }),
     prisma.auditItem.count({ where: pendingAuditItemsWhere }),
     Promise.all(mineCountKeys.map((key) => mineCounters[key]())),
-    approvalInboxAccess.canAnyApproval && isPanelFocused("approvals") ? getApprovalInboxSnapshot(user, locale) : Promise.resolve(null),
+    approvalInboxAccess.canAnyApproval && isPanelFocused("approvals") ? getApprovalInboxSnapshot(user, locale, approvalInboxCopy) : Promise.resolve(null),
     isPanelFocused("assets") ? prisma.asset.findMany({
       where: assetIssueWhere,
       select: {
