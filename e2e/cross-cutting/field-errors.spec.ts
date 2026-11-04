@@ -254,7 +254,8 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   const option = page.getByRole("option", { name: asset.assetTag }).first()
   await expect(option).toBeVisible()
   await option.click()
-  await expect(page.locator("#maintenance-plan-asset")).toContainText(asset.assetTag)
+  // The pick brings the asset's card in place of the picker (group 5 plan 4, G5P4-R9).
+  await expect(page.locator("[data-pm-asset-card]")).toContainText(asset.assetTag)
   await save(page)
   await expectFieldError(page, "maintenance-plan-title", REQUIRED)
 

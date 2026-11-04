@@ -175,8 +175,6 @@ test("roles and permissions: each refused page and request needs a permission th
     messages.auditFinding.actionPlan,
     messages.auditFinding.closeFinding,
     messages.disposalPage.reviewRequest,
-    (messages.maintenancePage.pmActions as Record<string, string>).pause,
-    (messages.maintenancePage.pmActions as Record<string, string>).end,
     messages.disposalPage.executeDisposal,
   ]
   assert.deepEqual([...refusals.WRITE_BUTTON_NAMES], words)
@@ -349,4 +347,35 @@ test("finding M4 holds in the findings panel: IT staff get no tick, and a findin
   assert.ok(m4.includes(`for (const name of REVIEW_BUTTON_NAMES) await expect(findingPanel(page).getByRole("button", { name, exact: true })).toHaveCount(0)`))
   assert.ok(m4.includes(`await expect(page.locator("#audit-review-reason")).toHaveCount(0)`))
   assert.ok(spec.includes(`from "../audit/review-steps.ts"`) && spec.includes(`from "../audit/round-page-steps.ts"`))
+})
+
+test("the viewer's PM page offers no ⋯ and no เพิ่มแผน PM, and the PM form's error walk reads the asset card (group 5 plan 4 Task 5)", async () => {
+  const refusals = await import("../e2e/cross-cutting/support/refusals.ts")
+  const pm = thai.maintenancePage as Record<string, unknown>
+  const actions = pm.pmActions as Record<string, string>
+  // พักแผน, เปิดใช้งานต่อ and จบแผน moved inside the row's ⋯ (spec §9), so their names left the button list, and the
+  // viewer's PM page is checked for no ⋯ at all: the button named "การดำเนินการของแผน <planNo>" (pmRowActions).
+  for (const word of [actions.pause, actions.resume, actions.end]) assert.ok(!refusals.WRITE_BUTTON_NAMES.includes(word), word)
+  assert.equal(pm.pmRowActions, "การดำเนินการของแผน {planNo}")
+  assert.deepEqual(refusals.WRITE_MENU_NAMES.map(String), ["/^การดำเนินการของแผน /"])
+  assert.ok(refusals.WRITE_MENU_NAMES[0].test((pm.pmRowActions as string).replace("{planNo}", "PM-20261104-0001")))
+  // The create link by its words as well as by its address.
+  assert.deepEqual([...refusals.WRITE_LINK_NAMES], [pm.pmCreateTitle])
+  assert.ok(refusals.isWriteLink("/th/maintenance/pm/new") && refusals.READ_ONLY_LISTS.includes("/th/maintenance/pm"))
+  const roles = read("e2e/cross-cutting/support/roles-ui.ts")
+  assert.ok(roles.includes(`const menus = await page.locator("main button[aria-label]").filter({ visible: true }).evaluateAll((nodes) => nodes.map((node) => node.getAttribute("aria-label") ?? ""))`))
+  assert.ok(roles.includes(`const linkNames = await page.locator("main a[href]").filter({ visible: true }).evaluateAll((links) => links.map((link) => (link.textContent ?? "").trim()))`))
+  assert.ok(roles.includes("...menus.filter((name) => WRITE_MENU_NAMES.some((pattern) => pattern.test(name))).map((name) => `menu ${name}`)"))
+  assert.ok(roles.includes("...linkNames.filter((name) => WRITE_LINK_NAMES.includes(name)).map((name) => `link ${name}`)"))
+  // The row's ⋯ is drawn only with maintenance:edit; the viewer's row keeps only an open record's link.
+  const rowActions = read("src/components/maintenance/maintenance-plan-row-actions.tsx")
+  assert.ok(rowActions.includes("const groups: RowActionGroup[] = canEdit"))
+  assert.ok(rowActions.includes(`menuLabel={t("pmRowActions", { planNo: plan.planNo })}`))
+  // The PM form's error walk: the pick brings the asset card in place of the picker (G5P4-R9), so the walk reads the
+  // card, not the picker's trigger.
+  const fieldErrors = read("e2e/cross-cutting/field-errors.spec.ts")
+  const start = fieldErrors.indexOf('test("PM plan: ')
+  const walk = fieldErrors.slice(start, fieldErrors.indexOf("\n})", start))
+  assert.ok(walk.includes(`await expect(page.locator("[data-pm-asset-card]")).toContainText(asset.assetTag)`))
+  assert.ok(!walk.includes(`await expect(page.locator("#maintenance-plan-asset")).toContainText(asset.assetTag)`))
 })

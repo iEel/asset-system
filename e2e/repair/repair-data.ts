@@ -19,9 +19,19 @@ export function bangkokToday(now = new Date()): string {
 
 // The day before a yyyy-mm-dd date.
 export function dayBefore(date: string): string {
+  return dayAfter(date, -1)
+}
+
+// The day a number of days after a yyyy-mm-dd date.
+export function dayAfter(date: string, days: number): string {
   const day = new Date(`${date}T00:00:00Z`)
-  day.setUTCDate(day.getUTCDate() - 1)
+  day.setUTCDate(day.getUTCDate() + days)
   return day.toISOString().slice(0, 10)
+}
+
+// The days from one yyyy-mm-dd date to another, as the PM badges count Bangkok days ("เกินกำหนด N วัน").
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 }
 
 // E2E-1019N-desktop-light-R1: the run, the project and the asset's role in the test (at most 50 characters).
@@ -227,10 +237,10 @@ export async function completeRecord(page: Page, measure: Measure, device: E2eDe
   await expect(dialog).toBeHidden()
 }
 
-// One state change on a PM list row: its button, the confirm dialog and its button, the PATCH, the toast, the dialog
-// closes.
-export async function planAction(page: Page, row: Locator, action: string, dialogTitle: string, toast: string) {
-  await row.getByRole("button", { name: action, exact: true }).click()
+// One state change of a PM plan from its row's ⋯ (spec §9): the item, the confirm dialog and its button, the PATCH, the
+// toast, the dialog closes. The list refreshes in place, and the plan leaves the tab it was on.
+export async function planAction(page: Page, device: E2eDevice, row: Locator, action: string, dialogTitle: string, toast: string) {
+  await planMenuItem(await openPlanMenu(page, device, row), action).click()
   const dialog = page.getByRole("dialog", { name: dialogTitle })
   await expect(dialog).toBeVisible()
   const changed = page.waitForResponse((response) => /\/api\/maintenance-plans\/[^/]+$/.test(response.url()) && response.request().method() === "PATCH")
@@ -240,21 +250,80 @@ export async function planAction(page: Page, row: Locator, action: string, dialo
   await expect(dialog).toBeHidden()
 }
 
-// The PM list holds every plan of the database: active plans first, then paused, then ended, each by next due date,
-// across every page (src/app/[locale]/(dashboard)/maintenance/pm/page.tsx). A page of 100 keeps the run's active plan
-// near the top, but the dev database gains plans run by run.
-export const PM_LIST = "/th/maintenance/pm?pageSize=100"
+// The PM page (src/app/[locale]/(dashboard)/maintenance/pm/page.tsx, group 5 plan 4): one state per tab (?state=), a
+// search over the plan and its asset (?q=) and, on the active tab, the due cells (?due=). The dev database keeps the
+// old plans (decision 10.6), so a spec finds its own plan by search, never by position (spec §16).
+export const PM_LIST = "/th/maintenance/pm"
+export type PmTab = "active" | "paused" | "ended"
+export type PmDueBucket = "overdue" | "soon" | "later"
 
-// A plan's row on the PM list, on whichever page holds it: the dev database held 103 active plans on 2026-10-26
-// (E2E-1026E), so a paused or ended plan sits on page 2 or later. Visits page 1, then 2, 3 and so on (each measured)
-// until a row names the plan, and stops with an error on the last page (no "next" link).
-export async function visitPlanRow(page: Page, measure: Measure, title: string, label: string): Promise<Locator> {
-  const row = page.getByRole("main").locator("li").filter({ hasText: title })
-  for (let listPage = 1; ; listPage += 1) {
-    await measure.visit(listPage === 1 ? PM_LIST : `${PM_LIST}&page=${listPage}`, listPage === 1 ? label : `${label}, page ${listPage}`)
-    if (await row.first().isVisible()) return row
-    if ((await page.getByRole("main").locator('a[rel="next"]').count()) === 0) throw new Error(`no page of the PM list holds the plan ${title} (last page ${listPage})`)
-  }
+// The page's address for a search, a tab and a cell, in the page's own words (src/lib/pm-plan-list.ts).
+export function pmListUrl(search: { q: string; tab?: PmTab; due?: PmDueBucket }): string {
+  const params = new URLSearchParams()
+  if (search.tab && search.tab !== "active") params.set("state", search.tab)
+  params.set("q", search.q)
+  if (search.due) params.set("due", search.due)
+  return `${PM_LIST}?${params.toString()}`
+}
+
+// The plans on screen: the table's rows from md (data-pm-plan-row), the phone cards (<article>) below.
+export function planRows(page: Page): Locator {
+  return page.getByRole("main").locator("tr[data-pm-plan-row], article").filter({ visible: true })
+}
+
+// One plan's row (or card) by its PM- number.
+export function planRow(page: Page, planNo: string): Locator {
+  return planRows(page).filter({ hasText: planNo })
+}
+
+// A plan's row on one tab: the search by its planNo gives that one row.
+export async function visitPlanRow(page: Page, measure: Measure, planNo: string, tab: PmTab, label: string): Promise<Locator> {
+  await measure.visit(pmListUrl({ q: planNo, tab }), label)
+  await expect(planRows(page)).toHaveCount(1)
+  const row = planRow(page, planNo)
+  await expect(row).toBeVisible()
+  return row
+}
+
+// A tab of the page by its words; its text is the words, then the count ("ใช้งาน2").
+export function pmTab(page: Page, label: string): Locator {
+  return page.getByRole("main").locator('[data-slot="tab-nav"]').getByRole("link", { name: new RegExp(`^${escapeRegExp(label)}`) })
+}
+
+// A due cell of the active tab (StatStrip): its first dd is the count, its link the filter.
+export function dueCell(page: Page, bucket: PmDueBucket): Locator {
+  return page.locator(`[data-pm-due-cell="${bucket}"]`)
+}
+
+// The row's ⋯, named "การดำเนินการของแผน <planNo>" (maintenancePage.pmRowActions).
+export const PLAN_MENU_NAME = /^การดำเนินการของแผน /
+
+// The row's ⋯ opened: the dropdown on the desktop, the bottom sheet (named by the planNo) on the phone.
+export async function openPlanMenu(page: Page, device: E2eDevice, row: Locator): Promise<Locator> {
+  await row.getByRole("button", { name: PLAN_MENU_NAME }).click()
+  const menu = device === "desktop" ? page.getByRole("menu") : page.getByRole("dialog").filter({ visible: true }).last()
+  await expect(menu).toBeVisible()
+  return menu
+}
+
+// An item of the open ⋯ by the start of its name (จบแผน reads its hint "ถาวร · มีให้ยืนยัน" after it): a menu item on
+// the desktop, a button or a link in the phone sheet.
+export function planMenuItem(menu: Locator, name: string): Locator {
+  const options = { name: new RegExp(`^${escapeRegExp(name)}`) }
+  return menu.getByRole("menuitem", options).or(menu.getByRole("button", options)).or(menu.getByRole("link", options)).first()
+}
+
+// The PM form's asset card (MT-PM-Form section 1): the pick or ?assetId= brings it in place of the picker (G5P4-R9).
+export function planAssetCard(page: Page): Locator {
+  return page.locator("[data-pm-asset-card]")
+}
+
+// The PM form's asset picker: open it, type the tag, pick the asset, and its card replaces the picker.
+export async function choosePlanAsset(page: Page, tag: string) {
+  await page.locator("#maintenance-plan-asset").click()
+  await page.getByPlaceholder("พิมพ์เพื่อค้นหา...").fill(tag)
+  await page.getByRole("option", { name: new RegExp(`^${escapeRegExp(tag)} - `) }).click()
+  await expect(planAssetCard(page)).toContainText(tag)
 }
 
 function escapeRegExp(value: string): string {

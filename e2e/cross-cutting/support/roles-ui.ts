@@ -4,7 +4,7 @@ import type { APIRequestContext, Page, TestInfo } from "@playwright/test"
 import { expect } from "../../support/fixtures.ts"
 import type { Measure } from "../../support/measure.ts"
 import { projectMarker } from "./records.ts"
-import { isWriteLink, WRITE_BUTTON_NAMES, type ApiRefusal } from "./refusals.ts"
+import { isWriteLink, WRITE_BUTTON_NAMES, WRITE_LINK_NAMES, WRITE_MENU_NAMES, type ApiRefusal } from "./refusals.ts"
 import { expectNotFound } from "./ui.ts"
 
 // Each request answers 403, listed together so one run shows every answer.
@@ -24,11 +24,20 @@ export async function expectApprovalInboxNotFound(page: Page, measure: Measure, 
 }
 
 // The controls on screen that lead to an action the person cannot take: links to a create, edit or approve page, and
-// buttons named for a write.
+// buttons named for a write, a ⋯ that holds only writes (by its aria-label), and a create link by its words.
 export async function writeControls(page: Page): Promise<string[]> {
   const hrefs = await page.locator("main a[href]").filter({ visible: true }).evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""))
+  const linkNames = await page.locator("main a[href]").filter({ visible: true }).evaluateAll((links) => links.map((link) => (link.textContent ?? "").trim()))
   const buttons = await page.locator("main button").filter({ visible: true }).evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? "").trim()))
-  return [...new Set([...hrefs.filter(isWriteLink).map((href) => `link ${href.split("?")[0]}`), ...buttons.filter((name) => WRITE_BUTTON_NAMES.includes(name)).map((name) => `button ${name}`)])]
+  const menus = await page.locator("main button[aria-label]").filter({ visible: true }).evaluateAll((nodes) => nodes.map((node) => node.getAttribute("aria-label") ?? ""))
+  return [
+    ...new Set([
+      ...hrefs.filter(isWriteLink).map((href) => `link ${href.split("?")[0]}`),
+      ...linkNames.filter((name) => WRITE_LINK_NAMES.includes(name)).map((name) => `link ${name}`),
+      ...buttons.filter((name) => WRITE_BUTTON_NAMES.includes(name)).map((name) => `button ${name}`),
+      ...menus.filter((name) => WRITE_MENU_NAMES.some((pattern) => pattern.test(name))).map((name) => `menu ${name}`),
+    ]),
+  ]
 }
 
 // A read-only list's address for the test: the register filtered to the test's own asset (the dev database's first

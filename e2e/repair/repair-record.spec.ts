@@ -29,6 +29,7 @@ import {
   repairSaveButton,
   saveRepairForm,
   valueBeside,
+  visitPlanRow,
 } from "./repair-data.ts"
 
 asUser("itStaff")
@@ -353,6 +354,13 @@ test("a PM visit saved not done leaves its plan's date, and the plan is ended (g
     expect(record.repairStatus).toBe("in_progress")
     await expect(valueBeside(page, "แผน PM")).toContainText(plan.planNo)
     await measure.recordPage("PM visit not done record")
+
+    // While the record is open, the PM page's row names it in place of "บันทึกว่าทำแล้ว" (group 5 spec §9, Review Focus 2),
+    // and the plan still counts by its due date.
+    const row = await visitPlanRow(page, measure, plan.planNo, "active", "PM plans with the open PM record")
+    await expect(row.getByRole("link", { name: `มีบันทึกซ่อมที่ยังไม่เสร็จ ${record.repairNo}`, exact: true })).toBeVisible()
+    await expect(row.getByRole("link", { name: /^บันทึกว่าทำแล้ว/ })).toHaveCount(0)
+    await expect(row).toContainText("ใกล้ถึงกำหนด · วันนี้")
 
     // The edit page holds the plan's next due date as the date input's value: unchanged.
     await measure.visit(`/th/maintenance/pm/${plan.id}/edit`, "PM plan edit page after a visit not done")

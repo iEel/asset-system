@@ -93,62 +93,99 @@ test("repair records: a second open record is refused, a mistaken one is cancell
   assert.ok(spec.includes(`expect((await readAsset(page.request, asset.id)).status.name, "cancelled: back to Ready").toBe("Ready")`))
 })
 
-test("the PM plan: created with a wrong entry first, recorded done on 31 Jan with the next due date clamped to 28 Feb, paused, resumed and ended, IT staff (e2e repair task 4, ER4)", async () => {
+test("the PM plan: created with a wrong entry first, recorded done on 31 Jan from its row with the next due date clamped to 28 Feb, paused, resumed and ended through ⋯, IT staff (e2e repair task 4, ER4; group 5 plan 4 Task 5)", async () => {
   const spec = read("e2e/repair/pm-plan.spec.ts")
   const data = read("e2e/repair/repair-data.ts")
   assert.ok(spec.split("\n").includes(`asUser("itStaff")`))
   assert.ok(!spec.includes("runPhoneOnWebKit()"))
   assert.ok(titles(spec).some((title) => title.endsWith("(ER4)")), "the ER4 test")
   assert.deepEqual(writes(spec), [])
-  assert.ok(data.includes("export async function planAction(page: Page, row: Locator, action: string, dialogTitle: string, toast: string)"))
-  // Spec §6.7: the plan name left empty first, shown under its field.
-  assert.ok(spec.includes(`await expect(page.locator("#maintenance-plan-title-error")).toHaveText("${th.common.validation.required}")`))
+  const er4Title = titles(spec).find((title) => title.endsWith("(ER4)")) ?? ""
+  const er4Start = spec.indexOf(`test("${er4Title}"`)
+  const er4 = spec.slice(er4Start, spec.indexOf("\n})", er4Start))
+  // Spec §6.7: the plan name left empty first, shown under its field. The asset is the card the pick brings (G5P4-R9).
+  assert.ok(er4.includes(`await expect(page.locator("#maintenance-plan-title-error")).toHaveText("${th.common.validation.required}")`))
+  assert.ok(er4.includes("await choosePlanAsset(page, tag)"))
+  assert.ok(data.includes("export async function choosePlanAsset(page: Page, tag: string)"))
+  assert.ok(data.includes("await expect(planAssetCard(page)).toContainText(tag)"))
+  assert.match(read("src/components/maintenance/pm-plan-asset-card.tsx"), /<div data-pm-asset-card /)
+  // The frequency is a Segmented group (spec §10): buttons with aria-pressed inside the #maintenance-plan-frequency
+  // fieldset; รายไตรมาส and back to รายเดือน, whose preview chains the month-end clamp (Review Focus 4).
+  assert.ok(!spec.includes(`toHaveValue("monthly")`))
+  const frequencies = th.maintenancePage.pmFrequencies
+  assert.ok(er4.includes(`frequency.getByRole("button", { name: "${frequencies.quarterly}", exact: true }).click()`))
+  assert.ok(er4.includes(`await expect(frequency.getByRole("button", { name: "${frequencies.monthly}", exact: true })).toHaveAttribute("aria-pressed", "true")`))
+  assert.match(read("src/components/ui/segmented.tsx"), /aria-pressed=\{pressed\}/)
+  assert.match(read("src/components/maintenance/maintenance-plan-form.tsx"), /<FieldGroup legend=\{t\("pmFrequencyLabel"\)\} id="maintenance-plan-frequency"/)
+  assert.ok(er4.includes('await expect(preview).toHaveText([/31\\/01\\/2569/, /28\\/02\\/2569\\s*\\+1 เดือน/, /28\\/03\\/2569/, /28\\/04\\/2569/])'))
+  assert.equal(th.maintenancePage.pmFormStepMonths.replace("{n, number}", "1"), "+1 เดือน")
   // The month-end clamp the test expects is the app's own (src/lib/preventive-maintenance.ts): 31 Jan + 1 month is
   // 28 Feb 2026, shown as 28/02/2569 (th-TH, the Buddhist year).
   const { calculateNextMaintenanceDueDate } = await import("../src/lib/preventive-maintenance.ts")
   const next = calculateNextMaintenanceDueDate(new Date("2026-01-31"), "monthly")
   assert.equal(next.toISOString().slice(0, 10), "2026-02-28")
   assert.equal(next.toLocaleDateString("th-TH", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Bangkok" }), "28/02/2569")
-  assert.ok(spec.includes(`await page.locator("#repair-record-date").fill("2026-01-31")`))
-  assert.ok(spec.includes(`await expect(page.locator("#maintenance-plan-next-due-date")).toHaveValue("2026-02-28")`))
-  assert.ok(spec.includes(`toContainText("${th.maintenancePage.pmNextDueDate}: 28/02/2569")`))
-  // The list page size is one the PM list offers (src/lib/list-pagination.ts).
-  const { LIST_PAGE_SIZES } = await import("../src/lib/list-pagination.ts")
-  assert.ok((LIST_PAGE_SIZES as readonly number[]).includes(100))
-  // The list's path moved to repair-data.ts with visitPlanRow, which looks for the plan page by page (e2e fix 2D).
-  assert.ok(data.includes(`export const PM_LIST = "/th/maintenance/pm?pageSize=100"`))
-  assert.match(spec, /^import \{ PM_LIST, [^}]*\bvisitPlanRow \} from "\.\/repair-data\.ts"$/m)
-  // Every state change and its Thai copy, from messages/th.json.
+  assert.ok(er4.includes(`await page.locator("#repair-record-date").fill("2026-01-31")`))
+  assert.ok(er4.includes(`await expect(page.locator("#maintenance-plan-next-due-date")).toHaveValue("2026-02-28")`))
+  assert.ok(er4.includes(`await expect(row).toContainText("28/02/2569")`))
+  // The plan is found on the PM page by its planNo (spec §16: by search, never by position, and no longer in the
+  // repair list's #pm-due box), with its overdue days counted in Bangkok days: "เกินกำหนด N วัน".
+  assert.ok(!spec.includes("#pm-due"))
+  assert.equal(th.maintenancePage.pmDue.overdue, "เกินกำหนด {days} วัน")
+  assert.ok(er4.includes('await expect(listed).toContainText(`เกินกำหนด ${daysBetween("2026-01-31", bangkokToday())} วัน`)'))
+  assert.ok(er4.includes('await expect(row).toContainText(`เกินกำหนด ${daysBetween("2026-02-28", bangkokToday())} วัน`)'))
+  assert.ok(data.includes(`export const PM_LIST = "/th/maintenance/pm"`))
+  assert.ok(data.includes("export function pmListUrl(search: { q: string; tab?: PmTab; due?: PmDueBucket }): string"))
+  assert.ok(data.includes(`if (search.tab && search.tab !== "active") params.set("state", search.tab)`))
+  // The page's own query words (src/lib/pm-plan-list.ts): state, q and due.
+  const list = read("src/lib/pm-plan-list.ts")
+  for (const param of [`params.set("state", tab)`, `params.set("q", q)`, `params.set("due", due)`]) assert.ok(list.includes(param), param)
+  assert.ok(data.includes("export async function visitPlanRow(page: Page, measure: Measure, planNo: string, tab: PmTab, label: string): Promise<Locator>"))
+  assert.ok(data.includes("await measure.visit(pmListUrl({ q: planNo, tab }), label)"))
+  assert.ok(data.includes("await expect(planRows(page)).toHaveCount(1)"))
+  // The rows: the table's from md (data-pm-plan-row), the phone cards below (<article>), only the ones on screen.
+  assert.ok(data.includes(`return page.getByRole("main").locator("tr[data-pm-plan-row], article").filter({ visible: true })`))
+  const pmPage = read("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx")
+  assert.ok(pmPage.includes(`const rowData = { "data-pm-plan-row": plan.id } as const`))
+  assert.ok(pmPage.includes(`<article key={plan.id} className=`))
+  assert.ok(data.includes("export function dueCell(page: Page, bucket: PmDueBucket): Locator"))
+  assert.ok(pmPage.includes(`data: { "data-pm-due-cell": bucket },`))
+  // The overdue cell, which keeps the search, opens a list of that one plan; the plan is recorded done from its row.
+  assert.ok(er4.includes(`await dueCell(page, "overdue").getByRole("link").click()`))
+  assert.ok(er4.includes(`await page.waitForURL((url) => url.searchParams.get("due") === "overdue" && url.searchParams.get("q") === plan.planNo)`))
+  assert.ok(er4.includes(`await overdueRow.getByRole("link", { name: /^${th.repairRecord.pmRecordDone}/ }).click()`))
+  // Pause, resume and end are in ⋯ (spec §9): the menu on the desktop, the bottom sheet on the phone, then the confirm.
+  assert.ok(data.includes("export async function planAction(page: Page, device: E2eDevice, row: Locator, action: string, dialogTitle: string, toast: string)"))
+  assert.ok(data.includes("await planMenuItem(await openPlanMenu(page, device, row), action).click()"))
+  assert.ok(data.includes("export async function openPlanMenu(page: Page, device: E2eDevice, row: Locator): Promise<Locator>"))
+  assert.ok(data.includes(`const menu = device === "desktop" ? page.getByRole("menu") : page.getByRole("dialog").filter({ visible: true }).last()`))
+  assert.equal(th.maintenancePage.pmRowActions, "การดำเนินการของแผน {planNo}")
+  assert.ok(data.includes("export const PLAN_MENU_NAME = /^การดำเนินการของแผน /"))
+  // An item by the start of its name: จบแผน reads its hint "ถาวร · มีให้ยืนยัน" after it.
+  assert.ok(data.includes("const options = { name: new RegExp(`^${escapeRegExp(name)}`) }"))
+  assert.match(read("src/components/maintenance/maintenance-plan-row-actions.tsx"), /label: t\("pmActions\.end"\), hint: t\("pmActions\.endHint"\)/)
+  // Every state change and its Thai copy, from messages/th.json; after each, the plan leaves the tab it was on.
   const actions = th.maintenancePage.pmActions
   for (const [action, title, toast] of [
     [actions.pause, actions.pauseTitle, actions.pauseSuccess],
     [actions.resume, actions.resumeTitle, actions.resumeSuccess],
     [actions.end, actions.endTitle, actions.endSuccess],
   ]) {
-    assert.ok(spec.includes(`await planAction(page, row, "${action}", "${title}", "${toast}")`), action)
+    assert.ok(er4.includes(`await planAction(page, e2eDevice, row, "${action}", "${title}", "${toast}")\n  await expect(row).toHaveCount(0)`), action)
   }
-  for (const text of [th.maintenancePage.pmCreateTitle, th.repairRecord.pmRecordDone, th.repairRecord.pmOverdue, th.maintenancePage.pmPlanStates.paused, th.maintenancePage.pmPlanStates.ended]) {
+  for (const [tab, label] of [["active", "PM plans after done"], ["paused", "PM plans, plan paused"], ["active", "PM plans, plan resumed"], ["ended", "PM plans, plan ended"]]) {
+    assert.ok(er4.includes(`row = await visitPlanRow(page, measure, plan.planNo, "${tab}", "${label}")`), label)
+  }
+  // The ended tab (decision 10.1): "จบแผนเมื่อ <date>", no link and no button on the row, newest ended first.
+  assert.equal(th.maintenancePage.pmEndedAt, "จบแผนเมื่อ {date}")
+  assert.match(er4, /row = await visitPlanRow\(page, measure, plan\.planNo, "ended", "PM plans, plan ended"\)\n\s*await expect\(row\)\.toContainText\(\/จบแผนเมื่อ \\d\{2\}\\\/\\d\{2\}\\\/\\d\{4\}\/\)/)
+  assert.ok(er4.includes(`await expect(row.getByRole("link")).toHaveCount(0)`) && er4.includes(`await expect(row.getByRole("button")).toHaveCount(0)`))
+  assert.ok(er4.includes(`await expect(page.getByRole("main")).toContainText("${th.maintenancePage.pmOrderByEnded}")`))
+  // An ended plan has no page of its own (the edit page 404s), so it is read on the list.
+  assert.match(read("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx"), /where: \{ id, planState: \{ not: "ended" \} \}/)
+  for (const text of [th.maintenancePage.pmCreateTitle, th.repairRecord.pmRecordDone, th.maintenancePage.pmPlanStates.paused, th.maintenancePage.pmPlanStates.ended]) {
     assert.ok(spec.includes(text), text)
   }
-  // The plan is looked for on whichever list page holds it (menu B shell task 13B loop 1 for the ended plan; e2e fix 2D
-  // for every look, after E2E-1026E's 103 active plans pushed the paused plan to page 2), and an ended plan has no page
-  // of its own (the edit page 404s). Group 5 plan 4 (G5P4-R4) shows one state per page: the spec's tab moves with the
-  // page's rebuild.
-  const listPage = read("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx")
-  assert.ok(listPage.includes("// One state per page, in that state's order (G5P4-R4)"))
-  assert.match(read("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx"), /where: \{ id, planState: \{ not: "ended" \} \}/)
-  // The helper walks forward from page 1 and stops where the plan's row shows, or on the page with no "next" link
-  // (src/components/ui/pagination.tsx renders an enabled next as a link with rel="next").
-  assert.ok(data.includes("export async function visitPlanRow(page: Page, measure: Measure, title: string, label: string): Promise<Locator>"))
-  assert.ok(data.includes("await measure.visit(listPage === 1 ? PM_LIST : `${PM_LIST}&page=${listPage}`"))
-  assert.ok(data.includes(`page.getByRole("main").locator('a[rel="next"]')`))
-  assert.match(read("src/components/ui/pagination.tsx"), /<PaginationControl href=\{nextHref\} enabled=\{page < totalPages\} rel="next"/)
-  assert.match(read("src/components/ui/pagination.tsx"), /<Link href=\{href\} rel=\{rel\}/)
-  for (const label of ["PM plans after done", "PM plans, plan paused", "PM plans to resume", "PM plans, plan resumed", "PM plans to end", "PM plans, plan ended"]) {
-    assert.ok(spec.includes(`row = await visitPlanRow(page, measure, title, "${label}")`), label)
-  }
-  assert.ok(!spec.includes("row()"), "no look at the plan assumes the page on screen")
-  assert.match(spec, /row = await visitPlanRow\(page, measure, title, "PM plans, plan ended"\)\n\s*await expect\(row\.locator\('\[data-slot="status-badge"\]'\)\.last\(\)\)\.toHaveText\("จบแผน"\)/)
 })
 
 test("บันทึกซ่อม answers its questions, refuses a held asset at once, and a PM visit not done leaves its plan (group 5 plan 2 Task 4)", () => {
@@ -353,3 +390,128 @@ test("the repair record's next step, its menu, its history oldest first, and a h
   // Run-marked data only: the spec itself writes nothing.
   assert.deepEqual(writes(spec), [])
 })
+
+test("the PM page's tabs, search and cells, the open record on its row, the stale edit refused and ตั้งรอบ PM back to the asset tab (group 5 plan 4 Task 5)", async () => {
+  const spec = read("e2e/repair/pm-plan.spec.ts")
+  const repairSpec = read("e2e/repair/repair-record.spec.ts")
+  const data = read("e2e/repair/repair-data.ts")
+  const pm = th.maintenancePage
+  const body = (source: string, title: string) => {
+    const start = source.indexOf(`test("${title}`)
+    assert.ok(start >= 0, title)
+    return source.slice(start, source.indexOf("\n})", start))
+  }
+  // Run-marked data only: the spec writes nothing itself; the plans it makes through the API are ended by the test.
+  assert.deepEqual(writes(spec), [])
+  assert.deepEqual(writes(repairSpec), [])
+
+  // The tabs, the search and the cells (spec §9, Review Focus 1): a plan of an asset under repair is created (decision
+  // 10.4), one search finds it and a plan due in 5 days, the cells read 1, 1 and 0 and each opens a list of its own
+  // size that keeps the search; the cell in use links back without the filter. The ended tab reads "จบแผนเมื่อ".
+  const cells = body(spec, "the PM page's tabs, search and cells")
+  const cellSteps = [
+    "const record = await saveRepairForm(page, measure, \"save the open repair\")",
+    `expect((await readAsset(page.request, repaired.id)).status.name, "the asset is under repair").toBe("Under Maintenance")`,
+    "await measure.visit(`/th/maintenance/pm/new?assetId=${repaired.id}`, \"new PM plan for an asset under repair\")",
+    `await expect(planAssetCard(page)).toContainText("อยู่ระหว่างซ่อม")`,
+    `expect(response.status(), "a plan of an asset under repair is created").toBe(201)`,
+    "const soon = await createPlan(page.request, { assetId: near.id, title: `${nearTag} ตรวจแบตเตอรี่`, nextDueDate: dayAfter(bangkokToday(), 5) })",
+    `await measure.visit(pmListUrl({ q: search }), "PM plans, one search of two plans")`,
+    "await expect(planRows(page)).toHaveCount(2)",
+    `await expect(page.locator("[data-pm-due-sum]")).toHaveText("1 + 1 + 0 = 2 แผนที่ใช้งาน")`,
+    "await expect(overdueRow.getByRole(\"link\", { name: `มีบันทึกซ่อมที่ยังไม่เสร็จ ${record.repairNo}`, exact: true })).toBeVisible()",
+    `for (const [bucket, count] of [["overdue", 1], ["soon", 1], ["later", 0]] as const) {`,
+    `await page.waitForURL((url) => url.searchParams.get("due") === bucket && url.searchParams.get("q") === search)`,
+    "await expect(planRows(page)).toHaveCount(count)",
+    `await page.waitForURL((url) => !url.searchParams.has("due") && url.searchParams.get("q") === search)`,
+    `await visitPlanRow(page, measure, overdue.planNo, "active", "PM plans, a search by planNo")`,
+    `await completeRecord(page, measure, e2eDevice, record.id, "ใช้งานได้", "close the open repair")`,
+    `await measure.visit(pmListUrl({ q: search, tab: "ended" }), "PM plans, the ended tab")`,
+    "for (const plan of plans) await expect(planRow(page, plan.planNo)).toContainText(/จบแผนเมื่อ \\d{2}\\/\\d{2}\\/\\d{4}/)",
+  ]
+  const positions = cellSteps.map((step) => {
+    const index = cells.indexOf(step)
+    assert.ok(index >= 0, step)
+    return index
+  })
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions, "the steps in order")
+  // The words are the app's: the sum line, the open record link, the soon badge, the tabs, the empty search, the foot.
+  assert.equal(pm.pmDueSum, "{overdue} + {soon} + {later} = {total, number} แผนที่ใช้งาน")
+  assert.equal(pm.pmOpenRecord, "มีบันทึกซ่อมที่ยังไม่เสร็จ {repairNo}")
+  assert.equal(pm.pmDue.soon, "ใกล้ถึงกำหนด · อีก {days} วัน")
+  assert.ok(cells.includes(`await expect(planRow(page, soon.planNo)).toContainText("ใกล้ถึงกำหนด · อีก 5 วัน")`))
+  for (const [tab, count] of [[pm.pmPlanStates.active, 2], [pm.pmPlanStates.paused, 0], [pm.pmPlanStates.ended, 0]]) {
+    assert.ok(cells.includes(`await expect(pmTab(page, "${tab}")).toHaveText(/^${tab}\\s*${count}$/)`), `${tab} ${count}`)
+  }
+  assert.ok(cells.includes(`.getByText("${pm.pmEmptyFiltered}")`))
+  assert.equal(pm.pmRange, "แสดง {from}–{to} จาก {total}")
+  assert.ok(cells.includes(`await expect(page.getByRole("main")).toContainText("แสดง 1–2 จาก 2 · ${pm.pmOrderByEnded}")`))
+  assert.ok(data.includes("export function pmTab(page: Page, label: string): Locator"))
+  assert.ok(data.includes(`page.getByRole("main").locator('[data-slot="tab-nav"]').getByRole("link", { name: new RegExp(\`^\${escapeRegExp(label)}\`) })`))
+  // The plans of the run are ended whatever happens (decision 10.6: no clean-up, but no active plan left behind).
+  assert.match(cells, /\} finally \{\n\s+for \(const plan of plans\) if \(!ended\.has\(plan\.id\)\) await endPlan\(page\.request, plan\.id\)\n\s+\}/)
+  // The PM asset options and the server take an asset under repair: only written-off and inactive assets are refused.
+  assert.equal(pm.errors.MAINTENANCE_PLAN_ASSET_WRITTEN_OFF, "ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว ตั้งแผน PM ไม่ได้")
+
+  // The stale edit (Review Focus 3): two pages of one context open the edit page; the first saves one change, whose
+  // summary reads "แก้ 1 ช่อง"; the second's save is refused with the reload message and keeps its values.
+  const stale = body(spec, "a stale PM edit is refused")
+  assert.equal(pm.pmFormChangeCount, "แก้ {count, number} ช่อง")
+  assert.equal(th.assetOperation.summaryTitle, "สรุปก่อนบันทึก")
+  assert.equal(pm.pmFormSaveEdit, "บันทึกการแก้ไข")
+  const conflict = pm.errors.MAINTENANCE_PLAN_CONFLICT
+  assert.ok(conflict.startsWith("แผนนี้ถูกแก้ไขหรือบันทึกว่าทำแล้วระหว่างที่เปิดหน้านี้"))
+  const staleSteps = [
+    "const second = await page.context().newPage()",
+    "await second.goto(editUrl)",
+    `await expect(page.getByRole("heading", { name: "${th.assetOperation.summaryTitle} · แก้ 1 ช่อง", exact: true })).toBeVisible()`,
+    `await page.getByRole("button", { name: "${pm.pmFormSaveEdit}", exact: true }).click()`,
+    `expect((await saved).status(), "the first save").toBe(200)`,
+    `await second.getByRole("button", { name: "${pm.pmFormSaveEdit}", exact: true }).click()`,
+    `expect(refusal.status(), "the stale save").toBe(409)`,
+    `expect(((await refusal.json()) as { code?: string }).code).toBe("MAINTENANCE_PLAN_CONFLICT")`,
+    `await expect(second.getByText("${conflict}").first()).toBeVisible()`,
+    "await expect(second.locator(\"#maintenance-plan-notes\")).toHaveValue(notes)",
+  ]
+  const stalePositions = staleSteps.map((step) => {
+    const index = stale.indexOf(step)
+    assert.ok(index >= 0, step)
+    return index
+  })
+  assert.deepEqual([...stalePositions].sort((a, b) => a - b), stalePositions, "the stale steps in order")
+  assert.match(stale, /\} finally \{\n\s+await second\.close\(\)\n\s+await endPlan\(page\.request, plan\.id\)\n\s+\}/)
+  // The form sends the plan's updatedAt as the page read it and toasts the refusal's own message.
+  const form = read("src/components/maintenance/maintenance-plan-form.tsx")
+  assert.ok(form.includes(`...(planId ? { action: "update", expectedUpdatedAt } : { assetId: values.assetId })`))
+  assert.ok(form.includes(`throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))`))
+  assert.ok(form.includes(`title={isEdit ? \`\${tOperation("summaryTitle")} · \${t("pmFormChangeCount", { count: changed.length })}\` : tOperation("summaryTitle")}`))
+
+  // ตั้งรอบ PM from the asset's ซ่อม / PM tab comes back to the tab (decision 8, spec §12.1).
+  const back = body(spec, "ตั้งรอบ PM from the asset tab comes back to the tab")
+  assert.equal(findValue(th, "pmSetup"), "ตั้งรอบ PM")
+  assert.ok(back.includes(`await page.getByRole("main").getByRole("link", { name: "ตั้งรอบ PM", exact: true }).filter({ visible: true }).first().click()`))
+  assert.ok(back.includes('url.searchParams.get("returnTo") === `/th/assets/${asset.id}?view=maintenance`'))
+  assert.ok(back.includes('await page.waitForURL((url) => url.pathname === `/th/assets/${asset.id}` && url.searchParams.get("view") === "maintenance")'))
+  assert.match(back, /\} finally \{\n\s+if \(planId\) await endPlan\(page\.request, planId\)\n\s+\}/)
+  assert.ok(read("src/components/assets/detail/asset-maintenance-tab.tsx").includes("appendOperationalReturnTo(`/${locale}/maintenance/pm/new?assetId=${encodeURIComponent(assetId)}`, `/${locale}/assets/${assetId}?view=maintenance`)"))
+  assert.ok(read("src/app/[locale]/(dashboard)/maintenance/pm/new/page.tsx").includes(`const returnTo = normalizeMaintenanceReturnTo(locale, query.returnTo, "maintenance-pm")`))
+
+  // A PM visit not done (plan 2's test): while its record is open, the PM page's row names it in place of
+  // บันทึกว่าทำแล้ว (spec §9, Review Focus 2).
+  const visit = body(repairSpec, "a PM visit saved not done leaves its plan's date")
+  assert.ok(visit.includes(`const row = await visitPlanRow(page, measure, plan.planNo, "active", "PM plans with the open PM record")`))
+  assert.ok(visit.includes("await expect(row.getByRole(\"link\", { name: `มีบันทึกซ่อมที่ยังไม่เสร็จ ${record.repairNo}`, exact: true })).toBeVisible()"))
+  assert.ok(visit.includes(`await expect(row.getByRole("link", { name: /^${th.repairRecord.pmRecordDone}/ })).toHaveCount(0)`))
+  assert.ok(visit.indexOf("visitPlanRow(") < visit.indexOf("} finally {"), "looked at while the plan is active")
+})
+
+// A value of messages/th.json by its key, wherever it sits.
+function findValue(node: unknown, key: string): string | undefined {
+  if (!node || typeof node !== "object") return undefined
+  for (const [name, value] of Object.entries(node as Record<string, unknown>)) {
+    if (name === key && typeof value === "string") return value
+    const found = findValue(value, key)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
