@@ -82,6 +82,116 @@ type FindingExtrasInput = {
   actionOwner: { code: string; fullNameTh: string } | null
 }
 
+// What a row and the panel's finding add to the record: the parent, the owner's name, the values in words, whether the
+// viewer reported it or may decide it, and its evidence.
+function findingExtras(
+  viewerId: string,
+  finding: FindingExtrasInput,
+  valueLabels: Map<string, string>,
+  evidenceByFindingId: ReadonlyMap<string, AuditFindingEvidenceAttachment[]>,
+) {
+  const reportedByViewer = isSameAuditActor(viewerId, finding.reportedBy)
+  // A value in words, or null when empty: the page shows Nil, never a typed "-".
+  const valueLabel = (value: string | null) => (value ? formatFindingValue(finding.findingType, value, valueLabels) : null)
+  return {
+    parent: finding.asset?.installedInLinks[0]?.parentAsset ?? null,
+    ownerLabel: finding.actionOwner ? `${finding.actionOwner.code} - ${finding.actionOwner.fullNameTh}` : null,
+    expectedLabel: valueLabel(finding.expectedValue),
+    actualLabel: valueLabel(finding.actualValue),
+    reportedByViewer,
+    // The review route's own rule (auditFindingReviewableWhere): only these can be ticked or decided.
+    reviewable: finding.reviewStatus === "pending" && !reportedByViewer && !isAuditRoundReadOnlyStatus(finding.auditRound.status),
+    evidence: evidenceByFindingId.get(finding.id) ?? [],
+  }
+}
+
+function groupEvidence(attachments: ReadonlyArray<AuditFindingEvidenceAttachment & { referenceId: string }>) {
+  const evidenceByFindingId = new Map<string, AuditFindingEvidenceAttachment[]>()
+  for (const { referenceId, ...attachment } of attachments) {
+    evidenceByFindingId.set(referenceId, [...(evidenceByFindingId.get(referenceId) ?? []), attachment])
+  }
+  return evidenceByFindingId
+}
+
+const evidenceSelect = { id: true, referenceId: true, originalName: true, fileType: true, fileSize: true, uploadedAt: true } as const
+
+export type AuditFindingPanelInput = {
+  locale: string
+  findingId: string
+  user: { id: string }
+  /** audit:approve: the siblings and the plan dialog's owners are read for a reviewer only (M-5, P4-R21). */
+  canApprove: boolean
+  now: Date
+}
+
+/**
+ * The review panel of one finding (spec §10), wherever it is: the finding with its extras, the asset's other pending
+ * findings in the round, the labels, the evidence, the people, and the plan dialog's owners. The findings page adds
+ * its own place in the list and its queue; the approvals page uses it as is, where `inList` means "the viewer may
+ * decide it". Null when the finding is missing. It never writes.
+ */
+export async function loadAuditFindingPanel({ findingId, user, canApprove }: AuditFindingPanelInput) {
+  const chosen = await prisma.auditFinding.findUnique({ where: { id: findingId }, include: panelInclude })
+  if (!chosen) return null
+
+  // "อนุมัติทุกช่องของทรัพย์สินนี้": the asset's other pending findings in the same round (spec §10). They come first,
+  // because the next finding after approve-all steps over the ones the viewer may approve with it. Only an approver can
+  // approve them, so a viewer reads none (M-5).
+  const siblings = chosen.assetId && canApprove
+    ? (
+        await prisma.auditFinding.findMany({
+          where: { auditRoundId: chosen.auditRoundId, assetId: chosen.assetId, reviewStatus: "pending", id: { not: chosen.id } },
+          select: { id: true, findingType: true, assetId: true, expectedValue: true, actualValue: true, reviewStatus: true, reportedBy: true },
+          orderBy: [{ reportedAt: "asc" }, { id: "asc" }],
+        })
+      ).map((sibling) => ({ ...sibling, reportedByViewer: isSameAuditActor(user.id, sibling.reportedBy) }))
+    : []
+
+  const userIds = [...new Set([chosen.reportedBy, chosen.auditItem.scannedBy].filter((id): id is string => Boolean(id)))]
+  const comparedIds = [
+    chosen.auditItem.expectedLocationId, chosen.auditItem.expectedCustodianId, chosen.auditItem.expectedDepartmentId, chosen.auditItem.expectedConditionId,
+    chosen.auditItem.actualLocationId, chosen.auditItem.actualCustodianId, chosen.auditItem.actualDepartmentId, chosen.auditItem.actualConditionId,
+  ]
+  const [employees, findingLabels, comparedLabels, attachments, users] = await Promise.all([
+    // The plan dialog's owners: the plan is an approver's action (route.ts:35), so a reviewer without audit:edit gets
+    // them too (P4-R21). Only the open panel's dialog uses them (M-5).
+    canApprove
+      ? prisma.employee.findMany({ where: { isActive: true }, select: { id: true, code: true, fullNameTh: true }, orderBy: { code: "asc" } })
+      : Promise.resolve([]),
+    buildFindingValueLabels([chosen, ...siblings]),
+    buildAuditReferenceLabels(comparedIds),
+    prisma.attachment.findMany({
+      where: { module: "audit_finding", referenceId: { in: [chosen.id] }, isActive: true },
+      select: evidenceSelect,
+      orderBy: { uploadedAt: "desc" },
+    }),
+    userIds.length > 0 ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, displayName: true } }) : Promise.resolve([]),
+  ])
+
+  const labels = new Map([...findingLabels, ...comparedLabels])
+  const usersById = new Map(users.map((entry) => [entry.id, entry]))
+  // A person's name, or nothing when the user is gone: never the id (spec §5).
+  const userLabel = (id: string | null) => (id ? formatAuditUserLabel(usersById.get(id), null) : null)
+  const finding = { ...chosen, ...findingExtras(user.id, chosen, labels, groupEvidence(attachments)) }
+
+  return {
+    panel: {
+      finding,
+      inList: finding.reviewable,
+      readOnly: isAuditRoundReadOnlyStatus(chosen.auditRound.status),
+      reporterLabel: userLabel(chosen.reportedBy),
+      scannedByLabel: userLabel(chosen.auditItem.scannedBy),
+      labels,
+      siblings,
+    },
+    employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
+  }
+}
+
+export type AuditFindingPanelLoad = NonNullable<Awaited<ReturnType<typeof loadAuditFindingPanel>>>
+/** The findings page's panel without its queue (and with `inList` = the viewer may decide it). */
+export type AuditFindingsPanelCore = AuditFindingPanelLoad["panel"]
+
 type ReviewQueueInput = { total: number; chosenReviewable: number; before: number; after: readonly { id: string }[]; earlier: readonly { id: string }[] }
 
 // "k จาก N" and the next finding (P4-R18) from the queue's counts and its candidates in the list's order: one href for
@@ -115,28 +225,19 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
   const whereFor = (status: AuditFindingStatus) => buildAuditFindingWhere({ ...base, status })
   const listWhere = whereFor(filters.status)
 
-  // A. The chosen finding (?finding=) loads wherever it is: on another page or outside the filters. A link with the
-  // finding and no page opens the page that holds it, so the next finding after a decision opens where it now stands
-  // (P4-R18).
-  const chosen = filters.findingId ? await prisma.auditFinding.findUnique({ where: { id: filters.findingId }, include: panelInclude }) : null
+  // A. The chosen finding (?finding=) loads wherever it is, with its panel: on another page or outside the filters. A
+  // link with the finding and no page opens the page that holds it, so the next finding after a decision opens where it
+  // now stands (P4-R18).
+  const chosenPanel = filters.findingId ? await loadAuditFindingPanel({ locale, findingId: filters.findingId, user, canApprove, now }) : null
+  const chosen = chosenPanel?.panel.finding ?? null
   const chosenInList = chosen ? (await prisma.auditFinding.count({ where: { AND: [listWhere, { id: chosen.id }] } })) > 0 : false
   const findingIndex = chosen && chosenInList && !filters.pageGiven
     ? await prisma.auditFinding.count({ where: { AND: [listWhere, auditFindingsBeforeWhere(chosen)] } })
     : null
   const listPage = resolveAuditFindingsListPage(filters.listPage, { pageGiven: filters.pageGiven, findingIndex })
   const { skip, take } = listPageWindow(listPage)
-  // "อนุมัติทุกช่องของทรัพย์สินนี้": the asset's other pending findings in the same round (spec §10). They come first,
-  // because the next finding after approve-all steps over the ones the viewer may approve with it. Only an approver can
-  // approve them, so a viewer reads none (M-5).
-  const siblings = chosen?.assetId && canApprove
-    ? (
-        await prisma.auditFinding.findMany({
-          where: { auditRoundId: chosen.auditRoundId, assetId: chosen.assetId, reviewStatus: "pending", id: { not: chosen.id } },
-          select: { id: true, findingType: true, assetId: true, expectedValue: true, actualValue: true, reviewStatus: true, reportedBy: true },
-          orderBy: [{ reportedAt: "asc" }, { id: "asc" }],
-        })
-      ).map((sibling) => ({ ...sibling, reportedByViewer: isSameAuditActor(user.id, sibling.reportedBy) }))
-    : []
+  // The asset's other pending findings the viewer may approve with it: the next finding after approve-all steps over them.
+  const siblings = chosenPanel?.panel.siblings ?? []
   const siblingIds = new Set(siblings.filter((sibling) => !sibling.reportedByViewer).map((sibling) => sibling.id))
   // The findings the viewer may decide, within the list: the panel's "k จาก N", its next finding and the empty panel's
   // "the tab is done" (P4-R18).
@@ -147,16 +248,11 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
 
   // B. The rows and every count, in parallel. Each tab and sub-chip counts with the list's own builder, within the
   // round, the type and the search (spec §5 "counts equal lists"); a bell kind's list counts itself.
-  const [rows, statusCounts, waitingTotal, reviewableTotal, employees, filterRound, roundOptions, queue] = await Promise.all([
+  const [rows, statusCounts, waitingTotal, reviewableTotal, filterRound, roundOptions, queue] = await Promise.all([
     prisma.auditFinding.findMany({ where: listWhere, include: rowInclude, orderBy: auditFindingsListOrderBy, skip, take }),
     Promise.all(auditFindingCountedStatuses.map((status) => prisma.auditFinding.count({ where: whereFor(status) }))),
     isAuditFindingWaitingStatus(filters.status) ? prisma.auditFinding.count({ where: listWhere }) : Promise.resolve(null),
     canApprove ? prisma.auditFinding.count({ where: reviewableWhere }) : Promise.resolve(null),
-    // The plan dialog's owners: the plan is an approver's action (route.ts:35), so a reviewer without audit:edit gets them
-    // too (P4-R21). Only the open panel's dialog uses them, so they are read with a finding open (M-5).
-    chosen && canApprove
-      ? prisma.employee.findMany({ where: { isActive: true }, select: { id: true, code: true, fullNameTh: true }, orderBy: { code: "asc" } })
-      : Promise.resolve([]),
     filters.roundId ? prisma.auditRound.findUnique({ where: { id: filters.roundId }, select: { id: true, auditNo: true, name: true } }) : Promise.resolve(null),
     // "รอบ:" lists every round the list shows without a round: active and not cancelled (the coverage scope).
     prisma.auditRound.findMany({ where: { isActive: true, status: auditRoundCoverageWhere }, select: { id: true, auditNo: true, name: true }, orderBy: [{ startDate: "desc" }, { id: "asc" }] }),
@@ -170,52 +266,21 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
       : Promise.resolve(null),
   ])
 
-  // C. The labels, the evidence and the people of the rows and the panel (a page holds at most 100 rows, under the
-  // 2,100 parameters SQL Server takes).
-  const evidenceFindingIds = [...new Set([...rows.map((finding) => finding.id), ...(chosen ? [chosen.id] : [])])]
-  const userIds = chosen ? [...new Set([chosen.reportedBy, chosen.auditItem.scannedBy].filter((id): id is string => Boolean(id)))] : []
-  const comparedIds = chosen
-    ? [
-        chosen.auditItem.expectedLocationId, chosen.auditItem.expectedCustodianId, chosen.auditItem.expectedDepartmentId, chosen.auditItem.expectedConditionId,
-        chosen.auditItem.actualLocationId, chosen.auditItem.actualCustodianId, chosen.auditItem.actualDepartmentId, chosen.auditItem.actualConditionId,
-      ]
-    : []
-  const [findingLabels, comparedLabels, attachments, users] = await Promise.all([
-    buildFindingValueLabels([...rows, ...(chosen ? [chosen] : []), ...siblings]),
-    comparedIds.length > 0 ? buildAuditReferenceLabels(comparedIds) : Promise.resolve(new Map<string, string>()),
-    evidenceFindingIds.length > 0
+  // C. The rows' labels and evidence (a page holds at most 100 rows, under the 2,100 parameters SQL Server takes). The
+  // panel brought its own; the page reads one map of both.
+  const rowIds = rows.map((finding) => finding.id)
+  const [rowLabels, rowAttachments] = await Promise.all([
+    buildFindingValueLabels(rows),
+    rowIds.length > 0
       ? prisma.attachment.findMany({
-          where: { module: "audit_finding", referenceId: { in: evidenceFindingIds }, isActive: true },
-          select: { id: true, referenceId: true, originalName: true, fileType: true, fileSize: true, uploadedAt: true },
+          where: { module: "audit_finding", referenceId: { in: rowIds }, isActive: true },
+          select: evidenceSelect,
           orderBy: { uploadedAt: "desc" },
         })
       : Promise.resolve([]),
-    userIds.length > 0 ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, displayName: true } }) : Promise.resolve([]),
   ])
-
-  const evidenceByFindingId = new Map<string, AuditFindingEvidenceAttachment[]>()
-  for (const { referenceId, ...attachment } of attachments) {
-    evidenceByFindingId.set(referenceId, [...(evidenceByFindingId.get(referenceId) ?? []), attachment])
-  }
-  const usersById = new Map(users.map((entry) => [entry.id, entry]))
-  const valueLabels = new Map([...findingLabels, ...comparedLabels])
-  // A person's name, or nothing when the user is gone: never the id (spec §5).
-  const userLabel = (id: string | null) => (id ? formatAuditUserLabel(usersById.get(id), null) : null)
-  // A value in words, or null when empty: the page shows Nil, never a typed "-".
-  const valueLabel = (findingType: string, value: string | null) => (value ? formatFindingValue(findingType, value, valueLabels) : null)
-  const extras = (finding: FindingExtrasInput) => {
-    const reportedByViewer = isSameAuditActor(user.id, finding.reportedBy)
-    return {
-      parent: finding.asset?.installedInLinks[0]?.parentAsset ?? null,
-      ownerLabel: finding.actionOwner ? `${finding.actionOwner.code} - ${finding.actionOwner.fullNameTh}` : null,
-      expectedLabel: valueLabel(finding.findingType, finding.expectedValue),
-      actualLabel: valueLabel(finding.findingType, finding.actualValue),
-      reportedByViewer,
-      // The review route's own rule (auditFindingReviewableWhere): only these can be ticked or decided.
-      reviewable: finding.reviewStatus === "pending" && !reportedByViewer && !isAuditRoundReadOnlyStatus(finding.auditRound.status),
-      evidence: evidenceByFindingId.get(finding.id) ?? [],
-    }
-  }
+  const valueLabels = new Map([...rowLabels, ...(chosenPanel?.panel.labels ?? [])])
+  const evidenceByFindingId = groupEvidence(rowAttachments)
   const counts = Object.fromEntries(auditFindingCountedStatuses.map((status, index) => [status, statusCounts[index]])) as AuditFindingCounts
   const total = isAuditFindingWaitingStatus(filters.status) ? (waitingTotal ?? 0) : counts[filters.status]
 
@@ -224,20 +289,16 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
     total,
     reviewableTotal,
     listPage,
-    rows: rows.map((finding) => ({ ...finding, ...extras(finding) })),
+    rows: rows.map((finding) => ({ ...finding, ...findingExtras(user.id, finding, valueLabels, evidenceByFindingId) })),
     valueLabels,
-    employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
+    employees: chosenPanel?.employees ?? [],
     filterRound,
     roundOptions,
-    panel: chosen
+    panel: chosenPanel
       ? {
-          finding: { ...chosen, ...extras(chosen) },
+          ...chosenPanel.panel,
           inList: chosenInList,
-          readOnly: isAuditRoundReadOnlyStatus(chosen.auditRound.status),
-          reporterLabel: userLabel(chosen.reportedBy),
-          scannedByLabel: userLabel(chosen.auditItem.scannedBy),
           labels: valueLabels,
-          siblings,
           // No page in the next href: after this decision the list opens at the page that holds the next one (P4-R18).
           queue:
             queue && reviewableTotal !== null

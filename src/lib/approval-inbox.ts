@@ -270,7 +270,16 @@ export type ApprovalInboxPage = {
   filteredTotal: number
   page: number
   pageSize: ApprovalInboxPageSize
+  /** Every row of the filtered list in the current tab, in inbox order, all pages: the panel's next item. */
+  order: ApprovalInboxRef[]
+  /** The tickable rows of the same list, in inbox order, all pages, uncapped (select-all caps at 200 on the client). */
+  tickable: { disposal: ApprovalInboxTickable[]; finding: ApprovalInboxTickable[] }
+  /** Keyed "<key>:<id>", for every row in `order`: the confirm's not-opened list. */
+  titles: Record<string, { title: string; codes: string }>
 }
+
+export type ApprovalInboxRef = { key: ApprovalInboxItemKey; id: string }
+export type ApprovalInboxTickable = { id: string; title: string; codes: string }
 
 /** Every pending row already loaded: unsorted and before photo counts. */
 export type ApprovalInboxPageSource = { rows: ApprovalInboxRow[] }
@@ -338,7 +347,30 @@ export function buildApprovalInboxPage(
   const page = Math.min(Math.max(1, Math.floor(query.page) || 1), lastPage)
   const rows = inTab.slice((page - 1) * query.pageSize, page * query.pageSize)
 
-  return { strip, tabs, rows, filteredTotal: inTab.length, page, pageSize: query.pageSize }
+  const order: ApprovalInboxRef[] = inTab.map((row) => ({ key: row.key, id: row.id }))
+  const tickableOf = (key: "disposal" | "finding") =>
+    inTab.filter((row) => row.key === key && row.tickable).map((row) => ({ id: row.id, title: row.title, codes: row.codes }))
+  const tickable = { disposal: tickableOf("disposal"), finding: tickableOf("finding") }
+  const titles: Record<string, { title: string; codes: string }> = {}
+  for (const row of inTab) titles[`${row.key}:${row.id}`] = { title: row.title, codes: row.codes }
+
+  return { strip, tabs, rows, filteredTotal: inTab.length, page, pageSize: query.pageSize, order, tickable, titles }
+}
+
+/**
+ * The current item's place in the inbox order (1-based, null when it is not there) and the next item: the first after
+ * it not in `skip` ("<key>:<id>"), else the first from the start not in `skip` and not the current one, else null.
+ */
+export function approvalInboxNeighbours(
+  order: ApprovalInboxPage["order"],
+  current: ApprovalInboxRef,
+  skip: ReadonlySet<string> = new Set(),
+): { position: number | null; total: number; next: ApprovalInboxRef | null } {
+  const isCurrent = (entry: ApprovalInboxRef) => entry.key === current.key && entry.id === current.id
+  const open = (entry: ApprovalInboxRef) => !isCurrent(entry) && !skip.has(`${entry.key}:${entry.id}`)
+  const index = order.findIndex(isCurrent)
+  const next = (index >= 0 ? order.slice(index + 1).find(open) : undefined) ?? order.find(open) ?? null
+  return { position: index >= 0 ? index + 1 : null, total: order.length, next }
 }
 
 export type ApprovalInboxDisposalRecord = DisposalBulkApprovalCandidate & {

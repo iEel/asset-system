@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
+  approvalInboxNeighbours,
   buildApprovalInboxPage,
   buildApprovalInboxRows,
   parseApprovalInboxItemParam,
@@ -291,4 +292,62 @@ test("source pins: no disposalRequired gate, no 50-row cap, no hard-coded copy, 
   assert.match(query, /user\.findMany/)
   assert.match(query, /listDisposalPhotos\(/)
   assert.match(query, /isDisposalBatchSchemaReady\(\)/)
+})
+
+// Group 6 plan 2 Task 1: the filtered order, the tickable ids, the titles and the neighbours.
+test("order, tickable and titles cover the whole filtered tab, every page", () => {
+  const disposals = Array.from({ length: 30 }, (_, index) =>
+    row({
+      id: `d${index}`,
+      daysAgo: index % 9,
+      ...(index < 2 ? { isOwn: true, block: { code: "DISPOSAL_SOD_CONFLICT" as const, sodReason: "requester" as const } } : {}),
+    }),
+  )
+  const findings = Array.from({ length: 5 }, (_, index) => row({ key: "finding", id: `f${index}`, daysAgo: index }))
+  const rows = [...disposals, ...findings]
+
+  const page = buildApprovalInboxPage({ rows }, query({ tab: "all", pageSize: 25, page: 1 }), now)
+  assert.equal(page.rows.length, 25)
+  assert.equal(page.order.length, 35)
+  assert.equal(page.tickable.disposal.length, 28)
+  assert.equal(page.tickable.finding.length, 5)
+  // In inbox order: the order's disposal rows without the viewer's own two.
+  assert.deepEqual(
+    page.tickable.disposal.map((entry) => entry.id),
+    page.order.filter((entry) => entry.key === "disposal" && entry.id !== "d0" && entry.id !== "d1").map((entry) => entry.id),
+  )
+  assert.deepEqual(page.order.slice(0, 25), page.rows.map((entry) => ({ key: entry.key, id: entry.id })))
+  const secondPage = buildApprovalInboxPage({ rows }, query({ page: 2 }), now)
+  const onPageTwo = secondPage.rows.find((entry) => entry.key === "disposal")
+  assert.ok(onPageTwo)
+  assert.ok(!page.rows.some((entry) => entry.id === onPageTwo.id))
+  assert.deepEqual(page.titles[`disposal:${onPageTwo.id}`], { title: onPageTwo.title, codes: onPageTwo.codes })
+  assert.equal(Object.keys(page.titles).length, 35)
+  assert.deepEqual(page.order, secondPage.order, "the order does not follow the page")
+
+  const audit = buildApprovalInboxPage({ rows: [...rows, row({ key: "round", id: "r0", daysAgo: 2 })] }, query({ tab: "audit" }), now)
+  assert.equal(audit.order.length, 6)
+  assert.ok(audit.order.every((entry) => entry.key === "finding" || entry.key === "round"))
+  assert.equal(audit.tickable.disposal.length, 0)
+  assert.equal(audit.tickable.finding.length, 5)
+  assert.ok("round:r0" in audit.titles)
+
+  const none = buildApprovalInboxPage({ rows }, query({ search: "nothing" }), now)
+  assert.deepEqual(none.order, [])
+  assert.deepEqual(none.tickable, { disposal: [], finding: [] })
+  assert.deepEqual(none.titles, {})
+})
+
+test("approvalInboxNeighbours: the position, the next one, wrapping, absent and skipped items", () => {
+  const order = ["a", "b", "c", "d", "e"].map((id) => ({ key: "disposal" as const, id }))
+  assert.deepEqual(approvalInboxNeighbours(order, order[2]), { position: 3, total: 5, next: order[3] })
+  assert.deepEqual(approvalInboxNeighbours(order, order[4]), { position: 5, total: 5, next: order[0] })
+  assert.deepEqual(approvalInboxNeighbours([order[0]], order[0]), { position: 1, total: 1, next: null })
+  assert.deepEqual(approvalInboxNeighbours(order, { key: "disposal", id: "gone" }), { position: null, total: 5, next: order[0] })
+  assert.deepEqual(approvalInboxNeighbours(order, order[2], new Set(["disposal:d"])), { position: 3, total: 5, next: order[4] })
+  // Skipping wraps too, and never lands on the current item.
+  assert.deepEqual(approvalInboxNeighbours(order, order[3], new Set(["disposal:e", "disposal:a", "disposal:b", "disposal:c"])), { position: 4, total: 5, next: null })
+  // The same id under another kind is another item.
+  assert.deepEqual(approvalInboxNeighbours(order, { key: "finding", id: "c" }), { position: null, total: 5, next: order[0] })
+  assert.deepEqual(approvalInboxNeighbours([], { key: "round", id: "x" }), { position: null, total: 0, next: null })
 })
