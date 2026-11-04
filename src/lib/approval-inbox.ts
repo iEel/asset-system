@@ -408,6 +408,23 @@ export function approvalInboxNeighbours(
   return { position: index >= 0 ? index + 1 : null, total: order.length, next }
 }
 
+/**
+ * The page (1-based) that holds `target` once the `removed` items ("<key>:<id>": the decided item, and the siblings an
+ * approve-all decides with it) have left the order: the next item's link opens the page it will stand on. An item not
+ * in the order opens page 1.
+ */
+export function approvalInboxNextPage(
+  order: ApprovalInboxPage["order"],
+  target: ApprovalInboxRef,
+  removed: ReadonlySet<string>,
+  pageSize: number,
+): number {
+  const index = order.findIndex((entry) => entry.key === target.key && entry.id === target.id)
+  if (index < 0) return 1
+  const gone = order.slice(0, index).filter((entry) => removed.has(`${entry.key}:${entry.id}`)).length
+  return Math.floor((index - gone) / Math.max(1, pageSize)) + 1
+}
+
 export type ApprovalInboxDisposalRecord = DisposalBulkApprovalCandidate & {
   disposalType: string
   requestDate: Date

@@ -1,31 +1,42 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ChevronRight, FileCheck2, History } from "lucide-react"
-import { getSessionUser } from "@/lib/auth-utils"
+import { getSessionUser, hasPermission } from "@/lib/auth-utils"
+import { prisma } from "@/lib/db"
 import { redirectToLogin } from "@/lib/page-auth"
 import {
+  approvalInboxNeighbours,
+  approvalInboxNextPage,
   approvalInboxPageSizes,
   buildApprovalInboxHref,
   formatApprovalInboxDay,
   parseApprovalInboxItemParam,
   parseApprovalInboxQuery,
   type ApprovalInboxItemKey,
+  type ApprovalInboxRef,
   type ApprovalInboxRow,
   type ApprovalInboxTab,
 } from "@/lib/approval-inbox"
+import { loadAuditRoundClosePanel, loadDisposalInboxPanel } from "@/lib/approval-inbox-panels"
 import { getApprovalInboxAccess, getApprovalInboxPage } from "@/lib/approval-inbox-query"
 import { approvalInboxSelectionScope } from "@/lib/approval-inbox-selection"
 import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
 import { auditFindingTypeShortLabelKeys, resolveAuditFindingType } from "@/lib/audit-finding-filters"
+import { loadAuditFindingPanel } from "@/lib/audit-findings-page-data"
 import { disposalBulkApprovalCodes } from "@/lib/disposal-bulk-approval"
 import type { DisposalSodReason } from "@/lib/disposal-policy"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { cn } from "@/lib/utils"
+import { ApprovalDisposalPanel } from "@/components/approvals/approval-disposal-panel"
+import { ApprovalFindingPanel } from "@/components/approvals/approval-finding-panel"
 import { ApprovalInboxPolicy, ApprovalInboxPolicyLine } from "@/components/approvals/approval-inbox-policy"
+import { ApprovalRoundClosePanel } from "@/components/approvals/approval-round-close-panel"
 import {
   ApprovalInboxSelectAll,
   ApprovalInboxSelectionBar,
@@ -34,11 +45,12 @@ import {
   type ApprovalInboxSelectionCopy,
 } from "@/components/approvals/approval-inbox-selection"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { SearchField } from "@/components/ui/search-field"
@@ -69,6 +81,7 @@ const nextStepKeys: Record<ApprovalInboxItemKey, string> = {
 // งานรออนุมัติ as board AP (group 6 plan 2 Task 2, spec §7.1–7.3, §7.7): the policy line and its fold, the overdue /
 // oldest / total strip, the tabs, the search and the overdue toggle, the paged queue and the phone cards. The right
 // pane is the slot Task 4 fills. Task 3: the ticks, the selection kept across pages and the bulk approve (spec §7.4).
+// Task 4: the right panel of the chosen item (spec §7.5–7.7), each decision going to the next item in this order.
 export default async function ApprovalInboxPage({ params, searchParams }: ApprovalInboxPageProps) {
   const { locale } = await params
   const rawQuery = await searchParams
@@ -79,13 +92,14 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
   const query = parseApprovalInboxQuery(rawQuery)
   const item = parseApprovalInboxItemParam(rawQuery.item)
   const now = new Date()
-  const [data, approverUsers, t, tCommon, tDisposal, tRound] = await Promise.all([
+  const [data, approverUsers, t, tCommon, tDisposal, tRound, tFinding] = await Promise.all([
     getApprovalInboxPage(user, locale, query, now),
     getApprovalPermissionMatrixUsers(),
     getTranslations({ locale, namespace: "approvalInboxPage" }),
     getTranslations({ locale, namespace: "common" }),
     getTranslations({ locale, namespace: "disposalPage" }),
     getTranslations({ locale, namespace: "auditRound" }),
+    getTranslations({ locale, namespace: "auditFinding" }),
   ])
   const { access, policy, strip, tabs, rows, filteredTotal, pageSize } = data
   const matrix = buildApprovalPermissionMatrix(approverUsers, policy.minApprovers)
@@ -213,6 +227,95 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
     errors: Object.fromEntries(disposalBulkApprovalCodes.map((code) => [code, tDisposal(`bulkErrors.${code}`)])) as ApprovalInboxSelectionCopy["errors"],
   }
   const tickable = { disposal: data.tickable.disposal.map((entry) => entry.id), finding: data.tickable.finding.map((entry) => entry.id) }
+
+  // The right panel (spec §7.5): the chosen item, the next one in this order (on the page it will stand on once the
+  // decided items leave), and its place. A kind the viewer may not decide, or an item gone or already decided, reads
+  // the one stale notice with the link to next; nothing of another user's data loads for it.
+  const hrefTo = (ref: ApprovalInboxRef | null, removed: ReadonlySet<string>) =>
+    ref ? href({ item: `${ref.key}:${ref.id}`, page: approvalInboxNextPage(data.order, ref, removed, pageSize) }) : null
+  const neighbours = item ? approvalInboxNeighbours(data.order, item) : null
+  const nextHref = item && neighbours ? hrefTo(neighbours.next, new Set([`${item.key}:${item.id}`])) : null
+  const framed = (content: ReactNode) => <div className={cn(getPanelClasses(), "p-4 md:p-5")}>{content}</div>
+  const stalePanel = framed(
+    <Notice
+      tone="warning"
+      role="status"
+      data-approval-stale
+      action={
+        <Link href={nextHref ?? closeHref} scroll={false} className={linkVariants({ size: "inherit" })}>
+          {nextHref ? t("goNext") : t("backToInbox")}
+        </Link>
+      }
+    >
+      {t("staleNotice")}
+    </Notice>,
+  )
+
+  let panel: ReactNode = framed(<EmptyNote>{t("panelEmpty")}</EmptyNote>)
+  if (item?.key === "disposal") {
+    const disposal = access.canApproveDisposal
+      ? await loadDisposalInboxPanel(prisma, {
+          requestId: item.id,
+          locale,
+          viewer: { userId: user.id, employeeId: user.employeeId },
+          segregationRequired: policy.segregationRequired,
+          slaDays: policy.slaDays,
+          now,
+        })
+      : null
+    panel = disposal?.isPending
+      ? framed(
+          <ApprovalDisposalPanel
+            locale={locale}
+            panel={disposal}
+            segregationRequired={policy.segregationRequired}
+            nextHref={nextHref}
+            closeHref={closeHref}
+            position={neighbours?.position ?? null}
+            total={neighbours?.total ?? 0}
+          />,
+        )
+      : stalePanel
+  } else if (item?.key === "finding") {
+    const finding = access.canApproveAudit ? await loadAuditFindingPanel({ locale, findingId: item.id, user, canApprove: true, now }) : null
+    if (finding && finding.panel.finding.reviewStatus === "pending") {
+      // "อนุมัติทุกช่องของทรัพย์สินนี้" decides the asset's other pending findings the viewer may approve: next skips them.
+      const siblingSkip = new Set([
+        `finding:${item.id}`,
+        ...finding.panel.siblings.filter((sibling) => !sibling.reportedByViewer).map((sibling) => `finding:${sibling.id}`),
+      ])
+      const afterSiblings = approvalInboxNeighbours(data.order, item, siblingSkip)
+      const chosen = finding.panel.finding
+      // The disposal request from a finding, as the findings page builds it, back to this item.
+      const disposalHref =
+        hasPermission(user, "disposal", "create") && chosen.asset
+          ? appendOperationalReturnTo(
+              `/${locale}/disposal/new?assetId=${chosen.asset.id}&reason=${encodeURIComponent(`${tFinding("disposalFromFindingReason")} ${chosen.auditRound.auditNo}: ${tFinding(`type_${chosen.findingType}`)}`)}&sourceType=audit_finding&sourceId=${chosen.id}`,
+              itemHref("finding", chosen.id),
+            )
+          : null
+      panel = (
+        <ApprovalFindingPanel
+          locale={locale}
+          load={finding}
+          queue={{
+            position: neighbours?.position ?? null,
+            total: neighbours?.total ?? 0,
+            nextHref,
+            nextHrefAfterSiblings: hrefTo(afterSiblings.next, siblingSkip),
+          }}
+          closeHref={closeHref}
+          disposalHref={disposalHref}
+          loadedAt={now}
+        />
+      )
+    } else {
+      panel = stalePanel
+    }
+  } else if (item?.key === "round") {
+    const round = access.canApproveAudit ? await loadAuditRoundClosePanel(prisma, item.id) : null
+    panel = round?.ready ? framed(<ApprovalRoundClosePanel locale={locale} panel={round} />) : stalePanel
+  }
 
   const empty = hasFilters
     ? { title: t("emptyFilterTitle"), description: t("emptyFilterDescription"), actionHref: clearHref, actionLabel: t("clearFilters"), actionVariant: "secondary" as const }
@@ -423,17 +526,15 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
           </ApprovalInboxSelectionProvider>
         </div>
 
-        {/* The right pane (spec §7.5): Task 4 fills it with the chosen item's panel. Sticky from xl; below xl it shows
-            only with ?item=, full width, with its back link. */}
+        {/* The right pane (spec §7.5): the chosen item's panel. Sticky from xl; below xl it shows only with ?item=, full
+            width, under its back link to the list (spec §7.7). */}
         <section
           data-approval-panel={item ? item.key : "empty"}
           aria-label={t("title")}
           className={cn("min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] xl:overflow-y-auto", !item && "max-xl:hidden")}
         >
           {item ? <PageBackLink href={closeHref} label={t("backToInbox")} className="mb-3 xl:hidden" /> : null}
-          <div className={cn(getPanelClasses(), "p-4 md:p-5")}>
-            <EmptyNote>{t("panelEmpty")}</EmptyNote>
-          </div>
+          {panel}
         </section>
       </div>
     </div>

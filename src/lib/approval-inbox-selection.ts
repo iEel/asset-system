@@ -49,6 +49,13 @@ export function parseApprovalInboxSeen(raw: string | null | undefined): Set<stri
   }
 }
 
+/** The seen list with one more "<key>:<id>", as the JSON array to store; an item already there is not added twice. */
+export function addApprovalInboxSeen(raw: string | null | undefined, itemKey: string): string {
+  const seen = parseApprovalInboxSeen(raw)
+  seen.add(itemKey)
+  return JSON.stringify([...seen])
+}
+
 /**
  * The stored selection for the list now shown: null when it belongs to another tab, search or overdue filter;
  * otherwise only the ids still tickable for its kind (decided elsewhere or now filtered out drop away), or null when

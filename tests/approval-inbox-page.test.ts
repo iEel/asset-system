@@ -4,6 +4,7 @@ import test from "node:test"
 
 import {
   approvalInboxNeighbours,
+  approvalInboxNextPage,
   buildApprovalInboxHref,
   buildApprovalInboxPage,
   buildApprovalInboxRows,
@@ -14,6 +15,7 @@ import {
   type ApprovalInboxRow,
 } from "../src/lib/approval-inbox.ts"
 import { getApprovalAgeStatus } from "../src/lib/approval-aging.ts"
+import { addApprovalInboxSeen, parseApprovalInboxSeen } from "../src/lib/approval-inbox-selection.ts"
 
 // Group 6 plan 1 Task 4: the approvals-inbox read model (spec §7.2–7.3).
 const now = new Date("2026-11-04T05:00:00Z")
@@ -378,4 +380,27 @@ test("formatApprovalInboxDay: Bangkok day, short month, Buddhist year in Thai", 
   assert.equal(formatApprovalInboxDay(date, "th", false), "12 ต.ค.")
   assert.equal(formatApprovalInboxDay(date, "th", true), "12 ต.ค. 2569")
   assert.equal(formatApprovalInboxDay(date, "en", true), "12 Oct 2026")
+})
+
+// Group 6 plan 2 Task 4: the page that holds the next item once the decided ones leave the list.
+test("approvalInboxNextPage: the next item's page after the current item (and skipped siblings) leave the order", () => {
+  const order = ["a", "b", "c", "d", "e", "f"].map((id) => ({ key: "disposal" as const, id }))
+  // Page size 2: e stands at index 4 (page 3); once c leaves it is index 3 (page 2).
+  assert.equal(approvalInboxNextPage(order, order[4], new Set(["disposal:c"]), 2), 2)
+  // An item before the target that stays keeps its place.
+  assert.equal(approvalInboxNextPage(order, order[4], new Set(), 2), 3)
+  // Wrapping to the start: nothing before it leaves.
+  assert.equal(approvalInboxNextPage(order, order[0], new Set(["disposal:f"]), 2), 1)
+  // Siblings skipped as well as the current one.
+  assert.equal(approvalInboxNextPage(order, order[5], new Set(["disposal:a", "disposal:b", "disposal:c"]), 2), 2)
+  // Not in the order: page 1.
+  assert.equal(approvalInboxNextPage(order, { key: "round", id: "x" }, new Set(), 2), 1)
+})
+
+test("addApprovalInboxSeen: appends <key>:<id> once to the stored JSON array; junk starts a new list", () => {
+  assert.deepEqual(JSON.parse(addApprovalInboxSeen(null, "disposal:a")), ["disposal:a"])
+  assert.deepEqual(JSON.parse(addApprovalInboxSeen(JSON.stringify(["finding:b"]), "disposal:a")), ["finding:b", "disposal:a"])
+  assert.deepEqual(JSON.parse(addApprovalInboxSeen(JSON.stringify(["disposal:a"]), "disposal:a")), ["disposal:a"])
+  assert.deepEqual(JSON.parse(addApprovalInboxSeen("{not json", "round:r")), ["round:r"])
+  assert.ok(parseApprovalInboxSeen(addApprovalInboxSeen(null, "finding:f")).has("finding:f"))
 })

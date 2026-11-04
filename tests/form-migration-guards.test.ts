@@ -117,6 +117,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}disposal/disposal-decision-button.tsx`]: [3, 1, 0],
   [`${C}audit/audit-finding-review-actions.tsx`]: [1, 2, 0],
   [`${C}audit/audit-finding-decision.tsx`]: [0, 1, 0],
+  // Group 6 plan 2 Task 4: the approvals panel's review remark (maxLength 4000; required only to reject, checked in code).
+  [`${C}approvals/approval-disposal-decision.tsx`]: [0, 1, 0],
   [`${C}master-data/asset-model-form.tsx`]: [3, 1, 0],
   // Group 4 plan 2 Task 5: the asset form's [12, 10, 0] went with its controls to its section files; the rows add up to it.
   // Task 6a: the document number's maxLength went with the documents box to asset-form-documents.tsx.

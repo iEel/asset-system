@@ -14,9 +14,9 @@ import {
 } from "@/components/audit/audit-findings-batch-actions"
 import { AuditFindingsExportMenu } from "@/components/audit/audit-findings-export-menu"
 import { AuditFindingPaneTop } from "@/components/audit/audit-finding-pane-top"
+import { AuditFindingEvidenceList } from "@/components/audit/audit-finding-evidence-list"
 import { AuditFindingReviewPanel, AuditFindingReviewPanelEmpty } from "@/components/audit/audit-finding-review-panel"
 import { cn, formatDateTime } from "@/lib/utils"
-import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { linkVariants } from "@/components/ui/button-variants"
@@ -48,7 +48,7 @@ import {
   type AuditFindingsHrefOverrides,
 } from "@/lib/audit-finding-filters"
 import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
-import { getAuditFindingsPageData, type AuditFindingEvidenceAttachment, type AuditFindingsPageRow } from "@/lib/audit-findings-page-data"
+import { getAuditFindingsPageData, type AuditFindingsPageRow } from "@/lib/audit-findings-page-data"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
 import { getPanelClasses } from "@/lib/design-system"
@@ -473,40 +473,6 @@ function FindingValueChange({
       <ArrowRight aria-hidden="true" className="mx-1 inline size-3.5 align-middle text-faint-foreground" />
       <span className="sr-only">{actualLabel}: </span>
       <span className="font-medium text-foreground">{orNil(actualValue)}</span>
-    </div>
-  )
-}
-
-function AuditFindingEvidenceList({ attachments, labels }: { attachments: AuditFindingEvidenceAttachment[]; labels: { title: string; count: string; open: string } }) {
-  if (attachments.length === 0) return null
-
-  return (
-    <div className="mt-3 min-w-0">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <div className="text-meta font-medium text-foreground">{labels.title}</div>
-        <div className="text-meta text-muted-foreground">{labels.count}</div>
-      </div>
-      <ul className="mt-1 grid">
-        {attachments.map((attachment) => (
-          <li key={attachment.id} className="min-w-0">
-            <a
-              href={`/api/attachments/${attachment.id}?inline=1`}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`${labels.open}: ${attachment.originalName}`}
-              className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 items-center gap-2")}
-            >
-              <FileText aria-hidden="true" className="size-4 shrink-0" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate">{attachment.originalName}</span>
-                <span className="mt-0.5 block truncate text-meta font-normal text-muted-foreground">
-                  {formatFileSize(attachment.fileSize)} · {formatDateTime(attachment.uploadedAt)}
-                </span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }

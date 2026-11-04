@@ -503,11 +503,12 @@ test("the findings desktop table has the four columns of spec §10 and no action
   assert.doesNotMatch(table, /sticky=|<RowActions\b|<AuditFindingReviewActions\b|buttonVariants\(|<FindingComparison\b/, "no action cell, no button-styled link and no inner box in a row")
   assert.doesNotMatch(table, /<DataTableCell[^>]*\b(?:min-)?w-\d+/, "the widths live in the colgroup only")
 
-  const change = source.slice(source.indexOf("function FindingValueChange"), source.indexOf("function AuditFindingEvidenceList"))
+  const change = source.slice(source.indexOf("function FindingValueChange"), source.indexOf("function resolveFindingState"))
   assert.doesNotMatch(change, /\bborder\b|\brounded/, "the comparison has no box of its own")
   assert.match(change, /<ArrowRight aria-hidden="true"/)
   assert.match(change, /<span className="font-medium text-foreground">\{orNil\(actualValue\)\}<\/span>/, "the found value in medium weight")
-  assert.doesNotMatch(source.slice(source.indexOf("function AuditFindingEvidenceList"), source.indexOf("function resolveFindingState")), /compact/, "one evidence list, the panel's")
+  // The evidence list is the shared component (group 6 plan 2 Task 4).
+  assert.doesNotMatch(readFileSync("src/components/audit/audit-finding-evidence-list.tsx", "utf8"), /compact/, "one evidence list, the panel's")
 
   const badges = source.slice(source.indexOf("const findingStatusBadges"), source.indexOf("return (\n    <div className=\"space-y-6\">"))
   assert.match(badges, /resolutionState === "pending_review" \? \[\]/, "the review badge only when the state does not say it already")

@@ -368,6 +368,7 @@ test("N2 a dashed or dotted line is drawn only by the drop zone and the signatur
 // at the site where the plan that kept it wrote one).
 const RAW_BUTTON_OWNERS = ["src/components/ui/filter-menu-chip.tsx", "src/components/ui/row-actions.tsx", "src/components/ui/search-field.tsx", "src/components/ui/searchable-select.tsx", "src/components/ui/segmented.tsx"]
 const RAW_BUTTON_EXEMPT: ExemptList = {
+  "src/components/approvals/approval-photo-gallery.tsx": { count: 1, kind: "permanent", why: "a 64px photo thumbnail is the control that shows it as the large photo", ruling: "2D-3 R5; group 6 plan 2 Task 4" },
   "src/components/assets/asset-attachments.tsx": { count: 1, kind: "permanent", why: "the photo is the control: a photo of the files tab opens its preview", ruling: "2D-3 R5; group 1 asset detail task 11" },
   "src/components/assets/asset-component-manager.tsx": { count: 1, kind: "permanent", why: "a candidate row: a pressed list option of two lines", ruling: "2D-3 R5" },
   "src/components/assets/asset-label-queue.tsx": { count: 1, kind: "permanent", why: "a search result or label queue row (one row part): two lines that add the asset to the print list", ruling: "2D-3 R5; group 4 plan 6 Task 4" },

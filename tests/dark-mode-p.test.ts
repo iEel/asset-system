@@ -166,14 +166,15 @@ test("every uploaded photo, logo and attachment image sits on the fixed light im
   const images = sources.flatMap((file) =>
     findJsxTags(file.source, ["img", "Image"]).map((tag) => ({ path: file.path, className: jsxAttrValue(tag.text, "className") ?? "" })),
   )
-  assert.equal(images.length, 15, "every <img> and next/image in src")
+  // Group 6 plan 2 Task 4: the approvals panel's photo thumbnails (16).
+  assert.equal(images.length, 16, "every <img> and next/image in src")
   const unstaged: Record<string, number> = {}
   for (const image of images) {
     if (!/(?:^|\s)bg-image-stage(?:\s|$)/.test(image.className)) unstaged[image.path] = (unstaged[image.path] ?? 0) + 1
   }
   assert.deepEqual(unstaged, NOT_UPLOADS)
-  // The stage is on the 11 images only, never on a frame that also shows a placeholder icon or a file type.
-  assert.equal(sources.reduce((sum, file) => sum + (file.source.match(/\bbg-image-stage\b/g)?.length ?? 0), 0), 11)
+  // The stage is on the 12 images only, never on a frame that also shows a placeholder icon or a file type.
+  assert.equal(sources.reduce((sum, file) => sum + (file.source.match(/\bbg-image-stage\b/g)?.length ?? 0), 0), 12)
   assert.match(read(`${C}assets/asset-thumbnail.tsx`), /"relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground"/)
 })
 
