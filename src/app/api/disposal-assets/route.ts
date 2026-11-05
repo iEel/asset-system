@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         id: true,
         assetTag: true,
         name: true,
+        serialNumber: true,
         status: { select: { name: true, nameTh: true } },
         company: { select: { code: true } },
         branch: { select: { code: true, name: true } },
@@ -59,6 +60,10 @@ export async function GET(request: NextRequest) {
         return {
           id: asset.id,
           label: `${asset.assetTag} - ${asset.name}`,
+          // The batch form's row shows the tag, the name and the register's Serial apart (request batches spec §4).
+          assetTag: asset.assetTag,
+          name: asset.name,
+          serialNumber: asset.serialNumber ?? null,
           metadata: [
             asset.status.nameTh,
             `${asset.company.code}/${asset.branch.code}`,

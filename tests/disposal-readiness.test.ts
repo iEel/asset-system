@@ -82,3 +82,12 @@ test("every blocker has words, and both screens read them with the tags (spec §
   assert.match(readFileSync("src/lib/asset-detail-frame.ts", "utf8"), /disposalOutstandingComponentTags: readiness \? getDisposalOutstandingComponentTags\(readiness\) : \[\]/)
   assert.match(readFileSync("src/app/api/disposal-assets/route.ts", "utf8"), /outstandingComponentTags: getDisposalOutstandingComponentTags\(asset\),/)
 })
+
+test("the asset search item carries assetTag, name and the register's Serial (null when none)", () => {
+  const route = readFileSync("src/app/api/disposal-assets/route.ts", "utf8")
+  assert.match(route, /serialNumber: true,/)
+  // \s+ spans CRLF and LF checkouts alike.
+  assert.match(route, /assetTag: asset\.assetTag,\s+name: asset\.name,\s+serialNumber: asset\.serialNumber \?\? null,/)
+  const picker = readFileSync("src/components/disposal/disposal-asset-picker.tsx", "utf8")
+  assert.match(picker, /assetTag\?: string\s+name\?: string\s+serialNumber\?: string \| null/)
+})

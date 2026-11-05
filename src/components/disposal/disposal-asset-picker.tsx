@@ -18,6 +18,10 @@ export type DisposalAssetOption = {
   blockers?: Array<DisposalReadinessBlocker | "lifecycle_status">
   /** The tags the outstanding_child_components blocker names (group 3 spec §8.5). */
   outstandingComponentTags?: string[]
+  /** The search's own fields (request batches spec §4): the batch form's row reads the Serial apart from the label. */
+  assetTag?: string
+  name?: string
+  serialNumber?: string | null
 }
 
 // id names the search field, so a form's focusFirst reaches it; error shows under the picker and is tied to the search
