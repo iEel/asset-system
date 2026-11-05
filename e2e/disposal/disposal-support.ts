@@ -5,6 +5,7 @@
 // round): actAs swaps the page's session for that user's saved one, so the one page, and its measurements, follow the
 // whole workflow.
 import { readFileSync } from "node:fs"
+import { basename } from "node:path"
 import { request as playwrightRequest, type APIRequestContext, type Locator, type Page, type TestInfo } from "@playwright/test"
 import { recordSettled } from "../audit/settle.ts"
 import { expect } from "../support/fixtures.ts"
@@ -88,7 +89,14 @@ export type DisposalAsset = { id: string; assetTag: string; name: string }
 
 // Assets in the test's room, Ready with no holder (a disposal can start from there), created by the user signed in on
 // the page through the asset API the form posts to.
-export async function createAssets(page: Page, choices: AssetChoices, roomId: string, tags: readonly string[]): Promise<DisposalAsset[]> {
+// serialNumbers gives some of them a Serial (the batch form and page show it), keyed by tag.
+export async function createAssets(
+  page: Page,
+  choices: AssetChoices,
+  roomId: string,
+  tags: readonly string[],
+  serialNumbers: Readonly<Record<string, string>> = {},
+): Promise<DisposalAsset[]> {
   const data: RunData = readRunData()
   const assets: DisposalAsset[] = []
   for (const assetTag of tags) {
@@ -98,6 +106,7 @@ export async function createAssets(page: Page, choices: AssetChoices, roomId: st
         data: {
           assetTag,
           name,
+          ...(serialNumbers[assetTag] ? { serialNumber: serialNumbers[assetTag] } : {}),
           categoryId: choices.categoryId,
           companyId: data.companyId,
           branchId: data.branchId,
@@ -322,4 +331,113 @@ export async function createRound(page: Page, measure: Measure, entry: RoundEntr
   const path = new URL(page.url()).pathname
   await recordSettled(page, measure, "IT staff: the disposal round")
   return { id: path.split("/").pop() as string, roundNo, path }
+}
+
+// The request-batch form (board DP-Batch-New, request batches spec §4): the machines are picked by their tag, each row
+// has an optional photo slot, the lot's files are required (an image; any file for สูญหาย), and the footer sends
+// "ส่งคำขอ {n} เครื่อง" with no review step. The form is for the computer: below md the page shows only a notice, so a
+// phone test makes its batch through the API the form posts to (createBatchThroughApi).
+export const BATCH_PHONE_NOTE = "สร้างชุดคำขอได้บนคอมพิวเตอร์"
+
+export function batchSearch(page: Page): Locator {
+  return page.getByPlaceholder("ค้นหารหัสทรัพย์สิน Serial หรือชื่อ")
+}
+
+// Type the shared part of the tags once, then choose each machine's option (the list stays open for more).
+export async function pickBatchMachines(page: Page, search: string, assets: readonly DisposalAsset[]) {
+  await batchSearch(page).fill(search)
+  for (const asset of assets) await page.getByRole("option", { name: new RegExp(escapeRegExp(asset.assetTag)) }).click()
+  for (const asset of assets) await expect(batchMachineRow(page, asset)).toBeVisible()
+}
+
+// A machine's row on the form.
+export function batchMachineRow(page: Page, asset: DisposalAsset): Locator {
+  return page.locator(`[data-disposal-batch-machine="${asset.assetTag}"]`)
+}
+
+// A machine's own photo slot (its dropzone's file input); a lost batch has none.
+export function batchMachinePhotoInput(page: Page, asset: DisposalAsset): Locator {
+  return batchMachineRow(page, asset).locator('[data-disposal-batch-machine-photo] input[type="file"]')
+}
+
+// The lot's files (#disposal-batch-lot-files, the dropzone's file input): each call queues more.
+export function batchLotInput(page: Page): Locator {
+  return page.locator("#disposal-batch-lot-files")
+}
+
+export function sendBatchButton(page: Page, count: number): Locator {
+  return page.getByRole("button", { name: `ส่งคำขอ ${count} เครื่อง`, exact: true }).filter({ visible: true })
+}
+
+// Send the filled form and land on the new batch's page with its toast; returns the batch page's path.
+export async function sendBatch(page: Page, measure: Measure, count: number): Promise<string> {
+  await measure.timed("IT staff: send the batch", async () => {
+    await sendBatchButton(page, count).click()
+    await page.waitForURL(/\/th\/disposal\/batches\/[0-9a-f-]{36}$/)
+  })
+  await expectToast(page, `สร้างชุดคำขอ ${count} รายการสำเร็จ`)
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^DPB-\d{8}-\d{4}$/)
+  return new URL(page.url()).pathname
+}
+
+export type BatchEntry = {
+  assets: readonly DisposalAsset[]
+  /** The API's method: sell · donate · destroy · lost · dispose. */
+  disposalType: string
+  reason: string
+  /** Files per asset id, sent to that machine's own request. */
+  machineFiles?: Readonly<Record<string, readonly string[]>>
+  lotFiles: readonly string[]
+}
+
+const FIXTURE_TYPES: Record<string, string> = { ".png": "image/png", ".pdf": "application/pdf" }
+
+async function uploadFixture(page: Page, url: string, file: string) {
+  const name = basename(file)
+  const mimeType = FIXTURE_TYPES[name.slice(name.lastIndexOf("."))] ?? "application/octet-stream"
+  const response = await page.request.post(url, { multipart: { file: { name, mimeType, buffer: readFileSync(fromRoot(file)) } } })
+  if (response.status() !== 201) throw new Error(`POST ${url} answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
+}
+
+// The batch as the form sends it, for the phone (the form is desktop-only): the signed-in user's POST
+// /api/disposal-batches with the run's IT staff as the requester, then each machine's files to its request and the lot's
+// files to the batch. Returns the batch page's path.
+export async function createBatchThroughApi(page: Page, entry: BatchEntry): Promise<string> {
+  const response = await page.request.post("/api/disposal-batches", {
+    data: {
+      assetIds: entry.assets.map((asset) => asset.id),
+      disposalType: entry.disposalType,
+      reason: entry.reason,
+      requestedById: readRunData().employees.itStaff.id,
+      approverId: null,
+    },
+  })
+  const batch = await created<{ batch: { id: string }; requests: { id: string; assetId: string }[] }>(response, "POST /api/disposal-batches")
+  for (const request of batch.requests) {
+    for (const file of entry.machineFiles?.[request.assetId] ?? []) await uploadFixture(page, `/api/disposal-requests/${request.id}/attachments`, file)
+  }
+  for (const file of entry.lotFiles) await uploadFixture(page, `/api/disposal-batches/${batch.batch.id}/attachments`, file)
+  return `/th/disposal/batches/${batch.batch.id}`
+}
+
+// A machine on the batch page: its table row on the computer, its card on the phone.
+export function batchPageMachine(page: Page, device: E2eDevice, asset: DisposalAsset): Locator {
+  const rows = device === "phone" ? page.getByRole("main").locator("li").filter({ has: page.locator("article") }) : page.locator("tr[data-disposal-batch-row]")
+  return rows.filter({ hasText: asset.assetTag }).filter({ visible: true })
+}
+
+// The request id a machine's row links (its DP-… link).
+export async function batchRequestId(page: Page, device: E2eDevice, asset: DisposalAsset): Promise<string> {
+  const href = await batchPageMachine(page, device, asset).getByRole("link", { name: /^DP-\d{8}-\d{4}$/ }).getAttribute("href")
+  const id = new URL(href ?? "", page.url()).pathname.split("/").pop() ?? ""
+  expect(id).toMatch(/^[0-9a-f-]{36}$/)
+  return id
+}
+
+// The attachment id an <img> shows through the thumbnail route (/api/attachments/{id}/thumbnail).
+export async function thumbnailAttachmentId(image: Locator): Promise<string> {
+  const src = (await image.getAttribute("src")) ?? ""
+  const id = src.match(/\/api\/attachments\/([0-9a-f-]{36})\/thumbnail/)?.[1] ?? ""
+  expect(id, src).toMatch(/^[0-9a-f-]{36}$/)
+  return id
 }

@@ -1,7 +1,8 @@
-// Disposal of a batch of two (spec §6.4.1–3, §6.7): IT staff request both in one batch with shared evidence, the IT
-// head approves them in one bulk approval on the approvals page (each in its panel on the phone, which has no ticks),
-// and IT staff record them in disposal rounds (group 6 plan 4: per-row and bulk execution are retired). On the way: the
-// batch form's wrong entry first; the IT head's own request is refused approval by the same IT head (the requester
+// Disposal of a batch of two (spec §6.4.1–3, §6.7): IT staff request both in one batch with shared evidence (on the
+// computer's form; the phone, where the form is not shown, through its API), the IT head approves them in one bulk
+// approval on the approvals page (each in its panel on the phone, which has no ticks), and IT staff record them in
+// disposal rounds (group 6 plan 4: per-row and bulk execution are retired). On the way: the batch form's missing method
+// first; the IT head's own request is refused approval by the same IT head (the requester
 // cannot approve their own request); the approver's round is blocked (the approver cannot record the disposal).
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { recordSettled } from "../audit/settle.ts"
@@ -9,19 +10,25 @@ import { readRunData } from "../support/state.ts"
 import {
   actAs,
   approvedTab,
+  BATCH_PHONE_NOTE,
+  batchLotInput,
+  batchRequestId,
   checkRoundButton,
-  chooseSearchable,
+  chooseMethod,
   createAssets,
+  createBatchThroughApi,
   createRoom,
   createRound,
-  employeeLabel,
   escapeRegExp,
   EVIDENCE_PDF,
   expectToast,
   openRoundForm,
   PHOTO_PNG,
+  pickBatchMachines,
   readAssetChoices,
   recordPrefix,
+  sendBatch,
+  sendBatchButton,
   visibleButton,
   writeRoundSelection,
   type DisposalAsset,
@@ -46,48 +53,38 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
   batchAssets = assets.slice(0, 2)
   const own = assets[2]
 
-  // 1. IT staff make the batch: both assets, the shared evidence, and a reason. Review without a requester first: the
-  // error shows under the requester and the review waits.
+  // 1. IT staff make the batch: both assets, the shared evidence (a PDF and the suite's PNG: the lot needs an image,
+  // group 6 plan 3, P3-R3), and a reason. On the computer a send without a method first: the error shows under the
+  // method, focus moves there and nothing is sent; there is no review step (request batches PB-R1). The form is for the
+  // computer, so the phone reads its notice and makes the same batch through the API the form posts to.
+  const reason = `${prefix} หมดอายุการใช้งาน เสนอตัดจำหน่ายทั้งชุด`
   await measure.visit("/th/disposal/batch/new", "IT staff: new disposal batch")
-  const search = page.getByPlaceholder("ค้นหารหัสหรือชื่อทรัพย์สิน")
-  await search.fill(`${prefix}-A`)
-  for (const asset of batchAssets) await page.getByRole("option", { name: new RegExp(escapeRegExp(asset.assetTag)) }).click()
-  await expect(page.getByText("เลือกแล้ว 2 รายการ")).toBeVisible()
-  await page.locator("#disposal-batch-reason").fill(`${prefix} หมดอายุการใช้งาน เสนอตัดจำหน่ายทั้งชุด`)
-  await page.locator('input[type="file"]').first().setInputFiles(EVIDENCE_PDF)
-  await expect(page.getByText("evidence.pdf")).toBeVisible()
-  // The batch's shared files need one image (group 6 plan 3, P3-R3): the suite's PNG beside the PDF.
-  await page.locator('input[type="file"]').first().setInputFiles(PHOTO_PNG)
-  await expect(page.getByText("photo.png")).toBeVisible()
-  await page.getByRole("button", { name: "ตรวจสอบชุดคำขอ" }).click()
-  await expect(page.locator("#disposal-batch-requested-by-error")).toHaveText("กรุณาระบุข้อมูลนี้")
-  await expect(page.locator("#disposal-batch-requested-by")).toBeFocused()
-  await measure.recordPage("IT staff: the missing requester under the field")
-  await chooseSearchable(page, "disposal-batch-requested-by", employeeLabel("itStaff"))
-  await page.getByRole("button", { name: "ตรวจสอบชุดคำขอ" }).click()
-  await expect(page.getByRole("heading", { name: "ตรวจสอบก่อนสร้างชุดคำขอ" })).toBeVisible()
-  for (const asset of batchAssets) await expect(page.getByText(`${asset.assetTag} - ${asset.name}`)).toBeVisible()
-  await measure.recordPage("IT staff: the batch review")
-  await measure.timed("IT staff: create the batch", async () => {
-    await page.getByRole("button", { name: "ยืนยันสร้างชุดคำขอ" }).click()
-    await page.waitForURL(/\/th\/disposal\/batches\/[0-9a-f-]{36}$/)
-  })
-  await expectToast(page, "สร้างชุดคำขอ 2 รายการสำเร็จ")
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^DPB-\d{8}-\d{4}$/)
-  await expect(page.getByText("evidence.pdf")).toBeVisible()
-  await measure.recordPage("IT staff: the batch, two requests pending")
-  // Each request's page, read off the batch's list.
-  requestPaths = {}
-  for (const asset of batchAssets) {
-    const href = await page
-      .getByRole("main")
-      .locator(e2eDevice === "phone" ? "li" : "tr")
-      .filter({ hasText: asset.assetTag })
-      .locator("a[href*='/th/disposal/']")
-      .first()
-      .getAttribute("href")
-    requestPaths[asset.assetTag] = new URL(href ?? "", page.url()).pathname
+  if (e2eDevice === "phone") {
+    await expect(page.locator("[data-disposal-batch-phone]")).toContainText(BATCH_PHONE_NOTE)
+    const path = await createBatchThroughApi(page, { assets: batchAssets, disposalType: "dispose", reason, lotFiles: [EVIDENCE_PDF, PHOTO_PNG] })
+    await measure.visit(path, "IT staff: the batch, two requests pending")
+  } else {
+    await pickBatchMachines(page, `${prefix}-A`, batchAssets)
+    await page.locator("#disposal-batch-reason").fill(reason)
+    await batchLotInput(page).setInputFiles(EVIDENCE_PDF)
+    await expect(page.locator("[data-disposal-batch-lot]")).toContainText("evidence.pdf")
+    await batchLotInput(page).setInputFiles(PHOTO_PNG)
+    await expect(page.locator("[data-disposal-batch-lot] [data-disposal-queued-photo]")).toHaveCount(1)
+    await sendBatchButton(page, 2).click()
+    await expect(page.locator("#disposal-batch-type-error")).toHaveText("เลือกวิธีจำหน่าย")
+    await expect(page.getByRole("radio", { name: "ขาย", exact: true })).toBeFocused()
+    await expect(page).toHaveURL(/\/th\/disposal\/batch\/new$/)
+    await measure.recordPage("IT staff: the missing method under the field")
+    await chooseMethod(page, "ตัดจำหน่าย")
+    await expect(page.locator("#disposal-batch-type-error")).toHaveCount(0)
+    await sendBatch(page, measure, 2)
   }
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^DPB-\d{8}-\d{4}$/)
+  await expect(page.getByRole("main").getByText("evidence.pdf")).toBeVisible()
+  await recordSettled(page, measure, "IT staff: the batch, two requests pending")
+  // Each request's page, read off the batch's rows (cards on the phone).
+  requestPaths = {}
+  for (const asset of batchAssets) requestPaths[asset.assetTag] = `/th/disposal/${await batchRequestId(page, e2eDevice, asset)}`
 
   // 2. The IT head's own request (made through the API they would post it with), for the refusal below.
   await actAs(page, "itHead", e2eTheme)

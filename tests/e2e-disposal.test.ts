@@ -93,8 +93,11 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
   assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "one batch through four tests")
   for (const step of [
     `await measure.visit("/th/disposal/batch/new"`,
-    `"#disposal-batch-requested-by-error"`,
-    `"ยืนยันสร้างชุดคำขอ"`,
+    // Request batches Task 5: the missing method under the field, no review step, the phone through the API.
+    `"#disposal-batch-type-error"`,
+    `await sendBatch(page, measure, 2)`,
+    `toContainText(BATCH_PHONE_NOTE)`,
+    `await createBatchThroughApi(page, {`,
     String.raw`/^DPB-\d{8}-\d{4}$/`,
     `requestedById: readRunData().employees.itHead.id`,
     `code: "DISPOSAL_SOD_CONFLICT"`,
@@ -107,6 +110,9 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
     `await expect(checkRoundButton(page)).toBeDisabled()`,
     `await expect(page.locator("[data-disposal-execution-round]")).toHaveText(round.roundNo)`,
   ]) assert.ok(spec.includes(step), step)
+  for (const gone of [`"ยืนยันสร้างชุดคำขอ"`, `"ตรวจสอบชุดคำขอ"`, `"#disposal-batch-requested-by-error"`]) {
+    assert.ok(!spec.includes(gone), `the batch form's review step is gone: ${gone}`)
+  }
   for (const gone of ["openBulkExecutionPreview", "ผลการดำเนินการตัดจำหน่ายแบบกลุ่ม", "disposal-execution-executed-by", `{ name: "บันทึกตัดจำหน่าย", exact: true }`]) {
     assert.ok(!spec.includes(gone), `the retired execution is gone: ${gone}`)
   }
@@ -135,7 +141,7 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
 })
 
 test("an asset in an open audit round cannot be requested for disposal, with the reason, and can once the round is cancelled (e2e disposal task 3, ED3)", () => {
-  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "disposal-round.spec.ts", "open-audit-block.spec.ts", "request-form.spec.ts", "single-request.spec.ts"])
+  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "batch-pages.spec.ts", "disposal-round.spec.ts", "open-audit-block.spec.ts", "request-form.spec.ts", "single-request.spec.ts"])
   const spec = read("e2e/disposal/open-audit-block.spec.ts")
   assert.ok(spec.indexOf("const roundResponse = await page.request.post") > spec.indexOf("await requestPhotoInput(page).setInputFiles(PHOTO_PNG)"), "the round opens after the form is filled")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
@@ -161,7 +167,7 @@ test("an asset in an open audit round cannot be requested for disposal, with the
   ]) assert.ok(spec.includes(step), step)
   // Every disposal test makes its own records under its own workflow code.
   const codes = disposalSpecs().map((file) => read(`e2e/disposal/${file}`).match(/recordPrefix\(testInfo, "(DSP\d)"\)/)?.[1])
-  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3", "DSP4", "DSP7"])
+  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3", "DSP4", "DSP7", "DSP9"])
 })
 
 test("the disposal specs read the request statuses by their one set of names (critique 2026-10-20 D3)", () => {
@@ -333,4 +339,56 @@ test("disposal rounds and the accounting Excel: the approver's ticks, three requ
   assert.equal(rounds.form.blocked.DISPOSAL_SOD_CONFLICT, "คุณอนุมัติรายการนี้")
   assert.equal(rounds.form.blocked.DISPOSAL_INVALID_STAGE, "คำขอไม่อยู่ในสถานะอนุมัติแล้ว")
   assert.equal(rounds.form.blocked.DISPOSAL_EVIDENCE_REQUIRED, "ยังไม่มีหลักฐาน · ให้ผู้ดูแลระบบบันทึก")
+})
+
+test("the request-batch pages: the form with a photo per machine and the lot photo, the batch page, the approvals panel's first photo, a round from the batch, a lost batch, the list, the phone (request batches Task 5)", () => {
+  const support = read("e2e/disposal/disposal-support.ts")
+  const spec = read("e2e/disposal/batch-pages.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "IT staff walk it")
+  assert.deepEqual([...spec.matchAll(/recordPrefix\(testInfo, "(DSP\d+)"\)/g)].map((match) => match[1]), ["DSP9", "DSP10"])
+  assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "one batch through the tests")
+  // The helpers: the form's machine rows, the lot input, the send with no review, the phone's batch through the API.
+  for (const step of [
+    `export const BATCH_PHONE_NOTE = "สร้างชุดคำขอได้บนคอมพิวเตอร์"`,
+    `page.getByPlaceholder("ค้นหารหัสทรัพย์สิน Serial หรือชื่อ")`,
+    "page.locator(`[data-disposal-batch-machine=\"${asset.assetTag}\"]`)",
+    `page.locator("#disposal-batch-lot-files")`,
+    "page.getByRole(\"button\", { name: `ส่งคำขอ ${count} เครื่อง`, exact: true })",
+    "await expectToast(page, `สร้างชุดคำขอ ${count} รายการสำเร็จ`)",
+    `page.request.post("/api/disposal-batches"`,
+    "`/api/disposal-batches/${batch.batch.id}/attachments`",
+    "`/api/disposal-requests/${request.id}/attachments`",
+  ]) assert.ok(support.includes(step), step)
+  assert.ok(!support.includes("ยืนยันสร้างชุดคำขอ"), "no review step")
+  for (const step of [
+    `toHaveText("3 เครื่อง · มีรูปของเครื่อง 1 · ที่เหลือใช้รูปรวม")`,
+    "toHaveText(`Serial ${serial}`)",
+    `toHaveText("Serial –")`,
+    `toContainText("ใช้รูปรวม")`,
+    `toContainText(BATCH_PHONE_NOTE)`,
+    `.toBe(ownPhotoId)`,
+    `.toBe(lotPhotoId)`,
+    `page.getByRole("button", { name: "สร้างรอบตัดจำหน่ายจากชุดนี้ (3 เครื่อง)" })`,
+    `await expect(roundButton.filter({ visible: true })).toHaveCount(0)`,
+    `getByText("ตัดจำหน่ายแล้ว 3/3")`,
+    `expect(rowsWithImages).toContain(ownRow)`,
+    `await chooseMethod(page, "สูญหาย")`,
+    `await expect(page.locator("[data-disposal-batch-machine-photo]")).toHaveCount(0)`,
+    `setInputFiles(EVIDENCE_PDF)`,
+    "`/th/disposal/batches?q=${encodeURIComponent(batchNo)}`",
+    `toContainText("ตัดจำหน่ายแล้ว 3/3")`,
+    `recordSettled(page, measure,`,
+  ]) assert.ok(spec.includes(step), step)
+  // The words the specs read are the app's own.
+  const th = JSON.parse(read("messages/th.json")) as { disposalPage: { batchForm: Record<string, string>; batchPage: Record<string, string>; batchCreateSuccess: string } }
+  const { batchForm, batchPage, batchCreateSuccess } = th.disposalPage
+  assert.equal(batchForm.phoneTitle, "สร้างชุดคำขอได้บนคอมพิวเตอร์")
+  assert.equal(batchForm.search, "ค้นหารหัสทรัพย์สิน Serial หรือชื่อ")
+  assert.equal(batchForm.countLine, "{count} เครื่อง · มีรูปของเครื่อง {withPhoto} · ที่เหลือใช้รูปรวม")
+  assert.equal(batchForm.submit, "ส่งคำขอ {count} เครื่อง")
+  assert.equal(batchCreateSuccess, "สร้างชุดคำขอ {count} รายการสำเร็จ")
+  assert.equal(batchPage.progress, "ตัดจำหน่ายแล้ว {disposed}/{total}")
+  assert.equal(batchPage.useLotPhoto, "ใช้รูปรวม")
+  assert.equal(batchPage.roundCreate, "สร้างรอบตัดจำหน่ายจากชุดนี้ ({count} เครื่อง)")
 })
