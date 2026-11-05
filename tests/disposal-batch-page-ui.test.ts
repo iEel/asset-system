@@ -156,6 +156,8 @@ test("the batch list words in Thai and English", () => {
 test("the batch page machines table keeps readable widths: the name min-w-56, the other columns whitespace-nowrap", () => {
   const source = read(PAGE)
   assert.match(source, /<DataTableCell className="whitespace-nowrap"><MachinePhoto /)
+  // The "ใช้รูปรวม" tile wraps its own words inside the nowrap photo column.
+  assert.match(source, /<span className="inline-flex size-11 shrink-0 items-center justify-center whitespace-normal [^"]*">\{labels\.useLotPhoto\}<\/span>/)
   assert.match(source, /<DataTableCell className="min-w-56 text-foreground">\{machine\.assetName\}<\/DataTableCell>/)
   assert.match(source, /<DataTableCell className="whitespace-nowrap"><span className="tag">\{machine\.assetTag\}<\/span><\/DataTableCell>/)
   assert.match(source, /<DataTableCell className="whitespace-nowrap text-muted-foreground">\{machine\.serialNumber \?\? "–"\}<\/DataTableCell>/)

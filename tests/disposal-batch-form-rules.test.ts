@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -36,7 +37,11 @@ test("validateDisposalBatchForm: method, reason and requester follow the single 
 })
 
 test("disposalBatchPhotoCount counts the machines and those with a photo of their own", () => {
-  assert.deepEqual(disposalBatchPhotoCount([{ files: [] }, { files: ["a", "b"] }, { files: [] }]), { machines: 3, withOwnPhoto: 1 })
+  const photo = { type: "image/jpeg" }
+  const pdf = { type: "application/pdf" }
+  assert.deepEqual(disposalBatchPhotoCount([{ files: [] }, { files: [photo, pdf] }, { files: [] }]), { machines: 3, withOwnPhoto: 1 })
+  // A PDF alone never becomes the machine's own photo: that machine still uses the lot photo.
+  assert.deepEqual(disposalBatchPhotoCount([{ files: [pdf] }, { files: [photo] }]), { machines: 2, withOwnPhoto: 1 })
 })
 
 test("planDisposalBatchUploads maps each row's files to its own request by assetId and the lot files to the batch", () => {
@@ -102,4 +107,11 @@ test("runWithLimit keeps at most the limit in flight and the results in task ord
   assert.deepEqual(await runWithLimit(tasks, 4), [0, 1, 2, 3, 4, 5, 6, 7, 8])
   assert.equal(peak, 4)
   assert.deepEqual(await runWithLimit([], 4), [])
+})
+
+// Final review: Enter in the machine search never submits the form (the batch form sends at once since PB-R1).
+test("Enter in the disposal asset picker's search does not submit the surrounding form", () => {
+  const picker = readFileSync("src/components/disposal/disposal-asset-picker.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(picker, /function preventEnterSubmit\(event: React\.KeyboardEvent<HTMLInputElement>\) \{\n\s+if \(event\.key === "Enter"\) event\.preventDefault\(\)\n\}/)
+  assert.match(picker, /<Input id=\{inputId\} value=\{query\} onChange=\{\(event\) => setQuery\(event\.target\.value\)\} onKeyDown=\{preventEnterSubmit\}/)
 })

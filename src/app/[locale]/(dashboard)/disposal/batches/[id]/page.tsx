@@ -210,7 +210,7 @@ function MachinePhoto({ machine, attachHref, labels }: { machine: DisposalBatchM
   if (machine.ownPhotoId === null) {
     return (
       <span data-disposal-batch-lot-photo="" className="flex items-center gap-2">
-        <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-muted p-0.5 text-center text-xs leading-tight text-muted-foreground">{labels.useLotPhoto}</span>
+        <span className="inline-flex size-11 shrink-0 items-center justify-center whitespace-normal rounded-md border border-border bg-muted p-0.5 text-center text-xs leading-tight text-muted-foreground">{labels.useLotPhoto}</span>
         {attachHref ? <Link href={attachHref} className={linkVariants({ size: "inherit" })}>{labels.attachPhoto}</Link> : null}
       </span>
     )

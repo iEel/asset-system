@@ -226,7 +226,7 @@ export function DisposalBatchForm({
     }
   }
 
-  const photoCount = disposalBatchPhotoCount(rows)
+  const photoCount = disposalBatchPhotoCount(rows.map((row) => ({ files: row.files.map((item) => item.file) })))
   const lotPhotoCount = lotFiles.filter((item) => isPhoto(item.file)).length
   const liveLotError = getDisposalPhotoRequirementError(lotFiles.map((item) => item.file), values.disposalType)
   const lotError = lotTried && liveLotError ? t(liveLotError) : undefined

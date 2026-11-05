@@ -8,6 +8,7 @@
 // - The upload summary lists only the machines with a failed file, in job order, and counts the lot's failures.
 
 import { getApiErrorKey } from "./api-error-catalog.ts"
+import { isDisposalPhotoFile } from "./disposal-photo.ts"
 import { getDisposalPhotoRequirementError } from "./disposal-request-form-rules.ts"
 import { getDisposalRequestReasonError } from "./disposal-type-policy.ts"
 import { maxLength, required } from "./validation-rules.ts"
@@ -40,8 +41,9 @@ export function validateDisposalBatchForm(input: {
   return errors
 }
 
-export function disposalBatchPhotoCount(rows: readonly { files: readonly unknown[] }[]): { machines: number; withOwnPhoto: number } {
-  return { machines: rows.length, withOwnPhoto: rows.filter((row) => row.files.length > 0).length }
+// A machine has its own photo only with an image among its files: a PDF never becomes the machine's photo.
+export function disposalBatchPhotoCount(rows: readonly { files: readonly { type: string }[] }[]): { machines: number; withOwnPhoto: number } {
+  return { machines: rows.length, withOwnPhoto: rows.filter((row) => row.files.some((file) => isDisposalPhotoFile(file.type))).length }
 }
 
 export type DisposalBatchUploadJob =
