@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
-import { quickAddAvailability, withQuickAddOption, type QuickAddKind } from "@/lib/brand-model-quick-add-rules"
+import { existingModelPick, quickAddAvailability, withQuickAddOption, type QuickAddKind } from "@/lib/brand-model-quick-add-rules"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
 import {
   buildAssetBatchDuplicateFieldErrors,
@@ -293,6 +293,7 @@ export function AssetBatchForm({
   const apiError = useApiError()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
+  const tQuickAdd = useTranslations("brandModel.quickAdd")
   // The help line under the row-column chips, read when focus enters the group (T4).
   const optionalColumnsHelpId = useId()
   const [common, setCommon] = useState<BatchCommonValues>(emptyCommon)
@@ -307,6 +308,9 @@ export function AssetBatchForm({
   const [addedBrands, setAddedBrands] = useState<BrandModelOption[]>([])
   const [addedModels, setAddedModels] = useState<BrandModelOption[]>([])
   const [quickAdd, setQuickAdd] = useState<{ kind: QuickAddKind; name: string; key: number } | null>(null)
+  // "เปลี่ยนหมวดหมู่เป็น {category} ตามรุ่นที่เลือก" under หมวดหมู่ after the quick add picked a model of another category
+  // (fix 1); a category the person picks clears it.
+  const [categoryNote, setCategoryNote] = useState<string | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const [checkingDuplicates, setCheckingDuplicates] = useState(false)
   const [duplicateCheckMessage, setDuplicateCheckMessage] = useState("")
@@ -365,11 +369,8 @@ export function AssetBatchForm({
   const brandOptions = useMemo(() => addedBrands.reduce<BrandModelOption[]>((list, brand) => withQuickAddOption(list, brand), brands), [brands, addedBrands])
   const modelOptions = useMemo(() => addedModels.reduce<BrandModelOption[]>((list, model) => withQuickAddOption(list, model), models), [models, addedModels])
   const optionLists: BrandModelLists = { brands: brandOptions, models: modelOptions }
-  // The chosen model stays listed even outside the category/brand scope (an existing model the quick add used).
   const filteredModels = modelOptions.filter(
-    (model) =>
-      model.id === common.modelId ||
-      ((!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId))
+    (model) => (!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId)
   )
   const selectedCategory = categories.find((category) => category.id === common.categoryId)
   const selectedBrand = brandOptions.find((brand) => brand.id === common.brandId)
@@ -499,8 +500,9 @@ export function AssetBatchForm({
     )
   }
 
-  function handleCategoryChange(categoryId: string) {
+  function handleCategoryChange(categoryId: string, lists: BrandModelLists = optionLists) {
     fieldErrors.clear("common.categoryId")
+    setCategoryNote(null)
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -509,12 +511,12 @@ export function AssetBatchForm({
         ...current,
         categoryId,
         modelId: resolveModelIdForScope({
-          models: modelOptions,
+          models: lists.models,
           categoryId,
           brandId: current.brandId,
           currentModelId: current.modelId,
         }),
-      })
+      }, lists)
     )
   }
 
@@ -565,7 +567,17 @@ export function AssetBatchForm({
     }
     const nextModels = withQuickAddOption(modelOptions, record)
     setAddedModels((current) => withQuickAddOption(current, record))
-    handleModelChange(record.id, { brands: brandOptions, models: nextModels })
+    const lists = { brands: brandOptions, models: nextModels }
+    // An existing model of another category switches the form's category to its own through the handler a category pick
+    // uses (fix 1), so the asset never holds a model of another category; the dialog sends no model without a category.
+    const pick = existingModelPick(record.categoryId, common.categoryId)
+    if (!pick.pick) return
+    if (pick.changesCategory) {
+      handleCategoryChange(pick.categoryId, lists)
+      const category = categories.find((item) => item.id === pick.categoryId)
+      setCategoryNote(tQuickAdd("categoryChangedByModel", { category: category?.label ?? "" }))
+    }
+    handleModelChange(record.id, lists)
   }
 
   const brandCreateRow = useQuickAddCreateRow({
@@ -963,8 +975,9 @@ export function AssetBatchForm({
             id="asset-batch-category"
             value={common.categoryId}
             required
+            hint={categoryNote ?? undefined}
             error={errorText("common.categoryId")}
-            onChange={handleCategoryChange}
+            onChange={(value) => handleCategoryChange(value)}
           >
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
@@ -1538,6 +1551,7 @@ export function AssetBatchForm({
           categoryId={common.categoryId || null}
           canReactivate={canReactivateBrandModel}
           knownOptions={quickAdd.kind === "brand" ? brandOptions : modelOptions}
+          categories={categories}
           onClose={() => setQuickAdd(null)}
           onChosen={(record) => chooseQuickAddRecord(quickAdd.kind, record)}
         />

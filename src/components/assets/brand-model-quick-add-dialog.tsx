@@ -14,6 +14,8 @@ import { BrandModelClashNotice } from "@/components/master-data/brand-model-clas
 import { reactivateNameClash, readNameClash } from "@/lib/brand-model-clash"
 import type { NameClash } from "@/lib/brand-model-duplicates"
 import {
+  existingModelPick,
+  otherCategoryId,
   quickAddRequest,
   shouldOfferCreate,
   similarNamesUrl,
@@ -71,6 +73,7 @@ export function BrandModelQuickAddDialog({
   categoryId,
   canReactivate,
   knownOptions,
+  categories,
   onClose,
   onChosen,
 }: {
@@ -83,6 +86,8 @@ export function BrandModelQuickAddDialog({
   canReactivate: boolean
   // The form's options of this kind, so using an existing model keeps its own brand and category.
   knownOptions: readonly QuickAddRecord[]
+  // The form's categories, to name a similar model's category when it is not the form's (fix 1).
+  categories: readonly { id: string; label: string }[]
   onClose: () => void
   onChosen: (record: QuickAddRecord) => void
 }) {
@@ -94,6 +99,8 @@ export function BrandModelQuickAddDialog({
   const [clash, setClash] = useState<NameClash | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  // An existing model whose category could not be read is not picked (fix 1): the form's category would be a guess.
+  const [pickBlocked, setPickBlocked] = useState(false)
   const fieldErrors = useFieldErrors<"name">()
   const brandId = brand?.id ?? null
 
@@ -126,37 +133,52 @@ export function BrandModelQuickAddDialog({
     setName(value)
     setClash(null)
     setError(null)
+    setPickBlocked(false)
     fieldErrors.clear("name")
   }
 
-  // An existing record: a brand needs only its name; a model keeps its own category, read when the form does not hold it.
-  async function resolveExisting(existing: NameClash): Promise<QuickAddRecord> {
+  // An existing record: a brand needs only its name; a model brings its own category (the form switches to it, fix 1),
+  // read when the form does not hold the model. null: the category could not be read (GET needs brand:view).
+  async function resolveExisting(existing: NameClash): Promise<QuickAddRecord | null> {
     const known = knownOptions.find((option) => option.id === existing.id)
-    if (known) return known
-    if (kind === "brand") return { id: existing.id, label: existing.name }
+    if (kind === "brand") return known ?? { id: existing.id, label: existing.name }
+    if (known && existingModelPick(known.categoryId, categoryId).pick) return known
     try {
       const response = await fetch(`/api/models/${existing.id}`, { cache: "no-store" })
       const model = response.ok ? await response.json() : null
-      if (isRecord(model) && typeof model.categoryId === "string") {
+      if (isRecord(model) && typeof model.categoryId === "string" && existingModelPick(model.categoryId, categoryId).pick) {
         return { id: existing.id, label: existing.name, brandId: typeof model.brandId === "string" ? model.brandId : brandId, categoryId: model.categoryId }
       }
     } catch {
-      // Falls through to the form's own scope.
+      // No category: not picked.
     }
-    return { id: existing.id, label: existing.name, brandId, categoryId }
+    return null
   }
 
   async function chooseExisting(existing: NameClash) {
-    onChosen(await resolveExisting(existing))
+    setPickBlocked(false)
+    const record = await resolveExisting(existing)
+    if (!record) {
+      setPickBlocked(true)
+      return
+    }
+    onChosen(record)
   }
 
   async function reactivate(existing: NameClash) {
     try {
       await reactivateNameClash(kind, existing, { source: "asset-form" })
-      onChosen(await resolveExisting({ ...existing, isActive: true }))
+      await chooseExisting({ ...existing, isActive: true })
     } catch (reactivateError) {
       setError(reactivateError)
     }
+  }
+
+  function categoryNote(item: NameClash) {
+    if (kind !== "model") return null
+    const other = otherCategoryId(knownOptions.find((option) => option.id === item.id)?.categoryId, categoryId)
+    const label = other ? categories.find((category) => category.id === other)?.label : null
+    return label ? t("quickAdd.inCategory", { category: label }) : null
   }
 
   async function save() {
@@ -210,6 +232,11 @@ export function BrandModelQuickAddDialog({
             <ApiErrorText error={error} />
           </Notice>
         ) : null}
+        {pickBlocked ? (
+          <Notice tone="warning" role="alert">
+            {t("quickAdd.otherCategoryUnreadable")}
+          </Notice>
+        ) : null}
         <div className="grid gap-2">
           <Field label={kind === "brand" ? t("brandName") : t("modelName")} id={NAME_ID} required error={clash ? undefined : fieldErrors.message("name")}>
             <Input
@@ -249,6 +276,7 @@ export function BrandModelQuickAddDialog({
                 <li key={item.id} className="flex min-h-11 items-center justify-between gap-3 px-3 py-1.5 text-sm">
                   <span className="min-w-0 truncate">
                     {item.name}
+                    {categoryNote(item) ? <span className="ml-1 text-muted-foreground">{categoryNote(item)}</span> : null}
                     {item.isActive ? null : <span className="ml-2 text-meta text-muted-foreground">{t("quickAdd.inactive")}</span>}
                   </span>
                   {item.isActive ? (

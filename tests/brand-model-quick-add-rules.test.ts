@@ -4,6 +4,8 @@ import test from "node:test"
 import { canReadSimilarNames } from "../src/lib/brand-model-duplicates.ts"
 import { resolveModelIdForScope } from "../src/lib/asset-model-selection.ts"
 import {
+  existingModelPick,
+  otherCategoryId,
   quickAddAvailability,
   quickAddRequest,
   shouldOfferCreate,
@@ -114,7 +116,8 @@ test("after a quick add the form picks the record through the handler a pick use
     assert.match(source, /const nextBrands = withQuickAddOption\(brandOptions, record\)/)
     assert.match(source, /handleBrandChange\(record\.id, \{ brands: nextBrands, models: modelOptions \}\)/)
     assert.match(source, /const nextModels = withQuickAddOption\(modelOptions, record\)/)
-    assert.match(source, /handleModelChange\(record\.id, \{ brands: brandOptions, models: nextModels \}\)/)
+    assert.match(source, /const lists = \{ brands: brandOptions, models: nextModels \}/)
+    assert.match(source, /handleModelChange\(record\.id, lists\)/)
     assert.match(source, /onChange=\{\(value\) => handleBrandChange\(value\)\}/)
     assert.match(source, /onChange=\{\(value\) => handleModelChange\(value\)\}/)
   }
@@ -139,4 +142,45 @@ test("the create and edit pages pass brand:create and brand:edit to the form", (
     assert.match(source, /canCreateBrandModel=\{hasPermission\(user, "brand", "create"\)\}/)
     assert.match(source, /canReactivateBrandModel=\{hasPermission\(user, "brand", "edit"\)\}/)
   }
+})
+
+// Task 3 fix 1: an existing model the quick add picks brings its own category; one whose category cannot be read is not
+// picked; the picker filter has no exception for the chosen model any more.
+test("existingModelPick: the model's category wins, an unknown category is no pick", () => {
+  assert.deepEqual(existingModelPick("c2", "c1"), { pick: true, categoryId: "c2", changesCategory: true })
+  assert.deepEqual(existingModelPick("c1", "c1"), { pick: true, categoryId: "c1", changesCategory: false })
+  assert.deepEqual(existingModelPick("c1", ""), { pick: true, categoryId: "c1", changesCategory: true })
+  assert.deepEqual(existingModelPick(null, "c1"), { pick: false })
+  assert.deepEqual(existingModelPick(undefined, "c1"), { pick: false })
+})
+
+test("otherCategoryId names a similar model's category only when it is not the form's", () => {
+  assert.equal(otherCategoryId("c2", "c1"), "c2")
+  assert.equal(otherCategoryId("c1", "c1"), null)
+  assert.equal(otherCategoryId(null, "c1"), null)
+})
+
+test("picking a model of another category switches the form's category through the category handler, with a note", () => {
+  for (const [file, values] of [["asset-form.tsx", "values"], ["asset-batch-form.tsx", "common"]] as const) {
+    const source = read(`${C}${file}`)
+    const choose = source.slice(source.indexOf("function chooseQuickAddRecord("), source.indexOf("const brandCreateRow"))
+    assert.ok(choose.includes(`const pick = existingModelPick(record.categoryId, ${values}.categoryId)`))
+    assert.match(choose, /\n\s+if \(!pick\.pick\) return\n/)
+    assert.match(choose, /if \(pick\.changesCategory\) \{\n\s+handleCategoryChange\(pick\.categoryId, lists\)/)
+    assert.match(choose, /setCategoryNote\(tQuickAdd\("categoryChangedByModel"/)
+    assert.ok(choose.indexOf("handleCategoryChange(") < choose.indexOf("handleModelChange(record.id, lists)"))
+    // A category the person picks clears the note; the category handler takes the quick add's lists.
+    assert.match(source, /function handleCategoryChange\(categoryId: string, lists: BrandModelLists = optionLists\) \{\n[^\n]*\n\s+setCategoryNote\(null\)/)
+    assert.match(source, /hint=\{categoryNote \?\? undefined\}/)
+    assert.doesNotMatch(source, /model\.id === (values|common)\.modelId \|\|/)
+  }
+})
+
+test("the dialog picks no model whose category it cannot read, and names another category in the similar list", () => {
+  const source = read(`${C}brand-model-quick-add-dialog.tsx`)
+  assert.match(source, /Promise<QuickAddRecord \| null>/)
+  assert.match(source, /if \(!record\) \{\n\s+setPickBlocked\(true\)/)
+  assert.match(source, /t\("quickAdd\.otherCategoryUnreadable"\)/)
+  assert.match(source, /t\("quickAdd\.inCategory", \{ category: label \}\)/)
+  assert.doesNotMatch(source, /return \{ id: existing\.id, label: existing\.name, brandId, categoryId \}/)
 })

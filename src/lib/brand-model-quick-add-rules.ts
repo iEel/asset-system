@@ -55,6 +55,26 @@ export function similarNamesUrl(kind: QuickAddKind, query: string, brandId: stri
   return `/api/brand-models/similar?${params.toString()}`
 }
 
+// Task 3 fix 1: an existing model the quick add picks (a similar one, the clash, a reactivated one) brings its own
+// category, so an asset is never saved with a model of another category. A model whose category cannot be read is not
+// picked at all (the form's own category would be a guess).
+export type ExistingModelPick = { pick: true; categoryId: string; changesCategory: boolean } | { pick: false }
+
+export function existingModelPick(
+  modelCategoryId: string | null | undefined,
+  formCategoryId: string | null | undefined,
+): ExistingModelPick {
+  if (!modelCategoryId) return { pick: false }
+  return { pick: true, categoryId: modelCategoryId, changesCategory: modelCategoryId !== (formCategoryId || null) }
+}
+
+// The similar list names the category of a model that sits in another one ("· {category}"); null when it is the form's
+// own or unknown.
+export function otherCategoryId(modelCategoryId: string | null | undefined, formCategoryId: string | null | undefined): string | null {
+  if (!modelCategoryId || modelCategoryId === (formCategoryId || null)) return null
+  return modelCategoryId
+}
+
 // A record the quick add created, reactivated or used joins the form's options once, so the category/brand filter and
 // the name suggestion see it. The same array comes back when it is already there.
 export function withQuickAddOption<T extends { id: string }>(options: readonly T[], option: T): T[] {

@@ -2049,7 +2049,10 @@
       "similarHeading": "ชื่อใกล้เคียงที่มีอยู่แล้ว",
       "useThis": "ใช้รายการนี้",
       "inactive": "ปิดใช้งาน",
-      "save": "บันทึกและเลือก"
+      "save": "บันทึกและเลือก",
+      "categoryChangedByModel": "เปลี่ยนหมวดหมู่เป็น {category} ตามรุ่นที่เลือก",
+      "otherCategoryUnreadable": "เลือกรุ่นนี้จากรายการไม่ได้ เพราะอยู่หมวดหมู่อื่น",
+      "inCategory": "· {category}"
     }
   },
   "supplier": {

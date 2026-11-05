@@ -2049,7 +2049,10 @@
       "similarHeading": "Similar names already in the list",
       "useThis": "Use this one",
       "inactive": "Inactive",
-      "save": "Save and choose"
+      "save": "Save and choose",
+      "categoryChangedByModel": "Category changed to {category} to match the chosen model",
+      "otherCategoryUnreadable": "This model cannot be chosen from the list because it is in another category",
+      "inCategory": "· {category}"
     }
   },
   "supplier": {

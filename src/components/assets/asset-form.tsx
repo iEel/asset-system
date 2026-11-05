@@ -101,7 +101,7 @@ import { summarizeAssetFormSection, type AssetFormFoldedSection, type AssetFormS
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { departmentFollowsHolder } from "@/lib/asset-department-rule"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
-import { quickAddAvailability, withQuickAddOption, type QuickAddKind } from "@/lib/brand-model-quick-add-rules"
+import { existingModelPick, quickAddAvailability, withQuickAddOption, type QuickAddKind } from "@/lib/brand-model-quick-add-rules"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { focusField, waitForElement } from "@/lib/field-focus"
@@ -238,6 +238,7 @@ export function AssetForm({
   const router = useRouter()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
+  const tQuickAdd = useTranslations("brandModel.quickAdd")
   const apiError = useApiError()
   const validationMessage = useValidationMessage()
   // A held บุคคล or Stock asset opens with its holder's department, a clone too (group 4 plan 2 Task 6b); under an open
@@ -273,6 +274,9 @@ export function AssetForm({
   const [addedBrands, setAddedBrands] = useState<Option[]>([])
   const [addedModels, setAddedModels] = useState<Option[]>([])
   const [quickAdd, setQuickAdd] = useState<{ kind: QuickAddKind; name: string; key: number } | null>(null)
+  // "เปลี่ยนหมวดหมู่เป็น {category} ตามรุ่นที่เลือก" under หมวดหมู่ after the quick add picked a model of another category
+  // (fix 1); a category the person picks clears it.
+  const [categoryNote, setCategoryNote] = useState<string | null>(null)
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   // The edit page's reason for a room, holder or แผนก correction (P2-R4).
   const [correctionReason, setCorrectionReason] = useState("")
@@ -424,13 +428,10 @@ export function AssetForm({
   const brandOptions = useMemo(() => addedBrands.reduce<Option[]>((list, brand) => withQuickAddOption(list, brand), brands), [brands, addedBrands])
   const modelOptions = useMemo(() => addedModels.reduce<Option[]>((list, model) => withQuickAddOption(list, model), models), [models, addedModels])
   const optionLists: BrandModelLists = { brands: brandOptions, models: modelOptions }
-  // The chosen model stays listed even outside the category/brand scope (an existing model the quick add used, or an
-  // older asset's), so the picker names it instead of showing the placeholder.
   const filteredModels = modelOptions.filter(
     (model) =>
-      model.id === values.modelId ||
-      ((!values.categoryId || model.categoryId === values.categoryId) &&
-        (!values.brandId || model.brandId === values.brandId))
+      (!values.categoryId || model.categoryId === values.categoryId) &&
+      (!values.brandId || model.brandId === values.brandId)
   )
   const selectedCategory = categories.find((category) => category.id === values.categoryId)
   const isSoftwareLicense = ownershipType === "software_license"
@@ -689,19 +690,20 @@ export function AssetForm({
     if (!isEdit && normalizeAssetOwnershipType(nextOwnershipType) === "component") openSection("install")
   }
 
-  function handleCategoryChange(categoryId: string) {
+  function handleCategoryChange(categoryId: string, lists: BrandModelLists = optionLists) {
     fieldErrors.clear("categoryId")
+    setCategoryNote(null)
     setValues((current) =>
       withSuggestedName({
         ...current,
         categoryId,
         modelId: resolveModelIdForScope({
-          models: modelOptions,
+          models: lists.models,
           categoryId,
           brandId: current.brandId,
           currentModelId: current.modelId,
         }),
-      })
+      }, lists)
     )
   }
 
@@ -746,7 +748,17 @@ export function AssetForm({
     }
     const nextModels = withQuickAddOption(modelOptions, record)
     setAddedModels((current) => withQuickAddOption(current, record))
-    handleModelChange(record.id, { brands: brandOptions, models: nextModels })
+    const lists = { brands: brandOptions, models: nextModels }
+    // An existing model of another category switches the form's category to its own through the handler a category pick
+    // uses (fix 1), so the asset never holds a model of another category; the dialog sends no model without a category.
+    const pick = existingModelPick(record.categoryId, values.categoryId)
+    if (!pick.pick) return
+    if (pick.changesCategory) {
+      handleCategoryChange(pick.categoryId, lists)
+      const category = categories.find((item) => item.id === pick.categoryId)
+      setCategoryNote(tQuickAdd("categoryChangedByModel", { category: category?.label ?? "" }))
+    }
+    handleModelChange(record.id, lists)
   }
 
   const brandCreateRow = useQuickAddCreateRow({
@@ -1345,7 +1357,7 @@ export function AssetForm({
               )}
             </div>
             <FormChangedField change={changeOf("categoryId")}>
-              <SelectField label={t("category")} id="asset-category" value={values.categoryId} required error={errorText("categoryId")} onChange={handleCategoryChange}>
+              <SelectField label={t("category")} id="asset-category" value={values.categoryId} required error={errorText("categoryId")} hint={categoryNote ?? undefined} onChange={(value) => handleCategoryChange(value)}>
                 <option value="">{t("selectCategory")}</option>
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
               </SelectField>
@@ -1758,6 +1770,7 @@ export function AssetForm({
           categoryId={values.categoryId || null}
           canReactivate={canReactivateBrandModel}
           knownOptions={quickAdd.kind === "brand" ? brandOptions : modelOptions}
+          categories={categories}
           onClose={() => setQuickAdd(null)}
           onChosen={(record) => chooseQuickAddRecord(quickAdd.kind, record)}
         />
