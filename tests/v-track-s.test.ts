@@ -339,12 +339,44 @@ test("a duplicate code or name in master data answers 409 under its field, on cr
   for (const item of cases) {
     const { POST } = await load<Create>(`src/app/api/${item.dir}/route.ts`)
     const { PUT } = await load<Update>(`src/app/api/${item.dir}/[id]/route.ts`)
-    stubDb({ [item.model]: { create: () => { throw uniqueViolation() }, findFirst: () => ({ id: "row-1", isActive: true }), update: () => { throw uniqueViolation() } } })
+    // Brands and models read every name of the scope first (group 7 plan 1 duplicate rule); none clashes here, so the
+    // database unique key's fallback answers.
+    stubDb({ [item.model]: { create: () => { throw uniqueViolation() }, findFirst: () => ({ id: "row-1", isActive: true }), findMany: () => [], update: () => { throw uniqueViolation() } } })
     await expectConflict(await POST(jsonRequest("POST", item.body)), item)
     await expectConflict(await PUT(jsonRequest("PUT", item.body), { params: Promise.resolve({ id: "row-1" }) }), item)
     assert.equal(getApiErrorKey(item.error), item.key)
     assert.equal(th[item.key], item.th)
     assert.equal(en[item.key], item.error)
+  }
+
+  // Group 7 plan 1 (G7P1-R1): a normalized clash is refused before any write, naming the existing record, active or not.
+  {
+    const writes: string[] = []
+    const refuse = (name: string) => () => { writes.push(name); throw new Error("must not write") }
+    const brandRoute = await load<Create>("src/app/api/brands/route.ts")
+    stubDb({ assetBrand: { findMany: () => [{ id: "b-dell", name: "Dell", isActive: false }], create: refuse("brand") } })
+    const brandClash = await brandRoute.POST(jsonRequest("POST", { name: " D-E-L-L ", isActive: true }))
+    assert.equal(brandClash.status, 409)
+    assert.deepEqual(await brandClash.json(), {
+      error: "Brand name already exists",
+      code: "BRAND_NAME_EXISTS",
+      field: "name",
+      existing: { id: "b-dell", name: "Dell", isActive: false },
+      fieldErrors: { name: "duplicate" },
+    })
+    const modelRoute = await load<Update>("src/app/api/models/[id]/route.ts")
+    stubDb({ assetModel: {
+      findFirst: () => ({ id: "m-2", name: "Latitude 7420", brandId: "brand-1", isActive: true }),
+      findMany: (args: { where: { brandId: string } }) => (args.where.brandId === "brand-1" ? [{ id: "m-1", name: "Latitude 5420", isActive: true }, { id: "m-2", name: "Latitude 7420", isActive: true }] : []),
+      update: refuse("model"),
+    } })
+    const modelClash = await modelRoute.PUT(
+      jsonRequest("PUT", { name: "latitude5420", categoryId: "cat-1", brandId: "brand-1", specs: "", isActive: true }),
+      { params: Promise.resolve({ id: "m-2" }) },
+    )
+    assert.equal(modelClash.status, 409)
+    assert.deepEqual((await modelClash.json()).existing, { id: "m-1", name: "Latitude 5420", isActive: true })
+    assert.deepEqual(writes, [])
   }
 
   // Category: create answers 409 for an active duplicate (an inactive one is still brought back), update for any other row

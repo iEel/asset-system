@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { brandSchema } from "@/lib/validations/brand-model"
+import { findBrandNameClash, nameClashBody } from "@/lib/brand-model-duplicates"
 
 type BrandRouteContext = {
   params: Promise<{ id: string }>
@@ -38,6 +39,8 @@ export async function PUT(request: NextRequest, context: BrandRouteContext) {
 
     const { id } = await context.params
     const input = brandSchema.parse(await request.json())
+    // source labels the log row only; it is not stored on the record.
+    const { source, ...data } = input
     // An inactive record opens and saves too: ticking "ใช้งาน" again brings it back (critique 2026-10-20 E1).
     const existing = await prisma.assetBrand.findFirst({ where: { id } })
 
@@ -45,7 +48,13 @@ export async function PUT(request: NextRequest, context: BrandRouteContext) {
       return NextResponse.json({ error: "Brand not found" }, { status: 404 })
     }
 
-    const brand = await prisma.assetBrand.update({ where: { id }, data: input })
+    // A rename follows the duplicate rule (spec §4.1); a save that keeps the name leaves an old duplicate group alone.
+    if (data.name !== existing.name) {
+      const clash = await findBrandNameClash(prisma, data.name, id)
+      if (clash) return NextResponse.json(nameClashBody("brand", clash), { status: 409 })
+    }
+
+    const brand = await prisma.assetBrand.update({ where: { id }, data })
 
     await logAudit({
       userId: user.id,
@@ -53,7 +62,7 @@ export async function PUT(request: NextRequest, context: BrandRouteContext) {
       module: "brand",
       recordId: brand.id,
       oldValue: existing,
-      newValue: input,
+      newValue: { ...data, source },
     })
 
     return NextResponse.json(brand)
