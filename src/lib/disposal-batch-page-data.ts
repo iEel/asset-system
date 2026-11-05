@@ -20,6 +20,8 @@ export type DisposalBatchListRow = {
   machineCount: number
   disposalType: string
   requestedByName: string | null
+  /** The requester's name without the code: the list shows the name only (Task 4, the canvas note). */
+  requestedByShortName: string | null
   requestDate: Date
   counts: DisposalBatchStageCounts
 }
@@ -145,6 +147,7 @@ export async function readDisposalBatchList(
       machineCount: batch.disposalRequests.length,
       disposalType: batch.disposalType,
       requestedByName: personName(batch.requestedBy),
+      requestedByShortName: batch.requestedBy?.fullNameTh ?? null,
       requestDate: batch.requestDate,
       counts: countStages(batch.disposalRequests.map((request) => request.requestStatus)),
     })),

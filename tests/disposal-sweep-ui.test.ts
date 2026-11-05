@@ -102,9 +102,11 @@ test("disposal request page: ContentPanels, the batch a request detail row, the 
 
 test("disposal batch history: a flush ContentPanel with shared phone rows, a text link with a 44px phone target and 13px meta lines (spec 2D D9, D19, M29)", () => {
   const source = read("src/app/[locale]/(dashboard)/disposal/batches/page.tsx")
-  assert.match(source, /<ContentPanel divided flush>\n\s+<ContentPanelRows className="md:hidden">/)
-  assert.match(source, /return <li key=\{batch\.id\}><article><div className="flex items-start justify-between gap-3">/)
-  assert.match(source, /<Link href=\{href\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0"\)\}><span className="tag font-medium">\{batch\.batchNo\}<\/span><\/Link>/)
+  // Request batches Task 4 put the rounds list's search form above the rows and the batch name on the phone link.
+  assert.match(source, /<ContentPanel divided flush>\n\s+<form action=\{basePath\} method="get" role="search"/)
+  assert.match(source, /<ContentPanelRows className="md:hidden">\n\s+\{rows\.map\(\(row\) => \{/)
+  assert.match(source, /<li key=\{row\.id\}>\n\s+<article>/)
+  assert.match(source, /<Link href=\{href\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm font-medium text-foreground \[overflow-wrap:anywhere\]"\)\}>\n\s+\{row\.title\}/)
   assert.match(source, /<\/DataTableFoot>\n\s+<\/ContentPanel>/)
   assert.doesNotMatch(source, /<section\b|rounded-lg border|hover:text-primary|\btext-xs\b|divide-border md:hidden/)
 })

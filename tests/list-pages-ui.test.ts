@@ -75,7 +75,8 @@ test("the selected brand keeps the vertical brand picker and gets RowActions: ed
 // B4 (spec 2B §5.9): the lists that now page on the server. Plans 2B-2 and 2B-5 add theirs, one line each, before the "]".
 const B4_LISTS = [
   `${D}master-data/departments/page.tsx`,
-  `${D}disposal/batches/page.tsx`,
+  // disposal/batches left in request batches Task 4: it pages through readDisposalBatchList (listPageWindow there), and
+  // tests/disposal-batch-page-ui.test.ts and tests/disposal-batch-page-data.test.ts pin it.
 ]
 
 test("B4 lists read page and pageSize with parseListPage and count the whole list in the same Promise.all (spec 2B §5.9.1)", () => {
@@ -209,7 +210,7 @@ test("disposal batches: real pages, the list page in returnTo, and RowActions wi
   }
   assert.match(source, /<div className="space-y-6">/)
   assert.match(source, /back=\{<PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\}/)
-  assert.match(source, /searchParams: Promise<\{ page\?: string \| string\[\]; pageSize\?: string \| string\[\] \}>/)
+  assert.match(source, /searchParams: Promise<\{ q\?: string \| string\[\]; page\?: string \| string\[\]; pageSize\?: string \| string\[\] \}>/)
   assert.match(source, /const batchesReturnHref = listHref\(listPage\)/)
   assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/batches\/\$\{id\}`, batchesReturnHref\)/)
   assert.match(source, /next=\{\{ label: t\("openBatch"\), href, icon: <FolderOpen aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/, "one next step and no ⋯: opening the batch is the row's only command")
@@ -217,8 +218,10 @@ test("disposal batches: real pages, the list page in returnTo, and RowActions wi
   assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
   assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
-  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(batches\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
-  assert.match(source, /canCreate && total > 0 \?/, "the create button in the header shows once a batch exists, counted over all pages")
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(rows\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
+  // Request batches Task 4: total is the search's count now, so the header counts every active batch (the strip's).
+  assert.match(source, /const hasBatches = strip\.batches > 0/)
+  assert.match(source, /canCreate && hasBatches \?/, "the create button in the header shows once a batch exists, counted over all pages")
 })
 
 // Plan 2B-2 Task 5 (spec 2B §5.4 row "disposal/batches/[id]", §4.4.3, §4.6.3): the batch page on the list primitives.

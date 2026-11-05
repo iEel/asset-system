@@ -85,3 +85,68 @@ test("the request page's files panel is the #files anchor that แนบรู�
   const source = read(REQUEST_PAGE)
   assert.match(source, /<div id="files" data-disposal-panel="evidence" className="min-w-0 scroll-mt-24 space-y-6 max-lg:order-3">/)
 })
+
+// Request batches Task 4 (spec §6, PB-R5): the batch list (DP-Batches) on the Task 1 read model, in the rounds list's
+// look: search, a name and progress per batch, the strip of every batch's requests by stage, paging 25/50/100.
+const LIST = "src/app/[locale]/(dashboard)/disposal/batches/page.tsx"
+
+test("the batch list reads through readDisposalBatchList with the search in q, the page and the page size", () => {
+  const source = read(LIST)
+  assert.match(source, /readDisposalBatchList\(prisma, \{/)
+  assert.doesNotMatch(source, /prisma\.disposalBatch\.(?:findMany|count)/, "the list reads through the read model only")
+  assert.match(source, /searchParams: Promise<\{ q\?: string \| string\[\]; page\?: string \| string\[\]; pageSize\?: string \| string\[\] \}>/)
+  assert.match(source, /<form action=\{basePath\} method="get" role="search"/)
+  assert.match(source, /name="q"/)
+  assert.match(source, /placeholder=\{t\("batchList\.searchPlaceholder"\)\}/)
+  assert.match(source, /<input type="hidden" name="pageSize" value=\{listPage\.pageSize\} \/>/)
+  assert.match(source, /if \(search\) query\.set\("q", search\)/)
+  assert.match(source, /titleWords: \{\n\s+same: \(name, count\) => t\("rounds\.titleSame", \{ name, count \}\),\n\s+mixed: \(name, count\) => t\("rounds\.titleMixed", \{ name, count \}\),/)
+})
+
+test("the batch list columns: batch number, name with the machine count, method, requester, date, progress with a bar, open", () => {
+  const source = read(LIST)
+  const head = source.slice(source.indexOf("<DataTableHeader>"), source.indexOf("</DataTableHeader>"))
+  const order = ['t("batchNo")', 't("batchList.colName")', 't("batchList.colMethod")', 't("requestedBy")', 't("requestDate")', 't("batchList.colProgress")', 'tCommon("actions")']
+  let at = -1
+  for (const label of order) {
+    const next = head.indexOf(label)
+    assert.ok(next > at, `${label} after the previous column`)
+    at = next
+  }
+  assert.match(source, /<DataTableCell className="min-w-56">\n\s+<div className="font-medium text-foreground \[overflow-wrap:anywhere\]">\{row\.title\}<\/div>/)
+  assert.match(source, /t\("batchList\.machineCount", \{ count: formatCount\(row\.machineCount\) \}\)/)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap text-muted-foreground">\{method\(row\.disposalType\)\}<\/DataTableCell>/)
+  assert.match(source, /<DataTableCell className="min-w-40 text-muted-foreground \[overflow-wrap:anywhere\]">\{row\.requestedByShortName \?\? "–"\}<\/DataTableCell>/)
+  assert.match(source, /data-batch-progress=""/)
+  assert.match(source, /t\("batchPage\.progress", \{ disposed: formatCount\(row\.counts\.disposed\), total: formatCount\(row\.counts\.total\) \}\)/)
+  assert.match(source, /<PaceBar value=\{row\.counts\.total > 0 \? row\.counts\.disposed \/ row\.counts\.total : 0\} pace=\{null\} label=\{progress\} behind=\{false\} \/>/)
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+})
+
+test("the batch list strip: every batch's requests by stage with {n} คำขอจาก {m} ชุด (PB-R5)", () => {
+  const source = read(LIST)
+  assert.match(source, /data-batch-strip=""/)
+  assert.match(source, /t\("batchList\.stripLine", \{ requests: formatCount\(strip\.total\), batches: formatCount\(strip\.batches\) \}\)/)
+  assert.match(source, /<StatStrip/)
+  assert.match(source, /stages\.map\(\(stage\) => \(\{ key: stage, label: t\(`statuses\.\$\{stage\}`\), value: formatCount\(strip\[stage\]\) \}\)\)/)
+})
+
+test("the batch list: empty, no match, paging 25/50/100, a page past the end goes to the last", () => {
+  const source = read(LIST)
+  assert.match(source, /title=\{t\("batchList\.emptyTitle"\)\}/)
+  assert.match(source, /<EmptyNote padded>\{t\("batchList\.searchEmpty"\)\}<\/EmptyNote>/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(rows\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
+})
+
+test("the batch list words in Thai and English", () => {
+  const messages = JSON.parse(read("messages/th.json")).disposalPage
+  const th = messages.batchList
+  const en = JSON.parse(read("messages/en.json")).disposalPage.batchList
+  assert.equal(th.searchPlaceholder, "ค้นหาเลขชุด ชื่อทรัพย์สิน รหัส หรือผู้ขอ")
+  assert.equal(th.machineCount, "{count} เครื่อง")
+  assert.equal(th.stripLine, "{requests} คำขอจาก {batches} ชุด")
+  assert.equal(th.emptyTitle, "ยังไม่มีชุดคำขอ")
+  assert.equal(messages.batchPage.progress, "ตัดจำหน่ายแล้ว {disposed}/{total}")
+  for (const key of Object.keys(th)) assert.equal(typeof en[key], "string", key)
+})

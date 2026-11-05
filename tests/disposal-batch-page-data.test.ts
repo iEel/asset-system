@@ -276,10 +276,29 @@ test("readDisposalBatchList: newest first, the strip sums every batch's requests
     machineCount: 2,
     disposalType: "sell",
     requestedByName: "E001 - ผู้ขอ",
+    requestedByShortName: "ผู้ขอ",
     requestDate: day(3),
     counts: { pending: 0, approved: 1, disposed: 1, rejected: 0, total: 2 },
   })
   assert.deepEqual(list.strip, { pending: 1, approved: 1, disposed: 1, rejected: 1, total: 4, batches: 2 })
+})
+
+// Task 4: the list shows the requester's name only (the canvas note), the code stays in requestedByName.
+test("readDisposalBatchList: requestedByShortName is the name alone, null without a requester", async () => {
+  const noRequester = null as unknown as FakeBatch["requestedBy"]
+  const { db } = fakeDb(
+    [
+      batch("1", { requestedBy: { code: "E009", fullNameTh: "สมชาย - ใจดี" } }),
+      batch("2", { requestDate: day(9), batchNo: "DPB-20261109-0001", requestedBy: noRequester }),
+    ],
+    [],
+  )
+  const list = await readDisposalBatchList(db, { search: "", page: 1, pageSize: 25 })
+  const byId = new Map(list.rows.map((row) => [row.id, row]))
+  assert.equal(byId.get("1")?.requestedByShortName, "สมชาย - ใจดี", "a name with a dash stays whole")
+  assert.equal(byId.get("1")?.requestedByName, "E009 - สมชาย - ใจดี")
+  assert.equal(byId.get("2")?.requestedByShortName, null)
+  assert.equal(byId.get("2")?.requestedByName, null)
 })
 
 test("readDisposalBatchList: page 2 of 25 skips 25", async () => {

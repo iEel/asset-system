@@ -3769,9 +3769,7 @@
     "batchCreateTitle": "Create disposal request batch",
     "batchHistory": "Batch history",
     "batchHistoryHelp": "Track request batches and the progress of each child request.",
-    "batchHistoryEmpty": "No disposal request batches yet",
     "batchHistoryEmptyHelp": "Created batches will appear here for continued tracking.",
-    "batchItemCount": "{count} requests",
     "batchCreateHelp": "Select 2-100 assets that share one type, reason, requester, and approver.",
     "batchSchemaMissingTitle": "Batch disposal is not ready yet",
     "batchSchemaMissingHelp": "An administrator must back up the database and apply the Disposal Batch migration before enabling this page.",
@@ -3789,9 +3787,6 @@
       "DISPOSAL_CONCURRENT_UPDATE": "This disposal request was changed by another user. Review it again.",
       "DISPOSAL_FORBIDDEN": "You do not have permission to act on this disposal request.",
       "DISPOSAL_APPROVAL_FAILED": "This disposal request failed to be approved."
-    },
-    "batchStatuses": {
-      "partial": "Partially completed"
     },
     "errors": {
       "DISPOSAL_ASSET_NOT_FOUND": "The selected asset was not found or is inactive.",
@@ -4149,6 +4144,18 @@
       "roundBlocked": "{count} machines cannot join a round: {reasons}",
       "lotTitle": "Lot photo",
       "machinesTitle": "Machines in the batch ({count})"
+    },
+    "batchList": {
+      "searchLabel": "Search request batches",
+      "searchPlaceholder": "Search batch number, asset name, tag or requester",
+      "searchSubmit": "Search",
+      "searchEmpty": "No request batches match the search",
+      "emptyTitle": "No request batches yet",
+      "colName": "Assets in the batch",
+      "colMethod": "Method",
+      "colProgress": "Progress",
+      "machineCount": "{count} machines",
+      "stripLine": "{requests} requests from {batches} batches"
     }
   },
   "approvalInboxPage": {

@@ -3769,9 +3769,7 @@
     "batchCreateTitle": "สร้างชุดคำขอตัดจำหน่าย",
     "batchHistory": "ประวัติชุดคำขอ",
     "batchHistoryHelp": "ติดตามชุดคำขอและความคืบหน้าของคำขอแต่ละรายการ",
-    "batchHistoryEmpty": "ยังไม่มีชุดคำขอตัดจำหน่าย",
     "batchHistoryEmptyHelp": "ชุดคำขอที่สร้างสำเร็จจะแสดงที่นี่เพื่อให้ติดตามงานต่อได้",
-    "batchItemCount": "{count} คำขอ",
     "batchCreateHelp": "เลือกทรัพย์สิน 2-100 รายการที่ใช้ประเภท เหตุผล ผู้ขอ และผู้อนุมัติร่วมกัน",
     "batchSchemaMissingTitle": "ยังไม่พร้อมใช้งานการตัดจำหน่ายแบบกลุ่ม",
     "batchSchemaMissingHelp": "ผู้ดูแลระบบต้องสำรองฐานข้อมูลและรัน migration สำหรับ Disposal Batch ก่อนเปิดใช้งานหน้านี้",
@@ -3789,9 +3787,6 @@
       "DISPOSAL_CONCURRENT_UPDATE": "คำขอตัดจำหน่ายนี้ถูกเปลี่ยนแปลงโดยผู้ใช้อื่น กรุณาตรวจสอบใหม่",
       "DISPOSAL_FORBIDDEN": "คุณไม่มีสิทธิ์ดำเนินการกับคำขอตัดจำหน่ายนี้",
       "DISPOSAL_APPROVAL_FAILED": "ไม่สามารถอนุมัติคำขอตัดจำหน่ายนี้ได้"
-    },
-    "batchStatuses": {
-      "partial": "ดำเนินการบางส่วน"
     },
     "errors": {
       "DISPOSAL_ASSET_NOT_FOUND": "ไม่พบทรัพย์สินที่เลือก หรือทรัพย์สินถูกปิดใช้งานแล้ว",
@@ -4149,6 +4144,18 @@
       "roundBlocked": "เข้ารอบไม่ได้ {count} เครื่อง: {reasons}",
       "lotTitle": "รูปรวมของชุด",
       "machinesTitle": "เครื่องในชุด ({count})"
+    },
+    "batchList": {
+      "searchLabel": "ค้นหาชุดคำขอ",
+      "searchPlaceholder": "ค้นหาเลขชุด ชื่อทรัพย์สิน รหัส หรือผู้ขอ",
+      "searchSubmit": "ค้นหา",
+      "searchEmpty": "ไม่พบชุดคำขอที่ตรงกับคำค้น",
+      "emptyTitle": "ยังไม่มีชุดคำขอ",
+      "colName": "ทรัพย์สินในชุด",
+      "colMethod": "วิธี",
+      "colProgress": "ความคืบหน้า",
+      "machineCount": "{count} เครื่อง",
+      "stripLine": "{requests} คำขอจาก {batches} ชุด"
     }
   },
   "approvalInboxPage": {

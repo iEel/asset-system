@@ -108,6 +108,8 @@ test("the pending list can be narrowed to one room from the scan screen", () => 
 test("normalizeDisposalBatchReturnTo accepts the batch history list and falls back to the disposal queue", () => {
   assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal/batches?page=2&pageSize=50"), "/th/disposal/batches?page=2&pageSize=50")
   assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal/batches"), "/th/disposal/batches")
+  // Request batches Task 4: the list's search (q) comes back with its page.
+  assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal/batches?q=PC&page=2"), "/th/disposal/batches?q=PC&page=2")
   assert.equal(normalizeDisposalBatchReturnTo("th", ["/th/disposal/batches?page=3", "/th/admin"]), "/th/disposal/batches?page=3")
   assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal?status=approved&page=1&pageSize=25"), "/th/disposal?status=approved&page=1&pageSize=25", "the queue stays a valid target")
   assert.equal(normalizeDisposalBatchReturnTo("th", undefined), "/th/disposal")

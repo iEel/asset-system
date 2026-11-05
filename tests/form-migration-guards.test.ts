@@ -177,6 +177,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   ["src/app/[locale]/(dashboard)/maintenance/pm/page.tsx"]: [0, 1, 0],
   // Group 6 plan 4 Task 4: the rounds list's search caps its text at 100 characters, as the page reads it.
   ["src/app/[locale]/(dashboard)/disposal/rounds/page.tsx"]: [0, 1, 0],
+  // Request batches Task 4: the batch list's search caps its text at 100 characters, as the page reads it.
+  ["src/app/[locale]/(dashboard)/disposal/batches/page.tsx"]: [0, 1, 0],
 }
 
 // GF7 old label span, red star, legend and checkbox markup
