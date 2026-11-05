@@ -18,7 +18,7 @@ export function BrandModelDeactivateButton({
   endpoint,
   name,
   isActive,
-  models,
+  models = 0,
   assets,
   menuLabel,
   next,
@@ -28,7 +28,7 @@ export function BrandModelDeactivateButton({
   endpoint: string
   name: string
   isActive: boolean
-  models: number
+  models?: number
   assets: number
   menuLabel: string
   next: RowNextAction
@@ -45,7 +45,8 @@ export function BrandModelDeactivateButton({
   async function deactivate() {
     const confirmed = await confirm({
       title: t("deactivate.confirmTitle", { name }),
-      description: t("deactivate.confirmBody", { models, assets }),
+      // A brand counts its models and assets; a model only its assets.
+      description: kind === "brand" ? t("deactivate.confirmBody", { models, assets }) : t("deactivate.confirmBodyModel", { assets }),
       confirmLabel: t("deactivate.action"),
       tone: "destructive",
       returnFocusRef: openerRef,

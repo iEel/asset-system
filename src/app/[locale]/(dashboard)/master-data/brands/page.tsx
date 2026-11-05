@@ -238,7 +238,6 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       endpoint={`/api/models/${model.id}`}
       name={model.name}
       isActive={model.isActive}
-      models={0}
       assets={model._count.assets}
       menuLabel={tCommon("moreActionsFor", { code: model.name })}
       next={{ label: tCommon("edit"), href: editModelHref, icon: <Pencil aria-hidden="true" /> }}

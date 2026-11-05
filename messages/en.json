@@ -2067,7 +2067,8 @@
       "action": "Deactivate",
       "confirmTitle": "Deactivate {name}?",
       "confirmBody": "Used by {models} models and {assets} assets · existing records stay as they are · it can be reactivated from its edit page",
-      "success": "Deactivated"
+      "success": "Deactivated",
+      "confirmBodyModel": "Used by {assets} assets · existing records stay as they are · it can be reactivated from its edit page"
     },
     "photo": {
       "failed": "Could not load the photo",
