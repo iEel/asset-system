@@ -237,7 +237,7 @@ test("execution happens only in a round, which enforces the evidence policy and 
 
   assert.match(route, /if \(action === "execute"\) return disposalApiError\("DISPOSAL_USE_ROUND", "DISPOSAL_USE_ROUND", 410\)/)
   assert.doesNotMatch(route, /executeDisposalRequest/)
-  assert.match(bulkRoute, /requirePermission\(user, "disposal", "edit"\)\n\s+return disposalApiError\("DISPOSAL_USE_ROUND", "DISPOSAL_USE_ROUND", 410\)/)
+  assert.match(bulkRoute, /requirePermission\(user, "disposal", "edit"\)\s+return disposalApiError\("DISPOSAL_USE_ROUND", "DISPOSAL_USE_ROUND", 410\)/)
   assert.doesNotMatch(bulkRoute, /disposal-bulk-execution/)
   assert.match(roundRoute, /requirePermission\(user, "disposal", "edit"\)/)
   assert.match(roundRoute, /status: 201/)
