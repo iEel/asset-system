@@ -75,7 +75,8 @@ export function nameClashBody(kind: "brand" | "model", existing: NameClash) {
   }
 }
 
-// The asset form's users may hold asset:create without brand:view, so either one reads the similar names.
+// The asset forms' users may hold asset:create or asset:edit without brand:view (the edit form has the quick add too,
+// G7P1-R5), so any one of them reads the similar names.
 export function canReadSimilarNames(has: (module: string, action: string) => boolean): boolean {
-  return has("brand", "view") || has("asset", "create")
+  return has("brand", "view") || has("asset", "create") || has("asset", "edit")
 }

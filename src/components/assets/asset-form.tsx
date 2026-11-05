@@ -33,6 +33,8 @@ import { AssetFormRequiredCard } from "@/components/assets/asset-form-required-c
 import { CardGroup, Section, SelectField, type AssetFormDisclosure } from "@/components/assets/asset-form-section"
 import { AssetFormTagDialog } from "@/components/assets/asset-form-tag-dialog"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
+import { BrandModelQuickAddDialog, useQuickAddCreateRow, type QuickAddRecord } from "@/components/assets/brand-model-quick-add-dialog"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   attachmentMatchesPhotoLabel,
   changeOwnershipType,
@@ -99,6 +101,7 @@ import { summarizeAssetFormSection, type AssetFormFoldedSection, type AssetFormS
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { departmentFollowsHolder } from "@/lib/asset-department-rule"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
+import { quickAddAvailability, withQuickAddOption, type QuickAddKind } from "@/lib/brand-model-quick-add-rules"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { focusField, waitForElement } from "@/lib/field-focus"
@@ -192,6 +195,8 @@ export function AssetForm({
   backHref: providedBackHref,
   headerActions,
   editContext,
+  canCreateBrandModel = false,
+  canReactivateBrandModel = false,
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -224,6 +229,10 @@ export function AssetForm({
   // The edit page's facts (group 4 plan 2 Task 7): the header, the open handover, the links, and the stored labels that
   // "เดิม:" reads (Task 8).
   editContext?: AssetEditContext
+  // Page group 7 plan 1 Task 3 (spec §4.2): brand:create adds a brand or model from the pickers; brand:edit reactivates
+  // the inactive one a name clashes with. The create and edit pages pass them; the batch form reads the same props.
+  canCreateBrandModel?: boolean
+  canReactivateBrandModel?: boolean
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -260,6 +269,10 @@ export function AssetForm({
   const [failedDocuments, setFailedDocuments] = useState<FailedPurchaseDocument[]>([])
   const [photoLabel, setPhotoLabel] = useState("")
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
+  // Brands and models the quick add created, reactivated or used, on top of the page's options (spec §4.2).
+  const [addedBrands, setAddedBrands] = useState<Option[]>([])
+  const [addedModels, setAddedModels] = useState<Option[]>([])
+  const [quickAdd, setQuickAdd] = useState<{ kind: QuickAddKind; name: string; key: number } | null>(null)
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   // The edit page's reason for a room, holder or แผนก correction (P2-R4).
   const [correctionReason, setCorrectionReason] = useState("")
@@ -408,15 +421,21 @@ export function AssetForm({
   const hasCrossBranchLocation =
     isCrossBranchLocation(selectedHomeLocation, values.branchId) ||
     isCrossBranchLocation(selectedCurrentLocation, values.branchId)
-  const filteredModels = models.filter(
+  const brandOptions = useMemo(() => addedBrands.reduce<Option[]>((list, brand) => withQuickAddOption(list, brand), brands), [brands, addedBrands])
+  const modelOptions = useMemo(() => addedModels.reduce<Option[]>((list, model) => withQuickAddOption(list, model), models), [models, addedModels])
+  const optionLists: BrandModelLists = { brands: brandOptions, models: modelOptions }
+  // The chosen model stays listed even outside the category/brand scope (an existing model the quick add used, or an
+  // older asset's), so the picker names it instead of showing the placeholder.
+  const filteredModels = modelOptions.filter(
     (model) =>
-      (!values.categoryId || model.categoryId === values.categoryId) &&
-      (!values.brandId || model.brandId === values.brandId)
+      model.id === values.modelId ||
+      ((!values.categoryId || model.categoryId === values.categoryId) &&
+        (!values.brandId || model.brandId === values.brandId))
   )
   const selectedCategory = categories.find((category) => category.id === values.categoryId)
   const isSoftwareLicense = ownershipType === "software_license"
-  const selectedBrand = brands.find((brand) => brand.id === values.brandId)
-  const selectedModel = models.find((model) => model.id === values.modelId)
+  const selectedBrand = brandOptions.find((brand) => brand.id === values.brandId)
+  const selectedModel = modelOptions.find((model) => model.id === values.modelId)
   const suggestedAssetName = useMemo(
     () => buildSuggestedAssetName(selectedCategory, selectedBrand, selectedModel),
     [selectedCategory, selectedBrand, selectedModel]
@@ -586,16 +605,16 @@ export function AssetForm({
     if (field === "departmentId") fieldErrors.clear("custodianId")
   }
 
-  function withSuggestedName(nextValues: AssetFormValues) {
+  function withSuggestedName(nextValues: AssetFormValues, lists: BrandModelLists = optionLists) {
     if (isEdit || nameManuallyEdited) return nextValues
-    return { ...nextValues, name: getSuggestedAssetName(nextValues.categoryId, nextValues.brandId, nextValues.modelId) }
+    return { ...nextValues, name: getSuggestedAssetName(nextValues.categoryId, nextValues.brandId, nextValues.modelId, lists) }
   }
 
-  function getSuggestedAssetName(categoryId?: string | null, brandId?: string | null, modelId?: string | null) {
+  function getSuggestedAssetName(categoryId?: string | null, brandId?: string | null, modelId?: string | null, lists: BrandModelLists = optionLists) {
     return buildSuggestedAssetName(
       categories.find((category) => category.id === categoryId),
-      brands.find((brand) => brand.id === brandId),
-      models.find((model) => model.id === modelId)
+      lists.brands.find((brand) => brand.id === brandId),
+      lists.models.find((model) => model.id === modelId)
     )
   }
 
@@ -677,7 +696,7 @@ export function AssetForm({
         ...current,
         categoryId,
         modelId: resolveModelIdForScope({
-          models,
+          models: modelOptions,
           categoryId,
           brandId: current.brandId,
           currentModelId: current.modelId,
@@ -686,29 +705,62 @@ export function AssetForm({
     )
   }
 
-  function handleBrandChange(brandId: string) {
+  // lists: the quick add passes the options with its new record, which this render's options do not hold yet.
+  function handleBrandChange(brandId: string, lists: BrandModelLists = optionLists) {
     setValues((current) => {
       return withSuggestedName({
         ...current,
         brandId,
         modelId: resolveModelIdForScope({
-          models,
+          models: lists.models,
           categoryId: current.categoryId,
           brandId,
           currentModelId: current.modelId,
         }),
-      })
+      }, lists)
     })
   }
 
-  function handleModelChange(modelId: string) {
+  function handleModelChange(modelId: string, lists: BrandModelLists = optionLists) {
     setValues((current) =>
       withSuggestedName({
         ...current,
         modelId,
-      })
+      }, lists)
     )
   }
+
+  // Spec §4.2: the quick add opens with what was typed, and what it returns is picked as a pick would: the record joins
+  // the options, then the same handler sets brandId or modelId; nothing else in the form changes.
+  function openQuickAdd(kind: QuickAddKind, name: string) {
+    setQuickAdd((current) => ({ kind, name, key: (current?.key ?? 0) + 1 }))
+  }
+
+  function chooseQuickAddRecord(kind: QuickAddKind, record: QuickAddRecord) {
+    setQuickAdd(null)
+    if (kind === "brand") {
+      const nextBrands = withQuickAddOption(brandOptions, record)
+      setAddedBrands((current) => withQuickAddOption(current, record))
+      handleBrandChange(record.id, { brands: nextBrands, models: modelOptions })
+      return
+    }
+    const nextModels = withQuickAddOption(modelOptions, record)
+    setAddedModels((current) => withQuickAddOption(current, record))
+    handleModelChange(record.id, { brands: brandOptions, models: nextModels })
+  }
+
+  const brandCreateRow = useQuickAddCreateRow({
+    kind: "brand",
+    availability: quickAddAvailability({ kind: "brand", canCreate: canCreateBrandModel, brandId: values.brandId || null, categoryId: values.categoryId || null }),
+    optionNames: brandOptions.map((brand) => brand.label),
+    onCreate: (query) => openQuickAdd("brand", query),
+  })
+  const modelCreateRow = useQuickAddCreateRow({
+    kind: "model",
+    availability: quickAddAvailability({ kind: "model", canCreate: canCreateBrandModel, brandId: values.brandId || null, categoryId: values.categoryId || null }),
+    optionNames: modelOptions.filter((model) => model.brandId === values.brandId).map((model) => model.label),
+    onCreate: (query) => openQuickAdd("model", query),
+  })
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1076,8 +1128,8 @@ export function AssetForm({
   // record no longer active), the ownership type by its name, a date and a price as the asset page shows them.
   const changeOptions: Partial<Record<AssetDiffField, Option[]>> = {
     categoryId: categories,
-    brandId: brands,
-    modelId: models,
+    brandId: brandOptions,
+    modelId: modelOptions,
     companyId: companies,
     branchId: branches,
     departmentId: departments,
@@ -1299,16 +1351,30 @@ export function AssetForm({
               </SelectField>
             </FormChangedField>
             <FormChangedField change={changeOf("brandId")}>
-              <SelectField label={t("brand")} id="asset-brand" value={values.brandId ?? ""} onChange={handleBrandChange}>
-                <option value="">{t("selectBrand")}</option>
-                {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
-              </SelectField>
+              <SearchableSelect
+                id="asset-brand"
+                label={t("brand")}
+                value={values.brandId ?? ""}
+                options={brandOptions}
+                placeholder={t("selectBrand")}
+                searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                emptyLabel={tCommon("searchSelectNoResults")}
+                createRow={brandCreateRow}
+                onChange={(value) => handleBrandChange(value)}
+              />
             </FormChangedField>
             <FormChangedField change={changeOf("modelId")}>
-              <SelectField label={t("model")} id="asset-model" value={values.modelId ?? ""} onChange={handleModelChange}>
-                <option value="">{t("selectModel")}</option>
-                {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
-              </SelectField>
+              <SearchableSelect
+                id="asset-model"
+                label={t("model")}
+                value={values.modelId ?? ""}
+                options={filteredModels}
+                placeholder={t("selectModel")}
+                searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                emptyLabel={tCommon("searchSelectNoResults")}
+                createRow={modelCreateRow}
+                onChange={(value) => handleModelChange(value)}
+              />
             </FormChangedField>
             <FormChangedField change={changeOf("serialNumber")}>
               <Field
@@ -1682,9 +1748,25 @@ export function AssetForm({
           </Button>
         </StickyFormFooter>
       </form>
+      {quickAdd ? (
+        <BrandModelQuickAddDialog
+          key={quickAdd.key}
+          kind={quickAdd.kind}
+          open
+          initialName={quickAdd.name}
+          brand={quickAdd.kind === "model" && selectedBrand ? { id: selectedBrand.id, label: selectedBrand.label } : null}
+          categoryId={values.categoryId || null}
+          canReactivate={canReactivateBrandModel}
+          knownOptions={quickAdd.kind === "brand" ? brandOptions : modelOptions}
+          onClose={() => setQuickAdd(null)}
+          onChosen={(record) => chooseQuickAddRecord(quickAdd.kind, record)}
+        />
+      ) : null}
     </div>
   )
 }
+
+type BrandModelLists = { brands: Option[]; models: Option[] }
 
 // The POST body: the values without the chosen document ids, which the links after the save carry (plan 3 Task 5).
 function assetCreateBody(values: AssetFormValues) {

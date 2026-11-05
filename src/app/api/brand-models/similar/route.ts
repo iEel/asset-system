@@ -8,7 +8,7 @@ import { canReadSimilarNames, listSimilarBrands, listSimilarModels } from "@/lib
 const similarKind = z.enum(["brand", "model"])
 
 // The similar names shown while adding a brand or model (spec §4.2, G7P1-R2): a warning list, never a refusal.
-// ?kind=brand&q= or ?kind=model&brandId=&q= → { data: NameClash[] }. brand:view or asset:create reads it, because the
+// ?kind=brand&q= or ?kind=model&brandId=&q= → { data: NameClash[] }. brand:view, asset:create or asset:edit reads it, because the
 // asset form's users may not hold brand:view.
 export async function GET(request: NextRequest) {
   try {

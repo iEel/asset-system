@@ -33,7 +33,7 @@ export default async function NewAssetPage({ params, searchParams }: NewAssetPag
   if (!cloneFrom) {
     // The purchase-document picker's empty-query list (group 4 plan 3 Task 5, P3-R4): the form fetches nothing on load.
     const recentDocuments = canLinkPurchaseDocuments ? await searchPurchaseDocuments(purchaseDocumentDb, { q: "", supplierId: null }) : noDocuments
-    return <AssetCreateWorkspace {...options} recentDocuments={recentDocuments} canLinkPurchaseDocuments={canLinkPurchaseDocuments} backHref={returnToHref} />
+    return <AssetCreateWorkspace {...options} recentDocuments={recentDocuments} canLinkPurchaseDocuments={canLinkPurchaseDocuments} canCreateBrandModel={hasPermission(user, "brand", "create")} canReactivateBrandModel={hasPermission(user, "brand", "edit")} backHref={returnToHref} />
   }
 
   await requirePagePermission(locale, "asset", "view")
@@ -104,6 +104,8 @@ export default async function NewAssetPage({ params, searchParams }: NewAssetPag
       chosenDocuments={chosenDocuments}
       recentDocuments={recentDocuments}
       canLinkPurchaseDocuments={canLinkPurchaseDocuments}
+      canCreateBrandModel={hasPermission(user, "brand", "create")}
+      canReactivateBrandModel={hasPermission(user, "brand", "edit")}
       backHref={returnToHref}
     />
   )

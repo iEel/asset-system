@@ -2038,6 +2038,18 @@
       "existsInactive": "{name} already exists but is inactive",
       "use": "Use {name}",
       "reactivate": "Reactivate {name}"
+    },
+    "quickAdd": {
+      "createBrand": "Add new brand: {query}",
+      "createModel": "Add new model: {query}",
+      "noPermission": "Not found · ask a master-data admin to add it",
+      "needBrandAndCategory": "Choose a category and brand before adding a new model",
+      "brandTitle": "Add new brand",
+      "modelTitle": "Add new model to {brand}",
+      "similarHeading": "Similar names already in the list",
+      "useThis": "Use this one",
+      "inactive": "Inactive",
+      "save": "Save and choose"
     }
   },
   "supplier": {

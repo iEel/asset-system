@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getAssetFormOptions } from "@/lib/asset-form-options"
 import type { AssetEditContext } from "@/lib/asset-form-rules"
@@ -20,7 +21,7 @@ const codeName = { select: { code: true, name: true } } as const
 export default async function EditAssetPage({ params, searchParams }: EditAssetPageProps) {
   const { id, locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "asset", "edit")
+  const user = await requirePagePermission(locale, "asset", "edit")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
   // The save's failure landing (group 4 plan 3 Task 5, P3-R6): เอกสารจัดซื้อ opens with the documents to upload again.
   const documentsFailed = getSingleSearchParam(rawSearchParams.documents) === "failed"
@@ -111,6 +112,9 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
     <div className="space-y-6">
       <AssetForm
         {...options}
+        // Page group 7 plan 1 Task 3 (G7P1-R5): the edit form has the same brand and model quick add.
+        canCreateBrandModel={hasPermission(user, "brand", "create")}
+        canReactivateBrandModel={hasPermission(user, "brand", "edit")}
         asset={{
           id: asset.id,
           assetTag: asset.assetTag,

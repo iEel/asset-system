@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useMemo, useState } from "react"
-import { Check, ChevronDown, X } from "lucide-react"
+import { Check, ChevronDown, Plus, X } from "lucide-react"
 import { FieldError, FieldHint, FieldLabel } from "@/components/ui/field"
 import { fieldControlVariants, triggerInvalidClasses, type FieldSize } from "@/components/ui/field-variants"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -10,6 +10,16 @@ import { filterSearchableOptions, type SearchableSelectOption } from "@/lib/sear
 import { cn } from "@/lib/utils"
 
 export type { SearchableSelectOption } from "@/lib/searchable-select-filter"
+
+// Page group 7 plan 1 Task 3 (spec §4.2): a picker that can add what is not in its list. The first shape ends the list
+// with "label(query)" while isExactMatch(query) is false (the caller owns the rule, G7P1-R4); the second replaces the
+// empty line with a hint saying why nothing can be added. Without createRow nothing changes.
+export type SearchableSelectCreateRow =
+  | { label: (query: string) => string; onCreate: (query: string) => void; isExactMatch: (query: string) => boolean }
+  | { blockedHint: string }
+
+// Not an option id: cmdk needs a value for the create item.
+const CREATE_ROW_VALUE = "\u0000searchable-select-create"
 
 // The popover is not modal, so inside a modal dialog or sheet it is portalled outside the dialog's scroll lock
 // (react-remove-scroll), which cancels a wheel or touch scroll it sees from outside. Stopping the event at the popover
@@ -45,6 +55,7 @@ export function SearchableSelect({
   currentValue,
   currentMark,
   labelVisuallyHidden,
+  createRow,
   onSearchChange,
   onChange,
 }: {
@@ -66,6 +77,7 @@ export function SearchableSelect({
   currentMark?: string
   /** The label stays the trigger's name but only screen readers get it, where a row name on screen already says it (โอนย้าย's table). */
   labelVisuallyHidden?: boolean
+  createRow?: SearchableSelectCreateRow
   onSearchChange?: (query: string) => void
   onChange: (value: string) => void
 }) {
@@ -82,6 +94,9 @@ export function SearchableSelect({
   const filteredOptions = useMemo(() => filterSearchableOptions(options, query), [options, query])
   const showClear = Boolean(value) && !required && !disabled
   const markCurrent = Boolean(currentValue && currentMark)
+  const trimmedQuery = query.trim()
+  const offerCreate = createRow && "onCreate" in createRow && trimmedQuery !== "" && !createRow.isExactMatch(query) ? createRow : null
+  const blockedHint = createRow && "blockedHint" in createRow ? createRow.blockedHint : undefined
 
   function setOpenState(next: boolean) {
     setOpen(next)
@@ -96,6 +111,13 @@ export function SearchableSelect({
   function selectValue(nextValue: string) {
     onChange(nextValue)
     setOpenState(false)
+  }
+
+  function create() {
+    if (!offerCreate) return
+    const typed = trimmedQuery
+    setOpenState(false)
+    offerCreate.onCreate(typed)
   }
 
   return (
@@ -135,8 +157,8 @@ export function SearchableSelect({
               <CommandInput value={query} onValueChange={updateQuery} placeholder={searchPlaceholder} aria-label={searchPlaceholder} />
               {/* cmdk's list is always role="listbox": with no option it is hidden (its id stays for the input's
                   aria-controls) and the empty line sits outside it, so no listbox is ever empty. */}
-              <CommandEmpty>{emptyLabel}</CommandEmpty>
-              <CommandList className="max-h-64" hidden={filteredOptions.length === 0}>
+              <CommandEmpty>{blockedHint ?? emptyLabel}</CommandEmpty>
+              <CommandList className="max-h-64" hidden={filteredOptions.length === 0 && !offerCreate}>
                 {filteredOptions.map((option) => {
                   const current = markCurrent && option.id === currentValue
                   return (
@@ -154,6 +176,12 @@ export function SearchableSelect({
                     </CommandItem>
                   )
                 })}
+                {offerCreate ? (
+                  <CommandItem value={CREATE_ROW_VALUE} data-searchable-create="" onSelect={create} className="text-primary">
+                    <Plus className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 truncate">{offerCreate.label(trimmedQuery)}</span>
+                  </CommandItem>
+                ) : null}
               </CommandList>
             </Command>
           </PopoverContent>

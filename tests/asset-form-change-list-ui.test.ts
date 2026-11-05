@@ -52,8 +52,9 @@ test("a changed field: its frame, แก้แล้ว, เดิม: <old valu
   ])
   assert.deepEqual(wrapped(`${C}asset-form-other.tsx`), ["remark"])
   // The ids ไปที่ช่อง focuses for the fields that have no FIELD_IDS row.
-  assert.match(read(`${C}asset-form.tsx`), /<SelectField label=\{t\("brand"\)\} id="asset-brand"/)
-  assert.match(read(`${C}asset-form.tsx`), /<SelectField label=\{t\("model"\)\} id="asset-model"/)
+  // Group 7 plan 1 Task 3: brand and model became SearchableSelect pickers; the trigger keeps the id.
+  assert.match(read(`${C}asset-form.tsx`), /<SearchableSelect\s+id="asset-brand"\s+label=\{t\("brand"\)\}/)
+  assert.match(read(`${C}asset-form.tsx`), /<SearchableSelect\s+id="asset-model"\s+label=\{t\("model"\)\}/)
   assert.match(read(`${C}asset-form.tsx`), /label=\{t\("licenseAssignedAsset"\)\}\n\s+id="asset-license-assigned-asset"/)
   assert.match(read(`${C}asset-form-purchase.tsx`), /<SelectField label=\{t\("supplier"\)\} id="asset-supplier"/)
   assert.match(read(`${C}asset-form-other.tsx`), /<Field label=\{t\("remark"\)\} id="asset-remark">/)

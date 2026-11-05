@@ -2038,6 +2038,18 @@
       "existsInactive": "มี {name} อยู่แล้ว แต่ปิดใช้งานอยู่",
       "use": "ใช้ {name}",
       "reactivate": "เปิดใช้งาน {name}"
+    },
+    "quickAdd": {
+      "createBrand": "เพิ่มยี่ห้อใหม่: {query}",
+      "createModel": "เพิ่มรุ่นใหม่: {query}",
+      "noPermission": "ไม่พบ · แจ้งผู้ดูแลข้อมูลหลักให้เพิ่ม",
+      "needBrandAndCategory": "เลือกหมวดหมู่และยี่ห้อก่อนเพิ่มรุ่นใหม่",
+      "brandTitle": "เพิ่มยี่ห้อใหม่",
+      "modelTitle": "เพิ่มรุ่นใหม่ใน {brand}",
+      "similarHeading": "ชื่อใกล้เคียงที่มีอยู่แล้ว",
+      "useThis": "ใช้รายการนี้",
+      "inactive": "ปิดใช้งาน",
+      "save": "บันทึกและเลือก"
     }
   },
   "supplier": {

@@ -261,7 +261,7 @@ test("without asset:edit (P3-R2): the create page and the clone link no document
   assert.match(create, /const canLinkPurchaseDocuments = hasPermission\(user, "asset", "edit"\)/)
   // No clone: the recent list is read only with the permission, and the flag goes to the form.
   assert.match(create, /const recentDocuments = canLinkPurchaseDocuments \? await searchPurchaseDocuments\(purchaseDocumentDb, \{ q: "", supplierId: null \}\) : noDocuments/)
-  assert.match(create, /<AssetCreateWorkspace \{\.\.\.options\} recentDocuments=\{recentDocuments\} canLinkPurchaseDocuments=\{canLinkPurchaseDocuments\} backHref=\{returnToHref\} \/>/)
+  assert.match(create, /<AssetCreateWorkspace \{\.\.\.options\} recentDocuments=\{recentDocuments\} canLinkPurchaseDocuments=\{canLinkPurchaseDocuments\} canCreateBrandModel=\{hasPermission\(user, "brand", "create"\)\} canReactivateBrandModel=\{hasPermission\(user, "brand", "edit"\)\} backHref=\{returnToHref\} \/>/)
   // A clone without the permission carries no chips and reads no documents.
   assert.match(create, /const \[cloneDocuments, recentDocuments\] = canLinkPurchaseDocuments\n\s+\? await Promise\.all\(\[[\s\S]+?\]\)\n\s+: \[\[\], noDocuments\]/)
   assert.match(create, /chosenDocuments=\{chosenDocuments\}\n\s+recentDocuments=\{recentDocuments\}\n\s+canLinkPurchaseDocuments=\{canLinkPurchaseDocuments\}/)

@@ -21,10 +21,10 @@ test("an open searchable select hides nothing from a screen reader, and an empty
   // cmdk's List is always role="listbox": it is hidden (out of the accessibility tree, its id kept for the input's
   // aria-controls) while no option matches, and the empty line sits outside it (axe aria-required-children).
   const list = source.slice(source.indexOf("<CommandList"), source.indexOf("</CommandList>"))
-  assert.match(list, /^<CommandList className="max-h-64" hidden=\{filteredOptions\.length === 0\}>/)
+  assert.match(list, /^<CommandList className="max-h-64" hidden=\{filteredOptions\.length === 0 && !offerCreate\}>/)
   assert.doesNotMatch(list, /<CommandEmpty/)
   const command = source.slice(source.indexOf("<Command shouldFilter"), source.indexOf("</Command>"))
-  assert.match(command, /<CommandEmpty>\{emptyLabel\}<\/CommandEmpty>\n\s*<CommandList/)
+  assert.match(command, /<CommandEmpty>\{blockedHint \?\? emptyLabel\}<\/CommandEmpty>\n\s*<CommandList/)
   // Keyboard: cmdk keeps the arrows and Enter on the Command; Escape and a choice close the popover through Radix,
   // which returns focus to the trigger (setOpenState(false) on select).
   assert.match(source, /function selectValue\(nextValue: string\) \{\n\s*onChange\(nextValue\)\n\s*setOpenState\(false\)\n\s*\}/)

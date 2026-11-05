@@ -22,11 +22,13 @@ import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { PurchaseDocumentPicker } from "@/components/assets/purchase-document-picker"
+import { BrandModelQuickAddDialog, useQuickAddCreateRow, type QuickAddRecord } from "@/components/assets/brand-model-quick-add-dialog"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
+import { quickAddAvailability, withQuickAddOption, type QuickAddKind } from "@/lib/brand-model-quick-add-rules"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
 import {
   buildAssetBatchDuplicateFieldErrors,
@@ -64,6 +66,8 @@ import { ApiErrorText } from "@/components/ui/api-error-text"
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 type ScopedEmployeeOption = AssetBatchFormProps["employees"][number]
 type ScopedLocationOption = AssetBatchFormProps["locations"][number]
+type BrandModelOption = AssetBatchFormProps["brands"][number]
+type BrandModelLists = { brands: BrandModelOption[]; models: BrandModelOption[] }
 
 type BatchCommonValues = {
   name: string
@@ -282,6 +286,8 @@ export function AssetBatchForm({
   suppliers,
   recentDocuments,
   canLinkPurchaseDocuments,
+  canCreateBrandModel = false,
+  canReactivateBrandModel = false,
 }: AssetBatchFormProps) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -297,6 +303,10 @@ export function AssetBatchForm({
   const [chosenDocuments, setChosenDocuments] = useState<PurchaseDocumentSearchRow[]>([])
   const [documentDraft, setDocumentDraft] = useState<BatchDocumentDraft>(emptyDocumentDraft)
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
+  // Brands and models the quick add created, reactivated or used, on top of the page's options (spec §4.2).
+  const [addedBrands, setAddedBrands] = useState<BrandModelOption[]>([])
+  const [addedModels, setAddedModels] = useState<BrandModelOption[]>([])
+  const [quickAdd, setQuickAdd] = useState<{ kind: QuickAddKind; name: string; key: number } | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const [checkingDuplicates, setCheckingDuplicates] = useState(false)
   const [duplicateCheckMessage, setDuplicateCheckMessage] = useState("")
@@ -352,12 +362,18 @@ export function AssetBatchForm({
     isCrossBranchLocation(selectedHomeLocation, common.branchId) ||
     isCrossBranchLocation(selectedCurrentLocation, common.branchId) ||
     selectedRowLocations.some((id) => isCrossBranchLocation(locations.find((location) => location.id === id), common.branchId))
-  const filteredModels = models.filter(
-    (model) => (!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId)
+  const brandOptions = useMemo(() => addedBrands.reduce<BrandModelOption[]>((list, brand) => withQuickAddOption(list, brand), brands), [brands, addedBrands])
+  const modelOptions = useMemo(() => addedModels.reduce<BrandModelOption[]>((list, model) => withQuickAddOption(list, model), models), [models, addedModels])
+  const optionLists: BrandModelLists = { brands: brandOptions, models: modelOptions }
+  // The chosen model stays listed even outside the category/brand scope (an existing model the quick add used).
+  const filteredModels = modelOptions.filter(
+    (model) =>
+      model.id === common.modelId ||
+      ((!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId))
   )
   const selectedCategory = categories.find((category) => category.id === common.categoryId)
-  const selectedBrand = brands.find((brand) => brand.id === common.brandId)
-  const selectedModel = models.find((model) => model.id === common.modelId)
+  const selectedBrand = brandOptions.find((brand) => brand.id === common.brandId)
+  const selectedModel = modelOptions.find((model) => model.id === common.modelId)
   const suggestedAssetName = useMemo(
     () => buildSuggestedAssetName(selectedCategory, selectedBrand, selectedModel),
     [selectedCategory, selectedBrand, selectedModel]
@@ -470,16 +486,16 @@ export function AssetBatchForm({
     setVisibleRowColumns((current) => ({ ...current, [key]: !current[key] }))
   }
 
-  function withSuggestedName(nextCommon: BatchCommonValues) {
+  function withSuggestedName(nextCommon: BatchCommonValues, lists: BrandModelLists = optionLists) {
     if (nameManuallyEdited) return nextCommon
-    return { ...nextCommon, name: getSuggestedAssetName(nextCommon.categoryId, nextCommon.brandId, nextCommon.modelId) }
+    return { ...nextCommon, name: getSuggestedAssetName(nextCommon.categoryId, nextCommon.brandId, nextCommon.modelId, lists) }
   }
 
-  function getSuggestedAssetName(categoryId?: string | null, brandId?: string | null, modelId?: string | null) {
+  function getSuggestedAssetName(categoryId?: string | null, brandId?: string | null, modelId?: string | null, lists: BrandModelLists = optionLists) {
     return buildSuggestedAssetName(
       categories.find((category) => category.id === categoryId),
-      brands.find((brand) => brand.id === brandId),
-      models.find((model) => model.id === modelId)
+      lists.brands.find((brand) => brand.id === brandId),
+      lists.models.find((model) => model.id === modelId)
     )
   }
 
@@ -493,7 +509,7 @@ export function AssetBatchForm({
         ...current,
         categoryId,
         modelId: resolveModelIdForScope({
-          models,
+          models: modelOptions,
           categoryId,
           brandId: current.brandId,
           currentModelId: current.modelId,
@@ -502,7 +518,8 @@ export function AssetBatchForm({
     )
   }
 
-  function handleBrandChange(brandId: string) {
+  // lists: the quick add passes the options with its new record, which this render's options do not hold yet.
+  function handleBrandChange(brandId: string, lists: BrandModelLists = optionLists) {
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -511,16 +528,16 @@ export function AssetBatchForm({
         ...current,
         brandId,
         modelId: resolveModelIdForScope({
-          models,
+          models: lists.models,
           categoryId: current.categoryId,
           brandId,
           currentModelId: current.modelId,
         }),
-      })
+      }, lists)
     })
   }
 
-  function handleModelChange(modelId: string) {
+  function handleModelChange(modelId: string, lists: BrandModelLists = optionLists) {
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -528,9 +545,41 @@ export function AssetBatchForm({
       withSuggestedName({
         ...current,
         modelId,
-      })
+      }, lists)
     )
   }
+
+  // Spec §4.2: the quick add opens with what was typed, and what it returns is picked as a pick would: the record joins
+  // the options, then the same handler sets brandId or modelId; nothing else in the form changes.
+  function openQuickAdd(kind: QuickAddKind, name: string) {
+    setQuickAdd((current) => ({ kind, name, key: (current?.key ?? 0) + 1 }))
+  }
+
+  function chooseQuickAddRecord(kind: QuickAddKind, record: QuickAddRecord) {
+    setQuickAdd(null)
+    if (kind === "brand") {
+      const nextBrands = withQuickAddOption(brandOptions, record)
+      setAddedBrands((current) => withQuickAddOption(current, record))
+      handleBrandChange(record.id, { brands: nextBrands, models: modelOptions })
+      return
+    }
+    const nextModels = withQuickAddOption(modelOptions, record)
+    setAddedModels((current) => withQuickAddOption(current, record))
+    handleModelChange(record.id, { brands: brandOptions, models: nextModels })
+  }
+
+  const brandCreateRow = useQuickAddCreateRow({
+    kind: "brand",
+    availability: quickAddAvailability({ kind: "brand", canCreate: canCreateBrandModel, brandId: common.brandId || null, categoryId: common.categoryId || null }),
+    optionNames: brandOptions.map((brand) => brand.label),
+    onCreate: (query) => openQuickAdd("brand", query),
+  })
+  const modelCreateRow = useQuickAddCreateRow({
+    kind: "model",
+    availability: quickAddAvailability({ kind: "model", canCreate: canCreateBrandModel, brandId: common.brandId || null, categoryId: common.categoryId || null }),
+    optionNames: modelOptions.filter((model) => model.brandId === common.brandId).map((model) => model.label),
+    onCreate: (query) => openQuickAdd("model", query),
+  })
 
   function handleCompanyChange(companyId: string) {
     fieldErrors.clear("common.companyId", "common.branchId", "common.departmentId", "common.custodianId", "common.currentLocationId")
@@ -920,14 +969,28 @@ export function AssetBatchForm({
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </SelectField>
-          <SelectField label={t("brand")} value={common.brandId} onChange={handleBrandChange}>
-            <option value="">{t("selectBrand")}</option>
-            {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
-          </SelectField>
-          <SelectField label={t("model")} value={common.modelId} onChange={handleModelChange}>
-            <option value="">{t("selectModel")}</option>
-            {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
-          </SelectField>
+          <SearchableSelect
+            id="asset-batch-brand"
+            label={t("brand")}
+            value={common.brandId}
+            options={brandOptions}
+            placeholder={t("selectBrand")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            createRow={brandCreateRow}
+            onChange={(value) => handleBrandChange(value)}
+          />
+          <SearchableSelect
+            id="asset-batch-model"
+            label={t("model")}
+            value={common.modelId}
+            options={filteredModels}
+            placeholder={t("selectModel")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            createRow={modelCreateRow}
+            onChange={(value) => handleModelChange(value)}
+          />
           <SelectField
             label={t("ownershipType")}
             id="asset-batch-ownership-type"
@@ -1465,6 +1528,20 @@ export function AssetBatchForm({
           </Button>
         </div>
       </form>
+      {quickAdd ? (
+        <BrandModelQuickAddDialog
+          key={quickAdd.key}
+          kind={quickAdd.kind}
+          open
+          initialName={quickAdd.name}
+          brand={quickAdd.kind === "model" && selectedBrand ? { id: selectedBrand.id, label: selectedBrand.label } : null}
+          categoryId={common.categoryId || null}
+          canReactivate={canReactivateBrandModel}
+          knownOptions={quickAdd.kind === "brand" ? brandOptions : modelOptions}
+          onClose={() => setQuickAdd(null)}
+          onChosen={(record) => chooseQuickAddRecord(quickAdd.kind, record)}
+        />
+      ) : null}
     </div>
   )
 }
