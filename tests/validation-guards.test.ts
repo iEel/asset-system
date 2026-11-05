@@ -132,7 +132,6 @@ const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
 const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: string; ruling: string }>> = {
   [`${C}maintenance/repair-record-actions.tsx`]: { count: 1, why: "the dialog has closed on the saved change; files that did not upload can be attached on the record", ruling: "v-track plan 2 MT-R5" },
   [`${C}maintenance/repair-record-form.tsx`]: { count: 1, why: "the record is saved and the page moves to it; files that did not upload can be attached there", ruling: "v-track plan 2 MT-R5" },
-  [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, why: "the batch is saved and some shared evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}assets/asset-form.tsx`]: { count: 1, why: "the asset is saved and the page moves to it (to its edit page with เอกสารจัดซื้อ open when a document step failed, group 4 plan 3 Task 5); a follow-up step that failed (install, documents, photos) can be finished there", ruling: "asset partial save fix 2026-10-19" },
   [`${C}approvals/approval-inbox-selection.tsx`]: { count: 1, why: "the bulk approve's result when nothing was approved (every item skipped or left to the panel): the dialog has closed and the selection cleared, so the toast is the only place left to say it", ruling: "group 6 plan 2 Task 3" },

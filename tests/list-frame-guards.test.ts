@@ -147,7 +147,6 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
     [`${C}admin/system-settings-form.tsx`]: { count: 1, kind: "permanent", why: "the arrow of the category transfer list's remove button, not a page back", ruling: "2B §9.4.3" },
     [`${D}audit/rounds/[id]/page.tsx`]: { count: 1, kind: "permanent", why: "the back item of the round's ActionBar", ruling: "2C K23" },
     [`${C}audit/audit-scan-header.tsx`]: { count: 1, kind: "permanent", why: "the field scan header's back link to the round page, its own two-line variant (group 2 spec §11)", ruling: "2B §9.4.3" },
-    [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, kind: "permanent", why: "back to editing in the review step, not a page back", ruling: "2B §9.4.3" },
     [`${C}asset-operations/checkout-phone-steps.tsx`]: { count: 1, kind: "permanent", why: "one step back in ส่งมอบ's phone steps (a button, not a page back; step 1's way out is PageBackLink)", ruling: "group 3 plan 1 P1-R4" },
   },
   LP1: {},

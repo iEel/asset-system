@@ -165,11 +165,13 @@ test("the disposal request form describes its evidence box before a file is chos
   assert.doesNotMatch(source, /text-xs font-medium text-danger/, "the 18px text remove button is gone")
 })
 
-test("the disposal batch form shows its evidence rule as the description and lists the queue (spec 7.6.3 #14)", () => {
+// Request batches Task 2: the lot slot says its rule under the label and what it takes in the box, as the request form.
+test("the disposal batch form shows its lot rule and what the box takes, and lists the queue (spec 7.6.3 #14)", () => {
   const source = readFileSync("src/components/disposal/disposal-batch-form.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /description=\{t\("batchEvidenceHelp"\)\}/)
-  assert.doesNotMatch(source, /hint=\{t\("batchEvidenceHelp"\)\}/)
-  assert.match(source, /<FileQueueList\s+items=\{files\.map\(/)
+  assert.match(source, /hint=\{t\("batchForm\.lotHelp"\)\}/)
+  assert.match(source, /description=\{lost \? t\("createForm\.dropDescriptionLost"\) : t\("createForm\.dropDescription"\)\}/)
+  assert.match(source, /<ChosenPhotoPreview file=\{item\.file\}/)
+  assert.match(source, /<FileQueueList\s+items=\{lotOthers\.map\(/)
   assert.doesNotMatch(source, /aria-label=\{tCommon\("delete"\)\}/, "removing a queued file deletes nothing, so the button is not named delete")
 })
 

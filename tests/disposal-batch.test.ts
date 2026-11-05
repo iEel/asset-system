@@ -184,12 +184,19 @@ test("manual migration creates disposal batches and nullable request batch ids i
   }
 })
 
-test("batch creation uploads shared evidence once and opens the created batch workspace", () => {
+// Request batches Task 2: the lot files go to the batch once, each machine's own files to its own request (PB-R4: 4 at a
+// time); all fine opens the batch page, any failure keeps the form with the notice (PB-R3).
+test("batch creation uploads the lot files to the batch and each machine's files to its own request, then opens the batch page", () => {
   const form = readFileSync("src/components/disposal/disposal-batch-form.tsx", "utf8")
 
-  assert.match(form, /\/api\/disposal-batches\/\$\{payload\.batch\.id\}\/attachments/)
+  assert.match(form, /\/api\/disposal-batches\/\$\{job\.batchId\}\/attachments/)
+  assert.match(form, /\/api\/disposal-requests\/\$\{job\.requestId\}\/attachments/)
+  assert.match(form, /const UPLOAD_POOL = 4\n/)
+  assert.match(form, /planDisposalBatchUploads\(/)
+  assert.match(form, /await runWithLimit\(jobs\.map\(\(job\) => \(\) => upload\(job\)\), UPLOAD_POOL\)/)
   assert.doesNotMatch(form, /for \(const child of payload\.requests/)
-  assert.match(form, /router\.push\(`\/\$\{locale\}\/disposal\/batches\/\$\{payload\.batch\.id\}`\)/)
+  assert.match(form, /router\.push\(`\/\$\{locale\}\/disposal\/batches\/\$\{created\.batch\.id\}`\)/)
+  assert.match(form, /setUploadFailure\(\{ batchId: created\.batch\.id, total: failed, summary \}\)/)
 })
 
 test("batch detail owns shared evidence and exposes every child request", () => {

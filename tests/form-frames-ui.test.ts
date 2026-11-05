@@ -62,7 +62,9 @@ test("the asset form and the component manager: PageHeader, and the component he
 })
 
 // Group 6 plan 3 Task 2: ยื่นคำขอตัดจำหน่าย moved onto the operation frame (spec §8.1): crumbs and the back link it had.
-test("the two disposal create pages: the request is the operation frame with crumbs and its back link; the batch keeps PageHeader on a space-y-6 root (2B-1 task 22, I19)", () => {
+// Request batches Task 2: สร้างชุดคำขอ moved onto the operation frame too; its page keeps PageHeader for the phone notice
+// and the missing-schema state, and the phone notice links to the single form.
+test("the two disposal create pages are the operation frame with crumbs and the back link; the batch page keeps PageHeader for the phone and the missing schema (2B-1 task 22, I19)", () => {
   const D = "src/app/[locale]/(dashboard)/"
   const request = read(`${D}disposal/new/page.tsx`)
   assert.ok(request.includes('import { PageBackLink } from "@/components/ui/page-header"'), "disposal/new imports only the back link")
@@ -70,8 +72,12 @@ test("the two disposal create pages: the request is the operation frame with cru
   const batch = read(`${D}disposal/batch/new/page.tsx`)
   assert.ok(batch.includes(HEADER_IMPORT), "disposal/batch/new imports PageHeader and PageBackLink")
   // The icon-only link with an aria-label becomes the words "กลับคิวตัดจำหน่าย" from md and a 44px icon below md.
-  assert.match(batch, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("batchCreateTitle"\)\}\n\s+meta=\{t\("batchCreateHelp"\)\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\}\n\s+\/>/)
-  for (const source of [request, batch]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b|from "next\/link"|aria-label=/)
+  assert.match(batch, /const back = <PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\n/)
+  assert.equal(batch.match(/<PageHeader title=\{t\("batchCreateTitle"\)\} meta=\{t\("batchCreateHelp"\)\} back=\{back\} \/>/g)?.length, 2, "the missing schema and the phone")
+  assert.match(batch, /<div data-disposal-batch-phone className="space-y-6 md:hidden">/)
+  assert.match(batch, /<DisposalBatchForm\n\s+breadcrumbs=\{\[\{ label: t\("title"\), href: `\/\$\{locale\}\/disposal` \}, \{ label: t\("batchCreateTitle"\) \}\]\}\n\s+back=\{back\}/)
+  assert.doesNotMatch(request, /from "next\/link"/)
+  for (const source of [request, batch]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b|aria-label=/)
 })
 
 // บันทึกซ่อม moved onto the operation frame (group 5 plan 2 Task 3): its own test below.

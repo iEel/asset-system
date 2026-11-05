@@ -11,9 +11,12 @@ test("disposal forms use one page title and compact numbered sections", () => {
   // The request form is board DP-New (group 6 plan 3 Task 2): its sections are the frame's own.
   assert.match(single, /<FormSection number=\{1\} title=\{t\("createForm\.sectionAsset"\)\}/)
   assert.doesNotMatch(single, /function FormStep/)
-  // Step 1 of the batch form only picks the assets; the type is under step 2 and marked required (critique 2026-10-20 D5).
-  assert.match(batch, /<FormSection number=\{1\} title=\{t\("formSteps\.batchAssets"\)\}/)
-  assert.match(batch, /<Field label=\{t\("disposalType"\)\} required>\s+<NativeSelect /)
+  // The batch form is board DP-Batch-New (request batches Task 2): the machines, the lot photo, then the method as cards.
+  assert.match(batch, /<FormSection number=\{1\} title=\{t\("batchForm\.sectionAssets"\)\}>/)
+  assert.match(batch, /<FormSection number=\{2\} title=\{t\("batchForm\.sectionLot"\)\}>/)
+  assert.match(batch, /<FormSection number=\{3\} title=\{t\("batchForm\.sectionRequest"\)\}>/)
+  assert.match(batch, /<ChoiceCard\n/)
+  assert.doesNotMatch(batch, /<NativeSelect\b/)
   assert.doesNotMatch(batch, /function FormStep/)
   assert.match(single, /reasonCharacterCount/)
   assert.match(batch, /reasonCharacterCount/)
@@ -22,10 +25,9 @@ test("disposal forms use one page title and compact numbered sections", () => {
 test("disposal form section copy exists in both locales", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
-    assert.equal(typeof messages.formSteps.asset, "string")
-    assert.equal(typeof messages.formSteps.batchAssets, "string")
-    assert.equal(typeof messages.formSteps.request, "string")
-    assert.equal(typeof messages.formSteps.evidence, "string")
+    // The old step titles (formSteps) went with the old batch form (request batches Task 2).
+    assert.equal(messages.formSteps, undefined)
+    for (const key of ["sectionAssets", "sectionLot", "sectionRequest"]) assert.equal(typeof messages.batchForm[key], "string", key)
     assert.equal(typeof messages.reasonCharacterCount, "string")
   }
 })

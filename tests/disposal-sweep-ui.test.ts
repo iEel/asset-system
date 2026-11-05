@@ -53,16 +53,13 @@ test("disposal request form: the form wraps the operation frame, which owns the 
   assert.doesNotMatch(source, /<section\b|rounded-lg border|sm:p-6/)
 })
 
-// The user (2026-11-04): a request asks for no price, so the review facts lose the two estimated values and formatMoney.
-test("disposal batch form: two ContentPanels, the review facts a KeyValueList with Nil and no price, a plain count and one quiet asset list (spec 2D D9, D19, M17, M22)", () => {
+// Request batches Task 2 (PB-R1): the batch form is on the operation frame; the review step and its panels are gone,
+// the summary panel and the sticky footer stand in. Still no price (the user, 2026-11-04).
+test("disposal batch form: the operation frame inside its form, no review step, no ContentPanel and no price (request batches PB-R1)", () => {
   const source = read(`${C}disposal/disposal-batch-form.tsx`)
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 2, "the review step and the form step")
-  assert.match(source, /<ContentPanel\n\s+title=\{t\("batchReviewTitle"\)\}\n\s+description=\{t\("batchReviewHelp", \{ count: selectedIds\.length \}\)\}\n\s+actions=\{<span className="text-count num text-foreground" aria-hidden="true">\{formatCount\(selectedIds\.length\)\}<\/span>\}\n\s+>/)
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 1)
-  assert.match(source, /\{ key: "requestedBy", label: t\("requestedBy"\), value: employees\.find\(\(item\) => item\.id === values\.requestedById\)\?\.label \}/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{DISPOSAL_BATCH_FORM_ID\} data-disposal-batch-desktop className="max-md:hidden">\n\s+<OperationFormFrame\b/)
+  assert.doesNotMatch(source, /<ContentPanel\b|<KeyValueList\b|batchReview|setReviewing|ArrowLeft/)
   assert.doesNotMatch(source, /saleValue|salvageValue|formatMoney/)
-  assert.match(source, /<div className="mt-4 max-h-72 divide-y divide-border-soft overflow-y-auto rounded-md border border-border">/)
-  assert.match(source, /<ArrowLeft aria-hidden="true" \/>/, "back to editing keeps its arrow (LFG EXEMPT.LB1)")
   assert.doesNotMatch(source, /function Summary\b|"-"|<section\b|rounded-lg border|bg-primary-soft|text-lg|\btext-xs\b|border-b border-border(?!-)/)
 })
 

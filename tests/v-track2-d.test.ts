@@ -117,45 +117,35 @@ test("disposal request: the asset, the method, the requester, the reason and the
   assert.ok(picker.includes('{error ? <FieldError id={errorId} className="mt-1.5">{error}</FieldError> : null}'))
 })
 
-test("disposal batch: the edit step is a form whose requester and reason are errors on review, and the asset count says why review waits (v-track D3)", () => {
+// Request batches Task 2 (DP-Batch-New): one form on the operation frame, no review step (PB-R1). The machine count is a
+// field now ("เลือกอย่างน้อย 2 เครื่อง" under the search), the lot photo, the method cards, the reason and the requester are
+// checked on send; a machine's own photo never is.
+test("disposal batch: the machines, the lot photo, the method, the reason and the requester are checked on send, and errors show under the field (v-track D3)", () => {
   const source = read(`${C}disposal/disposal-batch-form.tsx`)
   assertMigratedForm(source, {
-    handler: "handleReview",
-    // Group 6 plan 3 Task 2: no estimated values (the user, 2026-11-04), and the shared evidence's photo rule (P3-R3).
     ids: {
-      requestedById: "disposal-batch-requested-by",
+      assets: "disposal-batch-assets",
+      lotFiles: "disposal-batch-lot-files",
+      disposalType: "disposal-batch-type",
       reason: "disposal-batch-reason",
-      files: "disposal-batch-files",
+      requestedById: "disposal-batch-requested-by",
     },
     messages: ["requestedById"],
-    toasts: 1,
+    toasts: 0,
   })
   const rules = validateBody(source)
-  for (const rule of [
-    'check("requestedById", required(values.requestedById))',
-    "const reasonTooShort = getDisposalRequestReasonError(values.reason)",
-    'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))',
-    'check("files", getDisposalPhotoRequirementError(files, values.disposalType))',
-  ]) assert.ok(rules.includes(rule), rule)
-  // The old gate mixed a prerequisite with content rules (spec §4.4): the reason and the requester are now errors on
-  // review, and only the asset count still holds the button, focusable and tied to the visible reason beside it.
-  assert.doesNotMatch(source, /const valid = /)
-  assert.doesNotMatch(source, /(?<![\w-])disabled=\{!valid\}/)
-  assert.match(source, /const needsAssets = selectedIds\.length < 2 \|\| selectedIds\.length > 100\n/)
-  assert.match(source, /event\.preventDefault\(\)\n\s+if \(needsAssets\) return\n\s+setFilesTried\(true\)\n\s+fieldErrors\.setErrors\(validate\(values, files\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setReviewing\(true\)/)
-  assert.match(source, /<Button\n\s+type="submit"\n\s+aria-disabled=\{needsAssets \|\| undefined\}\n\s+aria-describedby=\{needsAssets \? "disposal-batch-review-reason" : undefined\}\n\s+className="w-full"\n\s+>/)
-  assert.ok(source.includes('{needsAssets ? <p id="disposal-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsAssets")}</p> : null}'))
-  // A refusal on the review step goes back to the edit step that owns the field (spec §4.2): reveal leaves the review.
-  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })"))
-  assert.doesNotMatch(source, /saleValue|salvageValue|showsEstimated/)
-  // The photo rule's error shows under the dropzone; a HEIC is refused with the request form's words.
-  assert.ok(source.includes('<Field label={t("formSteps.evidence")} hideLabel id="disposal-batch-files" error={filesError}>'))
-  assert.ok(source.includes('{fileRefused ? <FieldError data-disposal-photo-refused>{t("photoTypeRefused")}</FieldError> : null}'))
-  assert.ok(source.includes('<NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)} required>'))
-  assert.doesNotMatch(source, /if \(!valid\) return/)
-  assert.match(source, /onChange=\{\(value\) => \{\n\s+setValues\(\(current\) => \(\{ \.\.\.current, requestedById: value, approverId: current\.approverId === value \? "" : current\.approverId \}\)\)\n\s+fieldErrors\.clear\("requestedById"\)\n/)
+  assert.ok(rules.includes("return validateDisposalBatchForm({ assetCount, lotFiles: lotFiles.map((item) => item.file), ...values })"))
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(uploadFailure\) return\n\s+setLotTried\(true\)\n\s+fieldErrors\.setErrors\(validate\(values, machines\.length, lotFiles\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setSaving\(true\)/)
+  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })"))
+  assert.ok(source.includes('error={fieldErrors.errors.assets ? t("batchMinAssets") : undefined}'))
+  assert.ok(source.includes('error={fieldErrors.errors.disposalType ? t("methodRequired") : undefined}'))
+  assert.ok(source.includes('<Field label={t("batchForm.lotLabel")} id="disposal-batch-lot-files" required hint={t("batchForm.lotHelp")} error={lotError}>'))
+  assert.ok(source.includes('{lotRefused ? <FieldError data-disposal-photo-refused>{t("photoTypeRefused")}</FieldError> : null}'))
+  assert.doesNotMatch(source, /needsAssets|batchNeedsAssets|setReviewing|saleValue|salvageValue|showsEstimated|<NativeSelect\b/)
   for (const locale of ["th", "en"] as const) {
-    assert.equal(typeof JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage.batchNeedsAssets, "string", locale)
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
+    assert.equal(typeof messages.batchMinAssets, "string", locale)
+    assert.equal(messages.batchNeedsAssets, undefined, locale)
   }
 })
 
