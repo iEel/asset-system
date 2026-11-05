@@ -1538,6 +1538,12 @@ npm run build
   - **E2E:** `E2E-1105G` (`e2e/disposal`, four projects) 74 / 0. After the review fixes: `E2E-1105H` (`e2e/disposal`, `e2e/approvals`, `e2e/cross-cutting`, four projects) 192 passed, 1 failed, 5 skipped; the failure was the asset register still loading after 10 s in `field-errors.spec.ts` (desktop-light; untouched by this plan); its rerun `E2E-1105I` 14 / 0.
   - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 1 survivor (Enter in the search sent the form) fixed in `db20fb88` with two minors. Refuted but worth knowing: the request page's back link goes to the queue when opened from a batch (the returnTo normalizer accepts `/disposal` only; older than this plan).
 
+- Page group 7 plan 1: brands and models (the first of the master-data group).
+  - 2026-11-05, branch `feat/group7-brands-models` (from master `837bb98e`). Not merged, not deployed, no migration. Spec `docs/superpowers/specs/2026-11-05-page-group-7-master-data-design.md` (plans: 1 brands/models, 2 employees, 3 locations, 4 multi-asset return); plan `docs/superpowers/plans/2026-11-05-group7-brands-models.md` (G7P1-R1 409 body with `existing`; R2 8 similar names; R3 recent 7/30 days from the system log; R4 create row after 2 characters and no exact match; R5 the edit form adds too).
+  - **Code:** `src/lib/brand-model-duplicates.ts` (`findBrandNameClash`, `findModelNameClash`, `isSimilarName`, `listSimilar*`, `nameClashBody`), `GET /api/brand-models/similar` (`brand:view`, `asset:create` or `asset:edit`), `GET /api/models/[id]?includeInactive=1`; `BrandModelClashNotice`; `SearchableSelect` optional `createRow`; `brand-model-quick-add-dialog.tsx` + `src/lib/brand-model-quick-add-rules.ts`; `src/lib/brand-model-recent.ts`; `model-photo.tsx`; `brand-model-deactivate-button.tsx`.
+  - **E2E:** `E2E-1105L` (master-data, assets, shell, four projects) 94 passed, 0 failed, 12 skipped; after the review fixes `E2E-1106A` (master-data, assets) 66 / 0 / 8 skipped. The itHead run role gained `brand:view/create/edit`. "ปิดใช้งาน" is checked up to its confirm only (DELETE is not allowed in E2E).
+  - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 1 Important + minors fixed in `9dc65783`.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.

@@ -272,7 +272,7 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 | Employees | CRUD, company/branch/department, manager, employment status, linked user/self-service context |
 | Locations | CRUD, branch relation, parent/child hierarchy, location type |
 | Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support, and count drilldowns to models/assets |
-| Brands/Models | Compact brand navigator, model workspace, structured specs, model photos, active count summaries, and drilldowns to brand/model asset lists |
+| Brands/Models | Compact brand navigator, model workspace, structured specs, model photos with a load-failure placeholder, active count summaries, drilldowns to brand/model asset lists; one duplicate rule (normalized names, active and inactive) with the existing record offered; add a brand or model from the asset create/batch/edit forms (`brand:create`); เพิ่มล่าสุด 7/30 days with who and from where; ปิดใช้งาน with a usage confirm; phone view (group 7 plan 1, 2026-11-05) |
 | Suppliers | Adaptive list/detail CRUD, tax ID/supplier code semantics, validated contact/address fields, relationship-aware deactivate/delete guards, linked asset/purchase/maintenance summaries, and mobile purchase-document cards |
 
 ## Admin, Settings, And Governance

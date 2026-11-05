@@ -200,6 +200,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 ## Cross-Workflow Scenarios
 
+- [ ] Brands and models (group 7 plan 1) at 1440, 1024 and on a real phone, both themes, as a user with `brand:create`: on เพิ่มทรัพย์สิน choose a category and a brand, type a model that does not exist, press "เพิ่มรุ่นใหม่: …", save; the model is chosen and every typed field is unchanged. Add the same model again typed with other spaces or case: "มี … อยู่แล้ว" with "ใช้ …". As a user without `brand:create`, the picker says "ไม่พบ · แจ้งผู้ดูแลข้อมูลหลักให้เพิ่ม". On ยี่ห้อ/รุ่น, "เพิ่มล่าสุด 7 วัน" lists it with "จากฟอร์มทรัพย์สิน"; ⋯ ปิดใช้งาน shows the usage confirm.
+
 - [ ] Add asset, print QR label, scan QR, then check-out.
 - [ ] Check-out asset, check-in with `Ready`, and confirm status/timeline.
 - [ ] Check-out asset, check-in with "ส่งซ่อม", and confirm the asset is `Under Maintenance` with one unfinished repair record created from the damage note.
