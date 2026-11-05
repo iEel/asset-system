@@ -22,7 +22,11 @@ export const SIMILAR_NAME_LIMIT = 8
 function firstClash(rows: NameClash[], name: string, excludeId?: string): NameClash | null {
   const wanted = normalizeDuplicateName(name)
   if (!wanted) return null
-  const match = rows.find((row) => row.id !== excludeId && normalizeDuplicateName(row.name) === wanted)
+  // A group with an active and an inactive record names the active one (the form offers "ใช้", not "เปิดใช้งาน"), then
+  // by name for a stable answer.
+  const match = rows
+    .filter((row) => row.id !== excludeId && normalizeDuplicateName(row.name) === wanted)
+    .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id))[0]
   return match ? { id: match.id, name: match.name, isActive: match.isActive } : null
 }
 

@@ -522,6 +522,8 @@ export function AssetBatchForm({
 
   // lists: the quick add passes the options with its new record, which this render's options do not hold yet.
   function handleBrandChange(brandId: string, lists: BrandModelLists = optionLists) {
+    // The note that a model changed the category stays only until the brand or model changes (final review fix 6).
+    setCategoryNote(null)
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -540,6 +542,7 @@ export function AssetBatchForm({
   }
 
   function handleModelChange(modelId: string, lists: BrandModelLists = optionLists) {
+    setCategoryNote(null)
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -574,10 +577,13 @@ export function AssetBatchForm({
     if (!pick.pick) return
     if (pick.changesCategory) {
       handleCategoryChange(pick.categoryId, lists)
+    }
+    handleModelChange(record.id, lists)
+    // After the model handler, which clears the note on any other model change (final review fix 6).
+    if (pick.changesCategory) {
       const category = categories.find((item) => item.id === pick.categoryId)
       setCategoryNote(tQuickAdd("categoryChangedByModel", { category: category?.label ?? "" }))
     }
-    handleModelChange(record.id, lists)
   }
 
   const brandCreateRow = useQuickAddCreateRow({
@@ -588,8 +594,13 @@ export function AssetBatchForm({
   })
   const modelCreateRow = useQuickAddCreateRow({
     kind: "model",
-    availability: quickAddAvailability({ kind: "model", canCreate: canCreateBrandModel, brandId: common.brandId || null, categoryId: common.categoryId || null }),
-    optionNames: modelOptions.filter((model) => model.brandId === common.brandId).map((model) => model.label),
+    availability: quickAddAvailability({ kind: "model", canCreate: canCreateBrandModel, brandId: common.brandId || null, categoryId: common.categoryId || null, brandInOptions: Boolean(selectedBrand) }),
+    // The picker lists the chosen category's models; a name the brand has in another category is offered as that model
+    // (final review fix 2), through the pick-existing flow that switches the category with its note.
+    optionNames: filteredModels.map((model) => model.label),
+    brandModels: modelOptions.filter((model) => model.brandId === common.brandId),
+    categories,
+    onUseExisting: (model) => chooseQuickAddRecord("model", model),
     onCreate: (query) => openQuickAdd("model", query),
   })
 

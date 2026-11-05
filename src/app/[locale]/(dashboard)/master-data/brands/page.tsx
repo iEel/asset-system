@@ -57,6 +57,14 @@ type BrandsPageProps = {
   }>
 }
 
+// The brand navigator's read, also used for a selected brand that the navigator's filters leave out (final review fix 5).
+const BRAND_NAVIGATOR_SELECT = {
+  id: true,
+  name: true,
+  isActive: true,
+  _count: { select: { models: true, assets: true } },
+} as const
+
 const previewableModelPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
 
 export default async function BrandsPage({ params, searchParams }: BrandsPageProps) {
@@ -122,12 +130,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   ] = await Promise.all([
     prisma.assetBrand.findMany({
       where: { ...recordStatus, ...addedWhere },
-      select: {
-        id: true,
-        name: true,
-        isActive: true,
-        _count: { select: { models: true, assets: true } },
-      },
+      select: BRAND_NAVIGATOR_SELECT,
       // Newest first while "เพิ่มล่าสุด" is on (spec §4.3).
       orderBy: listState.added ? [{ createdAt: "desc" }, { name: "asc" }] : { name: "asc" },
     }),
@@ -146,7 +149,8 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       include: {
         brand: { select: { id: true, name: true } },
         category: { select: { id: true, code: true, name: true } },
-        _count: { select: { assets: true } },
+        // Active assets only, as the brand counts and its ปิดใช้งาน confirm (final review fix 4).
+        _count: { select: { assets: { where: { isActive: true } } } },
       },
       orderBy: listState.added ? [{ createdAt: "desc" }, { name: "asc" }] : [{ brand: { name: "asc" } }, { name: "asc" }],
       skip: (listState.modelPage - 1) * listState.modelPageSize,
@@ -184,6 +188,24 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     activeAssetCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all }))
   )
   const brandOptions = brandNavigatorItems.filter((brand) => brand.isActive).map((brand) => ({ id: brand.id, name: brand.name }))
+  // "เพิ่มล่าสุด" or the status filter can leave the selected brand out of the navigator while the model table still
+  // filters by it; it is read on its own so its name, edit and ⋯ stay (final review fix 5).
+  const selectedBrandOutsideListRow =
+    listState.modelBrandId && !rawBrandNavigatorItems.some((brand) => brand.id === listState.modelBrandId)
+      ? await prisma.assetBrand.findUnique({
+          where: { id: listState.modelBrandId },
+          select: BRAND_NAVIGATOR_SELECT,
+        })
+      : null
+  const selectedBrandOutsideList = selectedBrandOutsideListRow
+    ? buildBrandNavigatorItems(
+        [selectedBrandOutsideListRow],
+        activeModelCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all })),
+        activeAssetCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all }))
+      )[0]
+    : undefined
+  // The phone's brand select keeps the selected brand too.
+  const phoneBrandItems = selectedBrandOutsideList ? [selectedBrandOutsideList, ...brandNavigatorItems] : brandNavigatorItems
   const modelPhotos = models.length
     ? await prisma.attachment.findMany({
         where: {
@@ -219,7 +241,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   const brandDuplicateGroups = buildDuplicateNameGroups(brandOptions)
   const modelDuplicateGroups = buildDuplicateNameGroups(duplicateModelSource)
   const totalDuplicateGroups = brandDuplicateGroups.length + modelDuplicateGroups.length
-  const selectedBrand = brandNavigatorItems.find((brand) => brand.id === listState.modelBrandId)
+  const selectedBrand = brandNavigatorItems.find((brand) => brand.id === listState.modelBrandId) ?? selectedBrandOutsideList
   const selectedCategory = categoryOptions.find((category) => category.id === listState.modelCategoryId)
   const brandModelReturnHref = `${basePath}?${buildBrandModelQueryString(listState, {})}`
   const brandReturnHref = brandModelReturnHref
@@ -410,7 +432,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                 name="modelBrandId"
                 defaultValue={listState.modelBrandId}
                 allLabel={t("allBrandNavigator")}
-                options={brandNavigatorItems.map((brand) => ({ value: brand.id, label: brand.name }))}
+                options={phoneBrandItems.map((brand) => ({ value: brand.id, label: brand.name }))}
               />
               <Button type="submit" variant="outline">{tCommon("filter")}</Button>
             </form>
@@ -428,13 +450,15 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             }
             actions={<span className="text-sm text-muted-foreground">{t("modelResultSummary", { count: modelTotal })}</span>}
           >
-            <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(140px,1fr))_auto]">
+            {/* Six filters and the buttons do not fit one row beside the brand picker (1440 and 1024): the row wraps,
+                and the search takes two cells where there are two (final review fix 7). */}
+            <form role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
               <input type="hidden" name="brandPage" value="1" />
               <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
               <input type="hidden" name="modelPage" value="1" />
               <input type="hidden" name="modelPageSize" value={listState.modelPageSize} />
               <input type="hidden" name="modelBrandId" value={listState.modelBrandId} />
-              <Field label={t("modelFiltersTitle")}>
+              <Field label={t("modelFiltersTitle")} className="sm:col-span-2">
                 <SearchField name="search" defaultValue={searchText} placeholder={t("searchPlaceholder")} />
               </Field>
               <FilterSelect

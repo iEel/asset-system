@@ -15,9 +15,12 @@ export function quickAddAvailability(input: {
   canCreate: boolean
   brandId: string | null
   categoryId: string | null
+  // Final review fix 3: the edit form's brand may be an inactive one (an old asset) that the active options lack; a
+  // model is never added under it. Omitted means it is there.
+  brandInOptions?: boolean
 }): QuickAddAvailability {
   if (!input.canCreate) return "noPermission"
-  if (input.kind === "model" && (!input.brandId || !input.categoryId)) return "needBrandAndCategory"
+  if (input.kind === "model" && (!input.brandId || !input.categoryId || input.brandInOptions === false)) return "needBrandAndCategory"
   return "ok"
 }
 
@@ -28,6 +31,22 @@ export function shouldOfferCreate(query: string, optionNames: readonly string[])
   const wanted = normalizeDuplicateName(trimmed)
   if (!wanted) return false
   return !optionNames.some((name) => normalizeDuplicateName(name) === wanted)
+}
+
+// Final review fix 2: the model picker lists only the chosen category's models, but a model name is unique within its
+// brand. A typed name that a listed model has: no row. One that a model of the brand in another category has: a row that
+// picks that model (the pick-existing flow switches the category). One that exists nowhere in the brand: the create row.
+export type ModelCreateRowChoice<T> = { kind: "none" } | { kind: "useExisting"; model: T } | { kind: "create" }
+
+export function modelCreateRowChoice<T extends { label: string }>(
+  query: string,
+  visibleNames: readonly string[],
+  brandModels: readonly T[],
+): ModelCreateRowChoice<T> {
+  if (!shouldOfferCreate(query, visibleNames)) return { kind: "none" }
+  const wanted = normalizeDuplicateName(query.trim())
+  const model = brandModels.find((item) => normalizeDuplicateName(item.label) === wanted)
+  return model ? { kind: "useExisting", model } : { kind: "create" }
 }
 
 // The dialog's save: the quick add always says where it came from (the system log's newValue.source).

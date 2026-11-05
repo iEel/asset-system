@@ -192,3 +192,24 @@ test("the recent and deactivate words are in both locales (spec §4.3)", () => {
   for (const key of ["action", "confirmTitle", "confirmBody", "confirmBodyModel", "success"]) assert.ok(en.deactivate[key], `en deactivate.${key}`)
   assert.ok(en.photo.failed && en.photo.none && en.phoneBrandSelect)
 })
+
+// Final review fixes 4, 5, 7.
+test("the brands page: a model's ปิดใช้งาน confirm counts its active assets only, as the brand's does", () => {
+  const source = read(PAGE)
+  assert.match(source, /_count: \{ select: \{ assets: \{ where: \{ isActive: true \} \} \} \}/)
+  assert.match(source, /assets=\{model\._count\.assets\}/)
+})
+
+test("the brands page: the selected brand stays named, editable and in the phone select when เพิ่มล่าสุด drops it", () => {
+  const source = read(PAGE)
+  assert.match(source, /listState\.modelBrandId && !rawBrandNavigatorItems\.some\(\(brand\) => brand\.id === listState\.modelBrandId\)/)
+  assert.match(source, /prisma\.assetBrand\.findUnique\(\{\n\s+where: \{ id: listState\.modelBrandId \},\n\s+select: BRAND_NAVIGATOR_SELECT,/)
+  assert.match(source, /const selectedBrand = brandNavigatorItems\.find\(\(brand\) => brand\.id === listState\.modelBrandId\) \?\? selectedBrandOutsideList/)
+  assert.match(source, /options=\{phoneBrandItems\.map\(/)
+})
+
+test("the brands page: the model filter row wraps, so every filter is fully visible at 1440 and 1024", () => {
+  const source = read(PAGE)
+  assert.doesNotMatch(source, /xl:grid-cols-\[minmax\(220px,1\.4fr\)_repeat\(5,minmax\(140px,1fr\)\)_auto\]/)
+  assert.match(source, /<form role="search" action=\{basePath\} className="grid grid-cols-\[repeat\(auto-fit,minmax\(min\(100%,11rem\),1fr\)\)\] gap-3">/)
+})

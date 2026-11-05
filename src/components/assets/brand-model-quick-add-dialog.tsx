@@ -15,6 +15,7 @@ import { reactivateNameClash, readNameClash } from "@/lib/brand-model-clash"
 import type { NameClash } from "@/lib/brand-model-duplicates"
 import {
   existingModelPick,
+  modelCreateRowChoice,
   otherCategoryId,
   quickAddRequest,
   shouldOfferCreate,
@@ -42,16 +43,41 @@ export function useQuickAddCreateRow({
   availability,
   optionNames,
   onCreate,
+  brandModels,
+  categories,
+  onUseExisting,
 }: {
   kind: QuickAddKind
   availability: QuickAddAvailability
-  // The names the duplicate rule compares with: every brand, or every model of the chosen brand.
+  // The names the duplicate rule compares with: every brand, or the models the model picker lists.
   optionNames: readonly string[]
   onCreate: (query: string) => void
+  // A model only (final review fix 2): every model of the chosen brand, so a name that sits in another category is
+  // offered as "use this model" (onUseExisting) and not as a new model.
+  brandModels?: readonly QuickAddRecord[]
+  categories?: readonly { id: string; label: string }[]
+  onUseExisting?: (model: QuickAddRecord) => void
 }): SearchableSelectCreateRow {
   const t = useTranslations("brandModel.quickAdd")
   if (availability === "noPermission") return { blockedHint: t("noPermission") }
   if (availability === "needBrandAndCategory") return { blockedHint: t("needBrandAndCategory") }
+  if (kind === "model" && brandModels && onUseExisting) {
+    const categoryLabel = (id: string | null | undefined) => categories?.find((category) => category.id === id)?.label ?? ""
+    return {
+      label: (query) => {
+        const choice = modelCreateRowChoice(query, optionNames, brandModels)
+        return choice.kind === "useExisting"
+          ? t("useOtherCategoryModel", { name: choice.model.label, category: categoryLabel(choice.model.categoryId) })
+          : t("createModel", { query })
+      },
+      onCreate: (query) => {
+        const choice = modelCreateRowChoice(query, optionNames, brandModels)
+        if (choice.kind === "useExisting") onUseExisting(choice.model)
+        else onCreate(query)
+      },
+      isExactMatch: (query) => modelCreateRowChoice(query, optionNames, brandModels).kind === "none",
+    }
+  }
   return {
     label: (query) => (kind === "brand" ? t("createBrand", { query }) : t("createModel", { query })),
     onCreate,

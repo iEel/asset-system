@@ -2052,7 +2052,8 @@
       "save": "บันทึกและเลือก",
       "categoryChangedByModel": "เปลี่ยนหมวดหมู่เป็น {category} ตามรุ่นที่เลือก",
       "otherCategoryUnreadable": "เลือกรุ่นนี้จากรายการไม่ได้ เพราะอยู่หมวดหมู่อื่น",
-      "inCategory": "· {category}"
+      "inCategory": "· {category}",
+      "useOtherCategoryModel": "{name} อยู่ในหมวดหมู่ {category} · ใช้รุ่นนี้"
     },
     "recent": {
       "label": "เพิ่มล่าสุด",

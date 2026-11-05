@@ -2052,7 +2052,8 @@
       "save": "Save and choose",
       "categoryChangedByModel": "Category changed to {category} to match the chosen model",
       "otherCategoryUnreadable": "This model cannot be chosen from the list because it is in another category",
-      "inCategory": "· {category}"
+      "inCategory": "· {category}",
+      "useOtherCategoryModel": "{name} is in category {category} · use this model"
     },
     "recent": {
       "label": "Recently added",

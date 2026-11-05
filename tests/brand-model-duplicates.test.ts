@@ -179,3 +179,24 @@ test("the similar route: kind brand or model, q under 2 answers [], brandId for 
   assert.match(source, /listSimilarModels\(prisma/)
   assert.match(source, /NextResponse\.json\(\{ data/)
 })
+
+// Final review fix 1: a normalized group with an active and an inactive record names the active one, so the form offers
+// "ใช้ {name}" and not "เปิดใช้งาน"; then by name for a stable answer.
+test("findBrandNameClash / findModelNameClash: an active record wins over an inactive one of the same normalized name", async () => {
+  const brands: Row[] = [
+    { id: "b-old", name: "DELL", isActive: false },
+    { id: "b-new", name: "Dell", isActive: true },
+  ]
+  assert.deepEqual(await findBrandNameClash(brandDb(brands), "dell"), { id: "b-new", name: "Dell", isActive: true })
+  assert.deepEqual(await findBrandNameClash(brandDb([...brands].reverse()), "dell"), { id: "b-new", name: "Dell", isActive: true })
+  const twoInactive: Row[] = [
+    { id: "b-2", name: "Dell", isActive: false },
+    { id: "b-1", name: "DELL", isActive: false },
+  ]
+  assert.equal((await findBrandNameClash(brandDb(twoInactive), "dell"))?.id, "b-2", "then by name (Dell before DELL)")
+  const models: Row[] = [
+    { id: "m-old", name: "Latitude 5420", isActive: false, brandId: "b1" },
+    { id: "m-new", name: "Latitude5420", isActive: true, brandId: "b1" },
+  ]
+  assert.equal((await findModelNameClash(modelDb(models), "b1", "latitude 5420"))?.id, "m-new")
+})

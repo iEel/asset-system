@@ -709,6 +709,8 @@ export function AssetForm({
 
   // lists: the quick add passes the options with its new record, which this render's options do not hold yet.
   function handleBrandChange(brandId: string, lists: BrandModelLists = optionLists) {
+    // The note that a model changed the category stays only until the brand or model changes (final review fix 6).
+    setCategoryNote(null)
     setValues((current) => {
       return withSuggestedName({
         ...current,
@@ -724,6 +726,7 @@ export function AssetForm({
   }
 
   function handleModelChange(modelId: string, lists: BrandModelLists = optionLists) {
+    setCategoryNote(null)
     setValues((current) =>
       withSuggestedName({
         ...current,
@@ -755,10 +758,13 @@ export function AssetForm({
     if (!pick.pick) return
     if (pick.changesCategory) {
       handleCategoryChange(pick.categoryId, lists)
+    }
+    handleModelChange(record.id, lists)
+    // After the model handler, which clears the note on any other model change (final review fix 6).
+    if (pick.changesCategory) {
       const category = categories.find((item) => item.id === pick.categoryId)
       setCategoryNote(tQuickAdd("categoryChangedByModel", { category: category?.label ?? "" }))
     }
-    handleModelChange(record.id, lists)
   }
 
   const brandCreateRow = useQuickAddCreateRow({
@@ -769,8 +775,13 @@ export function AssetForm({
   })
   const modelCreateRow = useQuickAddCreateRow({
     kind: "model",
-    availability: quickAddAvailability({ kind: "model", canCreate: canCreateBrandModel, brandId: values.brandId || null, categoryId: values.categoryId || null }),
-    optionNames: modelOptions.filter((model) => model.brandId === values.brandId).map((model) => model.label),
+    availability: quickAddAvailability({ kind: "model", canCreate: canCreateBrandModel, brandId: values.brandId || null, categoryId: values.categoryId || null, brandInOptions: Boolean(selectedBrand) }),
+    // The picker lists the chosen category's models; a name the brand has in another category is offered as that model
+    // (final review fix 2), through the pick-existing flow that switches the category with its note.
+    optionNames: filteredModels.map((model) => model.label),
+    brandModels: modelOptions.filter((model) => model.brandId === values.brandId),
+    categories,
+    onUseExisting: (model) => chooseQuickAddRecord("model", model),
     onCreate: (query) => openQuickAdd("model", query),
   })
 
@@ -1231,6 +1242,7 @@ export function AssetForm({
         : [field as keyof AssetFormValues]
     const stored = Object.fromEntries(keys.map((key) => [key, asset[key] ?? ""]))
     setValues((current) => withDepartmentLock({ ...current, ...stored }, employees, asset, editContext))
+    if (keys.some((key) => key === "categoryId" || key === "brandId" || key === "modelId")) setCategoryNote(null)
     fieldErrors.clear(...keys.filter((key) => key in FIELD_IDS).map((key) => key as AssetFixedField))
     goToField(field)
   }
