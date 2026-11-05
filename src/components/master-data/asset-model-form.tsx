@@ -31,6 +31,10 @@ import {
 } from "@/lib/model-specs"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { BrandModelClashNotice } from "@/components/master-data/brand-model-clash-notice"
+import { reactivateNameClash, readNameClash } from "@/lib/brand-model-clash"
+import type { NameClash } from "@/lib/brand-model-duplicates"
+import { appendBrandModelReturnTo } from "@/lib/brand-model-query"
 import { maxLength, required } from "@/lib/validation-rules"
 
 type AssetModelFormValues = {
@@ -99,12 +103,15 @@ export function AssetModelForm({
   categories,
   modelPhotos = [],
   backHref: providedBackHref,
+  canReactivate = false,
 }: {
   model?: AssetModelFormValues
   brands: BrandOption[]
   categories: CategoryOption[]
   modelPhotos?: ModelPhoto[]
   backHref?: string
+  // brand:edit: an inactive model of the same name and brand is offered as "เปิดใช้งาน {name}" (spec §4.1).
+  canReactivate?: boolean
 }) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -115,6 +122,8 @@ export function AssetModelForm({
   const [values, setValues] = useState<AssetModelFormValues>(model ?? emptyModel)
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<AssetModelField>()
+  // The model a save clashed with (409 MODEL_NAME_EXISTS); it shows under the name until the name or brand changes.
+  const [clash, setClash] = useState<NameClash | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
@@ -129,6 +138,24 @@ export function AssetModelForm({
   function setField<K extends keyof AssetModelFormValues>(field: K, value: AssetModelFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field in FIELD_IDS) fieldErrors.clear(field as AssetModelField)
+    if (field === "name" || field === "brandId") setClash(null)
+  }
+
+  // "ใช้" and "เปิดใช้งาน" open the existing model's edit page, coming back where this form would.
+  function openModel(existing: NameClash) {
+    router.push(appendBrandModelReturnTo(`/${locale}/master-data/brands/models/${existing.id}/edit`, backHref))
+  }
+
+  async function handleReactivate(existing: NameClash) {
+    if (!clash) return
+    try {
+      await reactivateNameClash("model", clash)
+      toast.success(tCommon("savedSuccess"))
+      openModel(existing)
+      router.refresh()
+    } catch (error) {
+      apiError.toast(error)
+    }
   }
 
   function setSpecItem(id: string, field: "label" | "value", value: string) {
@@ -167,6 +194,7 @@ export function AssetModelForm({
     event.preventDefault()
     fieldErrors.setErrors(validate(values))
     if (focusFirstError()) return
+    setClash(null)
     setSaving(true)
 
     const url = isEdit ? `/api/models/${model?.id}` : "/api/models"
@@ -185,6 +213,9 @@ export function AssetModelForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A name clash names the existing model under the field (G7P1-R1); its fieldErrors still move focus there.
+        const nameClash = readNameClash(result)
+        setClash(nameClash?.existing ?? null)
         // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
         if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
@@ -266,14 +297,28 @@ export function AssetModelForm({
         {/* A <form> cannot be ContentPanel: the panel classes and its spacing (2D-2 R4, spec 2D D9). */}
         <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("modelName")} id="asset-model-name" required error={fieldErrors.message("name")}>
-            <Input
-              value={values.name}
-              onChange={(event) => setField("name", event.target.value)}
-              maxLength={200}
-              required
-            />
-          </Field>
+          <div className="grid content-start gap-2">
+            <Field label={t("modelName")} id="asset-model-name" required error={clash ? undefined : fieldErrors.message("name")}>
+              <Input
+                value={values.name}
+                onChange={(event) => setField("name", event.target.value)}
+                maxLength={200}
+                required
+                aria-invalid={clash ? true : undefined}
+                aria-describedby={clash ? "asset-model-name-clash" : undefined}
+              />
+            </Field>
+            {clash ? (
+              <BrandModelClashNotice
+                id="asset-model-name-clash"
+                clash={clash}
+                kind="model"
+                canReactivate={canReactivate}
+                onUse={openModel}
+                onReactivate={handleReactivate}
+              />
+            ) : null}
+          </div>
 
           <Field label={t("brand")} id="asset-model-brand" required error={fieldErrors.message("brandId")}>
             <NativeSelect

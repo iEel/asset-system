@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { AssetModelForm } from "@/components/master-data/asset-model-form"
+import { hasPermission } from "@/lib/auth-utils"
 import { normalizeBrandModelReturnTo } from "@/lib/brand-model-query"
 
 type EditAssetModelPageProps = {
@@ -13,7 +14,7 @@ export default async function EditAssetModelPage({ params, searchParams }: EditA
   const { id, locale } = await params
   const rawSearchParams = await searchParams
   const returnToHref = normalizeBrandModelReturnTo(locale, rawSearchParams.returnTo)
-  await requirePagePermission(locale, "brand", "edit")
+  const user = await requirePagePermission(locale, "brand", "edit")
 
   const [model, brands, categories] = await Promise.all([
     prisma.assetModel.findFirst({ where: { id } }),
@@ -50,6 +51,7 @@ export default async function EditAssetModelPage({ params, searchParams }: EditA
       }}
       modelPhotos={modelPhotos}
       backHref={returnToHref}
+      canReactivate={hasPermission(user, "brand", "edit")}
     />
   )
 }

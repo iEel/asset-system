@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { BrandForm } from "@/components/master-data/brand-form"
+import { hasPermission } from "@/lib/auth-utils"
 import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type EditBrandPageProps = {
@@ -13,11 +14,17 @@ export default async function EditBrandPage({ params, searchParams }: EditBrandP
   const { id, locale } = await params
   const rawSearchParams = await searchParams
   const returnToHref = normalizeMasterDataReturnTo(locale, "brands", rawSearchParams.returnTo)
-  await requirePagePermission(locale, "brand", "edit")
+  const user = await requirePagePermission(locale, "brand", "edit")
 
   const brand = await prisma.assetBrand.findFirst({ where: { id } })
 
   if (!brand) notFound()
 
-  return <BrandForm brand={{ id: brand.id, name: brand.name, isActive: brand.isActive }} backHref={returnToHref} />
+  return (
+    <BrandForm
+      brand={{ id: brand.id, name: brand.name, isActive: brand.isActive }}
+      backHref={returnToHref}
+      canReactivate={hasPermission(user, "brand", "edit")}
+    />
+  )
 }

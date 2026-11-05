@@ -2032,7 +2032,13 @@
     "duplicateReviewCompact": "มีข้อมูลที่อาจซ้ำ {count} กลุ่ม",
     "duplicateBrands": "ยี่ห้อที่อาจซ้ำ",
     "duplicateModels": "รุ่นที่อาจซ้ำ",
-    "modelsFilteredBy": "กำลังแสดงรุ่นของ {brand} / {category}"
+    "modelsFilteredBy": "กำลังแสดงรุ่นของ {brand} / {category}",
+    "clash": {
+      "exists": "มี {name} อยู่แล้ว",
+      "existsInactive": "มี {name} อยู่แล้ว แต่ปิดใช้งานอยู่",
+      "use": "ใช้ {name}",
+      "reactivate": "เปิดใช้งาน {name}"
+    }
   },
   "supplier": {
     "title": "ผู้ขาย",

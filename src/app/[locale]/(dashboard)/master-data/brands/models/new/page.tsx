@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { AssetModelForm } from "@/components/master-data/asset-model-form"
+import { hasPermission } from "@/lib/auth-utils"
 import { normalizeBrandModelReturnTo } from "@/lib/brand-model-query"
 
 type NewAssetModelPageProps = {
@@ -12,7 +13,7 @@ export default async function NewAssetModelPage({ params, searchParams }: NewAss
   const { locale } = await params
   const rawSearchParams = await searchParams
   const returnToHref = normalizeBrandModelReturnTo(locale, rawSearchParams.returnTo)
-  await requirePagePermission(locale, "brand", "create")
+  const user = await requirePagePermission(locale, "brand", "create")
 
   const [brands, categories] = await Promise.all([
     prisma.assetBrand.findMany({
@@ -27,5 +28,12 @@ export default async function NewAssetModelPage({ params, searchParams }: NewAss
     }),
   ])
 
-  return <AssetModelForm brands={brands} categories={categories} backHref={returnToHref} />
+  return (
+    <AssetModelForm
+      brands={brands}
+      categories={categories}
+      backHref={returnToHref}
+      canReactivate={hasPermission(user, "brand", "edit")}
+    />
+  )
 }

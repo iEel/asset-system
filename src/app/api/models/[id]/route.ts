@@ -11,14 +11,16 @@ type AssetModelRouteContext = {
   params: Promise<{ id: string }>
 }
 
-export async function GET(_request: NextRequest, context: AssetModelRouteContext) {
+export async function GET(request: NextRequest, context: AssetModelRouteContext) {
   try {
     const user = await requireAuth()
     requirePermission(user, "brand", "view")
 
     const { id } = await context.params
+    // ?includeInactive=1 reads an inactive model too: reactivating one sends its brand and category back (group 7 plan 1).
+    const includeInactive = request.nextUrl.searchParams.get("includeInactive") === "1"
     const model = await prisma.assetModel.findFirst({
-      where: { id, isActive: true },
+      where: includeInactive ? { id } : { id, isActive: true },
       include: {
         brand: { select: { id: true, name: true } },
         category: { select: { id: true, code: true, name: true } },

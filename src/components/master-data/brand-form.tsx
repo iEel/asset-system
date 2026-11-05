@@ -13,6 +13,10 @@ import { Input } from "@/components/ui/input"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { BrandModelClashNotice } from "@/components/master-data/brand-model-clash-notice"
+import { reactivateNameClash, readNameClash } from "@/lib/brand-model-clash"
+import type { NameClash } from "@/lib/brand-model-duplicates"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { maxLength, required } from "@/lib/validation-rules"
@@ -48,9 +52,12 @@ function validate(values: BrandFormValues): Partial<Record<BrandField, string>> 
 export function BrandForm({
   brand,
   backHref: providedBackHref,
+  canReactivate = false,
 }: {
   brand?: BrandFormValues
   backHref?: string
+  // brand:edit: an inactive brand of the same name is offered as "เปิดใช้งาน {name}" (spec §4.1).
+  canReactivate?: boolean
 }) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -60,6 +67,8 @@ export function BrandForm({
   const [values, setValues] = useState<BrandFormValues>(brand ?? emptyBrand)
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<BrandField>()
+  // The brand a save clashed with (409 BRAND_NAME_EXISTS); it shows under the name until the name changes.
+  const [clash, setClash] = useState<NameClash | null>(null)
 
   const isEdit = Boolean(brand?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/brands`
@@ -69,12 +78,31 @@ export function BrandForm({
   function setField<K extends keyof BrandFormValues>(field: K, value: BrandFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field in FIELD_IDS) fieldErrors.clear(field as BrandField)
+    if (field === "name") setClash(null)
+  }
+
+  // "ใช้" and "เปิดใช้งาน" open the existing brand's edit page, coming back where this form would.
+  function openBrand(existing: NameClash) {
+    router.push(appendMasterDataReturnTo(`/${locale}/master-data/brands/${existing.id}/edit`, backHref))
+  }
+
+  async function handleReactivate(existing: NameClash) {
+    if (!clash) return
+    try {
+      await reactivateNameClash("brand", clash)
+      toast.success(tCommon("savedSuccess"))
+      openBrand(existing)
+      router.refresh()
+    } catch (error) {
+      apiError.toast(error)
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     fieldErrors.setErrors(validate(values))
     if (focusFirstError()) return
+    setClash(null)
     setSaving(true)
 
     const url = isEdit ? `/api/brands/${brand?.id}` : "/api/brands"
@@ -89,6 +117,9 @@ export function BrandForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A name clash names the existing brand under the field (G7P1-R1); its fieldErrors still move focus there.
+        const nameClash = readNameClash(result)
+        setClash(nameClash?.existing ?? null)
         // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
         if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
@@ -115,14 +146,28 @@ export function BrandForm({
 
       <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("brandName")} id="brand-name" required error={fieldErrors.message("name")}>
-            <Input
-              value={values.name}
-              onChange={(event) => setField("name", event.target.value)}
-              maxLength={200}
-              required
-            />
-          </Field>
+          <div className="grid content-start gap-2">
+            <Field label={t("brandName")} id="brand-name" required error={clash ? undefined : fieldErrors.message("name")}>
+              <Input
+                value={values.name}
+                onChange={(event) => setField("name", event.target.value)}
+                maxLength={200}
+                required
+                aria-invalid={clash ? true : undefined}
+                aria-describedby={clash ? "brand-name-clash" : undefined}
+              />
+            </Field>
+            {clash ? (
+              <BrandModelClashNotice
+                id="brand-name-clash"
+                clash={clash}
+                kind="brand"
+                canReactivate={canReactivate}
+                onUse={openBrand}
+                onReactivate={handleReactivate}
+              />
+            ) : null}
+          </div>
 
           <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm md:self-end">
             <input

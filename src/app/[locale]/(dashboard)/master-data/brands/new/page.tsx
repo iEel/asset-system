@@ -1,5 +1,6 @@
 import { requirePagePermission } from "@/lib/page-auth"
 import { BrandForm } from "@/components/master-data/brand-form"
+import { hasPermission } from "@/lib/auth-utils"
 import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type NewBrandPageProps = {
@@ -11,7 +12,7 @@ export default async function NewBrandPage({ params, searchParams }: NewBrandPag
   const { locale } = await params
   const rawSearchParams = await searchParams
   const returnToHref = normalizeMasterDataReturnTo(locale, "brands", rawSearchParams.returnTo)
-  await requirePagePermission(locale, "brand", "create")
+  const user = await requirePagePermission(locale, "brand", "create")
 
-  return <BrandForm backHref={returnToHref} />
+  return <BrandForm backHref={returnToHref} canReactivate={hasPermission(user, "brand", "edit")} />
 }

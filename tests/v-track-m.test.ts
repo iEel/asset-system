@@ -39,7 +39,8 @@ function assertMigratedForm(
     assert.equal(uses?.length, 1, `id "${id}" once`)
   }
   for (const key of form.messages ?? Object.keys(form.ids)) {
-    assert.match(source, new RegExp(`error=\\{${hook}\\.message\\("${escape(key)}"\\)\\}`), `${key}: its error under the field`)
+    // Group 7 plan 1 Task 2: on a name clash the brand and model forms show BrandModelClashNotice in place of the line.
+    assert.match(source, new RegExp(`error=\\{(?:clash \\? undefined : )?${hook}\\.message\\("${escape(key)}"\\)\\}`), `${key}: its error under the field`)
   }
   assert.match(source, new RegExp(`${hook}\\.setErrors\\(validate\\(`), "the client's errors come from validate()")
   if (form.server !== false) {
@@ -252,7 +253,8 @@ test("asset model: errors under the field; a duplicate name for the brand lands 
   ]) assert.ok(rules.includes(rule), rule)
   // Only the save reads fieldErrors; the photo upload and delete are not field errors and keep apiError.toast.
   assert.equal(source.match(/fieldErrors\.applyServer\(/g)?.length, 1)
-  assert.equal(source.match(/apiError\.toast\(error\)/g)?.length, 3)
+  // Group 7 plan 1 Task 2: the clash notice's reactivate keeps its toast too.
+  assert.equal(source.match(/apiError\.toast\(error\)/g)?.length, 4)
 })
 
 test("admin user: errors under the field, the password rule of create and edit, and one error under the role group (v-track M7)", () => {

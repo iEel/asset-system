@@ -2032,7 +2032,13 @@
     "duplicateReviewCompact": "{count} duplicate groups may need review",
     "duplicateBrands": "Potential duplicate brands",
     "duplicateModels": "Potential duplicate models",
-    "modelsFilteredBy": "Showing models for {brand} / {category}"
+    "modelsFilteredBy": "Showing models for {brand} / {category}",
+    "clash": {
+      "exists": "{name} already exists",
+      "existsInactive": "{name} already exists but is inactive",
+      "use": "Use {name}",
+      "reactivate": "Reactivate {name}"
+    }
   },
   "supplier": {
     "title": "Suppliers",
