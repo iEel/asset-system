@@ -1531,6 +1531,13 @@ npm run build
   - **Look step** fixes in `ed57bcbc`.
   - **Next:** other page groups; ยืนยันผลตรวจ last; consumables after that.
 
+- Disposal request batches (DP-Batch-New, DP-Batch, DP-Batches), the leftover of page group 6.
+  - 2026-11-05, branch `feat/disposal-request-batches` (from master `2907fc10`). Not merged, not deployed, no migration. Spec `docs/superpowers/specs/2026-11-05-disposal-request-batches-design.md`; plan `docs/superpowers/plans/2026-11-05-disposal-request-batches.md` (PB-R1 no review dialog; PB-R2 the round title rule names a batch; PB-R3 failed uploads keep the form with links; PB-R4 4 uploads at a time; PB-R5 the list strip; PB-R6 the round hand-over from the batch page).
+  - **User decisions:** a machine's own photo is optional, the lot photo required (evidence rules unchanged); no Serial check step.
+  - **Code:** `src/lib/disposal-batch-page-data.ts`, `src/lib/disposal-batch-form-rules.ts`, `disposal-batch-form.tsx` + `disposal-batch-machine-row.tsx`, `disposal-batch-round-button.tsx`, the batch page and list; `GET /api/disposal-assets` items carry `assetTag`, `name`, `serialNumber`; `DisposalAssetPicker` never submits its form on Enter; the request page's files panel is `#files`.
+  - **E2E:** `E2E-1105G` (`e2e/disposal`, four projects) 74 / 0. After the review fixes: `E2E-1105H` (`e2e/disposal`, `e2e/approvals`, `e2e/cross-cutting`, four projects) 192 passed, 1 failed, 5 skipped; the failure was the asset register still loading after 10 s in `field-errors.spec.ts` (desktop-light; untouched by this plan); its rerun `E2E-1105I` 14 / 0.
+  - **Final review (opus, 3 lenses, 2 adversarial verifiers each):** 1 survivor (Enter in the search sent the form) fixed in `db20fb88` with two minors. Refuted but worth knowing: the request page's back link goes to the queue when opened from a batch (the returnTo normalizer accepts `/disposal` only; older than this plan).
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.

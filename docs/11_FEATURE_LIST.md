@@ -229,6 +229,7 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 
 ## Disposal
 
+- Request batches (2026-11-05): the batch form (optional photo per machine, required lot photo, the Serial shown, no review step, computer only), the batch page (progress, lot photo, each machine's own photo or ใช้รูปรวม, a round from the batch) and the batch list (name, progress, search, strip).
 - Group 6 plan 4 (2026-11-05): disposal rounds (รอบตัดจำหน่าย): the queue as board DP-Queue (tabs only, ticks across pages up to 200 on the approved tab), `/disposal/rounds/new` (method chosen at the round, one lump price, preview of blocked machines, all or nothing), `/disposal/rounds/[id]` with the accounting Excel (tag, name, Serial, photo), `/disposal/rounds`. Per-request and bulk execution are retired (410).
 - Group 6 plan 3 (2026-11-04): the request form (board DP-New: asset card, method cards, required photo, no price, the summary) and the request page (DP-Request: the next-step card with approve / reject or the reason you cannot decide, all photos, the source link, the phone bar only with a next step).
 
