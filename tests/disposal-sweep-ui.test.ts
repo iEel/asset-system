@@ -109,14 +109,16 @@ test("disposal batch history: a flush ContentPanel with shared phone rows, a tex
   assert.doesNotMatch(source, /<section\b|rounded-lg border|hover:text-primary|\btext-xs\b|divide-border md:hidden/)
 })
 
-test("disposal batch page: the shared facts a ContentPanel, the requests a flush ContentPanel with shared phone rows, and 13px meta lines (spec 2D D9)", () => {
+// Request batches Task 3 rebuilt the page (DP-Batch): the machines panel takes the round page's look, with its 44px
+// "ใช้รูปรวม" tile in text-xs (as rounds/[id]/page.tsx's "ไม่มีรูป").
+test("disposal batch page: the shared facts a ContentPanel, the machines a flush ContentPanel with shared phone rows, and 13px meta lines (spec 2D D9)", () => {
   const source = read("src/app/[locale]/(dashboard)/disposal/batches/[id]/page.tsx")
   assert.match(source, /<ContentPanel title=\{t\("batchSharedDetail"\)\}>\n\s+<KeyValueList\n\s+items=\{\[/)
-  assert.match(source, /<ContentPanel divided flush title=\{t\("batchChildren"\)\}>/)
+  assert.match(source, /<ContentPanel divided flush title=\{machinesTitle\} className="min-w-0">/)
   assert.match(source, /<EmptyNote padded className="md:hidden">\{tCommon\("noData"\)\}<\/EmptyNote>/)
-  assert.match(source, /<ContentPanelRows className="md:hidden">\n\s+\{batch\.disposalRequests\.map\(\(request\) => <li key=\{request\.id\}><BatchRequestCard /)
-  assert.match(source, /<article>\n\s+<div className="flex items-start justify-between gap-3">/)
-  assert.doesNotMatch(source, /<section\b|rounded-lg border|PackageCheck|text-lg|\btext-xs\b|text-primary/)
+  assert.match(source, /<ContentPanelRows className="md:hidden">\n\s+\{machines\.map\(\(machine\) => \(\n\s+<li key=\{machine\.requestId\}>\n\s+<MachineCard /)
+  assert.match(source, /<article className="flex items-start gap-3">/)
+  assert.doesNotMatch(source, /<section\b|rounded-lg border|PackageCheck|text-lg|text-primary/)
 })
 
 test("disposal print page: money through formatMoney with the baht unit, as on the screen (spec 2D D10, M24)", () => {

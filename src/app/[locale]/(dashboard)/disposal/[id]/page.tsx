@@ -553,7 +553,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             </ContentPanel>
           </div>
 
-          <div data-disposal-panel="evidence" className="min-w-0 space-y-6 max-lg:order-3">
+          {/* #files: the batch page's "แนบรูป" for a machine that uses the lot photo lands here (request batches spec §5). */}
+          <div id="files" data-disposal-panel="evidence" className="min-w-0 scroll-mt-24 space-y-6 max-lg:order-3">
             <DisposalAttachments
               requestId={disposalRequest.id}
               attachments={attachments}

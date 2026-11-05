@@ -3776,15 +3776,11 @@
     "batchSchemaMissingTitle": "Batch disposal is not ready yet",
     "batchSchemaMissingHelp": "An administrator must back up the database and apply the Disposal Batch migration before enabling this page.",
     "batchCreateSuccess": "Created {count} disposal requests",
-    "batchDetailHelp": "Workspace for {count} disposal requests",
-    "batchTotal": "Total in batch",
     "batchSharedDetail": "Shared batch details",
-    "batchChildren": "Requests in this batch",
     "batchSharedEvidence": "Shared batch evidence",
     "sourceBatch": "Created from batch",
     "openBatch": "Open batch workspace",
     "openRequest": "Open request",
-    "nextAction": "Next action",
     "bulkErrors": {
       "DISPOSAL_REQUEST_NOT_FOUND": "This disposal request was not found or is inactive.",
       "DISPOSAL_INVALID_STAGE": "This disposal request is not at an eligible approval stage.",
@@ -4144,7 +4140,16 @@
       "uploadFailedLot": "{count} batch photo files did not upload",
       "openBatch": "Open the batch"
     },
-    "batchMinAssets": "Select at least 2 machines"
+    "batchMinAssets": "Select at least 2 machines",
+    "batchPage": {
+      "progress": "Disposed {disposed}/{total}",
+      "useLotPhoto": "Uses the lot photo",
+      "attachPhoto": "Attach photo",
+      "roundCreate": "Create a disposal round from this batch ({count} machines)",
+      "roundBlocked": "{count} machines cannot join a round: {reasons}",
+      "lotTitle": "Lot photo",
+      "machinesTitle": "Machines in the batch ({count})"
+    }
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

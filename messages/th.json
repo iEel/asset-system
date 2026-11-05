@@ -3776,15 +3776,11 @@
     "batchSchemaMissingTitle": "ยังไม่พร้อมใช้งานการตัดจำหน่ายแบบกลุ่ม",
     "batchSchemaMissingHelp": "ผู้ดูแลระบบต้องสำรองฐานข้อมูลและรัน migration สำหรับ Disposal Batch ก่อนเปิดใช้งานหน้านี้",
     "batchCreateSuccess": "สร้างชุดคำขอ {count} รายการสำเร็จ",
-    "batchDetailHelp": "ใบงานรวมคำขอตัดจำหน่าย {count} รายการ",
-    "batchTotal": "ทั้งหมดในชุด",
     "batchSharedDetail": "ข้อมูลร่วมของชุด",
-    "batchChildren": "คำขอในชุด",
     "batchSharedEvidence": "หลักฐานร่วมของชุด",
     "sourceBatch": "สร้างจากชุด",
     "openBatch": "เปิดใบงานชุด",
     "openRequest": "เปิดคำขอ",
-    "nextAction": "ขั้นตอนถัดไป",
     "bulkErrors": {
       "DISPOSAL_REQUEST_NOT_FOUND": "ไม่พบคำขอตัดจำหน่ายนี้ หรือคำขอถูกปิดใช้งานแล้ว",
       "DISPOSAL_INVALID_STAGE": "คำขอตัดจำหน่ายไม่ได้อยู่ในขั้นตอนที่อนุมัติได้",
@@ -4144,7 +4140,16 @@
       "uploadFailedLot": "รูปรวมของชุดส่งไม่สำเร็จ {count} ไฟล์",
       "openBatch": "เปิดหน้าชุดคำขอ"
     },
-    "batchMinAssets": "เลือกอย่างน้อย 2 เครื่อง"
+    "batchMinAssets": "เลือกอย่างน้อย 2 เครื่อง",
+    "batchPage": {
+      "progress": "ตัดจำหน่ายแล้ว {disposed}/{total}",
+      "useLotPhoto": "ใช้รูปรวม",
+      "attachPhoto": "แนบรูป",
+      "roundCreate": "สร้างรอบตัดจำหน่ายจากชุดนี้ ({count} เครื่อง)",
+      "roundBlocked": "เข้ารอบไม่ได้ {count} เครื่อง: {reasons}",
+      "lotTitle": "รูปรวมของชุด",
+      "machinesTitle": "เครื่องในชุด ({count})"
+    }
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",
