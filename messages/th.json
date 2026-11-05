@@ -2053,7 +2053,27 @@
       "categoryChangedByModel": "เปลี่ยนหมวดหมู่เป็น {category} ตามรุ่นที่เลือก",
       "otherCategoryUnreadable": "เลือกรุ่นนี้จากรายการไม่ได้ เพราะอยู่หมวดหมู่อื่น",
       "inCategory": "· {category}"
-    }
+    },
+    "recent": {
+      "label": "เพิ่มล่าสุด",
+      "any": "ทุกช่วงเวลา",
+      "days7": "7 วัน",
+      "days30": "30 วัน",
+      "addedBy": "เพิ่มโดย {name} · {source}",
+      "sourceAssetForm": "จากฟอร์มทรัพย์สิน",
+      "sourceMasterData": "จากหน้าข้อมูลหลัก"
+    },
+    "deactivate": {
+      "action": "ปิดใช้งาน",
+      "confirmTitle": "ปิดใช้งาน {name}?",
+      "confirmBody": "ใช้อยู่ใน {models} รุ่น และ {assets} ทรัพย์สิน · ข้อมูลเดิมไม่เปลี่ยน · เปิดใช้งานอีกครั้งได้จากหน้าแก้ไข",
+      "success": "ปิดใช้งานแล้ว"
+    },
+    "photo": {
+      "failed": "โหลดรูปไม่สำเร็จ",
+      "none": "ยังไม่มีรูป"
+    },
+    "phoneBrandSelect": "ยี่ห้อ"
   },
   "supplier": {
     "title": "ผู้ขาย",

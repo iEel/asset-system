@@ -1,22 +1,22 @@
 import Link from "next/link"
-import Image from "next/image"
 import { redirect } from "next/navigation"
 import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, Download, FileSpreadsheet, ImageIcon, Pencil, Plus } from "lucide-react"
+import { AlertTriangle, Download, FileSpreadsheet, Pencil, Plus } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { summarizeModelSpecs } from "@/lib/model-specs"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
-import { ContentPanel } from "@/components/ui/content-panel"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { Button } from "@/components/ui/button"
+import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { FilterFormActions } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { Nil, orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions } from "@/components/ui/row-actions"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -36,7 +36,10 @@ import {
   parseBrandModelListParams,
   type BrandModelListState,
 } from "@/lib/brand-model-query"
+import { readRecentBrandModels, recentAddedWindowStart, type RecentBrandModel } from "@/lib/brand-model-recent"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { BrandModelDeactivateButton } from "@/components/master-data/brand-model-deactivate-button"
+import { ModelPhoto } from "@/components/master-data/model-photo"
 
 type BrandsPageProps = {
   params: Promise<{ locale: string }>
@@ -50,6 +53,7 @@ type BrandsPageProps = {
     modelCategoryId?: string
     modelPhoto?: string
     modelUsage?: string
+    added?: string
   }>
 }
 
@@ -65,6 +69,9 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   const listState = parseBrandModelListParams(rawSearchParams)
   const searchText = listState.search
   const basePath = `/${locale}/master-data/brands`
+  const now = new Date()
+  // "เพิ่มล่าสุด" (G7P1-R3): one createdAt window for the brand list and the model table, like the status filter.
+  const addedWhere = listState.added ? { createdAt: { gte: recentAddedWindowStart(listState.added, now) } } : {}
 
   const modelIdsWithPhotos = listState.modelPhoto === "all"
     ? []
@@ -81,6 +88,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   const recordStatus = recordStatusWhere(listState.status)
   const modelWhere: Prisma.AssetModelWhereInput = {
     ...recordStatus,
+    ...addedWhere,
     ...(searchText
       ? {
           OR: [
@@ -110,16 +118,18 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     modelTotal,
     categoryOptions,
     duplicateModelSource,
+    recentRows,
   ] = await Promise.all([
     prisma.assetBrand.findMany({
-      where: recordStatus,
+      where: { ...recordStatus, ...addedWhere },
       select: {
         id: true,
         name: true,
         isActive: true,
         _count: { select: { models: true, assets: true } },
       },
-      orderBy: { name: "asc" },
+      // Newest first while "เพิ่มล่าสุด" is on (spec §4.3).
+      orderBy: listState.added ? [{ createdAt: "desc" }, { name: "asc" }] : { name: "asc" },
     }),
     prisma.assetModel.groupBy({
       by: ["brandId"],
@@ -138,7 +148,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         category: { select: { id: true, code: true, name: true } },
         _count: { select: { assets: true } },
       },
-      orderBy: [{ brand: { name: "asc" } }, { name: "asc" }],
+      orderBy: listState.added ? [{ createdAt: "desc" }, { name: "asc" }] : [{ brand: { name: "asc" } }, { name: "asc" }],
       skip: (listState.modelPage - 1) * listState.modelPageSize,
       take: listState.modelPageSize,
     }),
@@ -158,6 +168,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       },
       orderBy: { name: "asc" },
     }),
+    listState.added ? readRecentBrandModels(prisma, listState.added, now) : Promise.resolve([] as RecentBrandModel[]),
   ])
 
   const listHref = (next: Partial<BrandModelListState>) => `${basePath}?${buildBrandModelQueryString(listState, next)}`
@@ -191,6 +202,19 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       primaryPhotoByModelId.set(photo.referenceId, photo)
     }
   }
+  // The newest active image of the model, when the browser can show it; ModelPhoto shows the placeholder otherwise.
+  const modelPhotoSrc = (modelId: string) => {
+    const photo = primaryPhotoByModelId.get(modelId)
+    return photo && previewableModelPhotoTypes.has(photo.fileType) ? `/api/attachments/${photo.id}?inline=1` : null
+  }
+
+  // Who added a record and where, from its create entry of the system log; "–" when the log no longer holds it (G7P1-R3).
+  const recentByKey = new Map(recentRows.map((row) => [`${row.kind}:${row.id}`, row]))
+  const addedByLine = (kind: RecentBrandModel["kind"], id: string) => {
+    const row = recentByKey.get(`${kind}:${id}`)
+    const source = row?.source === "asset-form" ? t("recent.sourceAssetForm") : row?.source === "master-data" ? t("recent.sourceMasterData") : "–"
+    return t("recent.addedBy", { name: row?.addedByName ?? "–", source })
+  }
 
   const brandDuplicateGroups = buildDuplicateNameGroups(brandOptions)
   const modelDuplicateGroups = buildDuplicateNameGroups(duplicateModelSource)
@@ -205,8 +229,35 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     : ""
   const { start, end, totalPages } = paginationRange(listState.modelPage, listState.modelPageSize, modelTotal)
   // modelBrandId is not a filter of this form: the brand list beside it has its own "all brands" link.
-  const hasActiveFilters = listState.status !== "active" || Boolean(searchText || listState.modelCategoryId || listState.modelPhoto !== "all" || listState.modelUsage !== "all")
+  const hasActiveFilters = listState.status !== "active" || Boolean(searchText || listState.modelCategoryId || listState.modelPhoto !== "all" || listState.modelUsage !== "all" || listState.added)
   const modelColumnCount = selectedBrand ? 6 : 7
+  // A model's edit link and ⋯ "ปิดใช้งาน", in its table row and its phone card.
+  const modelActions = (model: (typeof models)[number], editModelHref: string) => (
+    <BrandModelDeactivateButton
+      kind="model"
+      endpoint={`/api/models/${model.id}`}
+      name={model.name}
+      isActive={model.isActive}
+      models={0}
+      assets={model._count.assets}
+      menuLabel={tCommon("moreActionsFor", { code: model.name })}
+      next={{ label: tCommon("edit"), href: editModelHref, icon: <Pencil aria-hidden="true" /> }}
+    />
+  )
+  // The picker's panel and the phone's brand select both show these.
+  const selectedBrandActions = selectedBrand ? (
+    <BrandModelDeactivateButton
+      kind="brand"
+      endpoint={`/api/brands/${selectedBrand.id}`}
+      name={selectedBrand.name}
+      isActive={selectedBrand.isActive}
+      models={selectedBrand._count.models}
+      assets={selectedBrand._count.assets}
+      menuLabel={tCommon("moreActionsFor", { code: selectedBrand.name })}
+      next={{ label: t("editSelectedBrand"), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" /> }}
+      className="justify-start"
+    />
+  ) : null
 
   return (
     <div className="space-y-6">
@@ -264,7 +315,8 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
 
       <div className="grid gap-4 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)]">
         {/* An aside (the picker) cannot be ContentPanel, so it takes the panel classes (2D-2 R4). */}
-        <aside className={cn(getPanelClasses(), "overflow-hidden lg:sticky lg:top-4 lg:self-start")}>
+        {/* Phones get the brand select at the top of the workspace in place of this picker (spec §4.3). */}
+        <aside className={cn(getPanelClasses(), "hidden overflow-hidden md:block lg:sticky lg:top-4 lg:self-start")}>
           <div className="border-b border-border px-3 py-3">
             <h2 className="text-sm font-semibold text-foreground">{t("brandNavigatorTitle")}</h2>
             <p className="mt-1 text-meta text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
@@ -325,6 +377,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                         <span>{t("assetCountInline", { count: 0 })}</span>
                       )}
                     </div>
+                    {listState.added ? <p className="mt-1 text-meta text-muted-foreground">{addedByLine("brand", brand.id)}</p> : null}
                   </div>
                 )
               })}
@@ -335,19 +388,35 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               <div className="mb-2 text-meta font-medium text-muted-foreground">
                 {t("selectedBrandActions")}
               </div>
-              <RowActions
-                code={selectedBrand.name}
-                menuLabel={tCommon("moreActionsFor", { code: selectedBrand.name })}
-                next={{ label: t("editSelectedBrand"), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" /> }}
-                groups={[]}
-                deleteAction={selectedBrand.isActive ? { endpoint: `/api/brands/${selectedBrand.id}` } : undefined}
-                className="justify-start"
-              />
+              {selectedBrandActions}
             </div>
           ) : null}
         </aside>
 
         <section className="min-w-0 space-y-4">
+          <div className={cn(getPanelClasses(), "space-y-3 p-4 md:hidden")}>
+            <form role="search" action={basePath} className="grid gap-3">
+              {listState.search ? <input type="hidden" name="search" value={listState.search} /> : null}
+              <input type="hidden" name="brandPage" value="1" />
+              <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
+              <input type="hidden" name="modelPage" value="1" />
+              <input type="hidden" name="modelPageSize" value={listState.modelPageSize} />
+              {listState.modelCategoryId ? <input type="hidden" name="modelCategoryId" value={listState.modelCategoryId} /> : null}
+              <input type="hidden" name="modelPhoto" value={listState.modelPhoto} />
+              <input type="hidden" name="modelUsage" value={listState.modelUsage} />
+              <input type="hidden" name="status" value={listState.status} />
+              {listState.added ? <input type="hidden" name="added" value={listState.added} /> : null}
+              <FilterSelect
+                label={t("phoneBrandSelect")}
+                name="modelBrandId"
+                defaultValue={listState.modelBrandId}
+                allLabel={t("allBrandNavigator")}
+                options={brandNavigatorItems.map((brand) => ({ value: brand.id, label: brand.name }))}
+              />
+              <Button type="submit" variant="outline">{tCommon("filter")}</Button>
+            </form>
+            {selectedBrandActions}
+          </div>
           <ContentPanel
             title={t("modelWorkspaceTitle")}
             description={
@@ -360,7 +429,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             }
             actions={<span className="text-sm text-muted-foreground">{t("modelResultSummary", { count: modelTotal })}</span>}
           >
-            <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(150px,1fr))_auto]">
+            <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(140px,1fr))_auto]">
               <input type="hidden" name="brandPage" value="1" />
               <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
               <input type="hidden" name="modelPage" value="1" />
@@ -409,6 +478,16 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   { value: "all", label: tCommon("all") },
                 ]}
               />
+              <FilterSelect
+                label={t("recent.label")}
+                name="added"
+                defaultValue={listState.added ? String(listState.added) : ""}
+                allLabel={t("recent.any")}
+                options={[
+                  { value: "7", label: t("recent.days7") },
+                  { value: "30", label: t("recent.days30") },
+                ]}
+              />
               <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
             </form>
           </ContentPanel>
@@ -440,31 +519,42 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               </Link>
             }
           >
+            {/* Phones: one card per model (name, photo, category, asset count); the table from md (spec §4.3). */}
+            {models.length === 0 ? (
+              <EmptyNote padded className="md:hidden">{tCommon("noData")}</EmptyNote>
+            ) : (
+              <ContentPanelRows className="md:hidden">
+                {models.map((model) => {
+                  const editModelHref = appendBrandModelReturnTo(`/${locale}/master-data/brands/models/${model.id}/edit`, brandModelReturnHref)
+                  return (
+                    <li key={model.id}>
+                      <article className="flex gap-3">
+                        <ModelPhoto src={modelPhotoSrc(model.id)} size="lg" />
+                        <div className="min-w-0 flex-1">
+                          <Link href={editModelHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm font-medium text-foreground [overflow-wrap:anywhere]")}>
+                            {model.name}
+                          </Link>
+                          <p className="text-meta text-muted-foreground">
+                            {model.brand.name} · <span className="tag">{model.category.code}</span> {model.category.name}
+                          </p>
+                          <p className="text-meta text-muted-foreground">
+                            {t("assetCountInline", { count: model._count.assets })}
+                            {model.isActive ? null : <> · {tCommon("inactive")}</>}
+                          </p>
+                          {listState.added ? <p className="text-meta text-muted-foreground">{addedByLine("model", model.id)}</p> : null}
+                          <div className="mt-2">{modelActions(model, editModelHref)}</div>
+                        </div>
+                      </article>
+                    </li>
+                  )
+                })}
+              </ContentPanelRows>
+            )}
             <DataTable
               framed={false}
+              className="hidden md:block"
               caption={t("modelsTitle")}
               scrollHint={tCommon("tableScrollHint")}
-              footer={
-                modelTotal > 0 ? (
-                  <Pagination
-                    page={listState.modelPage}
-                    totalPages={totalPages}
-                    previousHref={listHref({ modelPage: listState.modelPage - 1 })}
-                    nextHref={listHref({ modelPage: listState.modelPage + 1 })}
-                    pageSize={listState.modelPageSize}
-                    pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ modelPageSize: value, modelPage: 1 }) }))}
-                    labels={{
-                      navigation: tCommon("pagination"),
-                      previous: tCommon("previous"),
-                      next: tCommon("next"),
-                      pageOf: tCommon("pageOf", { page: listState.modelPage, total: totalPages }),
-                      range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(modelTotal) }),
-                      pageSizeGroup: tCommon("pageSizeLabel"),
-                      rowsPerPage: tCommon("rowsPerPage"),
-                    }}
-                  />
-                ) : undefined
-              }
             >
               <DataTableHeader>
                 <tr>
@@ -486,8 +576,6 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   )
                 ) : (
                   models.map((model) => {
-                    const photo = primaryPhotoByModelId.get(model.id)
-                    const canPreviewPhoto = photo ? previewableModelPhotoTypes.has(photo.fileType) : false
                     const editModelHref = appendBrandModelReturnTo(`/${locale}/master-data/brands/models/${model.id}/edit`, brandModelReturnHref)
                     const modelDrilldown = buildModelDrilldownHrefs({ locale, modelId: model.id })
 
@@ -499,21 +587,11 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                       >
                         <DataTableCell className="min-w-[220px] font-medium text-foreground">
                           <div className="flex items-center gap-3">
-                            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
-                              {photo && canPreviewPhoto ? (
-                                <Image
-                                  src={`/api/attachments/${photo.id}?inline=1`}
-                                  alt=""
-                                  fill
-                                  unoptimized
-                                  className="object-contain p-1 bg-image-stage"
-                                  sizes="48px"
-                                />
-                              ) : (
-                                <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                              )}
+                            <ModelPhoto src={modelPhotoSrc(model.id)} />
+                            <div className="min-w-0">
+                              <span className="block truncate">{model.name}</span>
+                              {listState.added ? <span className="block text-meta font-normal text-muted-foreground">{addedByLine("model", model.id)}</span> : null}
                             </div>
-                            <span className="min-w-0 truncate">{model.name}</span>
                           </div>
                         </DataTableCell>
                         {!selectedBrand ? (
@@ -542,13 +620,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                           <StatusBadge label={model.isActive ? tCommon("active") : tCommon("inactive")} tone={model.isActive ? "success" : "muted"} />
                         </DataTableCell>
                         <DataTableCell align="right" sticky="right">
-                          <RowActions
-                            code={model.name}
-                            menuLabel={tCommon("moreActionsFor", { code: model.name })}
-                            next={{ label: tCommon("edit"), href: editModelHref, icon: <Pencil aria-hidden="true" /> }}
-                            groups={[]}
-                            deleteAction={model.isActive ? { endpoint: `/api/models/${model.id}` } : undefined}
-                          />
+                          {modelActions(model, editModelHref)}
                         </DataTableCell>
                       </ClickableTableRow>
                     )
@@ -556,6 +628,27 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                 )}
               </DataTableBody>
             </DataTable>
+            {modelTotal > 0 ? (
+              <DataTableFoot>
+                <Pagination
+                  page={listState.modelPage}
+                  totalPages={totalPages}
+                  previousHref={listHref({ modelPage: listState.modelPage - 1 })}
+                  nextHref={listHref({ modelPage: listState.modelPage + 1 })}
+                  pageSize={listState.modelPageSize}
+                  pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ modelPageSize: value, modelPage: 1 }) }))}
+                  labels={{
+                    navigation: tCommon("pagination"),
+                    previous: tCommon("previous"),
+                    next: tCommon("next"),
+                    pageOf: tCommon("pageOf", { page: listState.modelPage, total: totalPages }),
+                    range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(modelTotal) }),
+                    pageSizeGroup: tCommon("pageSizeLabel"),
+                    rowsPerPage: tCommon("rowsPerPage"),
+                  }}
+                />
+              </DataTableFoot>
+            ) : null}
           </ContentPanel>
         </section>
       </div>

@@ -1,4 +1,5 @@
 import { parseRecordStatus, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
+import { parseRecentAddedDays, type RecentAddedDays } from "./brand-model-recent.ts"
 
 export const modelPhotoFilters = ["all", "with", "without"] as const
 export const modelUsageFilters = ["all", "used", "unused"] as const
@@ -17,6 +18,7 @@ export type BrandModelListParams = {
   modelCategoryId?: string | string[] | null
   modelPhoto?: string | string[] | null
   modelUsage?: string | string[] | null
+  added?: string | string[] | null
 }
 
 export type BrandModelListState = {
@@ -30,6 +32,8 @@ export type BrandModelListState = {
   modelCategoryId: string
   modelPhoto: ModelPhotoFilter
   modelUsage: ModelUsageFilter
+  // "เพิ่มล่าสุด" (G7P1-R3): 7 or 30 Bangkok days, or no window.
+  added: RecentAddedDays | null
 }
 
 export type DuplicateNameItem = {
@@ -71,6 +75,7 @@ export function parseBrandModelListParams(input: BrandModelListParams): BrandMod
     modelCategoryId: firstValue(input.modelCategoryId),
     modelPhoto: parseModelPhotoFilter(input.modelPhoto),
     modelUsage: parseModelUsageFilter(input.modelUsage),
+    added: parseRecentAddedDays(input.added),
   }
 }
 
@@ -86,6 +91,7 @@ export function buildBrandModelQueryString(current: BrandModelListState, next: P
   if (merged.modelCategoryId) params.set("modelCategoryId", merged.modelCategoryId)
   params.set("modelPhoto", merged.modelPhoto)
   params.set("modelUsage", merged.modelUsage)
+  if (merged.added) params.set("added", String(merged.added))
   setRecordStatusParam(params, merged.status)
   return params.toString()
 }

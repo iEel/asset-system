@@ -75,7 +75,14 @@ test("inactive master data is reachable: a status filter, the real badge, inacti
     assert.doesNotMatch(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/, `${page}: the badge is fixed`)
     assert.match(source, realBadge, `${page}: the badge reads isActive`)
     assert.match(source, /name="status"/, `${page}: no status filter`)
-    assert.match(source, /deleteAction=\{\w+\.isActive \? \{ endpoint: `\/api\/[\w/]+\$\{\w+\.id\}` \} : undefined\}/, `${page}: ลบ shows on inactive rows`)
+    if (page === "brands") {
+      // Group 7 plan 1 Task 4: brands and models deactivate through BrandModelDeactivateButton, which offers
+      // "ปิดใช้งาน" on active records only (tests/brand-model-recent.test.ts).
+      assert.equal(source.match(/isActive=\{(?:selectedBrand|model)\.isActive\}/g)?.length, 2, `${page}: ปิดใช้งาน follows isActive`)
+      assert.match(read("src/components/master-data/brand-model-deactivate-button.tsx"), /groups=\{\n\s+isActive\n\s+\? \[/)
+    } else {
+      assert.match(source, /deleteAction=\{\w+\.isActive \? \{ endpoint: `\/api\/[\w/]+\$\{\w+\.id\}` \} : undefined\}/, `${page}: ลบ shows on inactive rows`)
+    }
     assert.doesNotMatch(source, /deleteAction=\{\{/, `${page}: an unconditional ลบ is left`)
   }
   const suppliers = read(`${D}suppliers/page.tsx`)

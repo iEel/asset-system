@@ -17,12 +17,15 @@ type MasterDataList = {
   removedWrappers: readonly string[]
   // The page shows a StatStrip in place of its local SummaryTile.
   stats: boolean
+  // The tag that renders RowActions on this page, when a client wrapper does it.
+  rowActions?: string
 }
 
 // The master-data lists of plan 2B-1. The commit that moves a page adds its line.
 const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   { path: `${D}master-data/branches/page.tsx`, deleteEndpoints: ["/api/branches/${branch.id}"], removedWrappers: [`${C}master-data/branch-delete-button.tsx`], stats: true },
-  { path: `${D}master-data/brands/page.tsx`, deleteEndpoints: ["/api/models/${model.id}", "/api/brands/${selectedBrand.id}"], removedWrappers: [`${C}master-data/brand-delete-button.tsx`, `${C}master-data/asset-model-delete-button.tsx`], stats: true },
+  // Group 7 plan 1 Task 4: brands and models say "ปิดใช้งาน" through BrandModelDeactivateButton (it renders RowActions).
+  { path: `${D}master-data/brands/page.tsx`, deleteEndpoints: [], rowActions: "<BrandModelDeactivateButton", removedWrappers: [`${C}master-data/brand-delete-button.tsx`, `${C}master-data/asset-model-delete-button.tsx`], stats: true },
   { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: ["/api/categories/${category.id}"], removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },
   { path: `${D}master-data/companies/page.tsx`, deleteEndpoints: ["/api/companies/${company.id}"], removedWrappers: [`${C}master-data/company-delete-button.tsx`], stats: true },
   { path: `${D}master-data/departments/page.tsx`, deleteEndpoints: ["/api/departments/${department.id}"], removedWrappers: [`${C}master-data/department-delete-button.tsx`], stats: false },
@@ -32,9 +35,9 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
 ]
 
 test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowActions and the shared Pagination (spec 2B §5.3, B5, B6)", () => {
-  for (const { path, deleteEndpoints, removedWrappers, stats } of MASTER_DATA_LISTS) {
+  for (const { path, deleteEndpoints, removedWrappers, stats, rowActions = "<RowActions" } of MASTER_DATA_LISTS) {
     const source = read(path)
-    for (const part of ["<PageHeader", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions", "<Pagination"]) {
+    for (const part of ["<PageHeader", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", rowActions, "<Pagination"]) {
       assert.ok(source.includes(part), `${path}: no ${part}`)
     }
     if (stats) assert.ok(source.includes("<StatStrip"), `${path}: no <StatStrip`)
@@ -59,14 +62,16 @@ test("a master-data list past its last page sends the user to the last page (spe
   }
 })
 
-test("the selected brand keeps the vertical brand picker and gets RowActions: edit brand, delete in ⋯ (spec 2B I5, I11)", () => {
+test("the selected brand keeps the vertical brand picker and gets RowActions: edit brand, ปิดใช้งาน in ⋯ (spec 2B I5, I11; group 7 §4.3)", () => {
   const source = read(`${D}master-data/brands/page.tsx`)
-  const start = source.indexOf("{selectedBrand ? (")
-  assert.ok(start !== -1, "the selected brand panel")
-  const panel = source.slice(start, source.indexOf("</aside>", start))
-  assert.match(panel, /<RowActions\n\s+code=\{selectedBrand\.name\}/)
+  const start = source.indexOf("const selectedBrandActions = selectedBrand ? (")
+  assert.ok(start !== -1, "the selected brand actions")
+  const panel = source.slice(start, source.indexOf(") : null", start))
+  assert.match(panel, /<BrandModelDeactivateButton\n\s+kind="brand"/)
+  assert.match(panel, /name=\{selectedBrand\.name\}/)
   assert.match(panel, /next=\{\{ label: t\("editSelectedBrand"\), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" \/> \}\}/)
-  assert.match(panel, /deleteAction=\{selectedBrand\.isActive \? \{ endpoint: `\/api\/brands\/\$\{selectedBrand\.id\}` \} : undefined\}/)
+  assert.match(panel, /endpoint=\{`\/api\/brands\/\$\{selectedBrand\.id\}`\}/)
+  assert.match(source, /\{selectedBrand \? \([\s\S]*?\{selectedBrandActions\}[\s\S]*?<\/aside>/, "the picker's panel shows them")
   assert.equal(source.match(/aria-current=\{/g)?.length, 2, "the picker keeps aria-current=\"page\" on its two links (I11, LFG EXEMPT.LN1)")
   assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n/, "the model table sits flush in a divided panel: no frame in a frame")
   assert.match(source, /<DataTable\n\s+framed=\{false\}/)
@@ -150,7 +155,8 @@ test("wide lists pin the actions column to the right, so edit and ⋯ stay visib
   for (const file of files) {
     const source = read(file)
     assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>/, `${file}: the actions header is pinned`)
-    assert.match(source, /<DataTableCell align="right" sticky="right">\s*<RowActions/, `${file}: the actions cell is pinned`)
+    // The brands page renders its row actions through modelActions (BrandModelDeactivateButton, group 7 plan 1 Task 4).
+    assert.match(source, /<DataTableCell align="right" sticky="right">\s*(?:<RowActions|\{modelActions\(model, editModelHref\)\})/, `${file}: the actions cell is pinned`)
     assert.doesNotMatch(source, /<DataTableCell align="right">\s*<RowActions/, `${file}: no unpinned actions cell is left`)
   }
 })

@@ -2053,7 +2053,27 @@
       "categoryChangedByModel": "Category changed to {category} to match the chosen model",
       "otherCategoryUnreadable": "This model cannot be chosen from the list because it is in another category",
       "inCategory": "· {category}"
-    }
+    },
+    "recent": {
+      "label": "Recently added",
+      "any": "Any time",
+      "days7": "7 days",
+      "days30": "30 days",
+      "addedBy": "Added by {name} · {source}",
+      "sourceAssetForm": "from the asset form",
+      "sourceMasterData": "from the master data page"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "confirmTitle": "Deactivate {name}?",
+      "confirmBody": "Used by {models} models and {assets} assets · existing records stay as they are · it can be reactivated from its edit page",
+      "success": "Deactivated"
+    },
+    "photo": {
+      "failed": "Could not load the photo",
+      "none": "No photo yet"
+    },
+    "phoneBrandSelect": "Brand"
   },
   "supplier": {
     "title": "Suppliers",

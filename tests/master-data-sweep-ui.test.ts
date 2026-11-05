@@ -56,7 +56,8 @@ test("brands page: drill-down text links, the panel frame on the picker and the 
   const source = read(`${D}master-data/brands/page.tsx`)
   assert.equal(source.match(drilldownLink)?.length, 1, "the model table's asset count")
   assert.equal(source.match(/className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/g)?.length, 2, "the picker's model and asset counts (13px)")
-  assert.match(source, /<aside className=\{cn\(getPanelClasses\(\), "overflow-hidden lg:sticky lg:top-4 lg:self-start"\)\}>/)
+  // Group 7 plan 1 Task 4: phones get a brand select in place of the picker.
+  assert.match(source, /<aside className=\{cn\(getPanelClasses\(\), "hidden overflow-hidden md:block lg:sticky lg:top-4 lg:self-start"\)\}>/)
   assert.match(source, /<ContentPanel\n\s+title=\{t\("modelWorkspaceTitle"\)\}/)
   assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
   assert.match(source, /<Link href=\{createModelHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
