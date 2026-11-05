@@ -163,14 +163,14 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
                 <TableEmptyRow colSpan={7}>{tCommon("noData")}</TableEmptyRow>
               ) : machines.map((machine) => (
                 <tr key={machine.requestId} data-disposal-batch-row="">
-                  <DataTableCell><MachinePhoto machine={machine} attachHref={attachHref(machine)} labels={labels} /></DataTableCell>
-                  <DataTableCell className="text-foreground [overflow-wrap:anywhere]">{machine.assetName}</DataTableCell>
+                  <DataTableCell className="whitespace-nowrap"><MachinePhoto machine={machine} attachHref={attachHref(machine)} labels={labels} /></DataTableCell>
+                  <DataTableCell className="min-w-56 text-foreground">{machine.assetName}</DataTableCell>
                   <DataTableCell className="whitespace-nowrap"><span className="tag">{machine.assetTag}</span></DataTableCell>
-                  <DataTableCell className="text-muted-foreground [overflow-wrap:anywhere]">{machine.serialNumber ?? "–"}</DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">{machine.serialNumber ?? "–"}</DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
                     <Link href={requestHref(machine.requestId)} className={linkVariants({ size: "inherit" })}><span className="tag">{machine.disposalNo}</span></Link>
                   </DataTableCell>
-                  <DataTableCell><StatusBadge label={labels.stage(machine.requestStatus)} status={machine.requestStatus} /></DataTableCell>
+                  <DataTableCell className="whitespace-nowrap"><StatusBadge label={labels.stage(machine.requestStatus)} status={machine.requestStatus} /></DataTableCell>
                   <DataTableCell className="whitespace-nowrap text-muted-foreground"><RoundLink machine={machine} href={roundHref(machine)} /></DataTableCell>
                 </tr>
               ))}

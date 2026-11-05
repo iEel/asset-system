@@ -143,10 +143,24 @@ test("the batch list words in Thai and English", () => {
   const messages = JSON.parse(read("messages/th.json")).disposalPage
   const th = messages.batchList
   const en = JSON.parse(read("messages/en.json")).disposalPage.batchList
-  assert.equal(th.searchPlaceholder, "ค้นหาเลขชุด ชื่อทรัพย์สิน รหัส หรือผู้ขอ")
+  assert.equal(th.searchPlaceholder, "ค้นหาเลขที่ชุด ชื่อทรัพย์สิน รหัส หรือผู้ขอ")
   assert.equal(th.machineCount, "{count} เครื่อง")
   assert.equal(th.stripLine, "{requests} คำขอจาก {batches} ชุด")
   assert.equal(th.emptyTitle, "ยังไม่มีชุดคำขอ")
   assert.equal(messages.batchPage.progress, "ตัดจำหน่ายแล้ว {disposed}/{total}")
   for (const key of Object.keys(th)) assert.equal(typeof en[key], "string", key)
+})
+
+// Look-step fix: at 1024 and 1440 the table crushed the name letter by letter; it now scrolls instead (the rounds list's
+// widths: the name min-w-56, the codes, the stage and the round on one line).
+test("the batch page machines table keeps readable widths: the name min-w-56, the other columns whitespace-nowrap", () => {
+  const source = read(PAGE)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap"><MachinePhoto /)
+  assert.match(source, /<DataTableCell className="min-w-56 text-foreground">\{machine\.assetName\}<\/DataTableCell>/)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap"><span className="tag">\{machine\.assetTag\}<\/span><\/DataTableCell>/)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap text-muted-foreground">\{machine\.serialNumber \?\? "–"\}<\/DataTableCell>/)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap">\n\s+<Link href=\{requestHref\(machine\.requestId\)\}/)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap"><StatusBadge label=\{labels\.stage\(machine\.requestStatus\)\}/)
+  assert.match(source, /<DataTableCell className="whitespace-nowrap text-muted-foreground"><RoundLink /)
+  assert.doesNotMatch(source, /<DataTableCell className="[^"]*\[overflow-wrap:anywhere\]">\{machine\.(?:assetName|serialNumber)/, "the phone card may wrap; the table cells scroll")
 })

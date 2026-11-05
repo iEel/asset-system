@@ -4147,7 +4147,7 @@
     },
     "batchList": {
       "searchLabel": "ค้นหาชุดคำขอ",
-      "searchPlaceholder": "ค้นหาเลขชุด ชื่อทรัพย์สิน รหัส หรือผู้ขอ",
+      "searchPlaceholder": "ค้นหาเลขที่ชุด ชื่อทรัพย์สิน รหัส หรือผู้ขอ",
       "searchSubmit": "ค้นหา",
       "searchEmpty": "ไม่พบชุดคำขอที่ตรงกับคำค้น",
       "emptyTitle": "ยังไม่มีชุดคำขอ",
