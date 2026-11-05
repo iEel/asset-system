@@ -15,7 +15,7 @@ test("disposal forms use one page title and compact numbered sections", () => {
   assert.match(batch, /<FormSection number=\{1\} title=\{t\("batchForm\.sectionAssets"\)\}>/)
   assert.match(batch, /<FormSection number=\{2\} title=\{t\("batchForm\.sectionLot"\)\}>/)
   assert.match(batch, /<FormSection number=\{3\} title=\{t\("batchForm\.sectionRequest"\)\}>/)
-  assert.match(batch, /<ChoiceCard\n/)
+  assert.match(batch, /<ChoiceCard\r?\n/)
   assert.doesNotMatch(batch, /<NativeSelect\b/)
   assert.doesNotMatch(batch, /function FormStep/)
   assert.match(single, /reasonCharacterCount/)

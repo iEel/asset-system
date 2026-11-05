@@ -191,7 +191,7 @@ test("batch creation uploads the lot files to the batch and each machine's files
 
   assert.match(form, /\/api\/disposal-batches\/\$\{job\.batchId\}\/attachments/)
   assert.match(form, /\/api\/disposal-requests\/\$\{job\.requestId\}\/attachments/)
-  assert.match(form, /const UPLOAD_POOL = 4\n/)
+  assert.match(form, /const UPLOAD_POOL = 4\r?\n/)
   assert.match(form, /planDisposalBatchUploads\(/)
   assert.match(form, /await runWithLimit\(jobs\.map\(\(job\) => \(\) => upload\(job\)\), UPLOAD_POOL\)/)
   assert.doesNotMatch(form, /for \(const child of payload\.requests/)
