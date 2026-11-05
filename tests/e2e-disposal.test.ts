@@ -379,6 +379,9 @@ test("the request-batch pages: the form with a photo per machine and the lot pho
     "`/th/disposal/batches?q=${encodeURIComponent(batchNo)}`",
     `toContainText("ตัดจำหน่ายแล้ว 3/3")`,
     `recordSettled(page, measure,`,
+    // A machine's request opened from the batch page goes back to the batch page.
+    `await expect(page.locator('[data-slot="page-back-link"]')).toHaveAttribute("href", batchPath)`,
+    `await page.waitForURL((url) => url.pathname === batchPath)`,
   ]) assert.ok(spec.includes(step), step)
   // The words the specs read are the app's own.
   const th = JSON.parse(read("messages/th.json")) as { disposalPage: { batchForm: Record<string, string>; batchPage: Record<string, string>; batchCreateSuccess: string } }

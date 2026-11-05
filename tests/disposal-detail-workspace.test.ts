@@ -32,7 +32,7 @@ test("disposal detail preserves operational navigation and uses an ArrowLeft bac
   const source = detailSource()
 
   assert.match(source, /<PageBackLink href=\{returnToHref\}/)
-  assert.match(source, /normalizeOperationalReturnTo/)
+  assert.match(source, /normalizeDisposalRequestReturnTo/)
   assert.match(source, /<ActionBar/)
   assert.match(source, /href=\{returnToHref\}/)
   assert.doesNotMatch(source, /Trash2/)
@@ -106,7 +106,8 @@ test("child requests disclose their source batch and inherited evidence", () => 
 test("disposal request header is PageHeader with the asset name and a back button at every width (spec 2B §4.5.4)", () => {
   const source = detailSource()
 
-  assert.match(source, /breadcrumbs=\{\[\s*\{ label: t\("title"\), href: returnToHref \},\s*\{ label: disposalRequest\.disposalNo, code: true \},\s*\]\}\s*title=\{disposalRequest\.asset\.name\}/)
+  // From a batch page a batch-number crumb sits between ตัดจำหน่าย and the request (request batches).
+  assert.match(source, /breadcrumbs=\{\[\s*\{ label: t\("title"\), href: titleCrumbHref \},\s*\.\.\.batchCrumbs,\s*\{ label: disposalRequest\.disposalNo, code: true \},\s*\]\}\s*title=\{disposalRequest\.asset\.name\}/)
   assert.match(source, /meta=\{\s*<>\s*<span className="text-meta text-muted-foreground">\s*<span className="tag">\{disposalRequest\.asset\.assetTag\}<\/span>\s*\{" · "\}\s*\{t\("requestPage\.metaRequest", \{ number: disposalRequest\.disposalNo \}\)\}\s*<\/span>\s*<StatusBadge [^\n]*\/>\s*<Chip>\{method\}<\/Chip>/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\s*actions=\{\s*<>\s*<div className="md:hidden">/)
   assert.match(source, /<div className="hidden items-center gap-2 md:flex">/)

@@ -3,6 +3,7 @@
 //   and the count line names the split; the send has no review step and lands on the batch page. The phone shows only
 //   "สร้างชุดคำขอได้บนคอมพิวเตอร์", so a phone test makes the same batch through the API the form posts to.
 // - The batch page: the machine with a photo shows its thumbnail, the others "ใช้รูปรวม"; the Serial (or –).
+//   A machine's request opened from it goes back to the batch page (the back link and the batch-number crumb).
 // - The approvals panel: the machine with its own photo opens on that photo, a machine without one on the lot photo.
 // - After approval: "สร้างรอบตัดจำหน่ายจากชุดนี้ (3 เครื่อง)" (the computer; the phone reads, with no round button), a
 //   round of the three, "ตัดจำหน่ายแล้ว 3/3" with each row's round, and the round's Excel has the own photo on its row.
@@ -111,6 +112,13 @@ test("IT staff make a batch of three: one machine with its own photo, two on the
   expect(lotPhotoId).not.toBe(ownPhotoId)
   requestIds = []
   for (const asset of assets) requestIds.push(await batchRequestId(page, e2eDevice, asset))
+  // A machine's request, opened from the batch page, goes back to the batch page (its back link and its crumb).
+  await batchPageMachine(page, e2eDevice, own).getByRole("link", { name: /^DP-\d{8}-\d{4}$/ }).click()
+  await page.waitForURL(/\/th\/disposal\/[0-9a-f-]{36}\?returnTo=/)
+  await expect(page.locator('[data-slot="page-back-link"]')).toHaveAttribute("href", batchPath)
+  await expect(page.getByRole("navigation", { name: "เส้นทางหน้า" }).getByRole("link", { name: batchNo, exact: true })).toHaveAttribute("href", batchPath)
+  await page.locator('[data-slot="page-back-link"]').click()
+  await page.waitForURL((url) => url.pathname === batchPath)
 })
 
 test("the IT head sees each machine's own photo first in the approvals panel, the lot photo for a machine without one", async ({ page, measure, e2eTheme }) => {

@@ -41,6 +41,29 @@ export function normalizeDisposalBatchReturnTo(locale: string, value: ReturnToPa
   return normalizeInternalReturnTo(fallback, value, [batchesPath])
 }
 
+// A disposal request page's way back (request batches): the queue (with its query and hash), or the one batch page the
+// request was opened from (`/[locale]/disposal/batches/<uuid>`, with its query). Anything else, another site, another
+// locale, the batch list or a deeper path, is the queue. `new URL` resolves `..` first.
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function normalizeDisposalRequestReturnTo(locale: string, value: ReturnToParam): string {
+  const fallback = operationalReturnPaths.disposal(locale)
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return fallback
+
+  try {
+    const url = new URL(raw, "http://asset.local")
+    if (url.origin !== "http://asset.local") return fallback
+    if (url.pathname === fallback) return `${url.pathname}${url.search}${url.hash}`
+    const batches = `/${locale}/disposal/batches/`
+    const batchId = url.pathname.startsWith(batches) ? url.pathname.slice(batches.length) : ""
+    if (uuidPattern.test(batchId)) return `${url.pathname}${url.search}`
+    return fallback
+  } catch {
+    return fallback
+  }
+}
+
 // The findings page's way back (group 2 plan 4, P4-R12): the rounds list with its filters, or one round's page, the pages
 // that link here (not the create page). Anything else is no way back (null), and the page falls back to the round or
 // the rounds list.

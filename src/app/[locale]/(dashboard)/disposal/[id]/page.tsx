@@ -14,6 +14,7 @@ import { DisposalNextStepCard, type DisposalNextStepState } from "@/components/d
 import { DisposalPhotoGallery } from "@/components/disposal/disposal-photo-gallery"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import type { BreadcrumbItem } from "@/components/ui/breadcrumbs"
 import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
@@ -23,7 +24,7 @@ import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { appendOperationalReturnTo, normalizeDisposalRequestReturnTo } from "@/lib/operational-return-navigation"
 import { getDisposalApprovalSodReason, getDisposalSegregationError } from "@/lib/disposal-policy"
 import { getDisposalNextAction } from "@/lib/disposal-stage"
 import { listDisposalPhotos, isDisposalPhotoFile } from "@/lib/disposal-photo"
@@ -172,7 +173,14 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   const previousStatusName = disposalRequest.previousAssetStatus
     ? disposalRequest.previousAssetStatus.nameTh || disposalRequest.previousAssetStatus.name
     : null
-  const returnToHref = normalizeOperationalReturnTo(locale, "disposal", rawSearchParams.returnTo)
+  // The way back: the queue, or the batch page the request was opened from (request batches).
+  const returnToHref = normalizeDisposalRequestReturnTo(locale, rawSearchParams.returnTo)
+  // From a batch page the crumbs read ตัดจำหน่าย (the queue) › the batch number (that batch page) › the request.
+  const backToBatch = returnToHref.startsWith(`/${locale}/disposal/batches/`) && disposalRequest.batch !== null
+  const titleCrumbHref = backToBatch ? `/${locale}/disposal` : returnToHref
+  const batchCrumbs: BreadcrumbItem[] = backToBatch && disposalRequest.batch
+    ? [{ label: disposalRequest.batch.batchNo, href: returnToHref, code: true }]
+    : []
   const printHref = appendOperationalReturnTo(`/${locale}/disposal/${disposalRequest.id}/print`, returnToHref)
   const printLabel = disposalRequest.requestStatus === "disposed" ? t("printFinalDocument") : t("printRequest")
   const assetHref = `/${locale}/assets/${disposalRequest.asset.id}`
@@ -290,7 +298,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     <div className={`space-y-6 ${phoneAction ? actionBarPagePadding.withPrimary : ""}`}>
       <PageHeader
         breadcrumbs={[
-          { label: t("title"), href: returnToHref },
+          { label: t("title"), href: titleCrumbHref },
+          ...batchCrumbs,
           { label: disposalRequest.disposalNo, code: true },
         ]}
         title={disposalRequest.asset.name}

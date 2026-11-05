@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-import { maintenanceListCrumbHref, normalizeDisposalBatchReturnTo, normalizeMaintenanceReturnTo } from "../src/lib/operational-return-navigation.ts"
+import { maintenanceListCrumbHref, normalizeDisposalBatchReturnTo, normalizeDisposalRequestReturnTo, normalizeMaintenanceReturnTo } from "../src/lib/operational-return-navigation.ts"
 
 test("operational return navigation helper only accepts internal workflow targets", () => {
   const source = readFileSync("src/lib/operational-return-navigation.ts", "utf8")
@@ -45,8 +45,12 @@ test("disposal list and detail preserve filtered list context", () => {
 
   // Group 6 plan 3 Task 3: the request page also reads /disposal/new's ?uploadErrors=.
   assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; uploadErrors\?: string \| string\[\] \}>/)
-  assert.match(detailSource, /normalizeOperationalReturnTo\(locale, "disposal", rawSearchParams\.returnTo\)/)
-  assert.match(detailSource, /\{ label: t\("title"\), href: returnToHref \}/)
+  assert.match(detailSource, /normalizeDisposalRequestReturnTo\(locale, rawSearchParams\.returnTo\)/)
+  assert.doesNotMatch(detailSource, /normalizeOperationalReturnTo\(locale, "disposal"/)
+  // The crumbs: ตัดจำหน่าย › the batch number › the request when the way back is a batch page, else as before.
+  assert.match(detailSource, /const titleCrumbHref = backToBatch \? `\/\$\{locale\}\/disposal` : returnToHref/)
+  assert.match(detailSource, /\{ label: t\("title"\), href: titleCrumbHref \}/)
+  assert.match(detailSource, /\[\{ label: disposalRequest\.batch\.batchNo, href: returnToHref, code: true \}\]/)
   assert.match(detailSource, /href=\{returnToHref\}/)
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/\$\{disposalRequest\.id\}\/print`, returnToHref\)/)
 })
@@ -118,6 +122,31 @@ test("normalizeDisposalBatchReturnTo accepts the batch history list and falls ba
   assert.equal(normalizeDisposalBatchReturnTo("th", "/en/disposal/batches"), "/th/disposal", "another locale")
   assert.equal(normalizeDisposalBatchReturnTo("th", "https://evil.example/th/disposal/batches"), "/th/disposal")
   assert.equal(normalizeDisposalBatchReturnTo("th", "//evil.example/th/disposal/batches"), "/th/disposal")
+})
+
+test("normalizeDisposalRequestReturnTo accepts the queue and one batch page, and nothing else", () => {
+  const id = "0f8fad5b-d9cb-469f-a165-70867728950e"
+  const f = normalizeDisposalRequestReturnTo
+  assert.equal(f("th", undefined), "/th/disposal")
+  assert.equal(f("th", ""), "/th/disposal")
+  assert.equal(f("th", "/th/disposal"), "/th/disposal")
+  assert.equal(f("th", "/th/disposal?status=approved&page=2#top"), "/th/disposal?status=approved&page=2#top", "the queue keeps its query and hash")
+  assert.equal(f("th", `/th/disposal/batches/${id}`), `/th/disposal/batches/${id}`)
+  assert.equal(f("th", `/th/disposal/batches/${id.toUpperCase()}`), `/th/disposal/batches/${id.toUpperCase()}`)
+  assert.equal(f("th", `/th/disposal/batches/${id}?returnTo=%2Fth%2Fdisposal%2Fbatches`), `/th/disposal/batches/${id}?returnTo=%2Fth%2Fdisposal%2Fbatches`, "a batch page keeps its query")
+  assert.equal(f("th", `/th/disposal/batches/${id}#files`), `/th/disposal/batches/${id}`, "a batch page drops the hash")
+  assert.equal(f("th", [`/th/disposal/batches/${id}`, "/th/admin"]), `/th/disposal/batches/${id}`)
+  assert.equal(f("th", "/th/disposal/batches"), "/th/disposal", "the batch list is not a way back here")
+  assert.equal(f("th", "/th/disposal/batches/batch-1"), "/th/disposal", "not a UUID")
+  assert.equal(f("th", `/th/disposal/batches/${id}/print`), "/th/disposal", "deeper path")
+  assert.equal(f("th", `/th/disposal/batches/${id}/`), "/th/disposal", "a trailing slash is deeper")
+  assert.equal(f("th", `/th/disposal/batches/${id}/../../../admin`), "/th/disposal", "`..` resolves to /th/admin")
+  assert.equal(f("th", `/th/disposal/batches/x/../${id}`), `/th/disposal/batches/${id}`, "`..` that resolves to a batch page is that batch page")
+  assert.equal(f("th", `/en/disposal/batches/${id}`), "/th/disposal", "another locale")
+  assert.equal(f("th", "/en/disposal"), "/th/disposal", "another locale")
+  assert.equal(f("th", `https://evil.example/th/disposal/batches/${id}`), "/th/disposal")
+  assert.equal(f("th", `//evil.example/th/disposal/batches/${id}`), "/th/disposal")
+  assert.equal(f("th", "/th/disposal/new"), "/th/disposal")
 })
 
 test("the disposal batch page reads returnTo for its back button", () => {
