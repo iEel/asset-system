@@ -5728,7 +5728,10 @@
     "disposalRoundSaleValueRequired": "กรุณากรอกราคาขายเหมา",
     "disposalDateInFuture": "วันที่จำหน่ายต้องไม่หลังวันนี้",
     "disposalEvidenceExceptionForbidden": "เฉพาะผู้ดูแลระบบเท่านั้นที่บันทึกตัดจำหน่ายโดยไม่มีหลักฐานได้",
-    "disposalRoundNotFound": "ไม่พบรอบตัดจำหน่ายนี้"
+    "disposalRoundNotFound": "ไม่พบรอบตัดจำหน่ายนี้",
+    "locationParentOtherBranch": "ที่ตั้งแม่ต้องอยู่สาขาเดียวกัน เลือกที่ตั้งแม่ในสาขานี้",
+    "locationParentCycle": "ที่ตั้งแม่ต้องไม่ใช่ที่ตั้งนี้เองหรือที่ตั้งย่อยของที่ตั้งนี้",
+    "locationBranchInUse": "เปลี่ยนสาขาไม่ได้ เพราะที่ตั้งนี้ยังมีที่ตั้งย่อยหรือทรัพย์สินอยู่"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

@@ -169,32 +169,6 @@ export function buildLocationPathMap(locations: LocationPathItem[]) {
   return paths
 }
 
-export function wouldCreateLocationCycle({
-  locationId,
-  nextParentId,
-  locations,
-}: {
-  locationId: string
-  nextParentId: string | null | undefined
-  locations: { id: string; parentId: string | null }[]
-}) {
-  if (!nextParentId) return false
-  if (nextParentId === locationId) return true
-
-  const parentById = new Map(locations.map((location) => [location.id, location.parentId]))
-  const seen = new Set<string>()
-  let current: string | null | undefined = nextParentId
-
-  while (current) {
-    if (current === locationId) return true
-    if (seen.has(current)) return false
-    seen.add(current)
-    current = parentById.get(current)
-  }
-
-  return false
-}
-
 export function getLocationDeleteBlockReason(counts: {
   currentAssets: number
   homeAssets: number

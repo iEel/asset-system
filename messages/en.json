@@ -5728,7 +5728,10 @@
     "disposalRoundSaleValueRequired": "Round sale price is required",
     "disposalDateInFuture": "Disposal date cannot be in the future",
     "disposalEvidenceExceptionForbidden": "Only system administrators can record a disposal without evidence",
-    "disposalRoundNotFound": "Disposal round not found"
+    "disposalRoundNotFound": "Disposal round not found",
+    "locationParentOtherBranch": "The parent must be in the same branch. Choose a parent in this branch.",
+    "locationParentCycle": "This location or one of its children cannot be its parent.",
+    "locationBranchInUse": "The branch cannot change while this location still has child locations or assets."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

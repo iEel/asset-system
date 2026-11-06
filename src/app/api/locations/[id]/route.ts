@@ -5,7 +5,8 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse, isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { locationSchema } from "@/lib/validations/location"
-import { getLocationDeleteBlockReason, wouldCreateLocationCycle } from "@/lib/location-list-query"
+import { getLocationDeleteBlockReason } from "@/lib/location-list-query"
+import { checkLocationParent, locationParentRefusalBody, locationRuleSelect } from "@/lib/location-tree"
 import { isDeactivation } from "@/lib/master-data-query"
 
 type LocationRouteContext = {
@@ -90,18 +91,39 @@ export async function PUT(request: NextRequest, context: LocationRouteContext) {
       }
     }
 
-    if (input.parentId) {
-      const locations = await prisma.location.findMany({
-        where: { isActive: true },
-        select: {
-          id: true,
-          parentId: true,
+    // The parent rule runs only when the parent or the branch changes, so a location that already hangs under another
+    // branch's parent still saves an unrelated edit (spec §6.2). The cycle check reads inactive rows too.
+    const nextParentId = input.parentId ?? null
+    const branchChanged = existing.branchId !== input.branchId
+    if (branchChanged || (existing.parentId ?? null) !== nextParentId) {
+      const rows = await prisma.location.findMany({ select: locationRuleSelect })
+      const usage = branchChanged
+        ? (
+            await prisma.location.findFirst({
+              where: { id },
+              select: {
+                _count: {
+                  select: {
+                    currentAssets: { where: { isActive: true } },
+                    homeAssets: { where: { isActive: true } },
+                    children: { where: { isActive: true } },
+                  },
+                },
+              },
+            })
+          )?._count
+        : undefined
+      const refusal = checkLocationParent(
+        {
+          id,
+          branchId: input.branchId,
+          parentId: nextParentId,
+          previous: { branchId: existing.branchId, parentId: existing.parentId ?? null },
         },
-      })
-
-      if (wouldCreateLocationCycle({ locationId: id, nextParentId: input.parentId, locations })) {
-        return fieldErrorResponse({ status: 400, error: "Location hierarchy cannot contain a cycle", fieldErrors: { parentId: "locationCycle" } })
-      }
+        rows.map((row) => ({ ...row, ownAssetCount: 0 })),
+        usage && { activeChildren: usage.children, currentAssets: usage.currentAssets, homeAssets: usage.homeAssets },
+      )
+      if (refusal) return NextResponse.json(locationParentRefusalBody(refusal), { status: 409 })
     }
 
     const location = await prisma.location.update({

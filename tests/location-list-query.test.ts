@@ -10,7 +10,6 @@ import {
   buildLocationWhere,
   getLocationDeleteBlockReason,
   parseLocationListParams,
-  wouldCreateLocationCycle,
 } from "../src/lib/location-list-query.ts"
 
 test("parses location filters with safe defaults", () => {
@@ -95,18 +94,6 @@ test("builds stable full paths from a flat location hierarchy", () => {
 
   assert.equal(paths.get("room"), "SNI / HQ / IT")
   assert.equal(paths.get("orphan"), "OFF")
-})
-
-test("detects parent changes that would create a location cycle", () => {
-  const locations = [
-    { id: "root", parentId: null },
-    { id: "floor", parentId: "root" },
-    { id: "room", parentId: "floor" },
-  ]
-
-  assert.equal(wouldCreateLocationCycle({ locationId: "root", nextParentId: "room", locations }), true)
-  assert.equal(wouldCreateLocationCycle({ locationId: "room", nextParentId: "root", locations }), false)
-  assert.equal(wouldCreateLocationCycle({ locationId: "room", nextParentId: "room", locations }), true)
 })
 
 test("blocks deleting locations that are still referenced", () => {

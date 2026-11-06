@@ -438,8 +438,10 @@ test("admin and master-data refusals about one field name it: username, password
   const place = { code: "L1", name: "Store", branchId: "b1", parentId: "loc-1", locationType: "Room", description: "", isActive: true }
   stubDb({})
   await expectBody(await location.PUT(jsonRequest("PUT", place), params("loc-1")), 400, { error: "Location cannot be its own parent", fieldErrors: { parentId: "locationOwnParent" } })
-  stubDb({ location: { findFirst: () => ({ id: "loc-1", isActive: true }), findMany: () => [{ id: "loc-1", parentId: null }, { id: "loc-2", parentId: "loc-1" }] } })
-  await expectBody(await location.PUT(jsonRequest("PUT", { ...place, parentId: "loc-2" }), params("loc-1")), 400, { error: "Location hierarchy cannot contain a cycle", fieldErrors: { parentId: "locationCycle" } })
+  // Group 7 plan 3: a cycle is a 409 under parentId (LOCATION_PARENT_CYCLE), checked over inactive rows too.
+  const placeRow = { code: "L", name: "L", locationType: "Room", branchId: "b1", isActive: true }
+  stubDb({ location: { findFirst: () => ({ ...placeRow, id: "loc-1", parentId: null }), findMany: () => [{ ...placeRow, id: "loc-1", parentId: null }, { ...placeRow, id: "loc-2", parentId: "loc-1" }] } })
+  await expectBody(await location.PUT(jsonRequest("PUT", { ...place, parentId: "loc-2" }), params("loc-1")), 409, { error: "LOCATION_PARENT_CYCLE", code: "LOCATION_PARENT_CYCLE", fieldErrors: { parentId: "locationParentCycle" } })
 })
 
 test("asset, operation, maintenance and import refusals about a field name it; the import file rules belong to the form (V spec §6.2)", async () => {

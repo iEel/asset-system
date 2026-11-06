@@ -160,6 +160,8 @@ test("a referenced record that is inactive comes back when ticked ใช้ง�
       counts: { currentAssets: 3, homeAssets: 1, children: 0, auditRounds: 0 },
       reason: getLocationDeleteBlockReason({ currentAssets: 3, homeAssets: 1, children: 0, auditRounds: 0 }),
       extra: {},
+      // The stored branch and parent, so the save changes neither (group 7 plan 3 parent rule).
+      stored: { branchId: "b1", parentId: null },
     },
     {
       dir: "companies", model: "company",
@@ -197,7 +199,7 @@ test("a referenced record that is inactive comes back when ticked ใช้ง�
           findFirst: (args: { where: Record<string, unknown> }) => {
             lookups.push(args.where)
             if (args.where.code) return null
-            return { id: "row-1", isActive: stored, _count: item.counts }
+            return { id: "row-1", isActive: stored, ...("stored" in item ? item.stored : {}), _count: item.counts }
           },
           update: (args: unknown) => { updates.push(args); return { id: "row-1" } },
         },

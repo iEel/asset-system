@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { locationSchema } from "@/lib/validations/location"
+import { checkLocationParent, locationParentRefusalBody, locationRuleSelect } from "@/lib/location-tree"
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +65,16 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "location", "create")
 
     const input = locationSchema.parse(await request.json())
+    // A new location hangs only under a location of its own branch (spec §6.2).
+    if (input.parentId) {
+      const parents = await prisma.location.findMany({ where: { id: input.parentId }, select: locationRuleSelect })
+      const refusal = checkLocationParent(
+        { branchId: input.branchId, parentId: input.parentId },
+        parents.map((row) => ({ ...row, ownAssetCount: 0 })),
+      )
+      if (refusal) return NextResponse.json(locationParentRefusalBody(refusal), { status: 409 })
+    }
+
     const location = await prisma.location.create({
       data: {
         ...input,
