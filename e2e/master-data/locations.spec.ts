@@ -8,7 +8,9 @@
 //   (LOCATION_PARENT_OTHER_BRANCH, Review Focus 2). Nothing changes, so the tree still shows the chain.
 // - The tree (the default view): the room counts 1 and its count opens the register by the room, whose chip names the
 //   path; the floor and the building count 0 of their own and read "รวมที่ตั้งย่อย 1" (G7P3-R2, R3; Review Focus 3).
-// - A search shows the list with the name path (the phone's cards).
+// - A search shows the list with the name path from the branch down (the phone's cards).
+// - The tree shows 100 locations of one level at a time (the run's branch holds thousands of roots on dev): the spec
+//   presses "แสดงอีก {n} รายการ" until the run's building shows; a closed level is not in the page at all.
 // - "เพิ่มที่ตั้งในนี้" on the floor opens the form with the branch and the floor chosen; saving lands the new location
 //   under the floor (Review Focus 5).
 // - Editing the floor: the parent picker offers the building but neither the floor nor its room (Review Focus 1).
@@ -96,6 +98,17 @@ async function expand(page: Page, location: RunLocation) {
   await expect(page.getByRole("button", { name: fillTemplate(W.collapse, { name: location.name }), exact: true })).toHaveAttribute("aria-expanded", "true")
 }
 
+// The run's building among the branch's roots: one level shows 100 at a time, so press the root level's "แสดงอีก {n}
+// รายการ" (the only one while nothing is expanded) until the building's row is there.
+async function revealRoot(page: Page, location: RunLocation) {
+  const showMore = page.locator("[data-location-tree-more]").last().getByRole("button")
+  for (let round = 0; round < 100 && (await treeRow(page, location).count()) === 0; round += 1) {
+    await expect(showMore).toHaveText(new RegExp(`^${escapeRegExp(W.showMore).replace(escapeRegExp("{n}"), "[\\d,]+")}$`))
+    await showMore.click()
+  }
+  await expect(treeRow(page, location)).toBeVisible()
+}
+
 // ⋯ of a location: the menu on the computer, the sheet on the phone; then one of its items.
 async function rowAction(page: Page, entry: Locator, location: RunLocation, item: string) {
   await entry.getByRole("button", { name: fillTemplate(W.moreActionsFor, { code: location.code }), exact: true }).click()
@@ -141,7 +154,8 @@ test.describe("the IT head reads and arranges a building's locations", () => {
     await page.goto(`/th/master-data/locations?branchId=${runBranch.id}`, { waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: W.title, exact: true })).toBeVisible()
     await expect(page.getByRole("navigation", { name: W.viewLabel }).getByRole("link", { name: W.viewTree, exact: true })).toHaveAttribute("aria-current", "page")
-    await expect(treeRow(page, building)).toBeVisible()
+    await revealRoot(page, building)
+    // A closed level is not rendered: the floor is not in the page until the building opens.
     await expect(treeRow(page, floor)).toHaveCount(0)
     await expand(page, building)
     await expand(page, floor)
@@ -171,8 +185,8 @@ test.describe("the IT head reads and arranges a building's locations", () => {
       ? page.locator("table tbody tr").filter({ hasText: location.code })
       : page.locator("[data-location-mobile-list] article").filter({ hasText: location.code })
     await expect(listEntry(room)).toHaveCount(1)
-    // The list's path starts at the top location (the branch has a column of its own on the computer).
-    await expect(listEntry(room)).toContainText(chainPath)
+    // The list's path starts with the branch name, like the form and the register chip.
+    await expect(listEntry(room)).toContainText(`${runBranch.name}${PATH}${chainPath}`)
     await recordSettled(page, measure, "locations list, a search with paths")
 
     // ปิดใช้งาน on the floor and on the room, from the list's ⋯ (the tree's ⋯ is the same LocationDeactivateButton): the
@@ -196,6 +210,7 @@ test.describe("the IT head reads and arranges a building's locations", () => {
 
     // เพิ่มที่ตั้งในนี้ on the floor: the form with the run's branch and the floor chosen (Review Focus 5).
     await page.goto(`/th/master-data/locations?branchId=${runBranch.id}`, { waitUntil: "load" })
+    await revealRoot(page, building)
     await expand(page, building)
     await rowAction(page, treeRow(page, floor), floor, W.addChild)
     await page.waitForURL((url) => url.pathname === "/th/master-data/locations/new" && url.searchParams.get("parentId") === floor.id && url.searchParams.get("branchId") === runBranch.id)
@@ -213,6 +228,7 @@ test.describe("the IT head reads and arranges a building's locations", () => {
     added.id = ((await createdAnswer.json()) as { id: string }).id
     await page.waitForURL((url) => url.pathname === "/th/master-data/locations")
     await expectToast(page, W.saved)
+    await revealRoot(page, building)
     await expand(page, building)
     await expand(page, floor)
     await expect(treeRow(page, added)).toBeVisible()

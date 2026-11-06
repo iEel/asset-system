@@ -219,7 +219,6 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "LDAP URL, Bind DN, and Bind Password are required": "ldapSettingsRequired",
   "Location cannot be its own parent": "locationOwnParent",
   "Location code already exists": "locationCodeExists",
-  "Location hierarchy cannot contain a cycle": "locationCycle",
   "Location is required": "locationRequired",
   "Location not found": "locationNotFound",
   "LOCATION_BRANCH_IN_USE": "locationBranchInUse",

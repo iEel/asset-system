@@ -4,6 +4,7 @@ import * as nodeModule from "node:module"
 import test from "node:test"
 import { pathToFileURL } from "node:url"
 import {
+  buildBranchLocationTree,
   buildLocationTree,
   checkLocationParent,
   locationDescendantIds,
@@ -83,6 +84,28 @@ test("a node whose parent is missing or inactive is a root; a parent of another 
   assert.equal(cross.parentOtherBranch, true)
   assert.equal(cross.depth, 1)
   assert.equal(find(tree.get("b2")!, "cm")!.subtreeAssetCount, 4)
+})
+
+test("final review 4: under a branch filter, a location under another branch's parent is a root of its own branch, flagged, with its subtree", () => {
+  const all = [
+    row({ id: "cm", branchId: "b2" }),
+    row({ id: "cross", branchId: "b1", parentId: "cm", ownAssetCount: 4 }),
+    row({ id: "under", branchId: "b1", parentId: "cross", ownAssetCount: 2 }),
+    row({ id: "own", branchId: "b1" }),
+    row({ id: "gone", branchId: "b1", parentId: "missing" }),
+  ]
+  const roots = buildBranchLocationTree(all, "b1")
+  assert.deepEqual(roots.map((node) => node.id).sort(), ["cross", "gone", "own"])
+  const cross = find(roots, "cross")!
+  assert.equal(cross.parentOtherBranch, true)
+  assert.equal(cross.depth, 0)
+  assert.equal(cross.subtreeAssetCount, 6)
+  assert.deepEqual(cross.children.map((node) => node.id), ["under"])
+  assert.equal(find(roots, "own")!.parentOtherBranch, false)
+  assert.equal(find(roots, "gone")!.parentOtherBranch, false)
+  // The rows may be filtered by status: allRows still names the parent's branch.
+  assert.equal(find(buildBranchLocationTree(all.filter((r) => r.id !== "cm"), "b1", all), "cross")!.parentOtherBranch, true)
+  assert.deepEqual(buildBranchLocationTree(all, "b2").map((node) => node.id), ["cm"])
 })
 
 test("a cycle in stored data does not lose its nodes", () => {
@@ -269,7 +292,7 @@ test("the ancestry walk reads the location and its parents up, and stops on a cy
   assert.deepEqual(await readLocationAncestry("none", readOne), [])
 })
 
-test("the name path follows the tree: root first, the location last; an inactive parent starts the path", () => {
+test("the name path follows the tree: root first, the location last, through inactive parents", () => {
   const chain = [
     row({ id: "room", name: "ห้อง IT", parentId: "floor" }),
     row({ id: "floor", name: "ชั้น 3", parentId: "bldg" }),
@@ -278,8 +301,11 @@ test("the name path follows the tree: root first, the location last; an inactive
   assert.deepEqual(locationNamePath(chain, "room"), ["อาคาร A", "ชั้น 3", "ห้อง IT"])
   assert.deepEqual(locationNamePath(chain, "bldg"), ["อาคาร A"])
   assert.equal(locationNamePath(chain, "none"), undefined)
+  // Final review 3: an inactive parent stays in the path, as the locations page writes it.
   const withInactive = chain.map((r) => (r.id === "bldg" ? { ...r, isActive: false } : r))
-  assert.deepEqual(locationNamePath(withInactive, "room"), ["ชั้น 3", "ห้อง IT"])
+  assert.deepEqual(locationNamePath(withInactive, "room"), ["อาคาร A", "ชั้น 3", "ห้อง IT"])
+  const inactiveMiddle = chain.map((r) => (r.id === "floor" ? { ...r, isActive: false } : r))
+  assert.deepEqual(locationNamePath(inactiveMiddle, "room"), ["อาคาร A", "ชั้น 3", "ห้อง IT"])
   const looped = [row({ id: "a", name: "A", parentId: "b" }), row({ id: "b", name: "B", parentId: "a" })]
   assert.ok(locationNamePath(looped, "a"), "a cycle in old data still names the location")
 })

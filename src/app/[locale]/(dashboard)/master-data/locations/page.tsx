@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Pencil, Plus } from "lucide-react"
+import { Pencil, Plus, SlidersHorizontal } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
@@ -28,7 +28,7 @@ import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { locationTypes } from "@/lib/validations/location"
 import { formatLocationType, getLocationTypeLabels, matchLocationTypesByLabel } from "@/lib/location-types"
-import { buildLocationTree, locationRuleSelect, type LocationNodeInput, type LocationTreeNode } from "@/lib/location-tree"
+import { buildBranchLocationTree, buildLocationTree, locationRuleSelect, type LocationNodeInput, type LocationTreeNode } from "@/lib/location-tree"
 import {
   buildLocationAddChildHref,
   buildLocationDrilldownHrefs,
@@ -36,6 +36,7 @@ import {
   buildLocationQueryString,
   buildLocationSummary,
   buildLocationWhere,
+  locationListHasFieldFilters,
   parseLocationListParams,
   type LocationListParams,
   type LocationListState,
@@ -163,18 +164,26 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
     ownAssetCount: location._count.currentAssets,
   })
   const fullTree = buildLocationTree(allLocations.map(asTreeInput))
-  const tree =
-    listState.status === "all"
+  const statusRows =
+    listState.status === "all" ? allLocations : allLocations.filter((location) => location.isActive === (listState.status === "active"))
+  // A branch filter shows that branch's rows only: a location of the branch under another branch's parent (existing data)
+  // is a root of the branch's group with the "อยู่คนละสาขากับที่ตั้งแม่" warning, so it and its subtree stay in view.
+  const branchRoots = listState.branchId ? buildBranchLocationTree(statusRows.map(asTreeInput), listState.branchId, allLocations) : []
+  const tree: Map<string, LocationTreeNode[]> = listState.branchId
+    ? new Map(branchRoots.length > 0 ? [[listState.branchId, branchRoots]] : [])
+    : listState.status === "all"
       ? fullTree
-      : buildLocationTree(allLocations.filter((location) => location.isActive === (listState.status === "active")).map(asTreeInput))
+      : buildLocationTree(statusRows.map(asTreeInput))
   const namePaths = new Map<string, string[]>()
   const collectPaths = (node: LocationTreeNode) => {
     namePaths.set(node.id, node.path)
     node.children.forEach(collectPaths)
   }
   for (const roots of fullTree.values()) roots.forEach(collectPaths)
-  // The list writes the path with names ("สำนักงานใหญ่ › อาคาร A › ชั้น 3").
-  const namePathOf = (location: { id: string; name: string }) => (namePaths.get(location.id) ?? [location.name]).join(" › ")
+  // The list, the tree's confirm and the page hint write the path with names, the branch first like the form and the
+  // register chip ("สำนักงานใหญ่ › อาคาร A › ชั้น 3").
+  const namePathOf = (location: { id: string; name: string }) =>
+    [locationById.get(location.id)?.branch.name, ...(namePaths.get(location.id) ?? [location.name])].filter(Boolean).join(" › ")
 
   const toTreeViewNode = (node: LocationTreeNode): LocationTreeViewNode => {
     const location = locationById.get(node.id)
@@ -204,7 +213,6 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
   }
   const countNodes = (nodes: readonly LocationTreeNode[]): number => nodes.reduce((sum, node) => sum + 1 + countNodes(node.children), 0)
   const treeBranches: LocationTreeViewBranch[] = [...tree.entries()]
-    .filter(([branchId]) => !listState.branchId || branchId === listState.branchId)
     .map(([branchId, roots]) => ({ branchId, roots, branch: locationById.get(roots[0].id)!.branch }))
     .sort((a, b) => a.branch.company.code.localeCompare(b.branch.company.code) || a.branch.code.localeCompare(b.branch.code))
     .map(({ branchId, roots, branch }) => ({
@@ -229,9 +237,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
-  const hasActiveFilters = showList
-    ? listState.status !== "active" || Boolean(listState.search || listState.branchId || listState.locationType || listState.assetUsage !== "all" || listState.hierarchy !== "all")
-    : listState.status !== "active" || Boolean(listState.branchId)
+  const hasActiveFilters = locationListHasFieldFilters(listState)
   type ListLocation = (typeof locations)[number]
   const blockerCountsOf = (location: ListLocation) => ({
     currentAssets: location._count.currentAssets,
@@ -252,6 +258,81 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
   })
+
+  // The filter form, once for the phone disclosure and once for the panel from md.
+  const filterForm = (className: string) => (
+    <form
+      role="search"
+      action={basePath}
+      className={className}
+    >
+      <input type="hidden" name="page" value="1" />
+      <input type="hidden" name="pageSize" value={listState.pageSize} />
+      <input type="hidden" name="sort" value={listState.sort} />
+      <input type="hidden" name="direction" value={listState.direction} />
+      {showList ? <input type="hidden" name="view" value="list" /> : null}
+      <Field label={tCommon("search")}>
+        <SearchField name="search" defaultValue={searchText} placeholder={t("searchPlaceholder")} />
+      </Field>
+      <FilterSelect
+        label={t("branch")}
+        name="branchId"
+        defaultValue={listState.branchId}
+        options={[
+          { value: "", label: tCommon("all") },
+          ...branches.map((branch) => ({
+            value: branch.id,
+            label: `${branch.company.code} / ${branch.code} - ${branch.name}`,
+          })),
+        ]}
+      />
+      {showList ? (
+        <>
+          <FilterSelect
+            label={t("locationType")}
+            name="locationType"
+            defaultValue={listState.locationType}
+            options={[
+              { value: "", label: tCommon("all") },
+              ...locationTypes.map((type) => ({ value: type, label: formatLocationType(type, t) })),
+            ]}
+          />
+          <FilterSelect
+            label={t("assetUsageFilter")}
+            name="assetUsage"
+            defaultValue={listState.assetUsage}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "withAssets", label: t("withAssets") },
+              { value: "withoutAssets", label: t("withoutAssets") },
+            ]}
+          />
+          <FilterSelect
+            label={t("hierarchyFilter")}
+            name="hierarchy"
+            defaultValue={listState.hierarchy}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "root", label: t("rootLocations") },
+              { value: "child", label: t("childLocations") },
+              { value: "leaf", label: t("leafLocations") },
+            ]}
+          />
+        </>
+      ) : null}
+      <FilterSelect
+        label={tCommon("status")}
+        name="status"
+        defaultValue={listState.status}
+        options={[
+          { value: "active", label: tCommon("active") },
+          { value: "inactive", label: tCommon("inactive") },
+          { value: "all", label: tCommon("all") },
+        ]}
+      />
+      <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
+    </form>
+  )
 
   return (
     <div className="space-y-6">
@@ -316,78 +397,23 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
         ]}
       />
 
-      <FilterPanel>
-        <form
-          role="search"
-          action={basePath}
-          className={showList ? "grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]" : "grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(200px,1fr)_minmax(150px,1fr)_auto]"}
-        >
-          <input type="hidden" name="page" value="1" />
-          <input type="hidden" name="pageSize" value={listState.pageSize} />
-          <input type="hidden" name="sort" value={listState.sort} />
-          <input type="hidden" name="direction" value={listState.direction} />
-          {showList ? <input type="hidden" name="view" value="list" /> : null}
-          <Field label={tCommon("search")}>
-            <SearchField name="search" defaultValue={searchText} placeholder={t("searchPlaceholder")} />
-          </Field>
-          <FilterSelect
-            label={t("branch")}
-            name="branchId"
-            defaultValue={listState.branchId}
-            options={[
-              { value: "", label: tCommon("all") },
-              ...branches.map((branch) => ({
-                value: branch.id,
-                label: `${branch.company.code} / ${branch.code} - ${branch.name}`,
-              })),
-            ]}
-          />
-          {showList ? (
-            <>
-              <FilterSelect
-                label={t("locationType")}
-                name="locationType"
-                defaultValue={listState.locationType}
-                options={[
-                  { value: "", label: tCommon("all") },
-                  ...locationTypes.map((type) => ({ value: type, label: formatLocationType(type, t) })),
-                ]}
-              />
-              <FilterSelect
-                label={t("assetUsageFilter")}
-                name="assetUsage"
-                defaultValue={listState.assetUsage}
-                options={[
-                  { value: "all", label: tCommon("all") },
-                  { value: "withAssets", label: t("withAssets") },
-                  { value: "withoutAssets", label: t("withoutAssets") },
-                ]}
-              />
-              <FilterSelect
-                label={t("hierarchyFilter")}
-                name="hierarchy"
-                defaultValue={listState.hierarchy}
-                options={[
-                  { value: "all", label: tCommon("all") },
-                  { value: "root", label: t("rootLocations") },
-                  { value: "child", label: t("childLocations") },
-                  { value: "leaf", label: t("leafLocations") },
-                ]}
-              />
-            </>
-          ) : null}
-          <FilterSelect
-            label={tCommon("status")}
-            name="status"
-            defaultValue={listState.status}
-            options={[
-              { value: "active", label: tCommon("active") },
-              { value: "inactive", label: tCommon("inactive") },
-              { value: "all", label: tCommon("all") },
-            ]}
-          />
-          <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
-        </form>
+      {/* Phones: the filters fold into a disclosure, closed by default and open while a form field is set (the employee
+          and suppliers lists' rule), so the tree starts near the top. A <details> cannot be ContentPanel: the panel
+          classes (2D-2 R4). */}
+      <details data-location-filters-phone className={cn(getPanelClasses(), "md:hidden")} open={hasActiveFilters}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          {t("filtersTitle")}
+        </summary>
+        {filterForm("grid gap-3 border-t border-border p-4")}
+      </details>
+
+      <FilterPanel className="hidden md:block">
+        {filterForm(
+          showList
+            ? "grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]"
+            : "grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(200px,1fr)_minmax(150px,1fr)_auto]",
+        )}
       </FilterPanel>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">

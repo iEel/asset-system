@@ -16,7 +16,7 @@ import {
 } from "@/components/master-data/location-deactivate-button"
 import { formatCount } from "@/lib/display-format"
 import { getPanelClasses } from "@/lib/design-system"
-import type { LocationDeactivateCounts } from "@/lib/location-tree-view"
+import { locationTreeLevelSlice, type LocationDeactivateCounts } from "@/lib/location-tree-view"
 import { cn } from "@/lib/utils"
 
 // One location of the tree, ready to show: the page computes the hrefs, labels and counts on the server.
@@ -55,12 +55,16 @@ const indentClasses = ["ps-2 md:ps-4", "ps-6 md:ps-11", "ps-10 md:ps-18", "ps-14
 // Spec §6.1, board MD-Locations: the locations of each branch under their parents. A nested list of disclosure buttons
 // (aria-expanded, aria-controls), so Tab reaches every control and screen readers hear each level as a list. Below md
 // the columns fold into a line under the name. The tree opens one level (each branch's roots shown, G7P3-R1); a search
-// shows the list with paths instead (board MD-Locations, the user's ruling).
+// shows the list with paths instead (board MD-Locations, the user's ruling). A closed level is not rendered at all, and
+// one level shows 100 nodes at a time with "แสดงอีก {n} รายการ" (a branch can hold thousands of roots); the counts
+// come computed from the server.
 export function LocationTreeView({ branches, footer }: { branches: readonly LocationTreeViewBranch[]; footer: string }) {
   const t = useTranslations("location")
   const tCommon = useTranslations("common")
   const [openBranches, setOpenBranches] = useState<ReadonlySet<string>>(() => new Set(branches.map((branch) => branch.id)))
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
+  // How many nodes each level shows, by the level's parent ("branch:<id>" for a branch's roots, else the node's id).
+  const [shown, setShown] = useState<ReadonlyMap<string, number>>(() => new Map())
 
   const toggle = (set: ReadonlySet<string>, id: string) => {
     const next = new Set(set)
@@ -93,8 +97,32 @@ export function LocationTreeView({ branches, footer }: { branches: readonly Loca
         depth={depth}
         open={expanded.has(node.id)}
         onToggle={() => setExpanded((current) => toggle(current, node.id))}
-        renderChild={(child) => renderNode(child, depth + 1)}
+        renderChildren={() => renderLevel(node.id, node.children, depth + 1)}
       />
+    )
+  }
+
+  // One level: its first nodes, then "แสดงอีก {n} รายการ", which shows the next ones and moves focus to the first of them.
+  function renderLevel(levelKey: string, nodes: readonly LocationTreeViewNode[], depth: number): ReactNode {
+    const { visible, nextCount } = locationTreeLevelSlice(nodes, shown.get(levelKey))
+    function showMore() {
+      const firstNew = nodes[visible.length]
+      setShown((current) => new Map(current).set(levelKey, visible.length + nextCount))
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`[data-location-tree-node="${firstNew.id}"]`)?.focus()
+      })
+    }
+    return (
+      <>
+        {visible.map((node) => renderNode(node, depth))}
+        {nextCount > 0 ? (
+          <li data-location-tree-more className={cn("border-t border-border py-1.5 pe-4", indentClasses[Math.min(depth, indentClasses.length - 1)])}>
+            <Button type="button" variant="ghost" size="sm" className="text-primary" onClick={showMore}>
+              {t("tree.showMore", { n: formatCount(nextCount) })}
+            </Button>
+          </li>
+        ) : null}
+      </>
     )
   }
 
@@ -121,7 +149,7 @@ export function LocationTreeView({ branches, footer }: { branches: readonly Loca
               open={openBranches.has(branch.id)}
               onToggle={() => setOpenBranches((current) => toggle(current, branch.id))}
             >
-              {branch.roots.map((root) => renderNode(root, 0))}
+              {openBranches.has(branch.id) ? renderLevel(`branch:${branch.id}`, branch.roots, 0) : null}
             </BranchItem>
           ))}
         </ul>
@@ -148,7 +176,7 @@ function Disclosure({ open, groupId, label, onToggle }: { open: boolean; groupId
     <Button
       type="button"
       aria-expanded={open}
-      aria-controls={groupId}
+      aria-controls={open ? groupId : undefined}
       aria-label={label}
       variant="ghost"
       size="icon-sm"
@@ -180,11 +208,8 @@ function BranchItem({ branch, open, onToggle, children }: { branch: LocationTree
           {t("tree.addInBranch")}
         </Link>
       </div>
-      {hasRoots ? (
-        <ul id={groupId} hidden={!open}>
-          {children}
-        </ul>
-      ) : null}
+      {/* A closed branch is not rendered: thousands of hidden rows still cost the page (final review 5). */}
+      {hasRoots && open ? <ul id={groupId}>{children}</ul> : null}
     </li>
   )
 }
@@ -194,13 +219,13 @@ function TreeItem({
   depth,
   open,
   onToggle,
-  renderChild,
+  renderChildren,
 }: {
   node: LocationTreeViewNode
   depth: number
   open: boolean
   onToggle: () => void
-  renderChild: (child: LocationTreeViewNode) => ReactNode
+  renderChildren: () => ReactNode
 }) {
   const t = useTranslations("location")
   const tCommon = useTranslations("common")
@@ -244,7 +269,7 @@ function TreeItem({
           <span className="size-11 shrink-0 md:size-8" aria-hidden="true" />
         )}
         <div className="min-w-0 flex-1 py-2.5 md:py-0">
-          <Link href={node.editHref} className={cn("font-semibold hover:underline focus-visible:underline", node.isActive ? "text-foreground" : "text-muted-foreground")}>
+          <Link href={node.editHref} data-location-tree-node={node.id} className={cn("font-semibold hover:underline focus-visible:underline", node.isActive ? "text-foreground" : "text-muted-foreground")}>
             {node.name}
           </Link>
           <span className="ms-2 text-meta text-muted-foreground">
@@ -296,11 +321,8 @@ function TreeItem({
           next={{ label: tCommon("edit"), href: node.editHref, icon: <Pencil aria-hidden="true" /> }}
         />
       </div>
-      {hasChildren ? (
-        <ul id={groupId} hidden={!open}>
-          {node.children.map(renderChild)}
-        </ul>
-      ) : null}
+      {/* Children render only while expanded (final review 5). */}
+      {hasChildren && open ? <ul id={groupId}>{renderChildren()}</ul> : null}
     </li>
   )
 }

@@ -6,9 +6,10 @@ import {
   buildLocationAddChildHref,
   buildLocationDrilldownHrefs,
   buildLocationQueryString,
+  locationListHasFieldFilters,
   parseLocationListParams,
 } from "../src/lib/location-list-query.ts"
-import { locationDeactivateBlockers } from "../src/lib/location-tree-view.ts"
+import { LOCATION_TREE_LEVEL_PAGE, locationDeactivateBlockers, locationTreeLevelSlice } from "../src/lib/location-tree-view.ts"
 
 // Page group 7 plan 3 Task 3 (spec §6.1): the locations page as a tree beside the list. Sources are read CRLF-safe.
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -96,7 +97,7 @@ test("the page: tree by default, a search shows the list with its hint, the list
 test("the tree: a client component with real disclosure buttons (aria-expanded, aria-controls) reachable by Tab", () => {
   const source = read(TREE)
   assert.match(source, /^"use client"/)
-  assert.match(source, /<Button\n\s+type="button"\n\s+aria-expanded=\{open\}\n\s+aria-controls=\{groupId\}/)
+  assert.match(source, /<Button\n\s+type="button"\n\s+aria-expanded=\{open\}\n\s+aria-controls=\{open \? groupId : undefined\}/)
   assert.doesNotMatch(source, /tabIndex=\{-1\}/)
   assert.match(source, /t\("tree\.subtree", \{ n: formatCount\(node\.subtreeAssetCount\) \}\)/)
   assert.match(source, /t\("tree\.parentOtherBranch"\)/)
@@ -146,4 +147,73 @@ test("the Thai copy of the tree and the confirm (task 3 brief; board MD-Location
     assert.equal(message(th, key), text, key)
     assert.equal(typeof message(en, key), "string", `en ${key}`)
   }
+})
+
+// --- final review fixes -----------------------------------------------------------------------------------------------
+
+test("final review 1: the ปิดใช้งาน dialog sits in a span that stops its portal's clicks and keys before the list's row", () => {
+  const source = read(DEACTIVATE)
+  assert.match(source, /function stopPortalEvent\(event: MouseEvent<HTMLSpanElement> \| KeyboardEvent<HTMLSpanElement>\) \{\n\s+if \(!event\.currentTarget\.contains\(event\.target as Node\)\) event\.stopPropagation\(\)/)
+  assert.match(source, /<span hidden onClick=\{stopPortalEvent\} onKeyDown=\{stopPortalEvent\}>\n\s+<AlertDialog open=\{open\}/)
+  assert.match(source, /<\/AlertDialog>\n\s+<\/span>\n\s+<\/>/)
+  // เปิดใช้งาน asks through the app's ConfirmProvider, whose dialog is not inside the row.
+  assert.match(source, /const confirm = useConfirm\(\)/)
+})
+
+test("final review 5: one level shows 100 nodes at a time; แสดงอีก adds the next 100", () => {
+  assert.equal(LOCATION_TREE_LEVEL_PAGE, 100)
+  const items = Array.from({ length: 2351 }, (_, index) => index)
+  const first = locationTreeLevelSlice(items, undefined)
+  assert.equal(first.visible.length, 100)
+  assert.equal(first.nextCount, 100)
+  const later = locationTreeLevelSlice(items, 2300)
+  assert.equal(later.visible.length, 2300)
+  assert.equal(later.nextCount, 51)
+  assert.deepEqual(locationTreeLevelSlice(items, 2351), { visible: items, nextCount: 0 })
+  assert.deepEqual(locationTreeLevelSlice([1, 2], undefined), { visible: [1, 2], nextCount: 0 })
+  assert.equal(message(th, "location.tree.showMore"), "แสดงอีก {n} รายการ")
+  assert.equal(typeof message(en, "location.tree.showMore"), "string")
+})
+
+test("final review 5: a closed level is not rendered (no hidden subtrees), and each level goes through the slice", () => {
+  const source = read(TREE)
+  assert.doesNotMatch(source, /hidden=\{!open\}/)
+  assert.match(source, /\{hasChildren && open \? <ul id=\{groupId\}>\{renderChildren\(\)\}<\/ul> : null\}/)
+  assert.match(source, /\{hasRoots && open \? <ul id=\{groupId\}>\{children\}<\/ul> : null\}/)
+  assert.match(source, /\{openBranches\.has\(branch\.id\) \? renderLevel\(`branch:\$\{branch\.id\}`, branch\.roots, 0\) : null\}/)
+  assert.match(source, /renderChildren=\{\(\) => renderLevel\(node\.id, node\.children, depth \+ 1\)\}/)
+  assert.match(source, /locationTreeLevelSlice\(nodes, shown\.get\(levelKey\)\)/)
+  assert.match(source, /t\("tree\.showMore", \{ n: formatCount\(nextCount\) \}\)/)
+})
+
+test("final review 4 and 6: a branch filter builds that branch's own tree; the list path starts with the branch name", () => {
+  const source = read(PAGE)
+  assert.match(source, /buildBranchLocationTree\(statusRows\.map\(asTreeInput\), listState\.branchId, allLocations\)/)
+  assert.doesNotMatch(source, /!listState\.branchId \|\| branchId === listState\.branchId/)
+  assert.match(source, /\[locationById\.get\(location\.id\)\?\.branch\.name, \.\.\.\(namePaths\.get\(location\.id\) \?\? \[location\.name\]\)\]\.filter\(Boolean\)\.join\(" › "\)/)
+})
+
+test("final review 7: on phones the filters fold, open only while a field filter is set", () => {
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({})), false)
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ branchId: "b1" })), true)
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ status: "all" })), true)
+  // The tree's form has no type, usage or hierarchy fields.
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ hierarchy: "root" })), false)
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ view: "list" })), false)
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ view: "list", hierarchy: "root" })), true)
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ search: "301" })), true)
+  const source = read(PAGE)
+  assert.match(source, /const hasActiveFilters = locationListHasFieldFilters\(listState\)/)
+  assert.match(source, /<details data-location-filters-phone className=\{cn\(getPanelClasses\(\), "md:hidden"\)\} open=\{hasActiveFilters\}>/)
+  assert.match(source, /\{filterForm\("grid gap-3 border-t border-border p-4"\)\}/)
+  assert.match(source, /<FilterPanel className="hidden md:block">/)
+  assert.equal(message(th, "location.filtersTitle"), "ค้นหาและตัวกรอง")
+  assert.equal(typeof message(en, "location.filtersTitle"), "string")
+})
+
+test("final review 8: the unused locationCycle message and its catalog entry are gone", () => {
+  assert.equal(message(th, "apiErrors.locationCycle"), undefined)
+  assert.equal(message(en, "apiErrors.locationCycle"), undefined)
+  assert.doesNotMatch(read("src/lib/api-error-catalog.ts"), /locationCycle|Location hierarchy cannot contain a cycle/)
+  assert.ok(message(th, "apiErrors.locationParentCycle"), "the cycle refusal keeps its own key")
 })

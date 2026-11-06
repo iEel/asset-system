@@ -6,6 +6,8 @@ export const LOCATION_WORDS = {
   // The page (§6.1): its heading, the two views, the tree's disclosure and counts (G7P3-R2, R3).
   title: "ที่ตั้ง", viewLabel: "มุมมอง", viewTree: "โครงสร้าง", viewList: "รายการพร้อมเส้นทาง",
   expand: "ขยาย {name}", collapse: "ยุบ {name}", subtree: "รวมที่ตั้งย่อย {n}", assetsAt: "ทรัพย์สินปัจจุบันที่{name}: {n} รายการ",
+  // One level shows 100 locations at a time; this button shows the next ones (final review 5).
+  showMore: "แสดงอีก {n} รายการ",
   // ⋯ of a location: เพิ่มที่ตั้งในนี้ and ปิดใช้งาน, whose confirm names each blocker and offers only ปิด (Review Focus 4).
   moreActionsFor: "การดำเนินการของ {code}", addChild: "เพิ่มที่ตั้งในนี้", deactivate: "ปิดใช้งาน", deactivateTitle: "ปิดใช้งาน {name}?",
   blockedCurrentAssets: "มีทรัพย์สินอยู่ที่นี่ {n}", blockedHomeAssets: "เป็นที่ตั้งประจำของทรัพย์สิน {n}",

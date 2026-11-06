@@ -34,10 +34,16 @@ function toOption(node: LocationTreeNode, parentId: string | null): LocationPare
 
 // The active locations of `branchId` in tree order (depth first, by code), each with its name path. On edit the location
 // and every descendant (by stored parent, inactive rows included) are left out, so no choice makes a cycle. keepParentId
-// adds the stored parent when the list does not hold it, unless it would make a cycle.
+// adds the stored parent when the list does not hold it, unless it would make a cycle; with keepBranchId (the stored
+// branch) it is kept only while the chosen branch is still that one, so a branch change drops it.
 export function buildLocationParentOptions(
   rows: readonly LocationRuleRow[],
-  { branchId, editingId, keepParentId }: { branchId: string; editingId: string | null; keepParentId?: string | null },
+  {
+    branchId,
+    editingId,
+    keepParentId,
+    keepBranchId,
+  }: { branchId: string; editingId: string | null; keepParentId?: string | null; keepBranchId?: string | null },
 ): LocationParentOption[] {
   const excluded = editingId ? locationDescendantIds(rows, editingId) : new Set<string>()
   if (editingId) excluded.add(editingId)
@@ -55,7 +61,8 @@ export function buildLocationParentOptions(
   const roots = [...(tree.get(branchId) ?? []), ...[...tree.entries()].filter(([key]) => key !== branchId).flatMap(([, list]) => list)]
   for (const root of roots) walk(root, null)
 
-  if (keepParentId && !excluded.has(keepParentId) && !options.some((option) => option.id === keepParentId)) {
+  const keepApplies = keepBranchId === undefined || keepBranchId === null || keepBranchId === branchId
+  if (keepApplies && keepParentId && !excluded.has(keepParentId) && !options.some((option) => option.id === keepParentId)) {
     const kept = all.get(keepParentId)
     if (kept) options.push({ ...kept, kept: true })
   }

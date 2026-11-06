@@ -132,8 +132,15 @@ export function LocationForm({
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
   const parentOptions = useMemo(
-    () => buildLocationParentOptions(locationRows, { branchId: values.branchId, editingId: location?.id ?? null, keepParentId: location?.parentId ?? null }),
-    [locationRows, values.branchId, location?.id, location?.parentId],
+    () =>
+      buildLocationParentOptions(locationRows, {
+        branchId: values.branchId,
+        editingId: location?.id ?? null,
+        keepParentId: location?.parentId ?? null,
+        // The kept stored parent goes once another branch is chosen (it belongs to the stored branch's place).
+        keepBranchId: location?.branchId ?? null,
+      }),
+    [locationRows, values.branchId, location?.id, location?.parentId, location?.branchId],
   )
   const branchNameOf = useMemo(() => {
     const branchById = new Map(branches.map((branch) => [branch.id, branch.name]))

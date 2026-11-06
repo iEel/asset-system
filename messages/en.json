@@ -1971,7 +1971,8 @@
       "collapseAll": "Collapse all",
       "assetsAt": "Current assets at {name}: {n}",
       "footer": "{branches} branches · {locations} locations",
-      "countNote": "Asset counts cover the location itself only; select one to open the register · \"Subtree total\" adds every level below, for reading"
+      "countNote": "Asset counts cover the location itself only; select one to open the register · \"Subtree total\" adds every level below, for reading",
+      "showMore": "Show {n} more"
     },
     "deactivate": {
       "action": "Deactivate",
@@ -1996,7 +1997,8 @@
       "confirmTitle": "Reactivate {name}?",
       "confirmBody": "This location will be offered again on other pages such as handover, transfer and new asset",
       "success": "Reactivated"
-    }
+    },
+    "filtersTitle": "Search and filters"
   },
   "category": {
     "title": "Asset Categories",
@@ -5606,7 +5608,6 @@
     "ldapSyncBaseDnRequired": "LDAP sync base DN is required",
     "ldapSyncDisabled": "LDAP sync is disabled",
     "locationOwnParent": "Location cannot be its own parent",
-    "locationCycle": "Location hierarchy cannot contain a cycle",
     "locationNotFound": "Location not found",
     "maintenancePlanAssetNotFound": "Maintenance plan asset not found or inactive",
     "maintenancePlanNotFound": "Maintenance plan not found",

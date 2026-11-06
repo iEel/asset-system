@@ -185,10 +185,27 @@ export async function readLocationAncestry<T extends { id: string; parentId: str
   return chain
 }
 
+// One branch's tree (the page's branch filter): only that branch's rows, so a location of the branch whose stored
+// parent is in another branch (existing data) is a root of this branch's group, still flagged parentOtherBranch, and its
+// subtree stays with it. `allRows` names the branch of each stored parent (the rows may be filtered by status).
+export function buildBranchLocationTree(
+  rows: readonly LocationNodeInput[],
+  branchId: string,
+  allRows: readonly Pick<LocationNodeInput, "id" | "branchId">[] = rows,
+): LocationTreeNode[] {
+  const branchOf = new Map(allRows.map((row) => [row.id, row.branchId]))
+  const roots = buildLocationTree(rows.filter((row) => row.branchId === branchId)).get(branchId) ?? []
+  return roots.map((root) => {
+    const parentBranch = root.parentId ? branchOf.get(root.parentId) : undefined
+    return parentBranch !== undefined && parentBranch !== branchId ? { ...root, parentOtherBranch: true } : root
+  })
+}
+
 // The name path of one location as the tree writes it (root first, the location last), from rows holding at least its
-// chain; undefined when the location is not among them.
+// chain; undefined when the location is not among them. The path runs through inactive parents, as the locations page
+// writes it (every row is given to the builder as active), so an inactive building still starts its room's path.
 export function locationNamePath(rows: readonly LocationNodeInput[], id: string): string[] | undefined {
-  const stack = [...buildLocationTree(rows).values()].flat()
+  const stack = [...buildLocationTree(rows.map((row) => ({ ...row, isActive: true }))).values()].flat()
   while (stack.length > 0) {
     const node = stack.pop()!
     if (node.id === id) return node.path

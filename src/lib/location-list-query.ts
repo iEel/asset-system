@@ -85,6 +85,14 @@ export function parseLocationListParams(input: LocationListParams): LocationList
   }
 }
 
+// A field of the filter form is set: the clear link shows, and on phones the folded filters open (the employee and
+// suppliers lists' rule). The tree's form has the branch and the status only; a search shows the list.
+export function locationListHasFieldFilters(state: LocationListState): boolean {
+  const showList = state.view === "list" || state.search !== ""
+  if (state.status !== "active" || state.branchId) return true
+  return showList && Boolean(state.search || state.locationType || state.assetUsage !== "all" || state.hierarchy !== "all")
+}
+
 // matchingTypes: the types whose label matches the search (matchLocationTypesByLabel), so a Thai type name finds them.
 export function buildLocationWhere(
   state: LocationListState,

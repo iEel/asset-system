@@ -66,6 +66,16 @@ test("an existing parent outside the list is kept as an option so an unrelated e
   assert.equal(buildLocationParentOptions(rows, { branchId: "b1", editingId: null, keepParentId: "nope" }).length, 4)
 })
 
+test("final review 2: the stored parent is kept only while the chosen branch is the stored one", () => {
+  const crossing = [...rows, row({ id: "roomX", branchId: "b2", parentId: "fl4" })]
+  const keep = { editingId: "roomX", keepParentId: "fl4", keepBranchId: "b2" }
+  assert.equal(buildLocationParentOptions(crossing, { ...keep, branchId: "b2" }).find((option) => option.id === "fl4")?.kept, true)
+  assert.equal(buildLocationParentOptions(crossing, { ...keep, branchId: "b3" }).some((option) => option.id === "fl4"), false)
+  assert.equal(buildLocationParentOptions(crossing, { ...keep, branchId: "" }).some((option) => option.id === "fl4"), false)
+  const form = read("src/components/master-data/location-form.tsx")
+  assert.match(form, /keepBranchId: location\?\.branchId \?\? null,/)
+})
+
 test("changing the branch clears a parent of another branch and keeps one of the new branch", () => {
   assert.equal(parentAfterBranchChange(rows, "fl3", "b2"), "")
   assert.equal(parentAfterBranchChange(rows, "fl3", "b1"), "fl3")
@@ -98,7 +108,7 @@ test("the new and edit pages read the locations once and hand the form the rows;
 
 test("the form: the parent is a searchable picker of the branch's paths, the type reads in Thai, and the board's sections", () => {
   const source = read("src/components/master-data/location-form.tsx")
-  assert.match(source, /buildLocationParentOptions\(locationRows, \{ branchId: values\.branchId, editingId: location\?\.id \?\? null, keepParentId: location\?\.parentId \?\? null \}\)/)
+  assert.match(source, /buildLocationParentOptions\(locationRows, \{\n\s+branchId: values\.branchId,\n\s+editingId: location\?\.id \?\? null,\n\s+keepParentId: location\?\.parentId \?\? null,/)
   assert.match(source, /<SearchableSelect\n\s+id="location-parent"/)
   assert.match(source, /error=\{fieldErrors\.message\("parentId"\)\}/)
   assert.doesNotMatch(source, /<NativeSelect[^>]*\n\s+value=\{values\.parentId/, "the parent is no NativeSelect")
