@@ -448,7 +448,12 @@ export async function readEmployeePage(
     openHandovers: { regular: openCheckoutCount - loanCount, loans: loanCount, overdueLoans: overdueLoanCount },
     account: account ? { username: account.username, isActive: account.isActive } : null,
     counts,
-    followUpItems: buildEmployeeFollowUpItems({ employmentStatus: employee.employmentStatus, isActive: employee.isActive, ...counts }),
+    followUpItems: buildEmployeeFollowUpItems({
+      employmentStatus: employee.employmentStatus,
+      isActive: employee.isActive,
+      ...counts,
+      overdueLoanCount,
+    }),
     handoverHistory,
     repairs,
     auditFindings,

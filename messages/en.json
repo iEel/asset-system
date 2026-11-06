@@ -1782,10 +1782,6 @@
         "title": "Former employee still holds assets",
         "help": "Return or transfer these assets before closing this person record."
       },
-      "open_checkout_returns": {
-        "title": "Open handovers are not returned",
-        "help": "Review handover documents and expected return dates so assets do not remain with the wrong custodian."
-      },
       "open_maintenance": {
         "title": "Open maintenance remains",
         "help": "Follow related repair tickets through closure."
@@ -1797,6 +1793,10 @@
       "pending_disposals": {
         "title": "Disposal requests are still open",
         "help": "Review requests waiting for approval or actual execution."
+      },
+      "overdue_loans": {
+        "title": "{count} overdue loans",
+        "help": "Temporary loans are past their return date; follow up to get them returned."
       }
     },
     "subordinatesTitle": "Subordinates",

@@ -77,3 +77,23 @@ test("every employee.detail key exists in Thai and English", () => {
   assert.deepEqual(Object.keys(en.employee.detail).sort(), Object.keys(th.employee.detail).sort())
   for (const key of page.matchAll(/tDetail\("([A-Za-z]+)"/g)) assert.ok(th.employee.detail[key[1]], `employee.detail.${key[1]}`)
 })
+
+// Final review fix 1 (G7P2-R4): only overdue loans are a follow-up; the item names how many.
+test("the follow-up panel's handover item is overdue loans only, with the count", () => {
+  const thFollowUp = (JSON.parse(readFileSync("messages/th.json", "utf8")) as { employee: { followUp: Record<string, { title: string }> } }).employee.followUp
+  const enFollowUp = (JSON.parse(readFileSync("messages/en.json", "utf8")) as { employee: { followUp: Record<string, { title: string }> } }).employee.followUp
+  assert.equal(thFollowUp.overdue_loans.title, "ยืมเกินกำหนด {count} รายการ")
+  assert.match(enFollowUp.overdue_loans.title, /\{count\}/)
+  assert.equal(thFollowUp.open_checkout_returns, undefined)
+  assert.equal(enFollowUp.open_checkout_returns, undefined)
+  assert.match(page, /title=\{t\(`followUp\.\$\{item\}\.title`, \{ count: formatCount\(data\.openHandovers\.overdueLoans\) \}\)\}/)
+})
+
+// Final review fix 2: รับคืน, the page's main action, stays in view beside the aside (1440) and at 1024.
+test("the held table pins the รับคืน column right and keeps its text columns narrow enough to read", () => {
+  const table = page.slice(page.indexOf('caption={tDetail("heldTitle")}'), page.indexOf("</DataTable>", page.indexOf('caption={tDetail("heldTitle")}')))
+  assert.match(table, /<DataTableHead align="right" sticky="right" hideLabel>\{tDetail\("colActions"\)\}<\/DataTableHead>/)
+  assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+<HeldReturnAction /)
+  for (const width of ["min-w-48", "min-w-36", "min-w-40", "min-w-32"]) assert.match(table, new RegExp(`<DataTableCell className="${width}">`))
+  assert.doesNotMatch(table, /min-w-(?:52|44)/)
+})

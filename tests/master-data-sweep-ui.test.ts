@@ -65,11 +65,22 @@ test("employees list: the former-holder card links ?former=withAssets and a form
   assert.match(source, /<input type="hidden" name="former" value="withAssets" \/>/, "the filter form keeps the card's filter")
 })
 
+// Final review fix 3: at 1440 the filter row wraps inside the panel, and the held count sits right after the name.
+test("employees list: the filter row wraps and the held-count column follows the name (final review fix 3)", () => {
+  const source = read(`${D}master-data/employees/page.tsx`)
+  assert.match(source, /\{filterForm\("grid grid-cols-\[repeat\(auto-fit,minmax\(min\(100%,11rem\),1fr\)\)\] gap-3"\)\}/)
+  assert.doesNotMatch(source, /repeat\(6,minmax\(150px,1fr\)\)/)
+  assert.match(source, /<DataTableHead sort=\{sortBy\("fullNameTh"\)\}>\{t\("fullNameTh"\)\}<\/DataTableHead>\n(?:\s+\{\/\*[^\n]*\*\/\}\n)?\s+<DataTableHead align="right" sort=\{sortBy\("assets"\)\}>\{t\("assets"\)\}<\/DataTableHead>\n\s+<DataTableHead sort=\{sortBy\("company"\)\}>/)
+  const rowCells = source.slice(source.indexOf("{employee.fullNameTh}</div>"), source.indexOf("{employee.company.code}</span> - {employee.company.nameTh}"))
+  assert.match(rowCells, /<DataTableCell numeric className="text-muted-foreground">\n\s+\{employee\._count\.custodianAssets > 0 \? \(\n\s+<Link\n\s+href=\{assetsHref\}/, "the count cell, with its link, between the name and the company")
+})
+
 // Fix round 1 (MD-Employees-Phone board): below md one card per employee, the whole card opening the employee page;
 // the filters fold into a disclosure like the suppliers list; the table from md up; one pagination under both.
 test("employees list: phone cards below md and the table from md up, the filters in a phone disclosure (MD-Employees-Phone)", () => {
   const source = read(`${D}master-data/employees/page.tsx`)
-  assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "md:hidden"\)\} open=\{hasActiveFilters\}>/)
+  assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "md:hidden"\)\} open=\{hasFieldFilters\}>/)
+  assert.match(source, /const hasFieldFilters = employeeListHasFieldFilters\(listState\)/, "closed by default; the former chip does not open it (final review fix 4)")
   assert.match(source, /<FilterPanel className="hidden md:block">\n\s+\{filterForm\(/)
   assert.equal(source.match(/\{filterForm\("/g)?.length, 2, "one form, rendered in the disclosure and in the panel")
   assert.match(source, /<DataTable data-employee-desktop-table framed=\{false\} className="hidden md:block" caption=\{t\("title"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/)
@@ -141,7 +152,7 @@ test("employee page: sections are ContentPanels, follow-ups warning Notices, emp
   const source = read(`${D}master-data/employees/[id]/page.tsx`)
   // Held, history, repairs; follow-up, audit, disposal, subordinates, the user account (group 7 plan 2 Task 3).
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 8)
-  assert.match(source, /<Notice key=\{item\} tone="warning" title=\{t\(`followUp\.\$\{item\}\.title`\)\}>/)
+  assert.match(source, /<Notice key=\{item\} tone="warning" title=\{t\(`followUp\.\$\{item\}\.title`, \{ count: formatCount\(data\.openHandovers\.overdueLoans\) \}\)\}>/)
   assert.equal(source.match(/<EmptyNote>/g)?.length, 3, "no subordinates, an empty mini list, no user account")
   assert.equal(source.match(/className=\{linkVariants\(\{ size: "inherit" \}\)\}/g)?.length, 5, "the manager, the audit round, the history asset and the two repair links")
   assert.equal(source.match(/className=\{quietRowLinkClasses\}/g)?.length, 2, "the subordinate and mini list rows, on the shared row hover")

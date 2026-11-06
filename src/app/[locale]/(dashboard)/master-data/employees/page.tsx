@@ -32,6 +32,7 @@ import {
   buildEmployeeQueryString,
   buildEmployeeSummary,
   buildEmployeeWhere,
+  employeeListHasFieldFilters,
   employeeSummaryWheres,
   parseEmployeeListParams,
   type EmployeeListParams,
@@ -118,7 +119,9 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
   const formerList = listState.former === "withAssets"
-  const hasActiveFilters = formerList || listState.status !== "active" || Boolean(listState.search || listState.companyId || listState.branchId || listState.departmentId || listState.employmentStatus !== "all" || listState.custodyUsage !== "all")
+  // The phone disclosure opens for a set form field only; the former filter is the chip below (final review fix 4).
+  const hasFieldFilters = employeeListHasFieldFilters(listState)
+  const hasActiveFilters = formerList || hasFieldFilters
   // The board hides the record-status column while the list shows active records only; ?former=withAssets shows both.
   const showRecordStatus = formerList || listState.status !== "active"
   const columnCount = showRecordStatus ? 10 : 9
@@ -285,9 +288,9 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         ]}
       />
 
-      {/* Phones: the filters fold into a disclosure, open while a filter is on (the suppliers list's pattern). A <details>
-          cannot be ContentPanel: the panel classes (2D-2 R4). */}
-      <details className={cn(getPanelClasses(), "md:hidden")} open={hasActiveFilters}>
+      {/* Phones: the filters fold into a disclosure, closed by default and open while a form field is set (the suppliers
+          list's pattern). A <details> cannot be ContentPanel: the panel classes (2D-2 R4). */}
+      <details className={cn(getPanelClasses(), "md:hidden")} open={hasFieldFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           {t("filtersTitle")}
@@ -295,8 +298,9 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         {filterForm("grid gap-3 border-t border-border p-4")}
       </details>
 
+      {/* Search, six selects and the buttons do not fit one row at 1440 or 1024: the row wraps (the brands page's fix). */}
       <FilterPanel className="hidden md:block">
-        {filterForm("grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(6,minmax(150px,1fr))_auto]")}
+        {filterForm("grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3")}
       </FilterPanel>
 
       {formerList ? (
@@ -313,12 +317,13 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             <tr>
               <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
               <DataTableHead sort={sortBy("fullNameTh")}>{t("fullNameTh")}</DataTableHead>
+              {/* The held count right after the name: the key column of the former-holder view (final review fix 3b). */}
+              <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
               <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
               <DataTableHead sort={sortBy("branch")}>{t("branch")}</DataTableHead>
               <DataTableHead sort={sortBy("department")}>{t("department")}</DataTableHead>
               <DataTableHead>{t("manager")}</DataTableHead>
               <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
-              <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
               {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
               <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
             </tr>
@@ -346,6 +351,18 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       {orNil([employee.position, employee.email].filter(Boolean).join(" / "))}
                     </div>
                   </DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">
+                    {employee._count.custodianAssets > 0 ? (
+                      <Link
+                        href={assetsHref}
+                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0", formerHolder && "font-semibold text-warning")}
+                      >
+                        {formatCount(employee._count.custodianAssets)}
+                      </Link>
+                    ) : (
+                      formatCount(0)
+                    )}
+                  </DataTableCell>
                   <DataTableCell className="min-w-56 text-muted-foreground">
                     <span className="tag">{employee.company.code}</span> - {employee.company.nameTh}
                   </DataTableCell>
@@ -367,18 +384,6 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                   <DataTableCell className="whitespace-nowrap">
                     <StatusBadge label={t(`status_${employee.employmentStatus}`)} tone={employmentStatusTone(employee.employmentStatus)} />
                     {formerHolder ? <span className="block text-meta text-warning">{t("formerHolderNote")}</span> : null}
-                  </DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">
-                    {employee._count.custodianAssets > 0 ? (
-                      <Link
-                        href={assetsHref}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0", formerHolder && "font-semibold text-warning")}
-                      >
-                        {formatCount(employee._count.custodianAssets)}
-                      </Link>
-                    ) : (
-                      formatCount(0)
-                    )}
                   </DataTableCell>
                   {showRecordStatus ? (
                     <DataTableCell className="whitespace-nowrap">

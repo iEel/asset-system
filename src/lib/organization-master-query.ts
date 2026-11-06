@@ -207,6 +207,19 @@ export function parseEmployeeListParams(input: EmployeeListParams): EmployeeList
   }
 }
 
+/**
+ * A field of the employee filter form is set: opens the phone filters disclosure (the suppliers list's rule). The
+ * former-holder card's ?former=withAssets is not one; it shows as a chip above the list (final review fix 4).
+ */
+export function employeeListHasFieldFilters(state: EmployeeListState): boolean {
+  return (
+    state.status !== "active" ||
+    Boolean(state.search || state.companyId || state.branchId || state.departmentId) ||
+    state.employmentStatus !== "all" ||
+    state.custodyUsage !== "all"
+  )
+}
+
 export function parseSupplierListParams(input: SupplierListParams): SupplierListState {
   const sortValue = firstValue(input.sort)
   const directionValue = firstValue(input.direction)

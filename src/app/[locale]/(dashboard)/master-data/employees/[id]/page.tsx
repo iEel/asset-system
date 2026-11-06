@@ -216,26 +216,27 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                       <DataTableHead>{tDetail("colStatusLocation")}</DataTableHead>
                       <DataTableHead>{tDetail("colHandover")}</DataTableHead>
                       <DataTableHead>{tDetail("colLastAudit")}</DataTableHead>
-                      <DataTableHead><span className="sr-only">{tDetail("colActions")}</span></DataTableHead>
+                      {/* รับคืน is the page's main action: pinned right so it stays in view beside the 340px aside (xl). */}
+                      <DataTableHead align="right" sticky="right" hideLabel>{tDetail("colActions")}</DataTableHead>
                     </tr>
                   </DataTableHeader>
                   <DataTableBody>
                     {data.held.rows.map((row) => (
                       <DataTableRow key={row.assetId} data-employee-held-row="">
                         <DataTableCell><AssetThumbnail photo={row.photo} assetTag={row.assetTag} assetName={row.name} size={44} /></DataTableCell>
-                        <DataTableCell className="min-w-52">
+                        <DataTableCell className="min-w-48">
                           <HeldAssetName row={row} locale={locale} />
                         </DataTableCell>
-                        <DataTableCell className="min-w-44">
+                        <DataTableCell className="min-w-36">
                           <HeldStatusLocation row={row} />
                         </DataTableCell>
-                        <DataTableCell className="min-w-44">
+                        <DataTableCell className="min-w-40">
                           <HeldHandover row={row} locale={locale} pageHref={pageHref} canEdit={canEditAssets} now={now} labels={heldLabels} />
                         </DataTableCell>
-                        <DataTableCell className="min-w-36">
+                        <DataTableCell className="min-w-32">
                           <HeldLastAudit row={row} locale={locale} labels={heldLabels} />
                         </DataTableCell>
-                        <DataTableCell className="min-w-28">
+                        <DataTableCell align="right" sticky="right">
                           <HeldReturnAction row={row} pageHref={pageHref} locale={locale} canEdit={canEditAssets} labels={heldLabels} />
                         </DataTableCell>
                       </DataTableRow>
@@ -374,7 +375,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
               <div className="space-y-3">
                 {/* Each item is something to deal with now: a warning Notice, its help as the second line (spec 2D D7). */}
                 {data.followUpItems.map((item) => (
-                  <Notice key={item} tone="warning" title={t(`followUp.${item}.title`)}>
+                  <Notice key={item} tone="warning" title={t(`followUp.${item}.title`, { count: formatCount(data.openHandovers.overdueLoans) })}>
                     {t(`followUp.${item}.help`)}
                   </Notice>
                 ))}

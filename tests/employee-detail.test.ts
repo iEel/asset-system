@@ -49,10 +49,11 @@ test("flags employee profile risks that need follow-up", () => {
       openMaintenanceCount: 1,
       pendingAuditFindingCount: 1,
       pendingDisposalCount: 1,
+      overdueLoanCount: 1,
     }),
     [
       "former_employee_with_assets",
-      "open_checkout_returns",
+      "overdue_loans",
       "open_maintenance",
       "pending_audit_findings",
       "pending_disposals",
@@ -68,14 +69,22 @@ test("flags employee profile risks that need follow-up", () => {
       openMaintenanceCount: 0,
       pendingAuditFindingCount: 0,
       pendingDisposalCount: 0,
+      overdueLoanCount: 0,
     }),
     []
   )
 })
 
+// G7P2-R4 and the board: an open regular-use handover or a loan not yet due is not a follow-up; only an overdue loan is.
+test("only overdue loans raise a handover follow-up item, as G7P2-R4", () => {
+  const base = { employmentStatus: "active", isActive: true, currentAssetCount: 3, openMaintenanceCount: 0, pendingAuditFindingCount: 0, pendingDisposalCount: 0 }
+  assert.deepEqual(buildEmployeeFollowUpItems({ ...base, openCheckoutCount: 3, overdueLoanCount: 0 }), [])
+  assert.deepEqual(buildEmployeeFollowUpItems({ ...base, openCheckoutCount: 3, overdueLoanCount: 2 }), ["overdue_loans"])
+})
+
 // Group 7 plan 2 (G7P2-R1, carried from Task 2): an employee AD deactivated is former too, though HR still says active.
 test("a record AD deactivated counts as former in the follow-up items, as G7P2-R1", () => {
-  const counts = { currentAssetCount: 2, openCheckoutCount: 0, openMaintenanceCount: 0, pendingAuditFindingCount: 0, pendingDisposalCount: 0 }
+  const counts = { currentAssetCount: 2, openCheckoutCount: 0, openMaintenanceCount: 0, pendingAuditFindingCount: 0, pendingDisposalCount: 0, overdueLoanCount: 0 }
   assert.deepEqual(buildEmployeeFollowUpItems({ employmentStatus: "active", isActive: false, ...counts }), ["former_employee_with_assets"])
   assert.deepEqual(buildEmployeeFollowUpItems({ employmentStatus: "active", isActive: true, ...counts }), [])
   assert.deepEqual(buildEmployeeFollowUpItems({ employmentStatus: "resigned", isActive: true, ...counts, currentAssetCount: 0 }), [])

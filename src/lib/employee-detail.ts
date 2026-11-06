@@ -8,7 +8,7 @@ export type EmployeeDetailSummaryInput = {
 
 export type EmployeeFollowUpKey =
   | "former_employee_with_assets"
-  | "open_checkout_returns"
+  | "overdue_loans"
   | "open_maintenance"
   | "pending_audit_findings"
   | "pending_disposals"
@@ -54,10 +54,16 @@ export function isFormerEmployee(employee: { employmentStatus: string; isActive:
   return employee.employmentStatus !== "active" || !employee.isActive
 }
 
-export function buildEmployeeFollowUpItems(input: EmployeeDetailSummaryInput & { employmentStatus: string; isActive: boolean }) {
+/**
+ * G7P2-R4: an open regular-use handover or a loan not yet due is normal, not a follow-up; only an overdue loan is
+ * (the open handover total stays in the summary counts).
+ */
+export function buildEmployeeFollowUpItems(
+  input: EmployeeDetailSummaryInput & { employmentStatus: string; isActive: boolean; overdueLoanCount: number }
+) {
   const items: EmployeeFollowUpKey[] = []
   if (isFormerEmployee(input) && input.currentAssetCount > 0) items.push("former_employee_with_assets")
-  if (input.openCheckoutCount > 0) items.push("open_checkout_returns")
+  if (input.overdueLoanCount > 0) items.push("overdue_loans")
   if (input.openMaintenanceCount > 0) items.push("open_maintenance")
   if (input.pendingAuditFindingCount > 0) items.push("pending_audit_findings")
   if (input.pendingDisposalCount > 0) items.push("pending_disposals")
