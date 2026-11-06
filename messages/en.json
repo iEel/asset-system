@@ -1752,7 +1752,6 @@
     "withoutAssets": "No assets yet",
     "clearFilters": "Clear filters",
     "summaryTotal": "Total Employees",
-    "summaryActive": "{count} active employees",
     "summaryWithAssets": "Holding Assets",
     "summaryWithAssetsHelp": "Open employees currently holding assets.",
     "summaryWithoutAssets": "No Assets",
@@ -1858,7 +1857,12 @@
       "noAccount": "No user account",
       "accountActive": "Active",
       "accountInactive": "Inactive"
-    }
+    },
+    "summaryTotalBreakdown": "{active} active · {resigned} resigned · {suspended} suspended",
+    "formerHolderNote": "Still holds assets; take them back",
+    "formerFilterChip": "Former, still holding (inactive records included)",
+    "activeFilters": "Active filters",
+    "clearFilter": "Clear this filter"
   },
   "location": {
     "title": "Locations",

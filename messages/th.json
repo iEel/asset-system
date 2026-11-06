@@ -1752,7 +1752,6 @@
     "withoutAssets": "ยังไม่มีทรัพย์สิน",
     "clearFilters": "ล้างตัวกรอง",
     "summaryTotal": "พนักงานทั้งหมด",
-    "summaryActive": "ทำงานอยู่ {count} คน",
     "summaryWithAssets": "ถือครองทรัพย์สิน",
     "summaryWithAssetsHelp": "กดเพื่อดูพนักงานที่ถือครองทรัพย์สินอยู่",
     "summaryWithoutAssets": "ยังไม่มีทรัพย์สิน",
@@ -1858,7 +1857,12 @@
       "noAccount": "ไม่มีบัญชีผู้ใช้",
       "accountActive": "ใช้งาน",
       "accountInactive": "ปิดใช้งาน"
-    }
+    },
+    "summaryTotalBreakdown": "ทำงานอยู่ {active} · ลาออก {resigned} · พักงาน {suspended}",
+    "formerHolderNote": "ยังถือครองอยู่ ควรรับคืน",
+    "formerFilterChip": "พ้นสภาพแต่ยังถือครอง (รวมระเบียนที่ไม่ใช้งาน)",
+    "activeFilters": "ตัวกรองที่ใช้อยู่",
+    "clearFilter": "ล้างตัวกรองนี้"
   },
   "location": {
     "title": "ที่ตั้ง",

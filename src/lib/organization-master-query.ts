@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { isFormerEmployee } from "./employee-detail.ts"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
 
 export const companySorts = ["createdAt", "code", "assetTagCode", "nameTh", "branches", "employees", "assets"] as const
@@ -10,6 +11,8 @@ export const branchUsageFilters = ["all", "withBranches", "withoutBranches"] as 
 export const locationUsageFilters = ["all", "withLocations", "withoutLocations"] as const
 export const employeeStatusFilters = ["all", "active", "resigned", "suspended"] as const
 export const custodyUsageFilters = ["all", "withAssets", "withoutAssets"] as const
+// G7P2-R1: the list behind the "พ้นสภาพแต่ยังถือครอง" card (?former=withAssets).
+export const formerEmployeeFilters = ["all", "withAssets"] as const
 export const purchaseDocumentUsageFilters = ["all", "withPurchaseDocuments", "withoutPurchaseDocuments"] as const
 
 export type CompanySort = (typeof companySorts)[number]
@@ -21,6 +24,7 @@ export type BranchUsageFilter = (typeof branchUsageFilters)[number]
 export type LocationUsageFilter = (typeof locationUsageFilters)[number]
 export type EmployeeStatusFilter = (typeof employeeStatusFilters)[number]
 export type CustodyUsageFilter = (typeof custodyUsageFilters)[number]
+export type FormerEmployeeFilter = (typeof formerEmployeeFilters)[number]
 export type PurchaseDocumentUsageFilter = (typeof purchaseDocumentUsageFilters)[number]
 
 export type CompanyListParams = {
@@ -58,6 +62,7 @@ export type EmployeeListParams = {
   departmentId?: string | string[] | null
   employmentStatus?: string | string[] | null
   custodyUsage?: string | string[] | null
+  former?: string | string[] | null
 }
 
 export type SupplierListParams = {
@@ -106,6 +111,7 @@ export type EmployeeListState = {
   departmentId: string
   employmentStatus: EmployeeStatusFilter
   custodyUsage: CustodyUsageFilter
+  former: FormerEmployeeFilter
 }
 
 export type SupplierListState = {
@@ -133,7 +139,10 @@ export type BranchSummaryItem = {
   }
 }
 
+// Every record, active or not: the former-holder card counts the ones AD sync deactivated (G7P2-R1); the other cards
+// count active records only.
 export type EmployeeSummaryItem = {
+  isActive: boolean
   employmentStatus: string
   _count: {
     custodianAssets: number
@@ -196,6 +205,7 @@ export function parseEmployeeListParams(input: EmployeeListParams): EmployeeList
     departmentId: firstValue(input.departmentId).trim(),
     employmentStatus: parseFilter(input.employmentStatus, employeeStatusFilters, "all"),
     custodyUsage: parseFilter(input.custodyUsage, custodyUsageFilters, "all"),
+    former: parseFilter(input.former, formerEmployeeFilters, "all"),
   }
 }
 
@@ -260,9 +270,22 @@ export function buildBranchWhere(state: BranchListState): Prisma.BranchWhereInpu
   }
 }
 
-export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhereInput {
+// G7P2-R1: not active by employment status or by record (AD sync deactivates a leaver: isActive false, resigned), and
+// still the custodian of an active asset. The query form of isFormerEmployee (employee-detail.ts) plus the holding.
+export function formerEmployeeWithAssetsWhere(): Prisma.EmployeeWhereInput {
   return {
-    ...recordStatusWhere(state.status),
+    AND: [
+      { OR: [{ employmentStatus: { not: "active" } }, { isActive: false }] },
+      { custodianAssets: { some: { isActive: true } } },
+    ],
+  }
+}
+
+export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhereInput {
+  const former = state.former === "withAssets"
+  return {
+    // ?former=withAssets ignores the record-status filter: the people it finds are often inactive records.
+    ...(former ? {} : recordStatusWhere(state.status)),
     ...(state.companyId ? { companyId: state.companyId } : {}),
     ...(state.branchId ? { branchId: state.branchId } : {}),
     ...(state.departmentId ? { departmentId: state.departmentId } : {}),
@@ -288,6 +311,7 @@ export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhe
       : {}),
     ...(state.custodyUsage === "withAssets" ? { custodianAssets: { some: { isActive: true } } } : {}),
     ...(state.custodyUsage === "withoutAssets" ? { custodianAssets: { none: { isActive: true } } } : {}),
+    ...(former ? formerEmployeeWithAssetsWhere() : {}),
   }
 }
 
@@ -396,6 +420,8 @@ export function buildEmployeeQueryString(current: EmployeeListState, next: Parti
   if (merged.departmentId) params.set("departmentId", merged.departmentId)
   params.set("employmentStatus", merged.employmentStatus)
   params.set("custodyUsage", merged.custodyUsage)
+  // Only when on, so links built before keep their exact query strings.
+  if (merged.former === "withAssets") params.set("former", merged.former)
   setRecordStatusParam(params, merged.status)
   return params.toString()
 }
@@ -435,13 +461,17 @@ export function buildBranchSummary(branches: BranchSummaryItem[]) {
 }
 
 export function buildEmployeeSummary(employees: EmployeeSummaryItem[]) {
+  const records = employees.filter((employee) => employee.isActive)
   return {
-    total: employees.length,
-    active: employees.filter((employee) => employee.employmentStatus === "active").length,
-    inactive: employees.filter((employee) => employee.employmentStatus !== "active").length,
-    withAssets: employees.filter((employee) => employee._count.custodianAssets > 0).length,
-    withoutAssets: employees.filter((employee) => employee._count.custodianAssets === 0).length,
-    formerWithAssets: employees.filter((employee) => employee.employmentStatus !== "active" && employee._count.custodianAssets > 0).length,
+    total: records.length,
+    active: records.filter((employee) => employee.employmentStatus === "active").length,
+    inactive: records.filter((employee) => employee.employmentStatus !== "active").length,
+    resigned: records.filter((employee) => employee.employmentStatus === "resigned").length,
+    suspended: records.filter((employee) => employee.employmentStatus === "suspended").length,
+    withAssets: records.filter((employee) => employee._count.custodianAssets > 0).length,
+    withoutAssets: records.filter((employee) => employee._count.custodianAssets === 0).length,
+    // G7P2-R1: over every record, so it equals what ?former=withAssets lists.
+    formerWithAssets: employees.filter((employee) => isFormerEmployee(employee) && employee._count.custodianAssets > 0).length,
   }
 }
 

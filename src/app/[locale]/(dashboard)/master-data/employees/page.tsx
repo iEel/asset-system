@@ -8,6 +8,7 @@ import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
+import { FilterChipList } from "@/components/ui/filter-chips"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { Nil, orNil } from "@/components/ui/nil"
@@ -16,12 +17,13 @@ import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
+import { isFormerEmployee } from "@/lib/employee-detail"
 import {
   buildEmployeeDrilldownHrefs,
   buildEmployeeOrderBy,
@@ -68,9 +70,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       take: listState.pageSize,
     }),
     prisma.employee.count({ where }),
+    // Every record: the former-holder card counts the ones AD sync deactivated (G7P2-R1); buildEmployeeSummary keeps
+    // the other cards to active records.
     prisma.employee.findMany({
-      where: { isActive: true },
       select: {
+        isActive: true,
         employmentStatus: true,
         _count: {
           select: {
@@ -98,6 +102,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const basePath = `/${locale}/master-data/employees`
   const employeeReturnHref = `${basePath}?${buildEmployeeQueryString(listState, {})}`
   const summary = buildEmployeeSummary(summaryEmployees)
+  const totalBreakdown = t("summaryTotalBreakdown", {
+    active: formatCount(summary.active),
+    resigned: formatCount(summary.resigned),
+    suspended: formatCount(summary.suspended),
+  })
   const listHref = (next: Partial<EmployeeListState>) => `${basePath}?${buildEmployeeQueryString(listState, next)}`
   // A page past the last one (an old link, or the last row of the last page deleted) shows the last page (spec 2B I21).
   const lastPage = lastListPage(total, listState.pageSize)
@@ -105,7 +114,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
-  const hasActiveFilters = listState.status !== "active" || Boolean(listState.search || listState.companyId || listState.branchId || listState.departmentId || listState.employmentStatus !== "all" || listState.custodyUsage !== "all")
+  const formerList = listState.former === "withAssets"
+  const hasActiveFilters = formerList || listState.status !== "active" || Boolean(listState.search || listState.companyId || listState.branchId || listState.departmentId || listState.employmentStatus !== "all" || listState.custodyUsage !== "all")
+  // The board hides the record-status column while the list shows active records only; ?former=withAssets shows both.
+  const showRecordStatus = formerList || listState.status !== "active"
+  const columnCount = showRecordStatus ? 10 : 9
   const sortBy = (field: EmployeeSort): DataTableSort => ({
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
@@ -136,8 +149,8 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             key: "total",
             label: t("summaryTotal"),
             value: formatCount(summary.total),
-            foot: t("summaryActive", { count: summary.active }),
-            footTitle: t("summaryActive", { count: summary.active }),
+            foot: totalBreakdown,
+            footTitle: totalBreakdown,
             href: basePath,
           },
           {
@@ -146,8 +159,8 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             value: formatCount(summary.withAssets),
             foot: t("summaryWithAssetsHelp"),
             footTitle: t("summaryWithAssetsHelp"),
-            href: listHref({ custodyUsage: "withAssets", page: 1 }),
-            current: listState.custodyUsage === "withAssets",
+            href: listHref({ custodyUsage: "withAssets", former: "all", page: 1 }),
+            current: !formerList && listState.custodyUsage === "withAssets",
           },
           {
             key: "withoutAssets",
@@ -155,17 +168,19 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             value: formatCount(summary.withoutAssets),
             foot: t("summaryWithoutAssetsHelp"),
             footTitle: t("summaryWithoutAssetsHelp"),
-            href: listHref({ custodyUsage: "withoutAssets", page: 1 }),
-            current: listState.custodyUsage === "withoutAssets",
+            href: listHref({ custodyUsage: "withoutAssets", former: "all", page: 1 }),
+            current: !formerList && listState.custodyUsage === "withoutAssets",
           },
           {
+            // G7P2-R1: every not-active (employment status or record) employee still holding an active asset, whatever
+            // the record-status filter. The link is the bare filter, so the list shows exactly the people counted.
             key: "formerWithAssets",
             label: t("summaryFormerWithAssets"),
             value: formatCount(summary.formerWithAssets),
             foot: t("summaryFormerWithAssetsHelp"),
             footTitle: t("summaryFormerWithAssetsHelp"),
-            href: listHref({ employmentStatus: "resigned", custodyUsage: "withAssets", page: 1 }),
-            current: listState.employmentStatus === "resigned" && listState.custodyUsage === "withAssets",
+            href: `${basePath}?former=withAssets`,
+            current: listState.former === "withAssets",
             attention: summary.formerWithAssets > 0,
           },
         ]}
@@ -177,6 +192,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           <input type="hidden" name="sort" value={listState.sort} />
           <input type="hidden" name="direction" value={listState.direction} />
+          {formerList ? <input type="hidden" name="former" value="withAssets" /> : null}
           <Field label={tCommon("search")}>
             <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
           </Field>
@@ -219,6 +235,8 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             label={tCommon("status")}
             name="status"
             defaultValue={listState.status}
+            // ?former=withAssets ignores the record status (G7P2-R1); the chip below says so.
+            disabled={formerList}
             options={[
               { value: "active", label: tCommon("active") },
               { value: "inactive", label: tCommon("inactive") },
@@ -227,6 +245,14 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
           />
           <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
         </form>
+        {formerList ? (
+          <FilterChipList
+            className="mt-3"
+            chips={[{ key: "former", label: t("formerFilterChip"), href: listHref({ former: "all", page: 1 }) }]}
+            label={t("activeFilters")}
+            removeLabel={t("clearFilter")}
+          />
+        ) : null}
       </FilterPanel>
 
       <DataTable
@@ -264,22 +290,24 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             <DataTableHead>{t("manager")}</DataTableHead>
             <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
-            <DataTableHead>{tCommon("status")}</DataTableHead>
+            {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
             <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
           {employees.length === 0 ? (
             hasActiveFilters ? (
-              <TableEmptyRow colSpan={10} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+              <TableEmptyRow colSpan={columnCount} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
             ) : (
-              <TableEmptyRow colSpan={10}>{tCommon("noData")}</TableEmptyRow>
+              <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
             )
           ) : (
             employees.map((employee) => {
               const drilldown = buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id })
               const detailHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref)
               const editHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref)
+              // G7P2-R1, spec §5.1: a former employee (or an AD-deactivated record) still holding assets.
+              const formerHolder = isFormerEmployee(employee) && employee._count.custodianAssets > 0
               return (
                 <ClickableTableRow
                   key={employee.id}
@@ -313,14 +341,15 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       <Nil />
                     )}
                   </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                    {t(`status_${employee.employmentStatus}`)}
+                  <DataTableCell className="whitespace-nowrap">
+                    <StatusBadge label={t(`status_${employee.employmentStatus}`)} tone={employmentStatusTone(employee.employmentStatus)} />
+                    {formerHolder ? <span className="block text-meta text-warning">{t("formerHolderNote")}</span> : null}
                   </DataTableCell>
                   <DataTableCell numeric className="text-muted-foreground">
                     {employee._count.custodianAssets > 0 ? (
                       <Link
                         href={drilldown.assets}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0", formerHolder && "font-semibold text-warning")}
                       >
                         {formatCount(employee._count.custodianAssets)}
                       </Link>
@@ -328,9 +357,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       formatCount(0)
                     )}
                   </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap">
-                    <StatusBadge label={employee.isActive ? tCommon("active") : tCommon("inactive")} tone={employee.isActive ? "success" : "muted"} />
-                  </DataTableCell>
+                  {showRecordStatus ? (
+                    <DataTableCell className="whitespace-nowrap">
+                      <StatusBadge label={employee.isActive ? tCommon("active") : tCommon("inactive")} tone={employee.isActive ? "success" : "muted"} />
+                    </DataTableCell>
+                  ) : null}
                   <DataTableCell align="right" sticky="right">
                     <RowActions
                       code={employee.code}
@@ -349,4 +380,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       </DataTable>
     </div>
   )
+}
+
+// The board's badges: ทำงานอยู่ success, ลาออก muted, พักงาน warning.
+function employmentStatusTone(status: string): StatusTone {
+  if (status === "active") return "success"
+  if (status === "suspended") return "warning"
+  return "muted"
 }

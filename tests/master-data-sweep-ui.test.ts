@@ -40,9 +40,25 @@ test("departments list: the active state is a StatusBadge (spec 2D M7)", () => {
 
 test("employees list: the asset count is a text link with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/employees/page.tsx`)
-  assert.equal(source.match(drilldownLink)?.length, 1)
+  // Group 7 plan 2 Task 4: a former holder's count adds the warning tone as a third cn argument.
+  assert.equal(source.match(/className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0", formerHolder && "font-semibold text-warning"\)\}/g)?.length, 1)
   assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
+})
+
+// Group 7 plan 2 Task 4 (spec §5.1, G7P2-R1): the former-holder card opens ?former=withAssets, the summary reads every
+// record (an AD-deactivated holder included), and a former holder's row shows the held count in the warning tone.
+test("employees list: the former-holder card links ?former=withAssets and a former holder's row is marked in the warning tone (G7P2-R1)", () => {
+  const source = read(`${D}master-data/employees/page.tsx`)
+  assert.match(source, /href: `\$\{basePath\}\?former=withAssets`/)
+  assert.match(source, /current: listState\.former === "withAssets"/)
+  const summaryRead = source.slice(source.indexOf("prisma.employee.count({ where }),"), source.indexOf("prisma.company.findMany("))
+  assert.doesNotMatch(summaryRead, /findMany\(\{\n\s+where: \{ isActive: true \}/, "the summary reads inactive records too")
+  assert.match(summaryRead, /isActive: true,\n\s+employmentStatus: true/)
+  assert.match(source, /const formerHolder = isFormerEmployee\(employee\) && employee\._count\.custodianAssets > 0/)
+  assert.match(source, /formerHolder && "font-semibold text-warning"/)
+  assert.match(source, /\{formerHolder \? <span className="block text-meta text-warning">\{t\("formerHolderNote"\)\}<\/span> : null\}/)
+  assert.match(source, /<input type="hidden" name="former" value="withAssets" \/>/, "the filter form keeps the card's filter")
 })
 
 test("locations list: the asset count is a text link with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {

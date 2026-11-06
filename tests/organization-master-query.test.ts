@@ -30,6 +30,7 @@ import {
   parseCompanyListParams,
   parseEmployeeListParams,
   parseSupplierListParams,
+  formerEmployeeWithAssetsWhere,
 } from "../src/lib/organization-master-query.ts"
 
 test("parses company list params with safe defaults and filters", () => {
@@ -251,14 +252,16 @@ test("builds employee where, summary, drilldown, query string, and delete guard"
   assert.deepEqual(buildEmployeeOrderBy({ sort: "company", direction: "asc" }), { company: { code: "asc" } })
   assert.deepEqual(
     buildEmployeeSummary([
-      { employmentStatus: "active", _count: { custodianAssets: 2 } },
-      { employmentStatus: "resigned", _count: { custodianAssets: 1 } },
-      { employmentStatus: "suspended", _count: { custodianAssets: 0 } },
+      { isActive: true, employmentStatus: "active", _count: { custodianAssets: 2 } },
+      { isActive: true, employmentStatus: "resigned", _count: { custodianAssets: 1 } },
+      { isActive: true, employmentStatus: "suspended", _count: { custodianAssets: 0 } },
     ]),
     {
       total: 3,
       active: 1,
       inactive: 2,
+      resigned: 1,
+      suspended: 1,
       withAssets: 2,
       withoutAssets: 1,
       formerWithAssets: 1,
@@ -349,4 +352,42 @@ test("company, branch, employee and supplier lists filter by record status, ใ�
     assert.match(toQuery(parse({ status: "inactive" }), {}), /(^|&)status=inactive(&|$)/)
     assert.doesNotMatch(toQuery(parse({}), {}), /status=/)
   }
+})
+
+// G7P2-R1 (spec §5.1, Review Focus 1): "พ้นสภาพแต่ยังถือครอง" = (employmentStatus not active OR record not active) AND
+// holds an active asset as custodian. AD sync deactivates a leaver (isActive false, resigned), so the card and its list
+// must reach records the default list (active records only) leaves out.
+test("the former-holder card counts an AD-deactivated holder, and ?former=withAssets lists them whatever the record status (G7P2-R1)", () => {
+  const summary = buildEmployeeSummary([
+    { isActive: true, employmentStatus: "active", _count: { custodianAssets: 3 } },
+    { isActive: false, employmentStatus: "resigned", _count: { custodianAssets: 2 } },
+    { isActive: false, employmentStatus: "active", _count: { custodianAssets: 1 } },
+    { isActive: true, employmentStatus: "suspended", _count: { custodianAssets: 1 } },
+    { isActive: false, employmentStatus: "resigned", _count: { custodianAssets: 0 } },
+  ])
+  assert.equal(summary.formerWithAssets, 3, "AD-deactivated, deactivated-but-active-status and suspended holders")
+  assert.equal(summary.total, 2, "the other cards still count active records only")
+  assert.equal(summary.withAssets, 2)
+
+  const formerWhere = {
+    AND: [
+      { OR: [{ employmentStatus: { not: "active" } }, { isActive: false }] },
+      { custodianAssets: { some: { isActive: true } } },
+    ],
+  }
+  assert.deepEqual(formerEmployeeWithAssetsWhere(), formerWhere)
+
+  const state = parseEmployeeListParams({ former: "withAssets" })
+  assert.equal(state.former, "withAssets")
+  assert.equal(state.status, "active")
+  assert.deepEqual(buildEmployeeWhere(state), formerWhere, "no isActive: the record-status filter is ignored")
+  assert.deepEqual(buildEmployeeWhere(parseEmployeeListParams({ former: "withAssets", status: "inactive" })), formerWhere)
+  assert.deepEqual(buildEmployeeWhere(parseEmployeeListParams({ former: "withAssets", companyId: "company-1" })), { companyId: "company-1", ...formerWhere })
+  assert.equal(parseEmployeeListParams({}).former, "all")
+  assert.equal(parseEmployeeListParams({ former: "x" }).former, "all")
+  assert.equal(buildEmployeeWhere(parseEmployeeListParams({})).isActive, true)
+
+  assert.match(buildEmployeeQueryString(state, { page: 2 }), /(^|&)former=withAssets(&|$)/, "paging, sorting and returnTo keep it")
+  assert.doesNotMatch(buildEmployeeQueryString(state, { former: "all" }), /former=/)
+  assert.doesNotMatch(buildEmployeeQueryString(parseEmployeeListParams({}), {}), /former=/, "links built before keep their query strings")
 })
