@@ -351,7 +351,6 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
                             {t("groupCount", { count: section.group.count })}
                           </>
                         )}
-                        {props.groupAction?.(section.group)}
                       </div>
                       <ul role="group" aria-labelledby={`${id}-group-${sectionIndex}`}>
                         {section.rows.map(renderRow)}
@@ -362,6 +361,16 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
                   ),
                 )}
               </ul>
+              {/* A group's action (รับคืน's "รับคืนทั้งหมดของ {holder}") is a link, which a listbox may not hold (axe
+                  aria-required-children), so each one stands under the list, outside it. */}
+              {sections.map((section) => {
+                const action = section.group ? props.groupAction?.(section.group) : null
+                return action ? (
+                  <p key={`action:${section.group?.key}`} data-asset-option-group-action={section.group?.key} className="border-t border-border-soft px-3 py-2 text-meta">
+                    {action}
+                  </p>
+                ) : null
+              })}
               <p data-asset-search-count className="border-t border-border-soft px-3 py-2 text-meta text-primary">
                 {countText}
               </p>

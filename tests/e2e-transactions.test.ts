@@ -515,7 +515,7 @@ test("the desk delivery on the phone: three steps on one form, the read-back, a 
   // Every spec of the area is pinned by this file.
   const { readdirSync } = await import("node:fs")
   assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [
-    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-condition.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return-components.spec.ts", "return.spec.ts", "transfer.spec.ts",
+    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-condition.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "multi-return.spec.ts", "register-asset.spec.ts", "return-components.spec.ts", "return.spec.ts", "transfer.spec.ts",
   ])
 })
 
@@ -687,4 +687,29 @@ test("the asset pages read the outstanding line: the parent's components tab and
   assert.ok(manager > 0 && pages > manager, "at the end of the first test, after the component manager's check")
   assert.ok(first.includes("await visitAssetPage(measure, assetId, label, testInfo, view)"))
   assert.match(spec, /^\s+visitAssetPage,$/m)
+})
+
+test("รับคืนหลายรายการ: the employee page's entry, the locked repair row, a machine returned elsewhere refused and removed, one RT- with three machines and the backfilled HO-, then one line cancelled (group 7 plan 4 task 5)", () => {
+  // The IT head: the employee page needs employee:view, which IT staff lack (e2e/support/run-plan.ts).
+  const spec = read("e2e/transactions/multi-return.spec.ts")
+  assert.ok(spec.split("\n").includes(`asUser("itHead")`))
+  assert.match(spec, /from "\.\.\/support\/fixtures\.ts"/)
+  assert.doesNotMatch(spec, /from "@playwright\/test"/)
+  for (const part of [
+    'const BATCH_PATH = "/api/asset-checkins/batch"',
+    'expect(unsignedBody.code).toBe("BATCH_CHECKIN_SIGNATURE_REQUIRED")',
+    'code: "BATCH_CHECKIN_NEEDS_SINGLE"',
+    "await expect(tick(page, inRepair)).toBeDisabled()",
+    "formRow(page, inRepair).getByRole(\"link\", { name: TX_WORDS.multiReturnNeedsSingle, exact: true })",
+    'await conditionChip(page, "เสียหาย", `batch-checkin-condition-${damaged.id}`).check()',
+    String.raw`measure.expectRefusal({ method: "POST", url: /\/api\/asset-checkins\/batch$/, status: 409,`,
+    "await page.getByRole(\"button\", { name: TX_WORDS.multiReturnRemoveBlocked, exact: true }).click()",
+    "await expect(machines).toHaveCount(3)",
+    "await expect(machine(legacy)).toContainText(/HO-/)",
+    'await expect(damagedLine).toHaveAttribute("data-voided", "true")',
+    "`/api/asset-checkins/${damagedCheckinId}/cancel`",
+    "createTxAsset(page, masters, project, \"MRL\", \"โน้ตบุ๊กข้อมูลเก่าคืนหลายรายการ\", { custodianId: employee.id })",
+  ]) assert.ok(spec.includes(part), part)
+  assert.ok(spec.split("recordSettled(page, measure, ").length - 1 >= 6, "axe on each step's page")
+  for (const banned of ["request.delete", ".delete(", "/api/admin/settings", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })

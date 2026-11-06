@@ -269,6 +269,11 @@ test("the entry points: the employee page's รับคืนหลายรา
   assert.match(checkin, /batchCheckinHolderHref\(locale, group, returnTo \?\? `\/\$\{locale\}\/asset-management\/checkin`\)/)
   const picker = read("src/components/ui/asset-operation-picker.tsx")
   assert.match(picker, /groupAction\?\.\(section\.group\)/)
+  // A listbox holds options only (axe aria-required-children, task 5 E2E): the group's link stands after the list closes.
+  const listboxEnd = picker.indexOf("</ul>", picker.indexOf('<ul role="listbox"'))
+  const listboxClose = picker.indexOf("\n              </ul>\n", picker.indexOf('<ul role="listbox"'))
+  assert.ok(listboxEnd > 0 && listboxClose > 0 && picker.indexOf("props.groupAction?.(section.group)") > listboxClose, "the group action renders outside the listbox")
+  assert.ok(picker.includes("data-asset-option-group-action="))
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   assert.equal(th.employee.detail.returnMany, "รับคืนหลายรายการ")
   assert.equal(th.batchCheckin.title, "รับคืนหลายรายการ")

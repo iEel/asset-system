@@ -683,12 +683,7 @@ export function CheckinForm({
   function renderHolderGroupLink(group: AssetOperationSearchGroup) {
     const href = batchCheckinHolderHref(locale, group, returnTo ?? `/${locale}/asset-management/checkin`)
     if (!href || !group.label) return null
-    return (
-      <>
-        {" · "}
-        <a href={href} className={linkVariants({ size: "meta" })}>{tAll("batchCheckin.holderGroupLink", { holder: group.label })}</a>
-      </>
-    )
+    return <a href={href} className={linkVariants({ size: "meta" })}>{tAll("batchCheckin.holderGroupLink", { holder: group.label })}</a>
   }
 
   // อ่านข้อมูลสรุปไม่สำเร็จ, with ลองอีกครั้ง, in the summary card.
