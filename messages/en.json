@@ -2472,12 +2472,9 @@
     "emptyDescription": "Create the first supplier for asset records, purchase documents, and repair jobs.",
     "filteredEmptyTitle": "No suppliers match these filters",
     "filteredEmptyDescription": "Change the search or clear filters to see all suppliers.",
-    "summaryTotal": "Total Suppliers",
-    "summaryWithAssets": "{count} linked to assets",
+    "summaryTotal": "Total Suppliers (active)",
     "summaryAssetLinked": "Has Assets",
-    "summaryAssetLinkedHelp": "Open suppliers linked to active assets.",
     "summaryWithoutAssets": "No Assets",
-    "summaryWithoutAssetsHelp": "May be standby vendors or starter data.",
     "summaryWithoutPurchaseDocuments": "No Purchase Documents",
     "summaryWithoutPurchaseDocumentsHelp": "Review when centralized purchase documents are in use.",
     "profileTitle": "Supplier Profile",
@@ -2509,7 +2506,45 @@
     "linkedAssets": "Linked Assets",
     "reportedDate": "Reported",
     "unsavedChangesConfirm": "You have unsaved supplier changes. Leave this page?",
-    "unsavedChangesLeave": "Leave without saving"
+    "unsavedChangesLeave": "Leave without saving",
+    "activeFilters": "Filters in use",
+    "clearFilter": "Clear this filter",
+    "list": {
+      "totalFoot": "Select to see every supplier",
+      "withAssetsFoot": "{assets, plural, one {# asset} other {# assets}} linked in all",
+      "withoutAssetsFoot": "{withAssets, number} + {withoutAssets, number} = {total, number} · e.g. a service centre that only repairs",
+      "withoutDocumentsFoot": "{count, plural, one {# of them has} other {# of them have}} assets ›",
+      "summaryLine": "{suppliers, plural, one {# supplier} other {# suppliers}} · {assets, plural, one {# asset} other {# assets}} in all · {openRepairs, plural, one {# open repair} other {# open repairs}} · Sorted by {sort}",
+      "assets": "Assets",
+      "none": "None yet",
+      "openRepairs": "{count, number} open",
+      "addContact": "Add contact details",
+      "countsNote": "Select a row to open the supplier · Asset, purchase document and repair numbers count active records only",
+      "sortLabel": "Sort by",
+      "sortDirection": "Order",
+      "sortAsc": "Ascending",
+      "sortDesc": "Descending",
+      "sortCreatedAt": "Date added"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "hint": "No assets, repairs, PM plans or purchase documents are linked, so it can be deactivated. You will be asked to confirm.",
+      "confirmTitle": "Deactivate {name}?",
+      "confirmBody": "This supplier will no longer be offered on other pages, such as new assets, repairs and purchase documents. Its history stays, it can be found under \"Inactive\" and reactivated from this list.",
+      "clear": {
+        "assets": "No assets",
+        "maintenanceTickets": "No repairs",
+        "maintenancePlans": "No PM plans",
+        "purchaseDocuments": "No purchase documents"
+      },
+      "success": "Deactivated"
+    },
+    "reactivate": {
+      "action": "Reactivate",
+      "confirmTitle": "Reactivate {name}?",
+      "confirmBody": "This supplier will be offered on other pages again, such as new assets, repairs and purchase documents.",
+      "success": "Reactivated"
+    }
   },
   "checkout": {
     "title": "Check-out Asset",

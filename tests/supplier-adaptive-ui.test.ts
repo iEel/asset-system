@@ -18,19 +18,21 @@ test("supplier list has mutually exclusive desktop and mobile presentations", ()
 })
 
 test("mobile supplier cards expose operational fields and touch-safe actions", () => {
-  for (const token of ["supplier.code", "supplier.name", "supplier.contactPerson", "supplier.phone", "supplier._count.assets", "supplier._count.maintenanceTickets", "supplier._count.purchaseDocuments"]) {
+  // Group 8 plan 3 Task 1: the page prepares the counts (active only, with the open repairs) on each row.
+  for (const token of ["supplier.code", "supplier.name", "contactPerson", "phone", "email", "row.counts.assets", "row.counts.maintenanceTickets", "row.counts.purchaseDocuments", "row.counts.openRepairs"]) {
     assert.ok(list.includes(token), `missing ${token}`)
   }
-  assert.match(list, /min-h-11 (?:min-)?w-11|<RowActions\b/)
+  assert.match(list, /<MasterDataRowActions\b/)
   assert.match(list, /aria-label=/)
 })
 
-test("supplier desktop sorting exposes aria-sort and omits constant active status", () => {
-  // The sort links and aria-sort come from DataTableHead (spec 2B §3.4).
-  assert.match(list, /<DataTableHead sort=\{sortBy\("code"\)\}>/)
+test("supplier desktop sorting exposes aria-sort and shows the record status only under ทั้งหมด", () => {
+  // The sort links and aria-sort come from DataTableHead (spec 2B §3.4); the code sort is in the เรียงตาม select (group 8
+  // plan 3 Task 1: name first, the code under it).
+  assert.match(list, /<DataTableHead sort=\{sortBy\("name"\)\}>/)
   assert.match(dataTable, /aria-sort=/)
   assert.doesNotMatch(list, /ActiveBadge/)
-  assert.doesNotMatch(list, /tCommon\("status"\)/)
+  assert.match(list, /\{showRecordStatus \? <DataTableHead>\{labels\.status\}<\/DataTableHead> : null\}/)
 })
 
 test("supplier list uses actionable empty states and disabled pagination controls", () => {
@@ -39,7 +41,8 @@ test("supplier list uses actionable empty states and disabled pagination control
   // The page builds the shared Pagination (its disabled buttons are spans, pinned in asset-register-building-blocks-ui);
   // the list shows it once under the table and the phone cards.
   assert.match(page, /<Pagination\b/)
-  assert.match(list, /<DataTableFoot>\{pagination\}<\/DataTableFoot>/)
+  // Group 8 plan 3 Task 1: the counts note above it.
+  assert.match(list, /<DataTableFoot>\r?\n\s+<div className="space-y-2">\r?\n\s+<p>\{labels\.countsNote\}<\/p>\r?\n\s+\{pagination\}/)
 })
 
 test("supplier summaries use bounded count queries instead of loading every supplier", () => {

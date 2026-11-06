@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
-import { chunkListIds, parseNameDefaultSort } from "./master-data-list-ui.ts"
+import { orderIdsByCount, parseNameDefaultSort, readPageIdsByCount } from "./master-data-list-ui.ts"
 import { buildCategoryPrefixGroups, parsePrefixRows } from "./category-prefix-groups.ts"
 
 export const categorySorts = ["code", "name", "models", "assets", "customFields", "createdAt"] as const
@@ -199,24 +199,19 @@ export function buildCategoryOrderBy({
   return [{ [sort]: direction }, { id: "asc" }]
 }
 
-// Active count first (a category with none counts 0), then the id ascending, whichever way the count runs.
+// Active count first (a category with none counts 0), then the id ascending (the shared orderIdsByCount).
 export function orderCategoryIdsByCount(
   ids: readonly string[],
   counts: ReadonlyMap<string, number>,
   direction: CategoryListState["direction"]
 ): string[] {
-  const sign = direction === "asc" ? 1 : -1
-  return [...ids].sort((a, b) => {
-    const byCount = ((counts.get(a) ?? 0) - (counts.get(b) ?? 0)) * sign
-    if (byCount !== 0) return byCount
-    return a < b ? -1 : a > b ? 1 : 0
-  })
+  return orderIdsByCount(ids, counts, direction)
 }
 
 export type CategoryActiveCountRow = { categoryId: string; count: number }
 
 // The ids of one page under a count sort: the filtered ids' active counts read 2,000 ids at a time (readCounts is a
-// groupBy over the active models, assets or custom fields), ordered in memory, then paged.
+// groupBy over the active models, assets or custom fields), ordered in memory, then paged (the shared readPageIdsByCount).
 export async function readCategoryPageIdsByActiveCount({
   ids,
   direction,
@@ -230,12 +225,13 @@ export async function readCategoryPageIdsByActiveCount({
   pageSize: number
   readCounts: (chunk: string[]) => Promise<CategoryActiveCountRow[]>
 }): Promise<string[]> {
-  const counts = new Map<string, number>()
-  for (const rows of await Promise.all(chunkListIds(ids).map((chunk) => readCounts(chunk)))) {
-    for (const row of rows) counts.set(row.categoryId, row.count)
-  }
-  const start = (page - 1) * pageSize
-  return orderCategoryIdsByCount(ids, counts, direction).slice(start, start + pageSize)
+  return readPageIdsByCount({
+    ids,
+    direction,
+    page,
+    pageSize,
+    readCounts: async (chunk) => (await readCounts(chunk)).map((row) => ({ id: row.categoryId, count: row.count })),
+  })
 }
 
 // The footer's "รุ่นรวม {m} · ทรัพย์สินรวม {a}" (board MD-Categories): active models and assets of the filtered categories.

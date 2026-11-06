@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
 import { parseNameDefaultSort, recordStatusCountWheres } from "./master-data-list-ui.ts"
+import { supplierOpenRepairWhere } from "./supplier-detail.ts"
+import { shouldBlockSupplierLifecycleChange, type SupplierRelationshipCounts } from "./supplier-lifecycle-policy.ts"
 
 export const companySorts = ["createdAt", "code", "assetTagCode", "nameTh", "branches", "employees", "assets"] as const
 export const branchSorts = ["createdAt", "code", "name", "company", "locations", "employees", "assets"] as const
@@ -218,17 +220,14 @@ export function employeeListHasFieldFilters(state: EmployeeListState): boolean {
   )
 }
 
+// Board MD-Suppliers sorts by name A→Z by default; every other sort stays reachable (spec §3, group 8 plan 3 Task 1).
 export function parseSupplierListParams(input: SupplierListParams): SupplierListState {
-  const sortValue = firstValue(input.sort)
-  const directionValue = firstValue(input.direction)
-
   return {
     search: firstValue(input.search).trim(),
     status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
-    sort: supplierSorts.includes(sortValue as SupplierSort) ? (sortValue as SupplierSort) : "createdAt",
-    direction: directionValue === "asc" ? "asc" : "desc",
+    ...parseNameDefaultSort(input, supplierSorts, "name"),
     assetUsage: parseFilter(input.assetUsage, assetUsageFilters, "all"),
     purchaseDocumentUsage: parseFilter(input.purchaseDocumentUsage, purchaseDocumentUsageFilters, "all"),
   }
@@ -458,13 +457,71 @@ export function buildEmployeeOrderBy({
   return { [sort]: direction }
 }
 
+// ทรัพย์สิน and เอกสารจัดซื้อ show active counts, which Prisma's relation _count orderBy cannot filter: the page orders
+// the filtered ids by them in memory (readPageIdsByCount, as the categories list) instead (group 8 plan 3 Task 1).
+export const supplierCountSorts = ["assets", "purchaseDocuments"] as const
+export type SupplierCountSort = (typeof supplierCountSorts)[number]
+
+export function isSupplierCountSort(sort: SupplierSort): sort is SupplierCountSort {
+  return (supplierCountSorts as readonly string[]).includes(sort)
+}
+
+// The id breaks ties, so no row shows on two pages (spec 2B B4).
 export function buildSupplierOrderBy({
   sort,
   direction,
-}: Pick<SupplierListState, "sort" | "direction">): Prisma.SupplierOrderByWithRelationInput {
-  if (sort === "assets") return { assets: { _count: direction } }
-  if (sort === "purchaseDocuments") return { purchaseDocuments: { _count: direction } }
-  return { [sort]: direction }
+}: {
+  sort: Exclude<SupplierSort, SupplierCountSort>
+  direction: SupplierListState["direction"]
+}): Prisma.SupplierOrderByWithRelationInput[] {
+  return [{ [sort]: direction }, { id: "asc" }]
+}
+
+// A field of the supplier filter form is set: opens the phone filters disclosure. The record status is the segmented
+// control above the list, not a field.
+export function supplierListHasFieldFilters(state: SupplierListState): boolean {
+  return Boolean(state.search) || state.assetUsage !== "all" || state.purchaseDocumentUsage !== "all"
+}
+
+export type SupplierFilterChip = { key: string; label: string; href: string }
+
+// Board MD-Suppliers: a chip per usage filter in use ("การผูกทรัพย์สิน: มีทรัพย์สิน"), each a link to the list without it.
+export function buildSupplierFilterChips({
+  basePath,
+  state,
+  labels,
+}: {
+  basePath: string
+  state: SupplierListState
+  labels: {
+    assets: string
+    purchaseDocuments: string
+    assetUsage: Record<Exclude<AssetUsageFilter, "all">, string>
+    purchaseDocumentUsage: Record<Exclude<PurchaseDocumentUsageFilter, "all">, string>
+  }
+}): SupplierFilterChip[] {
+  const chips: SupplierFilterChip[] = []
+  const without = (next: Partial<SupplierListState>) => `${basePath}?${buildSupplierQueryString(state, { ...next, page: 1 })}`
+  if (state.assetUsage !== "all") {
+    chips.push({ key: "assetUsage", label: `${labels.assets}: ${labels.assetUsage[state.assetUsage]}`, href: without({ assetUsage: "all" }) })
+  }
+  if (state.purchaseDocumentUsage !== "all") {
+    chips.push({
+      key: "purchaseDocumentUsage",
+      label: `${labels.purchaseDocuments}: ${labels.purchaseDocumentUsage[state.purchaseDocumentUsage]}`,
+      href: without({ purchaseDocumentUsage: "all" }),
+    })
+  }
+  return chips
+}
+
+// The summary line "{n} ผู้ขาย · ทรัพย์สินรวม {a} รายการ · งานซ่อมค้าง {r} งาน" (board MD-Suppliers): the active assets and
+// the open repairs (supplierOpenRepairWhere) of every supplier the list's filters find, on all pages.
+export function supplierSummaryLineWheres(where: Prisma.SupplierWhereInput) {
+  return {
+    assets: { isActive: true, supplier: { is: where } } satisfies Prisma.AssetWhereInput,
+    openRepairs: { ...supplierOpenRepairWhere, vendor: { is: where } } satisfies Prisma.MaintenanceTicketWhereInput,
+  }
 }
 
 export function buildCompanyQueryString(current: CompanyListState, next: Partial<CompanyListState>) {
@@ -705,6 +762,14 @@ export function getSupplierDeleteBlockReason(counts: {
 
   if (reasons.length === 0) return null
   return `ปิดใช้งานผู้ขายนี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+}
+
+// ปิดใช้งาน on the list is unavailable with the reason the DELETE route gives (shouldBlockSupplierLifecycleChange over the
+// active assets, repairs, PM plans and purchase documents), or null when the route would deactivate it.
+export function getSupplierDeactivateBlockReason(counts: SupplierRelationshipCounts) {
+  return shouldBlockSupplierLifecycleChange({ currentIsActive: true, nextIsActive: false, operation: "delete", counts })
+    ? getSupplierDeleteBlockReason(counts)
+    : null
 }
 
 export function buildCompanyDrilldownHrefs({

@@ -8,6 +8,7 @@ import {
   buildSupplierDetailHrefs,
   buildSupplierDetailSummary,
   buildSupplierFollowUpItems,
+  supplierOpenRepairWhere,
   type SupplierFollowUpKey,
 } from "@/lib/supplier-detail"
 import { formatCount, formatMoney } from "@/lib/display-format"
@@ -105,7 +106,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
       _sum: { totalAmount: true },
     }),
     prisma.maintenanceTicket.count({ where: { vendorId: id, isActive: true } }),
-    prisma.maintenanceTicket.count({ where: { vendorId: id, isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } } }),
+    prisma.maintenanceTicket.count({ where: { vendorId: id, ...supplierOpenRepairWhere } }),
     prisma.maintenanceTicket.findMany({
       where: { vendorId: id, isActive: true },
       select: {

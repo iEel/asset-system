@@ -64,12 +64,19 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 8 plan 2 Task 3 added 10: the side panel's "{n} ช่อง" and "{n} รายการ", its two notes on the existing assets,
   // the create footer "ช่องข้อมูล {f} ช่อง · รายการรูป {p} รายการ" (keyed on fields; photos is a plural too) and the
   // footer's five counted changes (เพิ่ม/แก้/ลบช่องข้อมูล, เพิ่ม/ลบรายการรูป).
-  assert.equal(pluralKeys.size, 113,[...pluralKeys.keys()].join(", "))
+  // Group 8 plan 3 Task 1 added 3: the suppliers' มีทรัพย์สิน foot "ผูกทรัพย์สินรวม {a} รายการ", the ยังไม่มีเอกสารจัดซื้อ
+  // foot "ในจำนวนนี้มีทรัพย์สินผูกอยู่ {n} ราย" and the summary line (keyed on suppliers; assets and openRepairs are
+  // plurals too).
+  assert.equal(pluralKeys.size, 116,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
   assert.equal(pluralKeys.get("category.form.usageLine"), "models")
   assert.match(en.get("category.form.usageLine") ?? "", /\{assets, plural, one \{# asset\} other \{# assets\}\}/)
   for (const key of ["templateCount", "templateCaption", "renameWarning", "savedValuesNote"]) assert.equal(pluralKeys.get(`category.form.${key}`), "count", key)
+  assert.equal(pluralKeys.get("supplier.list.withAssetsFoot"), "assets")
+  assert.equal(pluralKeys.get("supplier.list.withoutDocumentsFoot"), "count")
+  assert.equal(pluralKeys.get("supplier.list.summaryLine"), "suppliers")
+  assert.match(en.get("supplier.list.summaryLine") ?? "", /\{openRepairs, plural, one \{# open repair\} other \{# open repairs\}\}/)
   assert.equal(pluralKeys.get("department.summaryWithEmployeesFoot"), "employees")
   assert.equal(pluralKeys.get("department.list.summaryLine"), "departments")
   assert.equal(pluralKeys.get("branch.list.footerTotals"), "locations")

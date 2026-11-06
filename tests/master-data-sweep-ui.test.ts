@@ -126,7 +126,8 @@ test("brands page: drill-down text links, the panel frame on the picker and the 
 test("suppliers list: the asset count is a text link with a 44px phone target, frames are the panel classes and the phone cards quiet groupings with a KeyValueList (spec 2D D9, D19, §3.3)", () => {
   const page = read(`${D}master-data/suppliers/page.tsx`)
   const list = read("src/components/master-data/supplier-list-view.tsx")
-  assert.match(page, /<details className=\{cn\(getPanelClasses\(\), "md:hidden"\)\} open=\{hasActiveFilters\}>/)
+  // Group 8 plan 3 Task 1: it opens on a filter field; the record status is the segmented control.
+  assert.match(page, /<details className=\{cn\(getPanelClasses\(\), "md:hidden"\)\} open=\{hasFieldFilters\}>/)
   assert.equal(list.match(drilldownLink)?.length, 1, "the desktop asset count")
   assert.match(list, /<ContentPanel>\n\s+<ActionEmptyState/)
   assert.match(list, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)

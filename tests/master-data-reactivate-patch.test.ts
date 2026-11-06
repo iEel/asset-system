@@ -66,6 +66,8 @@ const cases = [
   { dir: "departments", model: "department", module: "department", record: "department" as const },
   // Group 8 plan 2 Task 1: เปิดใช้งาน on the categories list, as the others (a category has no company to check).
   { dir: "categories", model: "assetCategory", module: "category", record: "category" as const },
+  // Group 8 plan 3 Task 1: เปิดใช้งาน on the suppliers list, as the categories (a supplier has no company to check).
+  { dir: "suppliers", model: "supplier", module: "supplier", record: "supplier" as const },
 ]
 
 // The stored record (inactive unless said), its company, and what the route writes.

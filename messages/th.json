@@ -2472,12 +2472,9 @@
     "emptyDescription": "เพิ่มผู้ขายรายแรกเพื่อใช้กับทะเบียนทรัพย์สิน เอกสารจัดซื้อ และงานซ่อม",
     "filteredEmptyTitle": "ไม่พบผู้ขายที่ตรงกับตัวกรอง",
     "filteredEmptyDescription": "ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูผู้ขายทั้งหมด",
-    "summaryTotal": "ผู้ขายทั้งหมด",
-    "summaryWithAssets": "ผูกทรัพย์สินแล้ว {count} ราย",
+    "summaryTotal": "ผู้ขายทั้งหมด (ใช้งาน)",
     "summaryAssetLinked": "มีทรัพย์สิน",
-    "summaryAssetLinkedHelp": "กดเพื่อดูผู้ขายที่มีทรัพย์สินผูกอยู่",
     "summaryWithoutAssets": "ยังไม่มีทรัพย์สิน",
-    "summaryWithoutAssetsHelp": "อาจเป็นผู้ขายสำรองหรือข้อมูลตั้งต้น",
     "summaryWithoutPurchaseDocuments": "ยังไม่มีเอกสารจัดซื้อ",
     "summaryWithoutPurchaseDocumentsHelp": "ควรตรวจเมื่อใช้งานเอกสารจัดซื้อกลาง",
     "profileTitle": "ข้อมูลผู้ขาย",
@@ -2509,7 +2506,45 @@
     "linkedAssets": "ทรัพย์สินที่ผูก",
     "reportedDate": "วันที่แจ้ง",
     "unsavedChangesConfirm": "มีข้อมูลผู้ขายที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?",
-    "unsavedChangesLeave": "ออกโดยไม่บันทึก"
+    "unsavedChangesLeave": "ออกโดยไม่บันทึก",
+    "activeFilters": "ตัวกรองที่ใช้อยู่",
+    "clearFilter": "ล้างตัวกรองนี้",
+    "list": {
+      "totalFoot": "กดเพื่อดูผู้ขายทุกราย",
+      "withAssetsFoot": "ผูกทรัพย์สินรวม {assets, number} รายการ",
+      "withoutAssetsFoot": "{withAssets, number} + {withoutAssets, number} = {total, number} · เช่น ศูนย์บริการที่รับซ่อมอย่างเดียว",
+      "withoutDocumentsFoot": "ในจำนวนนี้มีทรัพย์สินผูกอยู่ {count, number} ราย ›",
+      "summaryLine": "{suppliers, number} ผู้ขาย · ทรัพย์สินรวม {assets, number} รายการ · งานซ่อมค้าง {openRepairs, number} งาน · เรียงตาม{sort}",
+      "assets": "ทรัพย์สิน",
+      "none": "ยังไม่มี",
+      "openRepairs": "ค้าง {count, number}",
+      "addContact": "เพิ่มข้อมูลติดต่อ",
+      "countsNote": "กดที่แถวเพื่อเปิดข้อมูลผู้ขาย · ตัวเลขทรัพย์สิน เอกสารจัดซื้อ และงานซ่อม นับเฉพาะที่ใช้งาน",
+      "sortLabel": "เรียงตาม",
+      "sortDirection": "ลำดับ",
+      "sortAsc": "น้อยไปมาก",
+      "sortDesc": "มากไปน้อย",
+      "sortCreatedAt": "วันที่เพิ่ม"
+    },
+    "deactivate": {
+      "action": "ปิดใช้งาน",
+      "hint": "ไม่มีทรัพย์สิน งานซ่อม แผน PM หรือเอกสารจัดซื้อผูกอยู่ จึงปิดได้ ระบบจะถามยืนยันอีกครั้ง",
+      "confirmTitle": "ปิดใช้งาน {name}?",
+      "confirmBody": "ผู้ขายนี้จะไม่แสดงในรายการเลือกผู้ขายของหน้าอื่น เช่น เพิ่มทรัพย์สิน งานซ่อม และเอกสารจัดซื้อ ประวัติเดิมยังอยู่ หาเจอได้จาก \"ไม่ใช้งาน\" และเปิดใช้งานอีกครั้งได้จากรายการนี้",
+      "clear": {
+        "assets": "ไม่มีทรัพย์สิน",
+        "maintenanceTickets": "ไม่มีงานซ่อม",
+        "maintenancePlans": "ไม่มีแผน PM",
+        "purchaseDocuments": "ไม่มีเอกสารจัดซื้อ"
+      },
+      "success": "ปิดใช้งานแล้ว"
+    },
+    "reactivate": {
+      "action": "เปิดใช้งาน",
+      "confirmTitle": "เปิดใช้งาน {name}?",
+      "confirmBody": "ผู้ขายนี้จะกลับมาให้เลือกในหน้าอื่นอีกครั้ง เช่น เพิ่มทรัพย์สิน งานซ่อม และเอกสารจัดซื้อ",
+      "success": "เปิดใช้งานแล้ว"
+    }
   },
   "checkout": {
     "title": "ส่งมอบทรัพย์สิน",

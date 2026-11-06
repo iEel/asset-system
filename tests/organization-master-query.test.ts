@@ -392,7 +392,8 @@ test("builds supplier filters, summary, drilldown, query string, and delete guar
     assets: { some: { isActive: true } },
     purchaseDocuments: { none: { isActive: true } },
   })
-  assert.deepEqual(buildSupplierOrderBy({ sort: "assets", direction: "desc" }), { assets: { _count: "desc" } })
+  // The count sorts (assets, purchaseDocuments) are ordered in memory by active counts (group 8 plan 3 Task 1).
+  assert.deepEqual(buildSupplierOrderBy({ sort: "email", direction: "desc" }), [{ email: "desc" }, { id: "asc" }])
   assert.deepEqual(
     buildSupplierSummary([
       { _count: { assets: 2, purchaseDocuments: 1 } },

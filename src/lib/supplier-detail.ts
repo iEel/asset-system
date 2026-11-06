@@ -1,3 +1,34 @@
+import type { Prisma } from "@prisma/client"
+import { chunkListIds } from "./master-data-list-ui.ts"
+
+// One definition of an open repair with a supplier (vendorId), for the suppliers list's "ค้าง {n}" and summary line and
+// for the supplier page (group 8 plan 3): an active repair record that is not closed or cancelled.
+export const supplierOpenRepairWhere = {
+  isActive: true,
+  repairStatus: { notIn: ["closed", "cancelled"] },
+} satisfies Prisma.MaintenanceTicketWhereInput
+
+export type SupplierOpenRepairReader = { maintenanceTicket: { groupBy(args: object): PromiseLike<unknown[]> } }
+
+// The open repairs of each supplier, one grouped query per 2,000 ids; a supplier with none is left out of the map.
+export async function readSupplierOpenRepairCounts(db: SupplierOpenRepairReader, supplierIds: readonly string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>()
+  if (supplierIds.length === 0) return result
+  const parts = await Promise.all(
+    chunkListIds(supplierIds).map((chunk) =>
+      db.maintenanceTicket.groupBy({
+        by: ["vendorId"],
+        where: { ...supplierOpenRepairWhere, vendorId: { in: chunk } },
+        _count: { _all: true },
+      })
+    )
+  )
+  for (const row of parts.flat() as { vendorId: string | null; _count: { _all: number } }[]) {
+    if (row.vendorId) result.set(row.vendorId, (result.get(row.vendorId) ?? 0) + row._count._all)
+  }
+  return result
+}
+
 export type SupplierDetailSummaryInput = {
   assetCount: number
   purchaseDocumentCount: number

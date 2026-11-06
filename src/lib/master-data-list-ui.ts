@@ -39,6 +39,42 @@ export function chunkListIds<T>(ids: readonly T[], size = masterDataListIdChunkS
   return chunks
 }
 
+// A list whose count column shows active counts sorts by them in memory (group 8 plan 2 final review fix 1; the
+// categories and suppliers lists): the filtered ids' counts are read 2,000 ids at a time, ordered here, then paged.
+export type ListIdCount = { id: string; count: number }
+
+// Count first (an id with none counts 0), then the id ascending, whichever way the count runs.
+export function orderIdsByCount(ids: readonly string[], counts: ReadonlyMap<string, number>, direction: "asc" | "desc"): string[] {
+  const sign = direction === "asc" ? 1 : -1
+  return [...ids].sort((a, b) => {
+    const byCount = ((counts.get(a) ?? 0) - (counts.get(b) ?? 0)) * sign
+    if (byCount !== 0) return byCount
+    return a < b ? -1 : a > b ? 1 : 0
+  })
+}
+
+// The ids of one page under a count sort; readCounts is a groupBy over one chunk of at most 2,000 ids.
+export async function readPageIdsByCount({
+  ids,
+  direction,
+  page,
+  pageSize,
+  readCounts,
+}: {
+  ids: readonly string[]
+  direction: "asc" | "desc"
+  page: number
+  pageSize: number
+  readCounts: (chunk: string[]) => Promise<readonly ListIdCount[]>
+}): Promise<string[]> {
+  const counts = new Map<string, number>()
+  for (const rows of await Promise.all(chunkListIds(ids).map((chunk) => readCounts(chunk)))) {
+    for (const row of rows) counts.set(row.id, row.count)
+  }
+  const start = (page - 1) * pageSize
+  return orderIdsByCount(ids, counts, direction).slice(start, start + pageSize)
+}
+
 // The system-log module names the routes write (logAudit in src/app/api/<list>/[id]/route.ts). Their DELETE only sets
 // isActive = false and logs action "delete".
 export const deactivatedAtLogModules = ["company", "branch", "department", "category", "supplier"] as const

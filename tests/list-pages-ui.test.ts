@@ -122,13 +122,14 @@ test("the departments list keeps its page and page size in returnTo, in its page
 
 // Suppliers is not in MASTER_DATA_LISTS: its table, row actions and foot live in supplier-list-view.tsx, and its empty
 // state is an ActionEmptyState outside the table. This test reads the page and the list view together (2B-1 Task 20).
-test("suppliers: the page and its list view build on PageHeader, StatStrip, DataTable, RowActions and one shared Pagination (spec 2B §5.3, B5)", () => {
+test("suppliers: the page and its list view build on PageHeader, StatStrip, DataTable, MasterDataRowActions and one shared Pagination (spec 2B §5.3, B5)", () => {
   const page = read(`${D}master-data/suppliers/page.tsx`)
   const list = read(`${C}master-data/supplier-list-view.tsx`)
   for (const part of ["<PageHeader", "<StatStrip", '<FilterPanel className="hidden md:block">', '<form role="search"', "<FilterFormActions", "<Pagination"]) {
     assert.ok(page.includes(part), `page: no ${part}`)
   }
-  for (const part of ["<DataTable", "<DataTableHeader>", "<DataTableBody>", "<ClickableTableRow", "<DataTableFoot>{pagination}</DataTableFoot>", "<RowActions"]) {
+  // Group 8 plan 3 Task 1: ⋯ is MasterDataRowActions (แก้ไข, ปิดใช้งาน / เปิดใช้งาน) and the foot holds the counts note.
+  for (const part of ["<DataTable", "<DataTableHeader>", "<DataTableBody>", "<ClickableTableRow", "<DataTableFoot>", "{pagination}", "<MasterDataRowActions"]) {
     assert.ok(list.includes(part), `list view: no ${part}`)
   }
   assert.match(page, /<div className="space-y-6">/)
@@ -138,8 +139,8 @@ test("suppliers: the page and its list view build on PageHeader, StatStrip, Data
   assert.match(page, /^import \{ redirect \} from "next\/navigation"$/m)
   assert.match(page, /const lastPage = lastListPage\(total, listState\.pageSize\)\n\s+if \(suppliers\.length === 0 && total > 0 && listState\.page > lastPage\) \{\n\s+redirect\(/)
   assert.equal(page.match(/<SupplierFilterForm [^\n]*hasActiveFilters=\{hasActiveFilters\}/g)?.length, 2, "both filter forms show clear filters only while a filter is on")
-  assert.equal(list.match(/next=\{\{ label: labels\.edit, href: hrefs\.edit, icon: <Pencil aria-hidden="true" \/> \}\}/g)?.length, 2, "the desktop row and the phone card")
-  assert.equal(list.match(/deleteAction=\{supplier\.isActive \? \{ endpoint: `\/api\/suppliers\/\$\{supplier\.id\}` \} : undefined\}/g)?.length, 2)
+  assert.equal(list.match(/<MasterDataRowActions\r?\n/g)?.length, 2, "the desktop row and the phone card")
+  assert.doesNotMatch(list, /deleteAction=/)
   assert.match(list, /scrollHint=\{labels\.tableScrollHint\}/)
   assert.match(list, /actionVariant=\{hasActiveFilters \? "secondary" : "primary"\}/)
   assert.equal(existsSync(`${C}master-data/supplier-delete-button.tsx`), false, "the wrapper has no caller left (I5)")
