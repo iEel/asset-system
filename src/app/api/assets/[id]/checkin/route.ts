@@ -25,9 +25,9 @@ import {
   optionalFormFile,
   optionalFormText,
   requiredFormText,
-  saveOperationEvidenceFile,
   type SavedOperationEvidence,
 } from "@/lib/asset-operation-evidence"
+import { optionalFormFiles, saveTrackedEvidenceFiles } from "@/lib/operation-evidence-save"
 import { createUploadCleanup, type UploadCleanup } from "@/lib/upload-server"
 
 type CheckinContext = {
@@ -235,33 +235,20 @@ async function readCheckinRequest(request: NextRequest): Promise<{ input: AssetC
   }
 }
 
-// Every save that finished is tracked before the first failure is thrown, so a sibling's failed save does not leave the
-// other files behind (group 3 follow-up C).
+// The save itself is shared with the multi-return (operation-evidence-save.ts, group 3 follow-up C).
 async function saveCheckinEvidence(evidence: CheckinEvidenceFiles, uploads: UploadCleanup): Promise<{
   photosAfter: CheckinEvidenceWithLabel[]
   returnSignature: SavedOperationEvidence | null
   receiveSignature: SavedOperationEvidence | null
 }> {
   const files = [...evidence.photos.map((photo) => photo.file), evidence.returnSignature, evidence.receiveSignature]
-  const settled = await Promise.allSettled(files.map((file) => file ? saveOperationEvidenceFile(file, "checkin") : Promise.resolve(null)))
-  for (const result of settled) {
-    if (result.status === "fulfilled" && result.value) uploads.track(result.value.filePath)
-  }
-  const failed = settled.find((result) => result.status === "rejected")
-  if (failed) throw failed.reason
-  const saved = settled.map((result) => (result.status === "fulfilled" ? result.value : null))
+  const saved = await saveTrackedEvidenceFiles(files, "checkin", uploads)
   const photoCount = evidence.photos.length
   return {
     photosAfter: evidence.photos.map((photo, index) => ({ file: saved[index] as SavedOperationEvidence, label: photo.label })),
     returnSignature: saved[photoCount],
     receiveSignature: saved[photoCount + 1],
   }
-}
-
-function optionalFormFiles(formData: FormData, name: string) {
-  return formData.getAll(name).filter((value): value is File => {
-    return value instanceof File && value.size > 0 && value.name.trim().length > 0
-  })
 }
 
 function parseStringList(value: string | null) {

@@ -78,6 +78,13 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Audit round still has pending checklist items": "auditRoundHasPendingItems",
   "Batch create requires at least 2 rows": "batchCreateMinRows",
   "Batch create supports up to 100 rows": "batchCreateMaxRows",
+  // รับคืนหลายรายการ (group 7 plan 4): the per-machine codes of the 409's blocked list, and the form's own refusals.
+  "BATCH_CHECKIN_CONDITION_INVALID": "invalidReturnCondition",
+  "BATCH_CHECKIN_DUPLICATE_ASSET": "batchCheckinDuplicateAsset",
+  "BATCH_CHECKIN_NEEDS_SINGLE": "batchCheckinNeedsSingle",
+  "BATCH_CHECKIN_NOT_HELD": "batchCheckinNotHeld",
+  "BATCH_CHECKIN_SIGNATURE_REQUIRED": "batchCheckinSignatureRequired",
+  "BATCH_CHECKIN_STATUS_INVALID": "invalidReturnStatus",
   "Branch not found": "branchNotFound",
   "Brand name already exists": "brandNameExists",
   "Brand not found": "brandNotFound",

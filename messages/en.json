@@ -5815,7 +5815,11 @@
     "disposalRoundNotFound": "Disposal round not found",
     "locationParentOtherBranch": "The parent must be in the same branch. Choose a parent in this branch.",
     "locationParentCycle": "This location or one of its children cannot be its parent.",
-    "locationBranchInUse": "The branch cannot change while this location still has child locations or assets."
+    "locationBranchInUse": "The branch cannot change while this location still has child locations or assets.",
+    "batchCheckinNeedsSingle": "This asset must be returned on its own.",
+    "batchCheckinNotHeld": "This asset is no longer held by this person. Reload the page and try again.",
+    "batchCheckinSignatureRequired": "A signature is required before saving.",
+    "batchCheckinDuplicateAsset": "This asset is listed more than once."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",
