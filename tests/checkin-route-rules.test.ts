@@ -31,9 +31,9 @@ test("the handover's day is its Bangkok day, from a Date or an ISO string; a leg
   assert.equal(checkinHandoverDay({ checkoutDate: new Date("2026-10-31T02:00:00Z"), remark: "legacy_return_backfill: Created from current custodian before check-in" }), null)
 })
 
-test("the legacy mark is the remark the legacy-checkout route writes", () => {
-  const remark = readFileSync("src/app/api/assets/[id]/legacy-checkout/route.ts", "utf8").match(/const legacyReturnBackfillRemark = "([^"]+)"/)?.[1]
-  assert.ok(remark, "the legacy route keeps its remark constant")
+test("the legacy mark is the remark the legacy backfill writes", () => {
+  const remark = readFileSync("src/lib/legacy-checkout-write.ts", "utf8").match(/export const legacyReturnBackfillRemark = "([^"]+)"/)?.[1]
+  assert.ok(remark, "the legacy backfill keeps its remark constant")
   assert.equal(isLegacyBackfilledHandover(remark), true)
   for (const other of [null, undefined, "", "ส่งมอบให้ฝ่ายบัญชี", "legacy return"]) assert.equal(isLegacyBackfilledHandover(other), false, String(other))
 })

@@ -65,7 +65,8 @@ test("serializes component before and after snapshots as one versioned payload",
 
 test("operation routes persist complete snapshots and transfer uses a real document", () => {
   const checkoutRoute = readFileSync("src/app/api/assets/[id]/checkout/route.ts", "utf8")
-  const checkinRoute = readFileSync("src/app/api/assets/[id]/checkin/route.ts", "utf8")
+  // The return's write runs in src/lib/checkin-write.ts (group 7 plan 4 task 1).
+  const checkinRoute = readFileSync("src/app/api/assets/[id]/checkin/route.ts", "utf8") + "\n" + readFileSync("src/lib/checkin-write.ts", "utf8")
   const transferRoute = readFileSync("src/app/api/assets/[id]/transfer/route.ts", "utf8")
 
   for (const [path, source] of [

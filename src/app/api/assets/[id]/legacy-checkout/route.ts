@@ -7,19 +7,16 @@ import {
   AssetComponentOutstandingError,
   AssetOperationConflictError,
   assertNoOutstandingComponentLinks,
-  claimAssetForCustodyChange,
 } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
 import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
-import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
+import { backfillLegacyCheckoutInTransaction, legacyReturnBackfillRemark } from "@/lib/legacy-checkout-write"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 
 type LegacyCheckoutContext = {
   params: Promise<{ id: string }>
 }
-
-const legacyReturnBackfillRemark = "legacy_return_backfill: Created from current custodian before check-in"
 
 export async function POST(_request: Request, context: LegacyCheckoutContext) {
   try {
@@ -76,47 +73,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
     const inUseStatusId = await getRequiredAssetStatusId("In Use")
 
     const checkout = await prisma.$transaction(async (tx) => {
-      await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
-      await assertNoOutstandingComponentLinks(tx, [id])
-      const documentNo = await generateCheckoutDocumentNo(tx, checkoutDate)
-      const record = await tx.assetCheckout.create({
-        data: {
-          documentNo,
-          assetId: id,
-          checkoutType: "user",
-          handoverMode: "permanent_assignment",
-          custodianId,
-          checkoutDate,
-          expectedReturnDate: null,
-          conditionBefore: asset.conditionId,
-          remark: legacyReturnBackfillRemark,
-          checkedOutBy: user.id,
-        },
-      })
-
-      await tx.asset.update({
-        where: { id },
-        data: {
-          statusId: inUseStatusId,
-          updatedBy: user.id,
-        },
-      })
-
-      await tx.assetMovement.create({
-        data: {
-          assetId: id,
-          movementType: "checkout",
-          fromValue: asset.currentLocationId,
-          toValue: asset.currentLocationId,
-          reason: "Legacy return checkout backfill",
-          referenceType: "checkout",
-          referenceId: record.id,
-          performedBy: user.id,
-          remark: "legacy_return_backfill",
-        },
-      })
-
-      return record
+      return backfillLegacyCheckoutInTransaction(tx, { asset: { ...asset, id }, custodianId, checkoutDate, inUseStatusId }, { userId: user.id })
     })
 
     await logAudit({

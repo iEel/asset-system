@@ -159,7 +159,8 @@ test("the legacy count, the legacy verdict and the legacy backfill leave an outs
   assert.match(readFileSync("src/lib/asset-operation-claim.ts", "utf8"), /\.\.\.outstandingLinkWhere/)
   const route = readFileSync("src/app/api/assets/[id]/legacy-checkout/route.ts", "utf8")
   assert.match(route, /assertNoOutstandingComponentLinks\(prisma, \[id\]\)/)
-  assert.match(route, /assertNoOutstandingComponentLinks\(tx, \[id\]\)/)
+  assert.match(readFileSync("src/lib/legacy-checkout-write.ts", "utf8"), /assertNoOutstandingComponentLinks\(tx, \[id\]\)/)
+  assert.match(route, /backfillLegacyCheckoutInTransaction\(tx, /)
 })
 
 test("?assetId= of an outstanding component starts with its late-return row, chosen or chosen-but-blocked (group 3 spec §8.6, P2-R17)", async () => {

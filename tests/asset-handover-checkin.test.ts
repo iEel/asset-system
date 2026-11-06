@@ -5,11 +5,17 @@ import test from "node:test"
 const routeSource = readFileSync("src/app/api/assets/[id]/checkin/route.ts", "utf8")
 const formSource = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
 const legacyRouteSource = readFileSync("src/app/api/assets/[id]/legacy-checkout/route.ts", "utf8")
+// The return's transaction body runs in src/lib/checkin-write.ts (group 7 plan 4 task 1).
+const checkinWriteSource = readFileSync("src/lib/checkin-write.ts", "utf8")
 
 test("checkin validates active handover mode and status inside the transaction", () => {
   const transactionStart = routeSource.indexOf("prisma.$transaction(async (tx) => {")
   const transactionEnd = routeSource.indexOf("await logAudit", transactionStart)
-  const transactionBody = routeSource.slice(transactionStart, transactionEnd)
+  assert.match(routeSource.slice(transactionStart, transactionEnd), /writeCheckinInTransaction\(tx, /)
+  const writeStart = checkinWriteSource.indexOf("export async function writeCheckinInTransaction(")
+  const writeEnd = checkinWriteSource.indexOf("export async function readMissingComponentPlan(", writeStart)
+  assert.ok(writeStart >= 0 && writeEnd > writeStart)
+  const transactionBody = checkinWriteSource.slice(writeStart, writeEnd)
   assert.match(transactionBody, /tx\.assetCheckout\.findFirst/)
   assert.match(transactionBody, /handoverMode:\s*true/)
   assert.match(transactionBody, /status:\s*\{\s*select:\s*\{\s*name:\s*true/)

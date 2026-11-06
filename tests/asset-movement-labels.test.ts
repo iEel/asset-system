@@ -27,12 +27,10 @@ const movementTypes = (locale: "th" | "en") =>
 // Every file that writes AssetMovement rows, or builds them for a route to write (the asset edit's planner, group 4 plan 2).
 // A new writer joins this list once its movement types have labels.
 const WRITERS = [
-  "src/app/api/assets/[id]/checkin/route.ts",
   "src/app/api/assets/[id]/checkout/route.ts",
   "src/app/api/assets/[id]/component-return/route.ts",
   "src/app/api/assets/[id]/components/[componentId]/remove/route.ts",
   "src/app/api/assets/[id]/components/route.ts",
-  "src/app/api/assets/[id]/legacy-checkout/route.ts",
   "src/app/api/assets/[id]/route.ts",
   "src/app/api/assets/[id]/status-correction/route.ts",
   "src/app/api/assets/[id]/transfer/route.ts",
@@ -49,8 +47,10 @@ const WRITERS = [
   "src/lib/asset-register-edit.ts",
   "src/lib/asset-state-review-service.ts",
   "src/lib/asset-transaction-cancellation-prisma.ts",
+  "src/lib/checkin-write.ts",
   "src/lib/disposal-approval-service.ts",
   "src/lib/disposal-execution-service.ts",
+  "src/lib/legacy-checkout-write.ts",
   "src/lib/repair-record-service.ts",
 ]
 

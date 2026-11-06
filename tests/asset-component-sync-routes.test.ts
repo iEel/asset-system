@@ -12,6 +12,10 @@ const routePaths = [
 ]
 
 const singleOperationRoutePaths = routePaths.slice(0, 4)
+// The return's write runs in src/lib/checkin-write.ts (group 7 plan 4 task 1); its route keeps the audit.
+const checkinWritePath = "src/lib/checkin-write.ts"
+const readRouteWithWrite = (path: string) =>
+  readFileSync(path, "utf8") + (path === "src/app/api/assets/[id]/checkin/route.ts" ? "\n" + readFileSync(checkinWritePath, "utf8") : "")
 const bulkOperationRoutePaths = [
   "src/app/api/assets/bulk-move/route.ts",
   "src/app/api/assets/bulk-update/route.ts",
@@ -19,7 +23,7 @@ const bulkOperationRoutePaths = [
 
 test("parent asset operation routes import installed component sync helper", () => {
   for (const path of routePaths) {
-    const source = readFileSync(path, "utf8")
+    const source = readRouteWithWrite(path)
     assert.match(source, /syncInstalledComponentsWithParent/, `${path} should sync installed components`)
   }
 })
@@ -28,7 +32,7 @@ test("parent asset routes use workflow-specific component movement types", () =>
   assert.match(readFileSync("src/app/api/assets/[id]/route.ts", "utf8"), /parent_register_update_sync/)
   assert.match(readFileSync("src/app/api/assets/[id]/transfer/route.ts", "utf8"), /parent_transfer_sync/)
   assert.match(readFileSync("src/app/api/assets/[id]/checkout/route.ts", "utf8"), /parent_checkout_sync/)
-  assert.match(readFileSync("src/app/api/assets/[id]/checkin/route.ts", "utf8"), /parent_checkin_sync/)
+  assert.match(readFileSync(checkinWritePath, "utf8"), /parent_checkin_sync/)
   assert.match(readFileSync("src/app/api/assets/bulk-move/route.ts", "utf8"), /parent_bulk_move_sync/)
   assert.match(readFileSync("src/app/api/assets/bulk-update/route.ts", "utf8"), /parent_bulk_update_sync/)
 })
@@ -94,10 +98,10 @@ test("register update writes the register corrections, never location_change, cu
 })
 
 test("checkin component sync excludes status and condition fields", () => {
-  const source = readFileSync("src/app/api/assets/[id]/checkin/route.ts", "utf8")
+  const source = readFileSync(checkinWritePath, "utf8")
   const syncCall = source.match(/syncInstalledComponentsWithParent\(tx, \{[\s\S]*?movementType:\s*"parent_checkin_sync"[\s\S]*?\}\)/)?.[0]
 
-  assert.ok(syncCall, "checkin route should call component sync")
+  assert.ok(syncCall, "the checkin write should call component sync")
   assert.doesNotMatch(syncCall, /statusId|nextStatusId/)
   assert.doesNotMatch(syncCall, /conditionId|conditionAfter/)
 })

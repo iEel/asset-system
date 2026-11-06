@@ -53,6 +53,8 @@ test("a legacy row asks once, then backfills the handover and continues the norm
 test("legacy checkout API creates an auditable backfilled handover instead of changing check-in rules", () => {
   assert.equal(existsSync(legacyCheckoutRoutePath), true)
   const source = readFileSync(legacyCheckoutRoutePath, "utf8")
+  // The backfill's write runs in src/lib/legacy-checkout-write.ts (group 7 plan 4 task 1).
+  const write = readFileSync("src/lib/legacy-checkout-write.ts", "utf8")
 
   assert.match(source, /legacy_return_backfill/)
   assert.match(source, /getAssetLifecycleTransitionError\("legacy_return_backfill", asset\.status\.name\)/)
@@ -62,7 +64,10 @@ test("legacy checkout API creates an auditable backfilled handover instead of ch
   assert.match(source, /const custodianId = asset\.custodianId/)
   assert.match(source, /custodianId,/)
   assert.match(source, /conditionBefore: asset\.conditionId/)
-  assert.match(source, /generateCheckoutDocumentNo/)
+  assert.match(write, /generateCheckoutDocumentNo/)
+  assert.match(write, /handoverMode:\s*"permanent_assignment"/)
+  assert.match(write, /conditionBefore: asset\.conditionId/)
+  assert.match(source, /backfillLegacyCheckoutInTransaction\(tx, /)
   assert.match(source, /Asset already has an active checkout/)
 })
 
