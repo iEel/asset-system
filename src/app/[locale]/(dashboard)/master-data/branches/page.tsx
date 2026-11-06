@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Pencil, Plus } from "lucide-react"
+import { Pencil, Plus, Users } from "lucide-react"
+import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
@@ -13,21 +14,26 @@ import { FilterSelect } from "@/components/ui/filter-select"
 import { orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions } from "@/components/ui/row-actions"
+import { RecordStatusSegmented } from "@/components/ui/record-status-segmented"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { MasterDataReactivateButton, MasterDataRowActions, type MasterDataReactivate } from "@/components/master-data/master-data-row-actions"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
+import { formatDeactivatedAt, readDeactivatedAt, readRecordStatusCounts, recordStatusCountWheres } from "@/lib/master-data-list-ui"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
+  branchFooterTotalWheres,
+  branchSorts,
   buildBranchDrilldownHrefs,
   buildBranchOrderBy,
   buildBranchQueryString,
   buildBranchSummary,
   buildBranchWhere,
+  getBranchDeleteBlockReason,
   parseBranchListParams,
   type BranchListParams,
   type BranchListState,
@@ -39,17 +45,28 @@ type BranchesPageProps = {
   searchParams: Promise<BranchListParams>
 }
 
+// Board MD-Branches (group 8 plan 1 Task 3, spec §3, §5): the shared list pattern of the companies list. Name first with
+// code · company under it, the record-status segmented control with counts, the status column only under ทั้งหมด, the
+// counts link to the lists filtered by the branch, the footer totals over the filtered set, the row opens the edit page
+// and ⋯ holds แก้ไข, เพิ่มที่ตั้งในสาขานี้, ดูพนักงานในสาขานี้ and ปิดใช้งาน / เปิดใช้งาน.
 export default async function BranchesPage({ params, searchParams }: BranchesPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "branch", "view")
+  const user = await requirePagePermission(locale, "branch", "view")
+  // Spec §3: ปิดใช้งาน needs branch:delete (DELETE only deactivates), เปิดใช้งาน branch:edit (PUT isActive true).
+  const canDeactivate = hasPermission(user, "branch", "delete")
+  const canReactivate = hasPermission(user, "branch", "edit")
+  // เพิ่มที่ตั้งในสาขานี้ opens the location form (location:create); the employee list needs employee:view.
+  const canCreateLocation = hasPermission(user, "location", "create")
+  const canViewEmployees = hasPermission(user, "employee", "view")
 
   const t = await getTranslations("branch")
   const tCommon = await getTranslations("common")
   const listState = parseBranchListParams(rawSearchParams)
   const where = buildBranchWhere(listState)
+  const footerWheres = branchFooterTotalWheres(where)
 
-  const [branches, total, summaryBranches, companies] = await Promise.all([
+  const [branches, total, summaryBranches, companies, recordStatusCounts, footerLocations, footerEmployees, footerAssets] = await Promise.all([
     prisma.branch.findMany({
       where,
       include: {
@@ -59,6 +76,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
             nameTh: true,
           },
         },
+        // The counts the DELETE route reads, for the ปิดใช้งาน reason (getBranchDeleteBlockReason).
         _count: {
           select: {
             locations: { where: { isActive: true } },
@@ -76,6 +94,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
     prisma.branch.findMany({
       where: { isActive: true },
       select: {
+        company: { select: { id: true, nameTh: true } },
         _count: {
           select: {
             locations: { where: { isActive: true } },
@@ -87,9 +106,21 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
     prisma.company.findMany({
       where: { isActive: true },
       select: { id: true, code: true, nameTh: true },
-      orderBy: { code: "asc" },
+      orderBy: { nameTh: "asc" },
     }),
+    // ใช้งาน {n} / ไม่ใช้งาน {n} / ทั้งหมด {n}, the list's other filters kept.
+    readRecordStatusCounts(prisma.branch, recordStatusCountWheres(listState, buildBranchWhere)),
+    prisma.location.count({ where: footerWheres.locations }),
+    prisma.employee.count({ where: footerWheres.employees }),
+    prisma.asset.count({ where: footerWheres.assets }),
   ])
+  // "· ปิดใช้งานเมื่อ {date}" on the inactive rows (G8P1-R2).
+  const deactivatedAt = await readDeactivatedAt(
+    prisma,
+    "branch",
+    branches.filter((branch) => !branch.isActive).map((branch) => branch.id)
+  )
+  const footerTotals = { locations: footerLocations, employees: footerEmployees, assets: footerAssets }
   const basePath = `/${locale}/master-data/branches`
   const branchReturnHref = `${basePath}?${buildBranchQueryString(listState, {})}`
   const summary = buildBranchSummary(summaryBranches)
@@ -100,10 +131,83 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
+  // The record status is the segmented control now, not a form field; the clear link still resets it. The sort is not a
+  // filter (as on the companies list).
   const hasActiveFilters = listState.status !== "active" || Boolean(listState.search || listState.companyId || listState.assetUsage !== "all" || listState.locationUsage !== "all")
+  // Spec §3: the status column shows only under ทั้งหมด.
+  const showRecordStatus = listState.status === "all"
+  const columnCount = showRecordStatus ? 7 : 6
   const sortBy = (field: BranchSort): DataTableSort => ({
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
+  })
+  const sortLabel = (sort: BranchSort) => {
+    if (sort === "createdAt") return t("list.sortCreatedAt")
+    return t(sort)
+  }
+  const deactivateClearItems = (["locations", "employees", "assets", "auditRounds"] as const).map((key) => t(`deactivate.clear.${key}`))
+  const companyBreakdown = summary.byCompany.map((item) => t("summaryCompanyCount", { name: item.name, count: item.count })).join(" · ")
+
+  const rows = branches.map((branch) => {
+    const drilldown = buildBranchDrilldownHrefs({ locale, branchId: branch.id })
+    const editHref = appendMasterDataReturnTo(`/${locale}/master-data/branches/${branch.id}/edit`, branchReturnHref)
+    // The location form offers active branches only.
+    const addLocationHref =
+      canCreateLocation && branch.isActive
+        ? appendMasterDataReturnTo(`/${locale}/master-data/locations/new?branchId=${encodeURIComponent(branch.id)}`, branchReturnHref)
+        : null
+    const endpoint = `/api/branches/${branch.id}`
+    const at = branch.isActive ? null : deactivatedAt.get(branch.id)
+    // PUT /api/branches/[id] takes the whole record: the stored fields go back with isActive = true.
+    const reactivate: MasterDataReactivate | null =
+      canReactivate && !branch.isActive
+        ? {
+            endpoint,
+            record: {
+              code: branch.code,
+              name: branch.name,
+              companyId: branch.companyId,
+              address: branch.address,
+              contactPerson: branch.contactPerson,
+            },
+            labels: {
+              action: t("reactivate.action"),
+              confirmTitle: t("reactivate.confirmTitle", { name: branch.name }),
+              confirmBody: t("reactivate.confirmBody"),
+              success: t("reactivate.success"),
+            },
+          }
+        : null
+    return {
+      branch,
+      drilldown,
+      editHref,
+      addLocationHref,
+      reactivate,
+      deactivatedLine: branch.isActive ? null : tCommon("recordStatus.deactivatedAt", { date: at ? formatDeactivatedAt(at, locale) : "–" }),
+      links: [
+        { key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> },
+        ...(addLocationHref ? [{ key: "add-location", label: t("list.addLocation"), href: addLocationHref, icon: <Plus aria-hidden="true" /> }] : []),
+        ...(canViewEmployees
+          ? [{ key: "employees", label: t("list.viewEmployees", { count: branch._count.employees }), href: drilldown.employees, icon: <Users aria-hidden="true" /> }]
+          : []),
+      ],
+      deactivate:
+        canDeactivate && branch.isActive
+          ? {
+              endpoint,
+              blocked: getBranchDeleteBlockReason(branch._count),
+              labels: {
+                action: t("deactivate.action"),
+                hint: t("deactivate.hint"),
+                confirmTitle: t("deactivate.confirmTitle", { name: branch.name }),
+                confirmBody: t("deactivate.confirmBody"),
+                clearItems: deactivateClearItems,
+                success: t("deactivate.success"),
+              },
+            }
+          : null,
+    }
   })
 
   return (
@@ -114,7 +218,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
         actions={
           <Link href={appendMasterDataReturnTo(`/${locale}/master-data/branches/new`, branchReturnHref)} className={buttonVariants({ size: "md" })}>
             <Plus aria-hidden="true" />
-            {tCommon("create")}
+            {t("createTitle")}
           </Link>
         }
       />
@@ -125,8 +229,8 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
             key: "total",
             label: t("summaryTotal"),
             value: formatCount(summary.total),
-            foot: t("summaryWithLocations", { count: summary.withLocations }),
-            footTitle: t("summaryWithLocations", { count: summary.withLocations }),
+            foot: companyBreakdown,
+            footTitle: companyBreakdown,
             href: basePath,
           },
           {
@@ -142,8 +246,8 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
             key: "withoutAssets",
             label: t("summaryWithoutAssets"),
             value: formatCount(summary.withoutAssets),
-            foot: t("summaryWithoutAssetsHelp"),
-            footTitle: t("summaryWithoutAssetsHelp"),
+            foot: t("summaryWithoutAssetsFoot", { withAssets: summary.withAssets, withoutAssets: summary.withoutAssets, total: summary.total }),
+            footTitle: t("summaryWithoutAssetsFoot", { withAssets: summary.withAssets, withoutAssets: summary.withoutAssets, total: summary.total }),
             href: listHref({ assetUsage: "withoutAssets", page: 1 }),
             current: listState.assetUsage === "withoutAssets",
             attention: summary.withoutAssets > 0,
@@ -162,11 +266,13 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
       />
 
       <FilterPanel>
-        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.4fr)_repeat(4,minmax(150px,1fr))_auto]">
+        {/* Search, three filters, the sort and its order: every sort stays reachable here (code, company and date added
+            too, which no header carries any more), on phones as well. */}
+        <form role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
-          <input type="hidden" name="sort" value={listState.sort} />
-          <input type="hidden" name="direction" value={listState.direction} />
+          {/* The record status is the segmented control below (spec §3); a search keeps it. */}
+          {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
           <Field label={tCommon("search")}>
             <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
           </Field>
@@ -176,10 +282,8 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
             defaultValue={listState.companyId}
             options={[
               { value: "", label: tCommon("all") },
-              ...companies.map((company) => ({
-                value: company.id,
-                label: `${company.code} - ${company.nameTh}`,
-              })),
+              // Spec §3: reference filters show names only.
+              ...companies.map((company) => ({ value: company.id, label: company.nameTh })),
             ]}
           />
           <FilterSelect
@@ -203,123 +307,152 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
             ]}
           />
           <FilterSelect
-            label={tCommon("status")}
-            name="status"
-            defaultValue={listState.status}
+            label={t("list.sortLabel")}
+            name="sort"
+            defaultValue={listState.sort}
+            options={branchSorts.map((sort) => ({ value: sort, label: sortLabel(sort) }))}
+          />
+          <FilterSelect
+            label={t("list.sortDirection")}
+            name="direction"
+            defaultValue={listState.direction}
             options={[
-              { value: "active", label: tCommon("active") },
-              { value: "inactive", label: tCommon("inactive") },
-              { value: "all", label: tCommon("all") },
+              { value: "asc", label: t("list.sortAsc") },
+              { value: "desc", label: t("list.sortDesc") },
             ]}
           />
           <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
         </form>
       </FilterPanel>
 
+      <RecordStatusSegmented value={listState.status} counts={recordStatusCounts} hrefFor={(status) => listHref({ status, page: 1 })} />
+
       <DataTable
         caption={t("title")}
         scrollHint={tCommon("tableScrollHint")}
         footer={
           total > 0 ? (
-            <Pagination
-              page={listState.page}
-              totalPages={totalPages}
-              previousHref={listHref({ page: listState.page - 1 })}
-              nextHref={listHref({ page: listState.page + 1 })}
-              pageSize={listState.pageSize}
-              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
-              labels={{
-                navigation: tCommon("pagination"),
-                previous: tCommon("previous"),
-                next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
-                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
-                pageSizeGroup: tCommon("pageSizeLabel"),
-                rowsPerPage: tCommon("rowsPerPage"),
-              }}
-            />
+            <div className="space-y-2">
+              <p>{t("list.countsNote")}</p>
+              <Pagination
+                page={listState.page}
+                totalPages={totalPages}
+                previousHref={listHref({ page: listState.page - 1 })}
+                nextHref={listHref({ page: listState.page + 1 })}
+                pageSize={listState.pageSize}
+                pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+                labels={{
+                  navigation: tCommon("pagination"),
+                  previous: tCommon("previous"),
+                  next: tCommon("next"),
+                  pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+                  range: `${tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) })} · ${t("list.footerTotals", { locations: footerTotals.locations, employees: footerTotals.employees, assets: footerTotals.assets })}`,
+                  pageSizeGroup: tCommon("pageSizeLabel"),
+                  rowsPerPage: tCommon("rowsPerPage"),
+                }}
+              />
+            </div>
           ) : undefined
         }
       >
         <DataTableHeader>
           <tr>
-            <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
             <DataTableHead sort={sortBy("name")}>{t("name")}</DataTableHead>
-            <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
             <DataTableHead>{t("contactPerson")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("locations")}>{t("locations")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("employees")}>{t("employees")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
-            <DataTableHead>{tCommon("status")}</DataTableHead>
+            {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
             <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
-          {branches.length === 0 ? (
+          {rows.length === 0 ? (
             hasActiveFilters ? (
-              <TableEmptyRow colSpan={9} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+              <TableEmptyRow colSpan={columnCount} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
             ) : (
-              <TableEmptyRow colSpan={9}>{tCommon("noData")}</TableEmptyRow>
+              <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
             )
           ) : (
-            branches.map((branch) => {
-              const drilldown = buildBranchDrilldownHrefs({ locale, branchId: branch.id })
-              const editHref = appendMasterDataReturnTo(`/${locale}/master-data/branches/${branch.id}/edit`, branchReturnHref)
-              return (
-                <ClickableTableRow
-                  key={branch.id}
-                  href={editHref}
-                  label={`${tCommon("edit")}: ${branch.code}`}
-                >
-                  <DataTableCell className="whitespace-nowrap">
-                    <span className="tag font-medium text-foreground">{branch.code}</span>
-                  </DataTableCell>
-                  <DataTableCell className="min-w-48 text-foreground">{branch.name}</DataTableCell>
-                  <DataTableCell className="min-w-56 text-muted-foreground">
-                    <span className="tag">{branch.company.code}</span> - {branch.company.nameTh}
-                  </DataTableCell>
-                  <DataTableCell className="min-w-40 text-muted-foreground">{orNil(branch.contactPerson)}</DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">
-                    {branch._count.locations > 0 ? (
-                      <Link
-                        href={drilldown.locations}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
-                      >
-                        {formatCount(branch._count.locations)}
-                      </Link>
-                    ) : (
-                      formatCount(0)
-                    )}
-                  </DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">{formatCount(branch._count.employees)}</DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">
-                    {branch._count.assets > 0 ? (
-                      <Link
-                        href={drilldown.assets}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
-                      >
-                        {formatCount(branch._count.assets)}
-                      </Link>
-                    ) : (
-                      formatCount(0)
-                    )}
-                  </DataTableCell>
+            rows.map(({ branch, drilldown, editHref, addLocationHref, reactivate, deactivatedLine, links, deactivate }) => (
+              <ClickableTableRow
+                key={branch.id}
+                href={editHref}
+                label={`${tCommon("edit")}: ${branch.code}`}
+              >
+                <DataTableCell className="min-w-56">
+                  <div className={cn("font-semibold", branch.isActive ? "text-foreground" : "text-muted-foreground")}>{branch.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="tag">{branch.code}</span>
+                    {" · "}
+                    {branch.company.nameTh}
+                    {deactivatedLine ? ` · ${deactivatedLine}` : null}
+                  </div>
+                </DataTableCell>
+                <DataTableCell className="min-w-40 text-muted-foreground">{orNil(branch.contactPerson)}</DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">
+                  {branch._count.locations > 0 ? (
+                    <Link
+                      href={drilldown.locations}
+                      className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                    >
+                      {formatCount(branch._count.locations)}
+                    </Link>
+                  ) : branch.isActive ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusBadge label={t("withoutLocations")} tone="warning" />
+                      {addLocationHref ? (
+                        <Link href={addLocationHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
+                          <span className="text-xs">{t("list.addLocation")}</span>
+                        </Link>
+                      ) : null}
+                    </div>
+                  ) : (
+                    formatCount(0)
+                  )}
+                </DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">
+                  {canViewEmployees && branch._count.employees > 0 ? (
+                    <Link
+                      href={drilldown.employees}
+                      className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                    >
+                      {formatCount(branch._count.employees)}
+                    </Link>
+                  ) : (
+                    formatCount(branch._count.employees)
+                  )}
+                </DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">
+                  {branch._count.assets > 0 ? (
+                    <Link
+                      href={drilldown.assets}
+                      className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                    >
+                      {formatCount(branch._count.assets)}
+                    </Link>
+                  ) : (
+                    formatCount(0)
+                  )}
+                </DataTableCell>
+                {showRecordStatus ? (
                   <DataTableCell className="whitespace-nowrap">
                     <StatusBadge label={branch.isActive ? tCommon("active") : tCommon("inactive")} tone={branch.isActive ? "success" : "muted"} />
+                    {reactivate ? <MasterDataReactivateButton reactivate={reactivate} /> : null}
                   </DataTableCell>
-                  <DataTableCell align="right" sticky="right">
-                    <RowActions
-                      code={branch.code}
-                      name={branch.name}
-                      menuLabel={tCommon("moreActionsFor", { code: branch.code })}
-                      next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
-                      groups={[]}
-                      deleteAction={branch.isActive ? { endpoint: `/api/branches/${branch.id}` } : undefined}
-                    />
-                  </DataTableCell>
-                </ClickableTableRow>
-              )
-            })
+                ) : null}
+                <DataTableCell align="right" sticky="right">
+                  <MasterDataRowActions
+                    code={branch.code}
+                    name={branch.name}
+                    menuLabel={tCommon("moreActionsFor", { code: branch.code })}
+                    links={links}
+                    deactivate={deactivate}
+                    reactivate={reactivate}
+                  />
+                </DataTableCell>
+              </ClickableTableRow>
+            ))
           )}
         </DataTableBody>
       </DataTable>

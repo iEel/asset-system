@@ -53,7 +53,11 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // assets is a plural too), the employee page's open audit round "{n} รายการ" and the location parent row's "ย่อย {n}".
   // Group 8 plan 1 Task 2 added 1: the companies total card's foot "รวมสาขา {b} · พนักงาน {e} · ทรัพย์สิน {a}" (keyed on
   // branches; employees and assets are plurals too).
-  assert.equal(pluralKeys.size, 92,[...pluralKeys.keys()].join(", "))
+  // Group 8 plan 1 Task 3 added 1: the branches footer "ที่ตั้ง {l} · พนักงาน {e} · ทรัพย์สิน {a}" (keyed on locations;
+  // employees and assets are plurals too).
+  assert.equal(pluralKeys.size, 93,[...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("branch.list.footerTotals"), "locations")
+  assert.match(en.get("branch.list.footerTotals") ?? "", /\{employees, plural, one \{# employee\} other \{# employees\}\} · \{assets, plural, one \{# asset\} other \{# assets\}\}/)
   assert.equal(pluralKeys.get("company.summaryTotalFoot"), "branches")
   assert.match(en.get("company.summaryTotalFoot") ?? "", /\{employees, plural, one \{# employee\} other \{# employees\}\} · \{assets, plural, one \{# asset\} other \{# assets\}\}/)
   assert.equal(pluralKeys.get("employee.listTotals"), "people")

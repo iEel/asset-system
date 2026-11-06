@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
+import { normalizeMasterDataReturnTo } from "../src/lib/master-data-return-navigation.ts"
 
 function readSource(path: string) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
@@ -26,8 +27,20 @@ test("master data return navigation helper only accepts internal master data tar
   assert.match(source, /normalizeMasterDataReturnTo/)
   assert.match(source, /new URL\(raw, "http:\/\/asset\.local"\)/)
   assert.match(source, /url\.origin !== "http:\/\/asset\.local"/)
-  assert.match(source, /url\.pathname !== fallback/)
+  // The list itself, or another list the page names (group 8 plan 1 Task 3).
+  assert.match(source, /const allowed = \[fallback, /)
+  assert.match(source, /if \(!allowed\.includes\(url\.pathname\)\) return fallback/)
   assert.match(source, /appendMasterDataReturnTo/)
+})
+
+test("a return target from another master-data list is accepted only when the page names that list", () => {
+  const companies = "/th/master-data/companies?sort=nameTh&page=2"
+  assert.equal(normalizeMasterDataReturnTo("th", "branches", companies), "/th/master-data/branches")
+  assert.equal(normalizeMasterDataReturnTo("th", "branches", companies, ["companies"]), companies)
+  assert.equal(normalizeMasterDataReturnTo("th", "branches", "/th/master-data/branches?page=3", ["companies"]), "/th/master-data/branches?page=3")
+  assert.equal(normalizeMasterDataReturnTo("th", "branches", "/th/master-data/employees", ["companies"]), "/th/master-data/branches")
+  assert.equal(normalizeMasterDataReturnTo("th", "branches", "https://evil.example/th/master-data/companies", ["companies"]), "/th/master-data/branches")
+  assert.equal(normalizeMasterDataReturnTo("th", "branches", "/en/master-data/companies", ["companies"]), "/th/master-data/branches")
 })
 
 test("master data list edit and create links carry the current list URL as returnTo", () => {
@@ -60,9 +73,11 @@ test("master data new and edit pages pass sanitized return targets to forms", ()
     const editPageSource = readFileSync(`src/app/[locale]/(dashboard)/master-data/${item.section}/[id]/edit/page.tsx`, "utf8")
     const formSource = readFileSync(`src/components/master-data/${item.form}`, "utf8")
 
-    // The location's new page also reads ?branchId=&parentId= (group 7 plan 3, "เพิ่มที่ตั้งในนี้").
-    assert.match(newPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\](?:; branchId\?: string \| string\[\]; parentId\?: string \| string\[\])? \}>/)
-    assert.match(newPageSource, new RegExp(`normalizeMasterDataReturnTo\\(locale, "${item.section}", rawSearchParams\\.returnTo\\)`))
+    // The location's new page also reads ?branchId=&parentId= (group 7 plan 3, "เพิ่มที่ตั้งในนี้"), the branch's ?companyId=
+    // (group 8 plan 1 Task 3, "เพิ่มสาขาให้บริษัทนี้").
+    assert.match(newPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\](?:; branchId\?: string \| string\[\]; parentId\?: string \| string\[\]|; companyId\?: string \| string\[\])? \}>/)
+    // A form opened from another list's ⋯ also goes back there (group 8: companies → new branch, branches → new location).
+    assert.match(newPageSource, new RegExp(`normalizeMasterDataReturnTo\\(locale, "${item.section}", rawSearchParams\\.returnTo(?:, \\["\\w+"\\])?\\)`))
     assert.match(newPageSource, /backHref=\{returnToHref\}/)
     assert.match(editPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
     assert.match(editPageSource, new RegExp(`normalizeMasterDataReturnTo\\(locale, "${item.section}", rawSearchParams\\.returnTo\\)`))

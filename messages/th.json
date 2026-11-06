@@ -1739,15 +1739,45 @@
     "withLocations": "มีที่ตั้ง",
     "withoutLocations": "ยังไม่มีที่ตั้ง",
     "clearFilters": "ล้างตัวกรอง",
-    "summaryTotal": "สาขาทั้งหมด",
-    "summaryWithLocations": "มีที่ตั้ง {count} สาขา",
+    "summaryTotal": "สาขาทั้งหมด (ใช้งาน)",
     "summaryWithAssets": "มีทรัพย์สิน",
     "summaryWithAssetsHelp": "สาขาที่มีทรัพย์สินใช้งานอยู่",
     "summaryWithoutAssets": "ยังไม่มีทรัพย์สิน",
-    "summaryWithoutAssetsHelp": "ควรตรวจว่าเป็นสาขาใหม่หรือข้อมูลเก่า",
     "summaryWithoutLocations": "ยังไม่มีที่ตั้ง",
     "summaryWithoutLocationsHelp": "ควรเพิ่มที่ตั้งก่อนนำทรัพย์สินเข้าใช้งาน",
-    "saveNeedsCompany": "ยังไม่มีบริษัท ต้องเพิ่มบริษัทก่อนจึงจะบันทึกสาขาได้"
+    "saveNeedsCompany": "ยังไม่มีบริษัท ต้องเพิ่มบริษัทก่อนจึงจะบันทึกสาขาได้",
+    "summaryCompanyCount": "{name} {count, number}",
+    "summaryWithoutAssetsFoot": "{withAssets, number} + {withoutAssets, number} = {total, number} · ควรตรวจว่าเป็นสาขาใหม่หรือข้อมูลเก่า",
+    "list": {
+      "countsNote": "ตัวเลขที่ตั้ง พนักงาน และทรัพย์สิน นับเฉพาะที่ใช้งาน",
+      "footerTotals": "ที่ตั้ง {locations, number} · พนักงาน {employees, number} · ทรัพย์สิน {assets, number}",
+      "addLocation": "เพิ่มที่ตั้งในสาขานี้",
+      "viewEmployees": "ดูพนักงานในสาขานี้ ({count, number})",
+      "sortLabel": "เรียงตาม",
+      "sortDirection": "ลำดับ",
+      "sortAsc": "น้อยไปมาก (ก → ฮ)",
+      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortCreatedAt": "วันที่เพิ่ม"
+    },
+    "deactivate": {
+      "action": "ปิดใช้งาน",
+      "hint": "ไม่มีที่ตั้ง พนักงาน ทรัพย์สิน หรือรอบตรวจนับผูกอยู่ จึงปิดได้ ระบบจะถามยืนยันอีกครั้ง",
+      "confirmTitle": "ปิดใช้งาน {name}?",
+      "confirmBody": "สาขานี้จะไม่แสดงในรายการเลือกสาขาของหน้าอื่น เช่น เพิ่มที่ตั้ง เพิ่มพนักงาน และเพิ่มทรัพย์สิน ประวัติเดิมยังอยู่ หาเจอได้จาก \"ไม่ใช้งาน\" และเปิดใช้งานอีกครั้งได้จากรายการนี้",
+      "clear": {
+        "locations": "ไม่มีที่ตั้ง",
+        "employees": "ไม่มีพนักงาน",
+        "assets": "ไม่มีทรัพย์สิน",
+        "auditRounds": "ไม่อยู่ในรอบตรวจนับ"
+      },
+      "success": "ปิดใช้งานแล้ว"
+    },
+    "reactivate": {
+      "action": "เปิดใช้งาน",
+      "confirmTitle": "เปิดใช้งาน {name}?",
+      "confirmBody": "สาขานี้จะกลับมาให้เลือกในหน้าอื่นอีกครั้ง เช่น เพิ่มที่ตั้ง เพิ่มพนักงาน และเพิ่มทรัพย์สิน",
+      "success": "เปิดใช้งานแล้ว"
+    }
   },
   "department": {
     "title": "แผนก",

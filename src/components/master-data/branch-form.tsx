@@ -72,10 +72,13 @@ function validate(values: BranchFormValues): Partial<Record<BranchField, string>
 export function BranchForm({
   branch,
   companies,
+  presetCompanyId,
   backHref: providedBackHref,
 }: {
   branch?: BranchFormValues
   companies: CompanyOption[]
+  // A new branch from "เพิ่มสาขาให้บริษัทนี้" (branches/new?companyId=): a company the picker offers, or "".
+  presetCompanyId?: string
   backHref?: string
 }) {
   const locale = useLocale()
@@ -83,7 +86,7 @@ export function BranchForm({
   const router = useRouter()
   const t = useTranslations("branch")
   const tCommon = useTranslations("common")
-  const [values, setValues] = useState<BranchFormValues>(branch ?? emptyBranch)
+  const [values, setValues] = useState<BranchFormValues>(branch ?? { ...emptyBranch, companyId: presetCompanyId ?? "" })
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<BranchField>()
 

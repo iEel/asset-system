@@ -134,6 +134,8 @@ export type CompanySummaryItem = {
 }
 
 export type BranchSummaryItem = {
+  // The total card's per-company breakdown (board MD-Branches).
+  company: { id: string; nameTh: string }
   _count: {
     locations: number
     assets: number
@@ -169,17 +171,14 @@ export function parseCompanyListParams(input: CompanyListParams): CompanyListSta
   }
 }
 
+// Board MD-Branches sorts by name A→Z by default; the other sorts stay reachable (spec §3, group 8 plan 1 Task 3).
 export function parseBranchListParams(input: BranchListParams): BranchListState {
-  const sortValue = firstValue(input.sort)
-  const directionValue = firstValue(input.direction)
-
   return {
     search: firstValue(input.search).trim(),
     status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
-    sort: branchSorts.includes(sortValue as BranchSort) ? (sortValue as BranchSort) : "createdAt",
-    direction: directionValue === "asc" ? "asc" : "desc",
+    ...parseNameDefaultSort(input, branchSorts, "name"),
     companyId: firstValue(input.companyId).trim(),
     assetUsage: parseFilter(input.assetUsage, assetUsageFilters, "all"),
     locationUsage: parseFilter(input.locationUsage, locationUsageFilters, "all"),
@@ -532,13 +531,38 @@ export function buildCompanySummary(companies: CompanySummaryItem[]) {
 }
 
 export function buildBranchSummary(branches: BranchSummaryItem[]) {
+  const byCompany = new Map<string, { id: string; name: string; count: number }>()
+  for (const branch of branches) {
+    const item = byCompany.get(branch.company.id) ?? { id: branch.company.id, name: branch.company.nameTh, count: 0 }
+    item.count += 1
+    byCompany.set(item.id, item)
+  }
   return {
     total: branches.length,
     withLocations: branches.filter((branch) => branch._count.locations > 0).length,
     withoutLocations: branches.filter((branch) => branch._count.locations === 0).length,
     withAssets: branches.filter((branch) => branch._count.assets > 0).length,
     withoutAssets: branches.filter((branch) => branch._count.assets === 0).length,
+    // The total card's foot "[บริษัท] 2 · [บริษัท ข] 1" (board MD-Branches): active branches per company, most first.
+    byCompany: [...byCompany.values()].sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, "th")),
   }
+}
+
+// The branches footer "ที่ตั้ง {n} · พนักงาน {n} · ทรัพย์สิน {n}" (board MD-Branches): the active locations, employees and
+// assets of every branch the list's filters find, on all pages.
+export function branchFooterTotalWheres(where: Prisma.BranchWhereInput) {
+  return {
+    locations: { isActive: true, branch: { is: where } } satisfies Prisma.LocationWhereInput,
+    employees: { isActive: true, branch: { is: where } } satisfies Prisma.EmployeeWhereInput,
+    assets: { isActive: true, branch: { is: where } } satisfies Prisma.AssetWhereInput,
+  }
+}
+
+// "เพิ่มสาขาให้บริษัทนี้" opens branches/new?companyId= (board MD-Companies): the company is chosen when the picker offers
+// it (an active company); any other value is ignored and the picker starts empty.
+export function resolveBranchFormCompanyPreset(value: string | string[] | undefined, companyIds: readonly string[]) {
+  const companyId = firstValue(value).trim()
+  return companyId && companyIds.includes(companyId) ? companyId : ""
 }
 
 // The where of each count behind the employee cards. records (the total and the employment-status groupBy) and
@@ -684,6 +708,7 @@ export function buildBranchDrilldownHrefs({
   return {
     assets: `/${locale}/assets?branchId=${encodedBranchId}&page=1`,
     locations: `/${locale}/master-data/locations?branchId=${encodedBranchId}&page=1`,
+    employees: `/${locale}/master-data/employees?branchId=${encodedBranchId}&page=1`,
   }
 }
 

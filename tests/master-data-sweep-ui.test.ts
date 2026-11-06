@@ -13,7 +13,8 @@ const drilldownLink = /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "i
 
 test("branches list: drill-down counts are text links with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/branches/page.tsx`)
-  assert.equal(source.match(drilldownLink)?.length, 2)
+  // Board MD-Branches (group 8 plan 1 Task 3) adds the employee count's link and เพิ่มที่ตั้งในสาขานี้ under ยังไม่มีที่ตั้ง.
+  assert.equal(source.match(drilldownLink)?.length, 4)
   assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })

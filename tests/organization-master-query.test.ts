@@ -12,6 +12,8 @@ import {
   buildBranchQueryString,
   buildBranchSummary,
   buildBranchWhere,
+  branchFooterTotalWheres,
+  resolveBranchFormCompanyPreset,
   buildCompanyDrilldownHrefs,
   buildCompanyOrderBy,
   buildCompanyQueryString,
@@ -176,28 +178,67 @@ test("builds branch count order, summary, drilldown, and delete guards", () => {
   assert.deepEqual(buildBranchOrderBy({ sort: "locations", direction: "desc" }), { locations: { _count: "desc" } })
   assert.deepEqual(buildBranchOrderBy({ sort: "company", direction: "asc" }), { company: { code: "asc" } })
 
+  // Board MD-Branches: the total card's foot is the per-company breakdown of the active branches, most first, then by name.
   assert.deepEqual(
     buildBranchSummary([
-      { _count: { locations: 3, assets: 0 } },
-      { _count: { locations: 0, assets: 2 } },
+      { company: { id: "c2", nameTh: "บริษัท ข" }, _count: { locations: 3, assets: 0 } },
+      { company: { id: "c1", nameTh: "บริษัท ก" }, _count: { locations: 0, assets: 2 } },
+      { company: { id: "c2", nameTh: "บริษัท ข" }, _count: { locations: 1, assets: 1 } },
+      { company: { id: "c3", nameTh: "บริษัท ค" }, _count: { locations: 1, assets: 1 } },
     ]),
     {
-      total: 2,
-      withLocations: 1,
+      total: 4,
+      withLocations: 3,
       withoutLocations: 1,
-      withAssets: 1,
+      withAssets: 3,
       withoutAssets: 1,
+      byCompany: [
+        { id: "c2", name: "บริษัท ข", count: 2 },
+        { id: "c1", name: "บริษัท ก", count: 1 },
+        { id: "c3", name: "บริษัท ค", count: 1 },
+      ],
     }
   )
   assert.deepEqual(buildBranchDrilldownHrefs({ locale: "th", branchId: "branch-1" }), {
     assets: "/th/assets?branchId=branch-1&page=1",
     locations: "/th/master-data/locations?branchId=branch-1&page=1",
+    employees: "/th/master-data/employees?branchId=branch-1&page=1",
   })
   assert.equal(getBranchDeleteBlockReason({ locations: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
     getBranchDeleteBlockReason({ locations: 2, employees: 3, assets: 4, auditRounds: 1 }),
     "ปิดใช้งานสาขานี้ไม่ได้ เพราะยังมีที่ตั้ง 2 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
+})
+
+test("the branch list sorts by name A→Z by default; every other sort stays reachable, newest or largest first (board MD-Branches, spec §3)", () => {
+  assert.deepEqual(pick(parseBranchListParams({})), { sort: "name", direction: "asc" })
+  assert.deepEqual(pick(parseBranchListParams({ sort: "bogus" })), { sort: "name", direction: "asc" })
+  assert.deepEqual(pick(parseBranchListParams({ sort: "name", direction: "desc" })), { sort: "name", direction: "desc" })
+  for (const sort of ["createdAt", "code", "company", "locations", "employees", "assets"] as const) {
+    assert.deepEqual(pick(parseBranchListParams({ sort })), { sort, direction: "desc" }, sort)
+    assert.deepEqual(pick(parseBranchListParams({ sort, direction: "asc" })), { sort, direction: "asc" }, sort)
+  }
+  function pick(state: { sort: string; direction: string }) {
+    return { sort: state.sort, direction: state.direction }
+  }
+})
+
+test("the branch list footer counts the active locations, employees and assets of every branch the filters find", () => {
+  const where = buildBranchWhere(parseBranchListParams({ companyId: "company-1" }))
+  assert.deepEqual(branchFooterTotalWheres(where), {
+    locations: { isActive: true, branch: { is: where } },
+    employees: { isActive: true, branch: { is: where } },
+    assets: { isActive: true, branch: { is: where } },
+  })
+})
+
+test("the branch form presets ?companyId= only when the picker offers that company", () => {
+  assert.equal(resolveBranchFormCompanyPreset("c1", ["c1", "c2"]), "c1")
+  assert.equal(resolveBranchFormCompanyPreset([" c2 ", "c1"], ["c1", "c2"]), "c2")
+  assert.equal(resolveBranchFormCompanyPreset("gone", ["c1"]), "")
+  assert.equal(resolveBranchFormCompanyPreset(undefined, ["c1"]), "")
+  assert.equal(resolveBranchFormCompanyPreset("", []), "")
 })
 
 test("builds organization query strings while preserving active filters", () => {
@@ -210,7 +251,7 @@ test("builds organization query strings while preserving active filters", () => 
   )
   assert.equal(
     buildBranchQueryString(branch, { assetUsage: "withoutAssets", page: 1 }),
-    "search=rama&page=1&pageSize=25&sort=createdAt&direction=desc&companyId=company-1&assetUsage=withoutAssets&locationUsage=withLocations"
+    "search=rama&page=1&pageSize=25&sort=name&direction=asc&companyId=company-1&assetUsage=withoutAssets&locationUsage=withLocations"
   )
 })
 

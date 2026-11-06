@@ -13,7 +13,8 @@ type NewLocationPageProps = {
 export default async function NewLocationPage({ params, searchParams }: NewLocationPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  const returnToHref = normalizeMasterDataReturnTo(locale, "locations", rawSearchParams.returnTo)
+  // "เพิ่มที่ตั้งในสาขานี้" on the branches list opens this form and comes back to that list (group 8 plan 1 Task 3).
+  const returnToHref = normalizeMasterDataReturnTo(locale, "locations", rawSearchParams.returnTo, ["branches"])
   await requirePagePermission(locale, "location", "create")
 
   // Every location once, inactive ones too: the form builds the branch's parent list with its paths in memory (spec §6.2).

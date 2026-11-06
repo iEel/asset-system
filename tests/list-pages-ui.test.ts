@@ -25,7 +25,8 @@ type MasterDataList = {
 
 // The master-data lists of plan 2B-1. The commit that moves a page adds its line.
 const MASTER_DATA_LISTS: readonly MasterDataList[] = [
-  { path: `${D}master-data/branches/page.tsx`, deleteEndpoints: ["/api/branches/${branch.id}"], removedWrappers: [`${C}master-data/branch-delete-button.tsx`], stats: true },
+  // Group 8 plan 1 Task 3: branches say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions, as companies.
+  { path: `${D}master-data/branches/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/branch-delete-button.tsx`], stats: true },
   // Group 7 plan 1 Task 4: brands and models say "ปิดใช้งาน" through BrandModelDeactivateButton (it renders RowActions).
   { path: `${D}master-data/brands/page.tsx`, deleteEndpoints: [], rowActions: "<BrandModelDeactivateButton", removedWrappers: [`${C}master-data/brand-delete-button.tsx`, `${C}master-data/asset-model-delete-button.tsx`], stats: true },
   { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: ["/api/categories/${category.id}"], removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },

@@ -1739,15 +1739,45 @@
     "withLocations": "Has locations",
     "withoutLocations": "No locations yet",
     "clearFilters": "Clear filters",
-    "summaryTotal": "Total Branches",
-    "summaryWithLocations": "{count} branches with locations",
+    "summaryTotal": "Branches (active)",
     "summaryWithAssets": "Has Assets",
     "summaryWithAssetsHelp": "Branches currently holding active assets.",
     "summaryWithoutAssets": "No Assets",
-    "summaryWithoutAssetsHelp": "Review whether these are new branches or old data.",
     "summaryWithoutLocations": "No Locations",
     "summaryWithoutLocationsHelp": "Add locations before putting assets into service.",
-    "saveNeedsCompany": "No company yet. Add a company before you save a branch."
+    "saveNeedsCompany": "No company yet. Add a company before you save a branch.",
+    "summaryCompanyCount": "{name} {count, number}",
+    "summaryWithoutAssetsFoot": "{withAssets, number} + {withoutAssets, number} = {total, number} · Check whether these are new branches or old data",
+    "list": {
+      "countsNote": "Location, employee and asset numbers count active records only",
+      "footerTotals": "{locations, plural, one {# location} other {# locations}} · {employees, plural, one {# employee} other {# employees}} · {assets, plural, one {# asset} other {# assets}}",
+      "addLocation": "Add a location to this branch",
+      "viewEmployees": "View employees in this branch ({count, number})",
+      "sortLabel": "Sort by",
+      "sortDirection": "Order",
+      "sortAsc": "Ascending (A → Z)",
+      "sortDesc": "Descending (Z → A)",
+      "sortCreatedAt": "Date added"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "hint": "No locations, employees, assets or audit rounds use it, so it can be deactivated. You will be asked to confirm",
+      "confirmTitle": "Deactivate {name}?",
+      "confirmBody": "This branch will no longer be offered on other pages such as new locations, employees and assets. Its history stays, it can be found under \"Inactive\", and it can be reactivated from this list",
+      "clear": {
+        "locations": "No locations",
+        "employees": "No employees",
+        "assets": "No assets",
+        "auditRounds": "Not in an audit round"
+      },
+      "success": "Deactivated"
+    },
+    "reactivate": {
+      "action": "Reactivate",
+      "confirmTitle": "Reactivate {name}?",
+      "confirmBody": "This branch will be offered again on other pages such as new locations, employees and assets",
+      "success": "Reactivated"
+    }
   },
   "department": {
     "title": "Departments",
