@@ -3,11 +3,12 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { CheckoutForm } from "@/components/asset-operations/checkout-form"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { checkoutInitialCustodianId } from "@/lib/checkout-form-rules"
 import { getUserDisplayLabel } from "@/lib/user-display"
 
 type CheckoutPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ assetId?: string | string[]; returnTo?: string | string[] }>
+  searchParams: Promise<{ assetId?: string | string[]; custodianId?: string | string[]; returnTo?: string | string[] }>
 }
 
 export default async function CheckoutPage({ params, searchParams }: CheckoutPageProps) {
@@ -26,6 +27,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
       locations={options.locations}
       conditions={options.conditions}
       initialAsset={initialAsset}
+      initialCustodianId={checkoutInitialCustodianId(filters.custodianId, options.employees)}
       returnTo={filters.returnTo ? normalizeAssetReturnTo(locale, filters.returnTo) : undefined}
       deliveredByLabel={getUserDisplayLabel(user)}
       canCreateRepair={hasPermission(user, "maintenance", "create")}

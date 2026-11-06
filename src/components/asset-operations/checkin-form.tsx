@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -160,7 +160,7 @@ export function CheckinForm({
   statuses,
   conditions,
   conditionLabels,
-  initialRow,
+  initialRow: arrivalRow,
   initialQuery,
   returnDepartment,
   currentEmployeeId,
@@ -174,7 +174,7 @@ export function CheckinForm({
   conditions: AssetOperationNamedOption[]
   /** Every condition's name by id, inactive ones too: the handover's and the asset's condition read a name. */
   conditionLabels: Record<string, string>
-  /** ?checkoutId=: the open handover's row, chosen or chosen-but-blocked (spec 6.4). */
+  /** ?checkoutId= or ?assetId=: the asset's row, chosen or chosen-but-blocked (spec 6.4; group 7 plan 2). */
   initialRow: AssetOperationSearchRow | null
   /** ?assetId=: the asset's tag, the search starts filled (spec 6.4). */
   initialQuery: string
@@ -192,6 +192,12 @@ export function CheckinForm({
   const apiError = useApiError()
   const router = useRouter()
   const confirm = useConfirm()
+  // ?assetId= of a held asset with no handover (the employee page's "รับคืน", group 7 plan 2, spec §5.2): a takeable
+  // ข้อมูลเก่า row is not chosen as it is; on arrival the form asks the legacy confirm once, as a pick does, and the search
+  // keeps its tag if the person declines. A blocked one arrives chosen-but-blocked with its reason.
+  const arrivalLegacyRow = arrivalRow?.legacy && arrivalRow.eligible ? arrivalRow : null
+  const initialRow = arrivalLegacyRow ? null : arrivalRow
+  const arrivalAskedRef = useRef(false)
   const t = useTranslations("checkin")
   const tOperation = useTranslations("assetOperation")
   const tCommon = useTranslations("common")
@@ -595,6 +601,14 @@ export function CheckinForm({
     })
     if (accepted) await handleCreateLegacyCheckout(row)
   }
+
+  useEffect(() => {
+    if (!arrivalLegacyRow || arrivalAskedRef.current) return
+    arrivalAskedRef.current = true
+    chooseRow(arrivalLegacyRow)
+    // Once, on arrival: the row is the page's own preselect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleCreateLegacyCheckout(row: AssetOperationSearchRow) {
     const assetId = row.id

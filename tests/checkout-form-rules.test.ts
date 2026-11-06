@@ -5,6 +5,7 @@ import {
   buildCheckoutChecklist,
   buildCheckoutSummaryRows,
   checkoutComponents,
+  checkoutInitialCustodianId,
   checkoutConditionDefault,
   checkoutOutstandingComponents,
   checkoutOutstandingLines,
@@ -335,4 +336,21 @@ test("ส่งมอบ's form: the outstanding warning sits in section 1 after
   const at = (text: string) => form.indexOf(text)
   assert.ok(at('data-checkout-part="asset"') < at("data-checkout-outstanding") && at("data-checkout-outstanding") < at('data-checkout-part="receiver"'), "section 1: phone step 1")
   assert.ok(at("{staying.length > 0 ? (") < at("data-checkout-outstanding"), "after the components that stay")
+})
+
+test("?custodianId= presets the receiving person when they are an active employee the form offers, else nobody (group 7 plan 2, spec §7)", () => {
+  const employees = [{ id: "emp-1" }, { id: "emp-2" }]
+  assert.equal(checkoutInitialCustodianId("emp-2", employees), "emp-2")
+  assert.equal(checkoutInitialCustodianId(["emp-1", "emp-2"], employees), "emp-1", "a repeated parameter takes the first")
+  assert.equal(checkoutInitialCustodianId("emp-gone", employees), "", "an inactive or unknown person is ignored")
+  assert.equal(checkoutInitialCustodianId(undefined, employees), "")
+  assert.equal(checkoutInitialCustodianId("", employees), "")
+})
+
+test("the handover page reads ?custodianId= and the form starts with that person as the receiver", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/checkout/page.tsx", "utf8")
+  const form = readFileSync("src/components/asset-operations/checkout-form.tsx", "utf8")
+  assert.match(page, /custodianId\?: string \| string\[\]/)
+  assert.match(page, /initialCustodianId=\{checkoutInitialCustodianId\(filters\.custodianId, options\.employees\)\}/)
+  assert.match(form, /custodianId: initialCustodianId \?\? ""/)
 })

@@ -3,7 +3,6 @@ import type { Prisma } from "@prisma/client"
 import {
   assetOperationModes,
   getBulkMoveVerdict,
-  getCheckinVerdict,
   getCheckoutVerdict,
   getTransferVerdict,
   type AssetOperationFacts,
@@ -14,6 +13,7 @@ import {
 import { normalizeAssetOwnershipType, type AssetOwnershipType } from "./asset-ownership.ts"
 import type { AssetPhotoPreview } from "./asset-photo-preview.ts"
 import { getLateReturnOutcome } from "./component-late-return.ts"
+import { getHeldAssetReturnBlock } from "./held-asset-return-block.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // The rules of the transaction pages' bounded asset search (server search spec 6.1-6.3): the query, the where clauses,
@@ -457,8 +457,11 @@ export function getAssetOperationSearchVerdict(
   switch (input.mode) {
     case "checkout":
       return pick(getCheckoutVerdict(facts))
-    case "checkin":
-      return pick(getCheckinVerdict(facts))
+    case "checkin": {
+      // The return's refusals, one helper with the employee page's "รับคืน" (group 7 plan 2, G7P2-R3).
+      const block = getHeldAssetReturnBlock(facts)
+      return block ? { eligible: false, reasonKey: block.reasonKey } : { eligible: true, reasonKey: null }
+    }
     case "transfer":
       return pick(getTransferVerdict(facts, { assignCustodian: input.assignCustodian }))
     case "bulkMove":

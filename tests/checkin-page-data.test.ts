@@ -93,8 +93,8 @@ test("a blocked handover arrives chosen-but-blocked; a returned or unknown one, 
   assert.equal(state.calls.some((call) => call.call === "search"), false)
 })
 
-test("?assetId= fills the search with the asset's tag and chooses nothing; an unknown asset or no parameter leaves it empty", async () => {
-  state.answer = { mode: "checkin", total: 1, rows: [{ ...handoverRow, legacy: true, checkout: undefined }] }
+test("?assetId= of an asset nobody holds fills the search with its tag and chooses nothing; an unknown asset or no parameter leaves it empty", async () => {
+  state.answer = { mode: "checkin", total: 1, rows: [{ ...handoverRow, eligible: false, reasonKey: "asset.transactionReasonNoReturnRecord", checkout: undefined }] }
   assert.deepEqual(await data.getCheckinPreselect({ assetId: "asset-2" }), { row: null, query: "NB-0228" })
   assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-2", assignCustodian: false, detail: true } } })
   assert.equal(state.calls.some((call) => call.call === "assetCheckout.findFirst"), false)
@@ -105,6 +105,23 @@ test("?assetId= fills the search with the asset's tag and chooses nothing; an un
   state.calls.length = 0
   assert.deepEqual(await data.getCheckinPreselect({}), { row: null, query: "" })
   assert.deepEqual(state.calls, [])
+})
+
+test("?assetId= of a held asset with no handover starts with its ข้อมูลเก่า row, chosen or chosen-but-blocked, its tag in the search (group 7 plan 2, spec §5.2)", async () => {
+  const legacyRow = { ...handoverRow, checkout: undefined, legacy: true, badge: "legacy", holderEmployeeId: "emp-1" }
+  state.answer = { mode: "checkin", total: 1, rows: [legacyRow] }
+  assert.deepEqual(await data.getCheckinPreselect({ assetId: "asset-1" }), { row: legacyRow, query: "NB-0228" })
+  assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-1", assignCustodian: false, detail: true } } })
+  const blocked = { ...legacyRow, eligible: false, reasonKey: "asset.transactionReasonActiveMaintenance" }
+  state.answer = { mode: "checkin", total: 1, rows: [blocked] }
+  assert.deepEqual(await data.getCheckinPreselect({ assetId: "asset-1" }), { row: blocked, query: "NB-0228" })
+})
+
+test("?assetId= of an asset with an open handover starts with that handover's row, as ?checkoutId= does (group 7 plan 2)", async () => {
+  const row = { ...handoverRow, badge: "handover" }
+  state.answer = { mode: "checkin", total: 1, rows: [row] }
+  assert.deepEqual(await data.getCheckinPreselect({ assetId: "asset-1" }), { row, query: "" })
+  assert.equal(state.calls.some((call) => call.call === "assetCheckout.findFirst"), false)
 })
 
 test("the legacy count is one count over the legacy rule", async () => {
@@ -171,4 +188,11 @@ test("the register's noHandover filter is the count's own where, so N on รั�
 test("the condition names by id, inactive ones and ยังไม่ประเมิน included: the handover's condition and the asset's read a name, never an id (group 3 spec §8.2, §19.2)", async () => {
   assert.deepEqual(await data.readConditionLabels(), { "c-na": "ยังไม่ประเมิน", "c-good": "ดี" })
   assert.deepEqual(state.calls.at(-1), { call: "assetCondition.findMany", args: { select: { id: true, nameTh: true } } })
+})
+
+test("the form takes an arriving takeable ข้อมูลเก่า row through the legacy confirm once, never as a plain choice (group 7 plan 2)", () => {
+  const form = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
+  assert.match(form, /const arrivalLegacyRow = arrivalRow\?\.legacy && arrivalRow\.eligible \? arrivalRow : null/)
+  assert.match(form, /const initialRow = arrivalLegacyRow \? null : arrivalRow/)
+  assert.match(form, /arrivalAskedRef\.current = true\s+chooseRow\(arrivalLegacyRow\)/)
 })

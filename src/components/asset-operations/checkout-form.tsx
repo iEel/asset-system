@@ -145,6 +145,7 @@ export function CheckoutForm({
   locations,
   conditions,
   initialAsset,
+  initialCustodianId,
   returnTo,
   deliveredByLabel,
   canCreateRepair,
@@ -155,6 +156,8 @@ export function CheckoutForm({
   conditions: Option[]
   /** ?assetId=: the search's by-id answer with its detail, takeable or not (spec 6.4, §7.1). */
   initialAsset: AssetOperationSearchRow | null
+  /** ?custodianId=: the receiving person, already checked to be one of the employees; "" for nobody (group 7 plan 2). */
+  initialCustodianId?: string
   returnTo?: string
   /** ผู้ส่งมอบ on the phone's read-back: the signed-in user (spec §7.4). */
   deliveredByLabel: string
@@ -189,7 +192,7 @@ export function CheckoutForm({
     asset: initialAsset,
     checkoutType: "user" as CheckoutType,
     handoverMode: "",
-    custodianId: "",
+    custodianId: initialCustodianId ?? "",
     departmentId: "",
     locationId: "",
     checkoutDate: toLocalDateInputValue(),

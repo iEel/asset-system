@@ -108,3 +108,24 @@ test("ยกเลิก on the transaction pages goes to the normalized returnT
   assert.equal(getOperationCancelHref("th", "/th/assets/a-1/edit"), "/th/assets")
   assert.equal(getOperationCancelHref("en", "https://evil.example/en/assets/a-1"), "/en/assets")
 })
+
+test("the transaction forms come back to one employee page, its query kept, nothing deeper, same origin and locale (group 7 plan 2)", () => {
+  const id = "3f2b8c1e-9a4d-4e2f-8b7a-1c2d3e4f5a6b"
+  assert.equal(normalizeAssetReturnTo("th", `/th/master-data/employees/${id}`), `/th/master-data/employees/${id}`)
+  assert.equal(
+    normalizeAssetReturnTo("th", `/th/master-data/employees/${id}?heldPage=2&returnTo=%2Fth%2Fmaster-data%2Femployees`),
+    `/th/master-data/employees/${id}?heldPage=2&returnTo=%2Fth%2Fmaster-data%2Femployees`,
+  )
+  assert.equal(normalizeAssetReturnTo("en", `/en/master-data/employees/${id.toUpperCase()}`), `/en/master-data/employees/${id.toUpperCase()}`)
+  assert.equal(getOperationCancelHref("th", `/th/master-data/employees/${id}`), `/th/master-data/employees/${id}`)
+  // Refused: a deeper path, a segment that is not a UUID, the list, another locale, another origin.
+  assert.equal(normalizeAssetReturnTo("th", "/th/master-data/employees/x/edit"), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", `/th/master-data/employees/${id}/edit`), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", "/th/master-data/employees/x"), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", "/th/master-data/employees"), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", `/th/master-data/employees/${id}/`), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", `/en/master-data/employees/${id}`), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", `https://evil.example/th/master-data/employees/${id}`), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", `//evil.example/th/master-data/employees/${id}`), "/th/assets")
+  assert.equal(normalizeAssetReturnTo("th", `/th/master-data/suppliers/${id}`), "/th/assets")
+})

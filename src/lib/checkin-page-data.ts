@@ -38,9 +38,11 @@ function searchById(assetId: string) {
 }
 
 // ?checkoutId= (the handover document's link, and the backfill's own replace) starts with that open handover's row,
-// chosen or chosen-but-blocked; it wins over ?assetId=. ?assetId= fills the search with the asset's tag and chooses
-// nothing. An outstanding component's ?assetId= starts with its late-return row, chosen or chosen-but-blocked (group 3
-// spec §8.6). A repeated parameter reaches the page as an array and the first counts (S-R42).
+// chosen or chosen-but-blocked; it wins over ?assetId=. ?assetId= starts with the asset's own row, chosen or
+// chosen-but-blocked: an outstanding component's late-return row (group 3 spec §8.6), an open handover's row, or a held
+// asset's ข้อมูลเก่า row, which the form takes through the legacy backfill and whose tag also fills the search (the
+// employee page's "รับคืน", group 7 plan 2, spec §5.2). An asset nobody holds fills the search with its tag and chooses
+// nothing. A repeated parameter reaches the page as an array and the first counts (S-R42).
 export async function getCheckinPreselect(params: {
   checkoutId?: string | string[]
   assetId?: string | string[]
@@ -62,7 +64,8 @@ export async function getCheckinPreselect(params: {
   if (assetId) {
     const answer = await searchById(assetId)
     const row = answer.rows[0]
-    if (row?.badge === "outstanding") return { row, query: "" }
+    if (row?.badge === "outstanding" || row?.badge === "handover") return { row, query: "" }
+    if (row?.badge === "legacy") return { row, query: row.assetTag }
     return { row: null, query: row?.assetTag ?? "" }
   }
 

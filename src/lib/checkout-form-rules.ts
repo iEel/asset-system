@@ -46,6 +46,14 @@ const FIXED_DEPARTMENT_OWNERSHIPS: ReadonlySet<string> = new Set(["shared", "com
 /** ส่งมอบ's name for operationConditionDefault, which lives beside the operation's condition options (final review M11). */
 export const checkoutConditionDefault = operationConditionDefault
 
+// ?custodianId= (the employee page's "ส่งมอบทรัพย์สินให้คนนี้", group 7 plan 2, spec §7): the receiving person starts
+// chosen when they are one of the form's employees (the active ones); anyone else is ignored. A repeated parameter takes
+// the first (S-R42).
+export function checkoutInitialCustodianId(value: string | string[] | undefined, employees: readonly { id: string }[]): string {
+  const id = Array.isArray(value) ? value[0] : value
+  return id && employees.some((employee) => employee.id === id) ? id : ""
+}
+
 /** The detail=1 answer replaces the chosen row only while it is still the chosen asset; a failed read keeps the row. */
 export function withCheckoutAssetDetail(current: AssetOperationSearchRow | null, answered: AssetOperationSearchRow | null): AssetOperationSearchRow | null {
   return current && answered && answered.id === current.id ? answered : current
