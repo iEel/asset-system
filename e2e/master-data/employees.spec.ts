@@ -160,6 +160,11 @@ test.describe("the IT head takes a former employee's assets back from the employ
     await page.getByRole("link", { name: new RegExp(`^${W.formerCard}`) }).click()
     await page.waitForURL((url) => url.pathname === "/th/master-data/employees" && url.searchParams.get("former") === "withAssets")
     await expect(page.getByText(W.formerChip).filter({ visible: true }).first()).toBeVisible()
+    // The phone folds the filters into a disclosure, closed while only ?former=withAssets is on (no field filter): open it.
+    if (e2eDevice === "phone") {
+      const disclosure = page.locator("details").filter({ has: page.locator("summary", { hasText: W.filtersTitle }) })
+      if (!(await disclosure.evaluate((element) => (element as HTMLDetailsElement).open))) await disclosure.locator("summary").click()
+    }
     const search = page.getByRole("search").filter({ visible: true })
     await search.locator('input[name="search"]').fill(employee.code)
     await search.getByRole("button", { name: W.filter, exact: true }).click()

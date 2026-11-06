@@ -61,6 +61,9 @@ test.describe("the IT head adds a model from the asset form and finds it on the 
     const assetName = `${mark} โน้ตบุ๊กรุ่นที่เพิ่มจากฟอร์ม`
     const serial = txAssetTag(runId, project, "BMSN")
     await page.goto("/th/assets/new", { waitUntil: "load" })
+    // The dashboard's loading.tsx streams the form: for a moment the streamed copy and the swapped-in one are both in the
+    // DOM (E2E-1106G, desktop-light: #asset-tag resolved to 2 inputs at the load event). Wait for the one form.
+    await expect(page.locator("#asset-tag")).toHaveCount(1)
     await page.locator("#asset-tag").fill(tag)
     await page.locator("#asset-category").selectOption(masters.categoryId)
     await page.locator("#asset-name").fill(assetName)
@@ -133,11 +136,19 @@ test.describe("the IT head adds a model from the asset form and finds it on the 
     if (!itHeadName) throw new Error("the run has no IT head user: the setup project did not finish")
     const modelEntry = (name: string): Locator =>
       e2eDevice === "desktop" ? page.locator("tbody tr").filter({ hasText: name }) : page.locator("li article").filter({ hasText: name })
+    // The phone list can render a card twice for a moment while it refreshes (E2E-1106F, phone-light: count 1, then a
+    // strict-mode clash on the next read; the dev DB holds one such model). Each entry's text is read only while exactly
+    // one is there, polled until it holds, so a real duplicate still fails.
+    const singleEntryText = (name: string) => async () => {
+      const texts = await modelEntry(name).allTextContents()
+      return texts.length === 1 ? texts[0] : `${texts.length} entries of ${name}`
+    }
     await expect(modelEntry(newName)).toHaveCount(1)
-    await expect(modelEntry(newName)).toContainText(fillTemplate(W.addedBy, { name: itHeadName, source: W.sourceAssetForm }))
-    await expect(modelEntry(similarName)).toContainText(fillTemplate(W.addedBy, { name: itHeadName, source: W.sourceMasterData }))
+    await expect.poll(singleEntryText(newName)).toContain(fillTemplate(W.addedBy, { name: itHeadName, source: W.sourceAssetForm }))
+    await expect.poll(singleEntryText(similarName)).toContain(fillTemplate(W.addedBy, { name: itHeadName, source: W.sourceMasterData }))
     // No photo yet: the placeholder, never a broken image (the table cell keeps its words for screen readers).
-    await expect(modelEntry(newName)).toContainText(W.photoNone)
+    await expect.poll(singleEntryText(newName)).toContain(W.photoNone)
+    await expect(modelEntry(newName)).toHaveCount(1)
     await recordSettled(page, measure, "brands page, เพิ่มล่าสุด 7 วัน")
 
     // ⋯ ปิดใช้งาน asks first, with the one asset of the model; cancelled, so nothing is deactivated (no DELETE).

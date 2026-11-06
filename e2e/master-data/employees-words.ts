@@ -6,7 +6,7 @@ export const EMPLOYEE_WORDS = {
   // The list (§5.1, G7P2-R1): the card, its chip, a former holder's note and the phone card's held count.
   formerCard: "พ้นสภาพแต่ยังถือครอง", formerChip: "พ้นสภาพแต่ยังถือครอง (รวมระเบียนที่ไม่ใช้งาน)",
   formerHolderNote: "ยังถือครองอยู่ ควรรับคืน", listHeldCount: "ถือครอง {count} รายการ", resigned: "ลาออก", filter: "กรอง",
-  search: "ค้นหา",
+  search: "ค้นหา", filtersTitle: "ค้นหาและตัวกรอง",
   // The employee page (§5.2): the header's action, the warning, the held panel, a row's handover or ข้อมูลเก่า, รับคืน.
   handOverToPerson: "ส่งมอบทรัพย์สินให้คนนี้", formerHoldingTitle: "พ้นสภาพแล้ว ยังถือครอง {count} รายการ",
   heldTitle: "ทรัพย์สินที่ถือครองตอนนี้", heldCount: "{count} รายการ", handoverRegular: "ใช้ประจำ",
