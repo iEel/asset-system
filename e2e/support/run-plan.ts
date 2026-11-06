@@ -7,8 +7,8 @@ import { runSuffix } from "./env-guard.ts"
 export type E2eUserKey = "itStaff" | "itHead" | "viewer" | "employee"
 
 // Spec §7, the users table. IT staff: no approve; the IT head: the IT staff set plus audit and disposal approve and the
-// audit, maintenance and disposal exports (decision DX6 (ก)), the work center (user decision 2026-10-25) and the brands
-// page's view, create and edit (group 7 plan 1 Task 5); the
+// audit, maintenance and disposal exports (decision DX6 (ก)), the work center (user decision 2026-10-25), the brands
+// page's view, create and edit (group 7 plan 1 Task 5) and the employee pages' view (group 7 plan 2 Task 5); the
 // viewer: view only, on the modules the IT staff work in; the employee: no permission (lands on My Assets).
 const IT_STAFF_PERMISSIONS = [
   "asset:view", "asset:create", "asset:edit",
@@ -27,6 +27,9 @@ export const E2E_ROLE_PERMISSIONS: Record<E2eUserKey, readonly string[]> = {
     // and the brands page with adding a brand or model from the asset form (group 7 plan 1 Task 5 ruling): the run's
     // own role, so no shared role changes; IT staff stay without them and see "ไม่พบ · แจ้งผู้ดูแลข้อมูลหลักให้เพิ่ม".
     "brand:view", "brand:create", "brand:edit",
+    // and the employee list and page (group 7 plan 2 Task 5): view only; the run's employee is created and marked
+    // former by the seed admin, as the setup creates the run's employees. IT staff stay without it.
+    "employee:view",
   ],
   viewer: ["asset:view", "audit:view", "maintenance:view", "disposal:view", "report:view"],
   employee: [],

@@ -1,7 +1,7 @@
 // The asset detail of page group 1 (spec docs/superpowers/specs/2026-10-25-page-group-1-dashboard-detail-login-design.md
 // §10): (1) the detail's primary and the transactions at the top of "อื่น ๆ" are the register row's next button and the
 // top of its ⋯, reasons included; (2) the history's chips filter it, the overview shows the latest 3, and the HO-, RT-
-// and TR- links open; (3) the fact strip's cells open the register by custodian (no E2E role holds employee:view) and
+// and TR- links open; (3) the fact strip's cells open the custodian's employee page (the IT head holds employee:view) and
 // by location, and the round, and "ถือมาแล้ว N วัน" counts from the handover's date; (4) from a register search the
 // page shows "k / N" and its links keep returnTo, and opened directly it shows neither; (5) the primary is the header's
 // last button on the desktop and sits in the bottom bar on every tab on the phone. Beside them (R43), the files tab and
@@ -259,7 +259,7 @@ test.describe("the IT head", () => {
   asUser("itHead")
 
   // The IT head, because the round this test opens is cancelled at the end, which needs audit:approve.
-  test("the fact strip's cells open the register by custodian and by location and the round, and ถือมาแล้ว counts from the handover's date (spec §10 (3))", async ({ page, measure }, testInfo) => {
+  test("the fact strip's cells open the custodian's employee page, the register by location and the round, and ถือมาแล้ว counts from the handover's date (spec §10 (3))", async ({ page, measure }, testInfo) => {
     test.setTimeout(180_000)
     const receiver = readRunData().employees.receiver1
     const choices = await readAssetChoices(page, measure)
@@ -325,12 +325,13 @@ test.describe("the IT head", () => {
       await expect(page.getByRole("main")).toContainText("จาก 1 รายการ")
       await expect(page.getByRole("main").getByText(asset.assetTag, { exact: true }).filter({ visible: true }).first()).toBeVisible()
 
-      // ผู้ถือครอง: without employee:view the name opens the register by custodian, with its chip.
+      // ผู้ถือครอง: the IT head holds employee:view since group 7 plan 2 Task 5, so the name opens the employee page
+      // (without it, the register by custodian: buildCustodianHref, pinned in tests/asset-detail-frame.test.ts).
       await visitAssetPage(measure, asset.id, "asset, to its custodian", testInfo)
       await custodian.getByRole("link", { name: receiver.fullNameTh }).click()
-      await page.waitForURL((url) => url.pathname === "/th/assets" && url.searchParams.get("custodianId") === receiver.id && url.searchParams.get("exact") === "1")
-      await record(measure, "the register by the asset's custodian", testInfo)
-      await expect(page.getByRole("group", { name: DETAIL_WORDS.activeFilters }).filter({ visible: true })).toContainText(receiver.fullNameTh)
+      await page.waitForURL((url) => url.pathname === `/th/master-data/employees/${receiver.id}`)
+      await expect(page.getByRole("heading", { level: 1, name: receiver.fullNameTh })).toBeVisible()
+      await record(measure, "the employee page of the asset's custodian", testInfo)
     } finally {
       const cancelled = await page.request.patch(`/api/audit-rounds/${round.id}`, { data: { action: "cancel", reason: `${prefix} ปิดรอบทดสอบหน้ารายละเอียด` } })
       expect(cancelled.ok(), await cancelled.text()).toBe(true)

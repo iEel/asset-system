@@ -119,8 +119,9 @@ test.describe("the IT head adds a model from the asset form and finds it on the 
     await expect(page.locator("#asset-model")).toContainText(newName)
     await expect(page.locator("#asset-name")).toHaveValue(assetName)
 
-    // An asset of the new model (the asset API), so ปิดใช้งาน's confirm has an asset to count.
-    await createTxAsset(page, masters, project, "BM1", "โน้ตบุ๊กรุ่นที่เพิ่มจากฟอร์ม", { brandId: brand.id, modelId: model.id })
+    // An asset of the new model (the asset API), so ปิดใช้งาน's confirm has an asset to count. Its key is BMQ1, not BM1:
+    // bulk-move.spec.ts's batch makes BM1-BM3 in the same run (a duplicate tag, E2E-1106C).
+    await createTxAsset(page, masters, project, "BMQ1", "โน้ตบุ๊กรุ่นที่เพิ่มจากฟอร์ม", { brandId: brand.id, modelId: model.id })
 
     // The brands page: the run's models found by the marker, then เพิ่มล่าสุด 7 วัน from the filter form.
     await page.goto(`/th/master-data/brands?search=${encodeURIComponent(`${mark} Nova`)}`, { waitUntil: "load" })

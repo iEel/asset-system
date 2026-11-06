@@ -59,3 +59,54 @@ test("the brands and models spec: the quick add with its similar name, the dupli
   assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 7)
   assert.doesNotMatch(spec, /\/api\/(?:locations|departments|employees|admin|categories)|signInOnce\(/)
 })
+
+// The employees E2E spec of page group 7 plan 2 (plan docs/superpowers/plans/2026-11-06-group7-employees.md, Task 5).
+test("the employees spec reads the app's own words (group 7 plan 2 task 5)", async () => {
+  const { EMPLOYEE_WORDS } = await import("../e2e/master-data/employees-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(EMPLOYEE_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  assert.equal(EMPLOYEE_WORDS.formerCard, th.employee.summaryFormerWithAssets)
+  assert.equal(EMPLOYEE_WORDS.formerChip, th.employee.formerFilterChip)
+  assert.equal(EMPLOYEE_WORDS.handOverToPerson, th.employee.detail.handOverToPerson)
+  assert.equal(EMPLOYEE_WORDS.formerHoldingTitle, th.employee.detail.formerHoldingTitle)
+  assert.equal(EMPLOYEE_WORDS.returnAsset, th.employee.detail.returnAsset)
+  assert.equal(EMPLOYEE_WORDS.reasonOpenRepair, th.asset.transactionReasonActiveMaintenance)
+  assert.equal(EMPLOYEE_WORDS.legacyConfirmTitle, th.checkin.legacyReturnConfirmTitle)
+  assert.equal(EMPLOYEE_WORDS.legacyConfirm, th.checkin.legacyReturnConfirm)
+})
+
+test("the IT head's run role views employees, IT staff do not (group 7 plan 2 task 5)", async () => {
+  const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
+  assert.ok(E2E_ROLE_PERMISSIONS.itHead.includes("employee:view"))
+  assert.ok(!E2E_ROLE_PERMISSIONS.itHead.some((permission) => permission.startsWith("employee:") && permission !== "employee:view"), "view only")
+  for (const key of ["itStaff", "viewer", "employee"] as const) {
+    assert.ok(!E2E_ROLE_PERMISSIONS[key].some((permission) => permission.startsWith("employee:")), `${key} holds no employee permission`)
+  }
+})
+
+test("the employees spec: a run employee marked ลาออก by the seed admin, the former card, the held assets, รับคืน back to the page, the legacy path, an open repair's reason (group 7 plan 2 task 5)", () => {
+  const spec = read("e2e/master-data/employees.spec.ts")
+  assert.ok(spec.includes(`import { asUser, expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(spec.includes(`asUser("itHead")`))
+  // Run-marked: the employee's code and name, and the assets' tags, carry the run and the project.
+  assert.ok(spec.includes("code: `${runId}-${projectCode(projectName)}-FH`"))
+  assert.ok(spec.includes(`txAssetName(runId, projectName, "พนักงานพ้นสภาพ")`))
+  for (const key of [`"EMH"`, `"EML"`, `"EMR"`]) assert.ok(spec.includes(`createTxAsset(page, masters, project, ${key}`), key)
+  // The seed admin creates the employee and marks it ลาออก through the employee API; no LDAP, no isActive false, no DELETE.
+  assert.ok(spec.includes(`admin.post("/api/employees"`) && spec.includes("admin.put(`/api/employees/${employee.id}`"))
+  assert.ok(spec.includes(`employeeBody(employee, "resigned")`))
+  assert.doesNotMatch(spec, /isActive: false|method: "DELETE"|\.delete\(/)
+  assert.doesNotMatch(spec, /\/api\/admin\/settings/)
+  // The card, the page, the two returns back to the page and the disabled one.
+  assert.ok(spec.includes(`url.searchParams.get("former") === "withAssets"`))
+  assert.ok(spec.includes(`url.searchParams.get("custodianId") === employee.id`))
+  assert.ok(spec.includes(`url.searchParams.get("checkoutId") === handover.id`))
+  assert.ok(spec.includes(`url.searchParams.get("assetId") === legacy.id`))
+  assert.ok(spec.includes(`page.getByRole("alertdialog", { name: W.legacyConfirmTitle })`))
+  for (const count of [3, 2, 1]) assert.ok(spec.includes(`warning(page, ${count})`), `${count} held`)
+  assert.ok(spec.includes(`repairEntry.locator('[aria-disabled="true"]')).toHaveText(W.returnLabel)`))
+  // The phone's card and axe through recordSettled.
+  assert.ok(spec.includes("[data-employee-mobile-list] article"))
+  assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 7)
+})
