@@ -10,7 +10,7 @@
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { downloadBy, openWorkbook } from "../cross-cutting/support/files.ts"
-import { createAssets, createRoom, readAssetChoices, recordPrefix } from "../disposal/disposal-support.ts"
+import { createAssets, createRoom, readAssetChoices, readRunBranch, recordPrefix } from "../disposal/disposal-support.ts"
 import { fillTemplate } from "../shell/shell-words.ts"
 import { bangkokDate, txAssetTag } from "../transactions/tx-plan.ts"
 import { createTxAsset, ensureSecondLocation, expectReachable, handoverByApi, readAssetMasters, record, visit, visitAssetPage } from "../transactions/tx-support.ts"
@@ -267,6 +267,7 @@ test.describe("the IT head", () => {
     // A room of the test's own, so the round below reaches this asset alone and the register by location lists it alone.
     const roomName = `${prefix} ห้องทดสอบหน้ารายละเอียด`
     const roomId = await createRoom(`${prefix}-ROOM`, roomName)
+    const runBranchName = (await readRunBranch()).name
     const [asset] = await createAssets(page, choices, roomId, [`${prefix}-1`])
     // Handed over 46 days ago: the custodian's cell counts the Bangkok days from the handover's own date.
     const handedOverOn = bangkokDate(-46)
@@ -321,7 +322,9 @@ test.describe("the IT head", () => {
       await factCell(page, DETAIL_WORDS.locationCell).getByRole("link", { name: roomName }).click()
       await page.waitForURL((url) => url.pathname === "/th/assets" && url.searchParams.get("locationId") === roomId && url.searchParams.get("exact") === "1")
       await record(measure, "the register by the asset's location", testInfo)
-      await expect(page.getByRole("group", { name: DETAIL_WORDS.activeFilters }).filter({ visible: true })).toContainText(`${DETAIL_WORDS.locationCell}: ${prefix}-ROOM - ${roomName}`)
+      // The chip names the location by its path since group 7 plan 3 Task 4: the room hangs at the top of the run's
+      // branch, so it reads "ที่ตั้ง: <branch> › <room>".
+      await expect(page.getByRole("group", { name: DETAIL_WORDS.activeFilters }).filter({ visible: true })).toContainText(`${DETAIL_WORDS.locationCell}: ${runBranchName} › ${roomName}`)
       await expect(page.getByRole("main")).toContainText("จาก 1 รายการ")
       await expect(page.getByRole("main").getByText(asset.assetTag, { exact: true }).filter({ visible: true }).first()).toBeVisible()
 

@@ -67,6 +67,22 @@ export async function createRoom(code: string, name: string): Promise<string> {
   }
 }
 
+// The run's branch as the app names it (GET /api/branches, the seed admin's read): the register's location chip reads
+// the location's path from the branch down since group 7 plan 3 Task 4 ("ที่ตั้ง: <branch> › <room>").
+export async function readRunBranch(): Promise<{ id: string; name: string }> {
+  const admin = await seedAdminApi()
+  try {
+    const response = await admin.get("/api/branches")
+    if (response.status() !== 200) throw new Error(`GET /api/branches answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
+    const { branchId } = readRunData()
+    const branch = ((await response.json()) as { id: string; name: string }[]).find((row) => row.id === branchId)
+    if (!branch) throw new Error(`the run's branch ${branchId} is not an active branch`)
+    return { id: branch.id, name: branch.name }
+  } finally {
+    await admin.dispose()
+  }
+}
+
 export type AssetChoices = { categoryId: string; statusId: string; conditionId: string }
 
 // IT staff open the asset form (a measured page) and the choices a new asset needs are read off its selects: the first

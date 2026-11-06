@@ -110,3 +110,62 @@ test("the employees spec: a run employee marked ลาออก by the seed admi
   assert.ok(spec.includes("[data-employee-mobile-list] article"))
   assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 7)
 })
+
+// The locations E2E spec of page group 7 plan 3 (plan docs/superpowers/plans/2026-11-06-group7-locations.md, Task 5).
+test("the locations spec reads the app's own words (group 7 plan 3 task 5)", async () => {
+  const { LOCATION_WORDS } = await import("../e2e/master-data/locations-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(LOCATION_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  assert.equal(LOCATION_WORDS.subtree, th.location.tree.subtree)
+  assert.equal(LOCATION_WORDS.assetsAt, th.location.tree.assetsAt)
+  assert.equal(LOCATION_WORDS.addChild, th.location.tree.addChild)
+  assert.equal(LOCATION_WORDS.deactivateTitle, th.location.deactivate.confirmTitle)
+  assert.equal(LOCATION_WORDS.blockedActiveChildren, th.location.deactivate.blocked.activeChildren)
+  assert.equal(LOCATION_WORDS.blockedCurrentAssets, th.location.deactivate.blocked.currentAssets)
+  assert.equal(LOCATION_WORDS.blockedHomeAssets, th.location.deactivate.blocked.homeAssets)
+  assert.equal(LOCATION_WORDS.blockedFooter, th.location.deactivate.blockedFooter)
+  assert.equal(LOCATION_WORDS.reactivateTitle, th.location.reactivate.confirmTitle)
+  assert.equal(LOCATION_WORDS.parentEmpty, th.location.form.parentEmpty)
+})
+
+test("the IT head's run role views, adds and edits locations, no one deletes them, IT staff hold none (group 7 plan 3 task 5)", async () => {
+  const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
+  for (const permission of ["location:view", "location:create", "location:edit"]) assert.ok(E2E_ROLE_PERMISSIONS.itHead.includes(permission), permission)
+  for (const key of ["itHead", "itStaff", "viewer", "employee"] as const) {
+    assert.ok(!E2E_ROLE_PERMISSIONS[key].includes("location:delete"), `${key} holds no location:delete`)
+  }
+  for (const key of ["itStaff", "viewer", "employee"] as const) {
+    assert.ok(!E2E_ROLE_PERMISSIONS[key].some((permission) => permission.startsWith("location:")), `${key} holds no location permission`)
+  }
+})
+
+test("the locations spec: a run-marked chain by the seed admin, the tree's counts, the register by path, เพิ่มที่ตั้งในนี้, the floor's picker, crafted parents refused, blockers then ปิด, เปิดใช้งาน (group 7 plan 3 task 5)", () => {
+  const spec = read("e2e/master-data/locations.spec.ts")
+  assert.ok(spec.includes(`import { asUser, expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(spec.includes(`asUser("itHead")`))
+  // Run-marked: every code starts with the run and the project; the seed admin creates the chain.
+  assert.ok(spec.includes("const prefix = `${runId}-${projectCode(project)}-LT`"))
+  for (const code of ["`${prefix}B`", "`${prefix}F`", "`${prefix}R`", "`${prefix}N`", "`${prefix}X`"]) assert.ok(spec.includes(code), code)
+  assert.ok(spec.includes(`admin.post("/api/locations"`))
+  // The crafted refusals (Review Focus 1, 2).
+  assert.ok(spec.includes(`"LOCATION_PARENT_CYCLE", "locationParentCycle"`))
+  assert.equal((spec.match(/"LOCATION_PARENT_OTHER_BRANCH", "locationParentOtherBranch"/g) ?? []).length, 2)
+  // The tree's counts, the register by the room with its path, the list by a search, the preset form, the picker.
+  assert.ok(spec.includes("fillTemplate(W.subtree, { n: 1 })"))
+  assert.ok(spec.includes(`url.searchParams.get("locationId") === room.id`))
+  assert.ok(spec.includes("`${W.locationChip}: ${runBranch.name}${PATH}${chainPath}`"))
+  assert.ok(spec.includes("[data-location-mobile-list] article"))
+  assert.ok(spec.includes(`url.searchParams.get("parentId") === floor.id && url.searchParams.get("branchId") === runBranch.id`))
+  assert.ok(spec.includes("for (const left of [room, added, floor])"))
+  // ปิดใช้งาน is checked up to its confirm: no deactivate button, closed with ปิด; the suite sends no DELETE.
+  assert.ok(spec.includes(`confirm.getByRole("button", { name: W.deactivate, exact: true })).toHaveCount(0)`))
+  assert.ok(spec.includes(`confirm.getByRole("button", { name: W.close, exact: true }).click()`))
+  assert.doesNotMatch(spec, /method: "DELETE"|\.delete\(/)
+  // isActive false only on the location this test made, through a PUT; no settings, no LDAP.
+  assert.equal((spec.match(/isActive: false/g) ?? []).length, 1)
+  assert.ok(spec.includes("adminAgain.put(`/api/locations/${added.id}`, { data: locationBody(added, { isActive: false }) })"))
+  assert.doesNotMatch(spec, /\/api\/admin|signInOnce\(/)
+  // axe through recordSettled.
+  assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 8)
+})
