@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 // Group 7 plan 2 Task 3 (spec §5.2): the employee page rebuilt to its board (MD-Employee) on readEmployeePage.
-const page = readFileSync("src/app/[locale]/(dashboard)/master-data/employees/[id]/page.tsx", "utf8")
+// CRLF and LF checkouts alike: the pins below match "\n".
+const page = readFileSync("src/app/[locale]/(dashboard)/master-data/employees/[id]/page.tsx", "utf8").replace(/\r\n/g, "\n")
 const th = JSON.parse(readFileSync("messages/th.json", "utf8")) as { employee: { detail: Record<string, string> } }
 const en = JSON.parse(readFileSync("messages/en.json", "utf8")) as { employee: { detail: Record<string, string> } }
 
