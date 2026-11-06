@@ -570,17 +570,18 @@ test("the supplier page builds on PageHeader, StatStrip and KeyValueList, shows 
   for (const part of ["<PageHeader", "<PageBackLink", "<KeyValueList", "<SupplierPurchaseDocuments"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
-  assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the counts, then the two money totals")
-  assert.match(source, /<StatStrip\n\s+className="max-lg:grid-cols-1"/, "one money cell per row below lg, so an amount is never cut")
-  assert.match(source, /value: formatMoney\(summary\.purchaseAmount\), unit: tCommon\("baht"\)/)
-  assert.match(source, /value: formatMoney\(summary\.maintenanceCost\), unit: tCommon\("baht"\)/)
+  // Group 8 plan 3 Task 3 (board MD-Supplier): one strip of four; the purchase total is the เอกสารจัดซื้อ foot.
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 1, "one strip of four")
+  assert.match(source, /value: formatMoney\(figures\.repairCost\),\n\s+unit: tCommon\("baht"\)/)
+  assert.match(source, /t\("detail\.purchaseAmountFoot", \{ amount: formatMoney\(figures\.purchaseAmount\) \}\)/)
   assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader\n/)
   assert.doesNotMatch(source, /\bpb-24\b/)
   assert.match(source, /breadcrumbs=\{\[\n\s+\{ label: t\("title"\), href: returnToHref \},\n\s+\{ label: supplier\.code, code: true \},\n\s+\]\}\n\s+title=\{supplier\.name\}/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
   assert.match(source, /<Link href=\{editHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
-  assert.match(source, /\{asset\.purchasePrice == null \? <Nil \/> : <span className="num">\{formatMoney\(Number\(asset\.purchasePrice\), \{ unit: tCommon\("baht"\) \}\)\}<\/span>\}/)
-  assert.match(source, /\{ticket\.repairCost == null \? <Nil \/> : formatMoney\(Number\(ticket\.repairCost\), \{ unit: tCommon\("baht"\) \}\)\}/)
+  // The price and cost say "(บาท)" in their heads (board MD-Supplier), so a cell holds the number only.
+  assert.match(source, /\{asset\.purchasePrice == null \? <Nil \/> : formatMoney\(asset\.purchasePrice\)\}/)
+  assert.match(source, /\{ticket\.repairCost == null \? <Nil \/> : formatMoney\(ticket\.repairCost\)\}/)
   assert.match(source, /totalAmount: tAsset\("purchaseDocumentAmountBaht"\),/)
   assert.doesNotMatch(source, /function (?:MetricCard|InfoRow)\b|<MetricCard\b|formatCurrency|\?\? 0\)\)|toLocaleString\(|"-"/)
 })
@@ -591,12 +592,14 @@ test("the supplier page builds on PageHeader, StatStrip and KeyValueList, shows 
 test("supplier purchase documents: DataTable with right-aligned count and money columns, formatCount, formatMoney and Nil (spec 2B §5.5, §5.7)", () => {
   const source = read(`${C}master-data/supplier-purchase-documents.tsx`)
   // Plan 2D-3: the table sits in the page's ContentPanel with no frame of its own, and an empty total is Nil (M32 a).
-  assert.match(source, /<DataTable data-supplier-documents-desktop framed=\{false\} className="hidden md:block">/)
+  assert.match(source, /<DataTable data-supplier-documents-desktop framed=\{false\} caption=\{labels\.caption\} className="hidden md:block">/)
   assert.match(source, /<DataTableHead align="right">\{labels\.linkedAssets\}<\/DataTableHead>/)
   assert.match(source, /<DataTableHead align="right">\{labels\.totalAmount\}<\/DataTableHead>/)
-  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{orNil\(formatMoney\(document\.totalAmount\)\)\}<\/DataTableCell>/)
+  // Group 8 plan 3 Task 3: an empty total reads "ยังไม่ระบุ" (board MD-Supplier), still never 0.00.
+  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{amount\(document\.totalAmount\)\}<\/DataTableCell>/)
+  assert.match(source, /value == null \? <span className="text-faint-foreground">\{labels\.amountUnset\}<\/span> : formatMoney\(value\)/)
   assert.equal(source.match(/formatCount\(document\.linkedAssets\)/g)?.length, 2, "the table and the phone card")
-  assert.equal(source.match(/orNil\(documentReferences\(document\)\)/g)?.length, 2, "the table and the phone card")
+  assert.equal(source.match(/orNil\(documentReferences\(document, typeLabel\)\)/g)?.length, 2, "the table and the phone card")
   assert.equal(source.match(/<span className="tag">\{document\.documentNo\}<\/span>/g)?.length, 2)
   assert.doesNotMatch(source, /<table\b|formatCurrency|toLocaleString\(|"-"/)
 })

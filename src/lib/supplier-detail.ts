@@ -30,15 +30,6 @@ export async function readSupplierOpenRepairCounts(db: SupplierOpenRepairReader,
   return result
 }
 
-export type SupplierDetailSummaryInput = {
-  assetCount: number
-  purchaseDocumentCount: number
-  maintenanceTicketCount: number
-  openMaintenanceTicketCount: number
-  purchaseAmount: number
-  maintenanceCost: number
-}
-
 export type SupplierFollowUpKey =
   | "missing_contact"
   | "assets_without_purchase_documents"
@@ -54,12 +45,6 @@ export function buildSupplierDetailHrefs({ locale, supplierId }: { locale: strin
   }
 }
 
-export function buildSupplierDetailSummary(input: SupplierDetailSummaryInput) {
-  return {
-    ...input,
-    attentionCount: input.openMaintenanceTicketCount,
-  }
-}
 
 export function buildSupplierFollowUpItems({
   hasContact,

@@ -3,19 +3,17 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { Edit } from "lucide-react"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import {
-  buildSupplierDetailHrefs,
-  buildSupplierDetailSummary,
-  buildSupplierFollowUpItems,
-  supplierOpenRepairWhere,
-  type SupplierFollowUpKey,
-} from "@/lib/supplier-detail"
+import { buildSupplierDetailHrefs, buildSupplierFollowUpItems, readSupplierDetail, type SupplierFollowUpKey } from "@/lib/supplier-detail"
+import { getSupplierDeactivateBlockReason } from "@/lib/organization-master-query"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { cn, formatDate } from "@/lib/utils"
+import { MasterDataRowActions } from "@/components/master-data/master-data-row-actions"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
@@ -26,17 +24,29 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { SupplierPurchaseDocuments } from "@/components/master-data/supplier-purchase-documents"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
 import { appendMasterDataReturnTo, normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
+import { purchaseDocumentTypes } from "@/lib/asset-form-rules"
 
 type SupplierDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
   searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
+// Board MD-Supplier (group 8 plan 3 Task 3, spec §7): the header with the code, the contact line, แก้ไข and ⋯
+// (ปิดใช้งาน with the guard's reason / เปิดใช้งาน); one strip of four; the latest assets with ดูทรัพย์สินทั้งหมด; every
+// purchase document with the total row; side panels สิ่งที่ควรติดตาม, ประวัติงานซ่อมกับผู้ขาย and ข้อมูลผู้ขาย. Every number
+// comes from readSupplierDetail. Kept (spec §8): the empty states, the phone document cards and the back link. Skipped
+// (spec §9, a migration): the description line under the name.
 export default async function SupplierDetailPage({ params, searchParams }: SupplierDetailPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
   const returnToHref = normalizeMasterDataReturnTo(locale, "suppliers", rawSearchParams.returnTo)
-  await requirePagePermission(locale, "supplier", "view")
+  const user = await requirePagePermission(locale, "supplier", "view")
+  // Spec §3: ปิดใช้งาน needs supplier:delete, เปิดใช้งาน and แก้ไข supplier:edit; links to the register and to a repair
+  // record only with asset:view and maintenance:view.
+  const canEdit = hasPermission(user, "supplier", "edit")
+  const canDeactivate = hasPermission(user, "supplier", "delete")
+  const canViewAssets = hasPermission(user, "asset", "view")
+  const canViewMaintenance = hasPermission(user, "maintenance", "view")
 
   const t = await getTranslations("supplier")
   const tCommon = await getTranslations("common")
@@ -53,97 +63,61 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
       phone: true,
       email: true,
       address: true,
+      isActive: true,
     },
   })
   if (!supplier) notFound()
 
-  const [
-    assetCount,
-    assets,
-    purchaseDocumentCount,
-    purchaseDocuments,
-    purchaseAmount,
-    maintenanceTicketCount,
-    openMaintenanceTicketCount,
-    maintenanceTickets,
-    maintenanceCost,
-  ] = await Promise.all([
-    prisma.asset.count({ where: { supplierId: id, isActive: true } }),
-    prisma.asset.findMany({
-      where: { supplierId: id, isActive: true },
-      select: {
-        id: true,
-        assetTag: true,
-        name: true,
-        purchaseDate: true,
-        purchasePrice: true,
-        category: { select: { code: true, name: true } },
-        currentLocation: { select: { code: true, name: true } },
-        status: { select: { nameTh: true, name: true, colorCode: true } },
-      },
-      orderBy: [{ purchaseDate: "desc" }, { assetTag: "asc" }],
-      take: 10,
-    }),
-    prisma.purchaseDocument.count({ where: { supplierId: id, isActive: true } }),
-    prisma.purchaseDocument.findMany({
-      where: { supplierId: id, isActive: true },
-      select: {
-        id: true,
-        documentType: true,
-        documentNo: true,
-        poNumber: true,
-        invoiceNumber: true,
-        documentDate: true,
-        totalAmount: true,
-        currency: true,
-        _count: { select: { assetLinks: true } },
-      },
-      orderBy: [{ documentDate: "desc" }, { updatedAt: "desc" }],
-      take: 10,
-    }),
-    prisma.purchaseDocument.aggregate({
-      where: { supplierId: id, isActive: true },
-      _sum: { totalAmount: true },
-    }),
-    prisma.maintenanceTicket.count({ where: { vendorId: id, isActive: true } }),
-    prisma.maintenanceTicket.count({ where: { vendorId: id, ...supplierOpenRepairWhere } }),
-    prisma.maintenanceTicket.findMany({
-      where: { vendorId: id, isActive: true },
-      select: {
-        id: true,
-        repairNo: true,
-        repairStatus: true,
-        reportedDate: true,
-        repairCost: true,
-        problem: true,
-        asset: { select: { id: true, assetTag: true, name: true } },
-      },
-      orderBy: [{ reportedDate: "desc" }, { repairNo: "asc" }],
-      take: 10,
-    }),
-    prisma.maintenanceTicket.aggregate({
-      where: { vendorId: id, isActive: true },
-      _sum: { repairCost: true },
-    }),
-  ])
+  const detail = await readSupplierDetail(prisma, id)
+  const { figures } = detail
 
   const hrefs = buildSupplierDetailHrefs({ locale, supplierId: id })
   const editHref = appendMasterDataReturnTo(hrefs.edit, returnToHref)
-  const summary = buildSupplierDetailSummary({
-    assetCount,
-    purchaseDocumentCount,
-    maintenanceTicketCount,
-    openMaintenanceTicketCount,
-    purchaseAmount: Number(purchaseAmount._sum.totalAmount ?? 0),
-    maintenanceCost: Number(maintenanceCost._sum.repairCost ?? 0),
-  })
+  const hasContact = Boolean(supplier.contactPerson || supplier.phone || supplier.email)
   const followUpItems = buildSupplierFollowUpItems({
-    hasContact: Boolean(supplier.contactPerson || supplier.phone || supplier.email),
-    assetCount,
-    purchaseDocumentCount,
-    openMaintenanceTicketCount,
+    hasContact,
+    assetCount: figures.assets,
+    purchaseDocumentCount: figures.purchaseDocuments,
+    openMaintenanceTicketCount: figures.repairs.open,
   })
   const maintenanceStatusLabels = Object.fromEntries(maintenanceStatuses.map((status) => [status, tMaintenance(`statuses.${status}`)]))
+  const typeLabels = Object.fromEntries(purchaseDocumentTypes.map((type) => [type, tAsset(`purchaseDocumentTypes.${type}`)]))
+  // The DELETE route's guard (active assets, repairs, PM plans, purchase documents): ⋯ ปิดใช้งาน is unavailable with it,
+  // and ข้อมูลผู้ขาย says it (board).
+  const deactivateBlocked = supplier.isActive ? getSupplierDeactivateBlockReason(detail.deactivateCounts) : null
+  const endpoint = `/api/suppliers/${supplier.id}`
+  const deactivate =
+    canDeactivate && supplier.isActive
+      ? {
+          endpoint,
+          blocked: deactivateBlocked,
+          labels: {
+            action: t("deactivate.action"),
+            hint: t("deactivate.hint"),
+            confirmTitle: t("deactivate.confirmTitle", { name: supplier.name }),
+            confirmBody: t("deactivate.confirmBody"),
+            clearItems: (["assets", "maintenanceTickets", "maintenancePlans", "purchaseDocuments"] as const).map((key) => t(`deactivate.clear.${key}`)),
+            success: t("deactivate.success"),
+          },
+        }
+      : null
+  const reactivate =
+    canEdit && !supplier.isActive
+      ? {
+          endpoint,
+          labels: {
+            action: t("reactivate.action"),
+            confirmTitle: t("reactivate.confirmTitle", { name: supplier.name }),
+            confirmBody: t("reactivate.confirmBody"),
+            success: t("reactivate.success"),
+          },
+        }
+      : null
+  const repairHistoryDescription =
+    figures.repairs.total > detail.repairHistory.length
+      ? t("detail.repairHistoryLatest", { shown: detail.repairHistory.length, total: figures.repairs.total })
+      : t("detail.repairHistoryDescription", { total: figures.repairs.total })
+  const moreOpenRepairs = figures.repairs.open - detail.openRepairs.length
 
   return (
     <div className="space-y-6">
@@ -156,158 +130,258 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         meta={
           <>
             <span className="tag">{supplier.code}</span>
-            {supplier.contactPerson ? <span>{supplier.contactPerson}</span> : null}
-            {supplier.phone ? <span>{supplier.phone}</span> : null}
+            {supplier.isActive ? null : <StatusBadge label={tCommon("recordStatus.inactive")} tone="neutral" />}
+            {supplier.contactPerson ? <span>{t("detail.contactLine", { name: supplier.contactPerson })}</span> : null}
+            {supplier.phone ? <span className="num">{supplier.phone}</span> : null}
             {supplier.email ? <span>{supplier.email}</span> : null}
-            {supplier.contactPerson || supplier.phone || supplier.email ? null : <span>{t("noContactDetail")}</span>}
+            {hasContact ? null : <span>{t("noContactDetail")}</span>}
           </>
         }
         back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
         actions={
-          <Link href={editHref} className={buttonVariants({ size: "md" })}>
-            <Edit aria-hidden="true" />
-            {tCommon("edit")}
-          </Link>
+          <>
+            {deactivate || reactivate ? (
+              <MasterDataRowActions
+                code={supplier.code}
+                name={supplier.name}
+                menuLabel={tCommon("moreActionsFor", { code: supplier.code })}
+                links={[]}
+                deactivate={deactivate}
+                reactivate={reactivate}
+              />
+            ) : null}
+            {canEdit ? (
+              <Link href={editHref} className={buttonVariants({ size: "md" })}>
+                <Edit aria-hidden="true" />
+                {tCommon("edit")}
+              </Link>
+            ) : null}
+          </>
         }
       />
 
-      {/* Counts in one strip; the two money totals in their own strip, one per row below lg, so an amount in the
-          28px metric size is never cut (a five-cell strip leaves about 104px a cell at 1024px). */}
-      <div className="space-y-3">
+      <section aria-label={t("summaryLabel")}>
         <StatStrip
           items={[
-            { key: "assets", label: t("assets"), value: formatCount(summary.assetCount), foot: t("linkedAssetsHelp"), footTitle: t("linkedAssetsHelp"), href: hrefs.assets },
-            { key: "purchaseDocuments", label: t("purchaseDocuments"), value: formatCount(summary.purchaseDocumentCount), foot: t("purchaseDocumentsHelp"), footTitle: t("purchaseDocumentsHelp") },
             {
-              key: "maintenanceTickets",
+              key: "assets",
+              label: t("list.assets"),
+              value: formatCount(figures.assets),
+              foot: figures.assets === 0 ? t("linkedAssetsHelp") : figures.assetsWithoutDocument === 0 ? t("detail.assetsAllLinked") : t("detail.assetsWithoutDocument", { count: figures.assetsWithoutDocument }),
+              footTitle: figures.assets === 0 ? t("linkedAssetsHelp") : figures.assetsWithoutDocument === 0 ? t("detail.assetsAllLinked") : t("detail.assetsWithoutDocument", { count: figures.assetsWithoutDocument }),
+              attention: figures.assetsWithoutDocument > 0,
+              href: canViewAssets ? hrefs.assets : undefined,
+            },
+            {
+              key: "purchaseDocuments",
+              label: t("purchaseDocuments"),
+              value: formatCount(figures.purchaseDocuments),
+              foot: t("detail.purchaseAmountFoot", { amount: formatMoney(figures.purchaseAmount) }),
+              footTitle: t("detail.purchaseAmountFoot", { amount: formatMoney(figures.purchaseAmount) }),
+            },
+            {
+              key: "repairs",
               label: t("maintenanceTickets"),
-              value: formatCount(summary.maintenanceTicketCount),
-              foot: t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount }),
-              footTitle: t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount }),
-              attention: summary.openMaintenanceTicketCount > 0,
+              value: formatCount(figures.repairs.total),
+              foot: t("detail.repairsFoot", { open: figures.repairs.open, closed: figures.repairs.closed, cancelled: figures.repairs.cancelled }),
+              footTitle: t("detail.repairsFoot", { open: figures.repairs.open, closed: figures.repairs.closed, cancelled: figures.repairs.cancelled }),
+              attention: figures.repairs.open > 0,
+            },
+            {
+              key: "repairCost",
+              label: t("totalMaintenanceCost"),
+              value: formatMoney(figures.repairCost),
+              unit: tCommon("baht"),
+              foot: t("detail.repairCostFoot", { count: figures.repairsWithCost }),
+              footTitle: t("detail.repairCostFoot", { count: figures.repairsWithCost }),
             },
           ]}
         />
-        <StatStrip
-          className="max-lg:grid-cols-1"
-          items={[
-            { key: "purchaseAmount", label: t("totalPurchaseAmount"), value: formatMoney(summary.purchaseAmount), unit: tCommon("baht"), foot: t("fromPurchaseDocuments"), footTitle: t("fromPurchaseDocuments") },
-            { key: "maintenanceCost", label: t("totalMaintenanceCost"), value: formatMoney(summary.maintenanceCost), unit: tCommon("baht"), foot: t("fromMaintenanceTickets"), footTitle: t("fromMaintenanceTickets") },
-          ]}
-        />
-      </div>
+      </section>
 
-      <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <div className="space-y-6">
-          <ContentPanel title={t("profileTitle")}>
-            <KeyValueList
-              items={[
-                { key: "contactPerson", label: t("contactPerson"), value: supplier.contactPerson },
-                { key: "phone", label: t("phone"), value: supplier.phone },
-                { key: "email", label: t("email"), value: supplier.email },
-                { key: "address", label: t("address"), value: supplier.address },
-              ]}
-            />
-          </ContentPanel>
-
-          {/* Nothing to follow up is a clear note; what is left is one warning Notice (spec 2D D7), with no tinted rows. */}
-          <ContentPanel title={t("followUpTitle")}>
-            {followUpItems.length === 0 ? (
-              <EmptyNote tone="clear">{t("noFollowUp")}</EmptyNote>
-            ) : (
-              <Notice tone="warning">
-                <ul className="list-disc space-y-1 pl-5">
-                  {followUpItems.map((item) => (
-                    <li key={item}>{followUpText(item, t)}</li>
-                  ))}
-                </ul>
-              </Notice>
-            )}
-          </ContentPanel>
-        </div>
-
-        <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-6">
           <ContentPanel
+            divided
+            flush={detail.latestAssets.length > 0}
             title={t("linkedAssetsTitle")}
+            description={detail.latestAssets.length > 0 ? t("detail.latestAssets", { shown: detail.latestAssets.length, total: figures.assets }) : undefined}
             actions={
-              <Link href={hrefs.assets} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
-                {t("viewAllAssets")}
-              </Link>
+              canViewAssets && figures.assets > 0 ? (
+                <Link href={hrefs.assets} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                  {t("detail.viewAllAssets", { count: figures.assets })}
+                </Link>
+              ) : null
             }
           >
-            {assets.length === 0 ? (
+            {detail.latestAssets.length === 0 ? (
               <ActionEmptyState title={t("noAssets")} description={t("noAssetsHelp")} />
             ) : (
-              <div className="divide-y divide-border">
-                {assets.map((asset) => (
-                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
-                    <span className="min-w-0">
-                      <span className="block font-medium text-primary"><span className="tag">{asset.assetTag}</span> - {asset.name}</span>
-                      <span className="mt-1 block text-meta text-muted-foreground">
-                        <span className="tag">{asset.category.code}</span> - {asset.category.name} / <span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}
-                      </span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-                      <StatusBadge label={locale === "en" ? asset.status.name : asset.status.nameTh} status={asset.status.name} />
-                      {asset.purchasePrice == null ? <Nil /> : <span className="num">{formatMoney(Number(asset.purchasePrice), { unit: tCommon("baht") })}</span>}
-                    </span>
-                  </Link>
-                ))}
-              </div>
+              <DataTable framed={false} caption={t("detail.assetsCaption")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("detail.columns.asset")}</DataTableHead>
+                    <DataTableHead>{t("detail.columns.categoryLocation")}</DataTableHead>
+                    <DataTableHead>{t("detail.columns.status")}</DataTableHead>
+                    <DataTableHead>{t("detail.columns.document")}</DataTableHead>
+                    <DataTableHead align="right">{t("detail.columns.purchasePrice")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {detail.latestAssets.map((asset) => (
+                    <DataTableRow key={asset.id}>
+                      <DataTableCell className="min-w-48">
+                        {canViewAssets ? (
+                          <Link href={`/${locale}/assets/${asset.id}`} className={cn(linkVariants(), "font-medium")}>
+                            {asset.name}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-foreground">{asset.name}</span>
+                        )}
+                        <span className="mt-0.5 block text-meta text-muted-foreground"><span className="tag">{asset.assetTag}</span></span>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-40">
+                        <span className="block text-foreground">{asset.categoryName}</span>
+                        <span className="block text-meta text-muted-foreground">{asset.locationName} · {asset.branchName}</span>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <StatusBadge label={locale === "en" ? asset.status.name : asset.status.nameTh} status={asset.status.name} />
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap">
+                        {asset.documents.length === 0 ? (
+                          <span className="text-meta text-warning">{t("detail.noDocument")}</span>
+                        ) : (
+                          <>
+                            <span className="tag">{asset.documents[0].documentNo}</span>
+                            {asset.documents.length > 1 ? <span className="ml-1 text-meta text-muted-foreground">{t("detail.moreDocuments", { count: asset.documents.length - 1 })}</span> : null}
+                          </>
+                        )}
+                      </DataTableCell>
+                      <DataTableCell numeric className="text-muted-foreground">
+                        {asset.purchasePrice == null ? <Nil /> : formatMoney(asset.purchasePrice)}
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
           </ContentPanel>
 
-          <ContentPanel title={t("purchaseDocumentsTitle")}>
+          <ContentPanel
+            divided
+            flush={detail.documents.length > 0}
+            title={t("purchaseDocumentsTitle")}
+            description={detail.documents.length > 0 ? t("detail.documentsDescription", { count: detail.documentTotals.count }) : undefined}
+          >
             <SupplierPurchaseDocuments
-              documents={purchaseDocuments.map((document) => ({
-                id: document.id,
-                documentType: document.documentType,
-                documentNo: document.documentNo,
-                poNumber: document.poNumber,
-                invoiceNumber: document.invoiceNumber,
-                documentDate: document.documentDate,
-                // An empty total stays null and shows Nil, not 0.00 (spec 2D M32 a).
-                totalAmount: document.totalAmount == null ? null : Number(document.totalAmount),
-                currency: document.currency,
-                linkedAssets: document._count.assetLinks,
-              }))}
+              documents={detail.documents}
+              totals={detail.documentTotals}
               labels={{
+                caption: t("detail.documentsCaption", { count: detail.documentTotals.count }),
                 documentNo: t("documentNo"),
                 documentDate: t("documentDate"),
                 linkedAssets: t("linkedAssets"),
                 totalAmount: tAsset("purchaseDocumentAmountBaht"),
                 noPurchaseDocuments: t("noPurchaseDocuments"),
                 noPurchaseDocumentsHelp: t("noPurchaseDocumentsHelp"),
+                typeLabels,
+                amountUnset: t("detail.amountUnset"),
+                totalRow: t("detail.documentsTotal", { count: detail.documentTotals.count }),
               }}
             />
           </ContentPanel>
+        </div>
 
-          <ContentPanel title={t("maintenanceHistoryTitle")}>
-            {maintenanceTickets.length === 0 ? (
+        <div className="min-w-0 space-y-6">
+          {/* Nothing to follow up is a clear note; what is left is one warning Notice (spec 2D D7), with no tinted rows. */}
+          <ContentPanel
+            divided
+            title={t("followUpTitle")}
+            description={followUpItems.length > 0 ? t("detail.followUpCount", { count: followUpItems.length }) : undefined}
+          >
+            {followUpItems.length === 0 ? (
+              <EmptyNote tone="clear">{t("noFollowUp")}</EmptyNote>
+            ) : (
+              <Notice tone="warning">
+                <ul className="list-disc space-y-1 pl-5">
+                  {followUpItems.map((item) => (
+                    <li key={item}>
+                      {followUpText(item, t)}
+                      {item === "open_vendor_maintenance" ? (
+                        <ul className="mt-2 space-y-2">
+                          {detail.openRepairs.map((repair) => (
+                            <li key={repair.id} className="text-meta text-muted-foreground">
+                              <span className="font-medium text-foreground">{repair.asset.name}</span> <span className="tag">{repair.asset.assetTag}</span>
+                              <span className="block">
+                                {t("detail.openedOn", { date: formatDate(repair.reportedDate), days: repair.daysOpen })} · {repair.problem}
+                              </span>
+                              {canViewMaintenance ? (
+                                <Link href={`/${locale}/maintenance/${repair.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
+                                  {t("detail.openRepairLink", { repairNo: repair.repairNo })}
+                                </Link>
+                              ) : (
+                                <span className="tag">{repair.repairNo}</span>
+                              )}
+                            </li>
+                          ))}
+                          {moreOpenRepairs > 0 ? <li className="text-meta text-muted-foreground">{t("detail.moreOpenRepairs", { count: moreOpenRepairs })}</li> : null}
+                        </ul>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </Notice>
+            )}
+          </ContentPanel>
+
+          <ContentPanel divided title={t("maintenanceHistoryTitle")} description={detail.repairHistory.length > 0 ? repairHistoryDescription : undefined}>
+            {detail.repairHistory.length === 0 ? (
               <ActionEmptyState title={t("noMaintenance")} description={t("noMaintenanceHelp")} />
             ) : (
-              <div className="space-y-3">
-                {/* Each ticket is a quiet grouping link (2D-2 R4) with the shared row hover. */}
-                {maintenanceTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="font-medium text-primary"><span className="tag">{ticket.repairNo}</span> - <span className="tag">{ticket.asset.assetTag}</span></div>
-                        <div className="mt-1 text-sm text-foreground">{ticket.asset.name}</div>
-                        <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{ticket.problem}</div>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+              <ul className="space-y-3">
+                {detail.repairHistory.map((ticket) => {
+                  const body = (
+                    <>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="min-w-0 font-medium text-foreground">{ticket.asset.name}</span>
                         <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
-                        <span className="text-meta text-muted-foreground num">{ticket.repairCost == null ? <Nil /> : formatMoney(Number(ticket.repairCost), { unit: tCommon("baht") })}</span>
                       </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
-                      <span>{t("reportedDate")}: {formatDate(ticket.reportedDate)}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      <div className="mt-1 font-mono text-meta text-muted-foreground">{ticket.asset.assetTag} · {ticket.repairNo}</div>
+                      <div className="mt-1 flex items-start justify-between gap-2 text-meta">
+                        <span className="line-clamp-2 min-w-0 text-muted-foreground">{ticket.problem}</span>
+                        <span className="shrink-0 num text-foreground">{ticket.repairCost == null ? <Nil /> : formatMoney(ticket.repairCost)}</span>
+                      </div>
+                      <div className="mt-1 text-meta text-muted-foreground">{t("reportedDate")}: {formatDate(ticket.reportedDate)}</div>
+                    </>
+                  )
+                  return (
+                    <li key={ticket.id}>
+                      {/* Each record is a quiet grouping link (2D-2 R4) with the shared row hover; plain text without maintenance:view. */}
+                      {canViewMaintenance ? (
+                        <Link href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                          {body}
+                        </Link>
+                      ) : (
+                        <div className="rounded-md border border-border bg-background p-3">{body}</div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
             )}
+          </ContentPanel>
+
+          <ContentPanel divided title={t("profileTitle")}>
+            <KeyValueList
+              items={[
+                { key: "code", label: t("code"), value: <span className="tag">{supplier.code}</span> },
+                { key: "contactPerson", label: t("contactPerson"), value: supplier.contactPerson },
+                { key: "phone", label: t("phone"), value: supplier.phone },
+                { key: "email", label: t("email"), value: supplier.email },
+                { key: "address", label: t("address"), value: supplier.address },
+              ]}
+            />
+            {deactivateBlocked ? <p className="mt-4 border-t border-border-soft pt-3 text-meta text-muted-foreground">{deactivateBlocked}</p> : null}
           </ContentPanel>
         </div>
       </div>

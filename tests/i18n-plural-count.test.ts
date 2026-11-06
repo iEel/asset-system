@@ -67,7 +67,10 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 8 plan 3 Task 1 added 3: the suppliers' มีทรัพย์สิน foot "ผูกทรัพย์สินรวม {a} รายการ", the ยังไม่มีเอกสารจัดซื้อ
   // foot "ในจำนวนนี้มีทรัพย์สินผูกอยู่ {n} ราย" and the summary line (keyed on suppliers; assets and openRepairs are
   // plurals too).
-  assert.equal(pluralKeys.size, 116,[...pluralKeys.keys()].join(", "))
+  // Group 8 plan 3 Task 3 added 10: the supplier page's "{n} รายการยังไม่ผูกเอกสาร", "รวมจากใบซ่อม {n} ใบที่มีค่าใช้จ่าย",
+  // the documents' description, caption and total row, "{n} เรื่อง", "เปิดงานเมื่อ {date} ({n} วัน)" (keyed on days),
+  // "และอีก {n} งาน" and the repair history's two descriptions (keyed on total).
+  assert.equal(pluralKeys.size, 126,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
   assert.equal(pluralKeys.get("category.form.usageLine"), "models")

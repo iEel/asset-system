@@ -21,13 +21,16 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const page = read("src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx")
 const list = read("src/components/master-data/supplier-list-view.tsx")
 const detail = read("src/app/[locale]/(dashboard)/master-data/suppliers/[id]/page.tsx")
+const detailModel = read("src/lib/supplier-detail.ts")
 type Messages = { supplier: Record<string, unknown> & { list: Record<string, string>; deactivate: Record<string, unknown>; reactivate: Record<string, string> } }
 const th = JSON.parse(read("messages/th.json")) as Messages
 const en = JSON.parse(read("messages/en.json")) as Messages
 
 test("an open repair is an active one not closed or cancelled: one where for the list and the supplier page", () => {
   assert.deepEqual(supplierOpenRepairWhere, { isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } })
-  assert.match(detail, /prisma\.maintenanceTicket\.count\(\{ where: \{ vendorId: id, \.\.\.supplierOpenRepairWhere \} \}\)/)
+  // Task 2: the page reads it through readSupplierDetail.
+  assert.match(detailModel, /db\.maintenanceTicket\.count\(\{ where: \{ vendorId: supplierId, \.\.\.supplierOpenRepairWhere \} \}\)/)
+  assert.match(detail, /readSupplierDetail\(prisma, id\)/)
   assert.doesNotMatch(detail, /notIn: \["closed", "cancelled"\]/, "the page reads the shared where")
 })
 

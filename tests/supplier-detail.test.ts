@@ -3,7 +3,6 @@ import test from "node:test"
 
 import {
   buildSupplierDetailHrefs,
-  buildSupplierDetailSummary,
   buildSupplierFollowUpItems,
 } from "../src/lib/supplier-detail.ts"
 
@@ -13,28 +12,6 @@ test("builds supplier profile drilldown hrefs", () => {
     edit: "/th/master-data/suppliers/supplier-1/edit",
     assets: "/th/assets?supplierId=supplier-1&page=1",
   })
-})
-
-test("summarizes supplier relationships and costs", () => {
-  assert.deepEqual(
-    buildSupplierDetailSummary({
-      assetCount: 8,
-      purchaseDocumentCount: 3,
-      maintenanceTicketCount: 5,
-      openMaintenanceTicketCount: 2,
-      purchaseAmount: 120000,
-      maintenanceCost: 15000,
-    }),
-    {
-      assetCount: 8,
-      purchaseDocumentCount: 3,
-      maintenanceTicketCount: 5,
-      openMaintenanceTicketCount: 2,
-      purchaseAmount: 120000,
-      maintenanceCost: 15000,
-      attentionCount: 2,
-    }
-  )
 })
 
 test("builds supplier follow-up items", () => {
