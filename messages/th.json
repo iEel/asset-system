@@ -1863,7 +1863,16 @@
       "noAccount": "ไม่มีบัญชีผู้ใช้",
       "accountActive": "ใช้งาน",
       "accountInactive": "ปิดใช้งาน",
-      "returnMany": "รับคืนหลายรายการ"
+      "returnMany": "รับคืนหลายรายการ",
+      "heldStatFootSplit": "มีใบส่งมอบ {withHandover} · ไม่มีใบส่งมอบ {withoutHandover}",
+      "currentAuditTitle": "ตรวจนับรอบปัจจุบัน",
+      "currentAuditHelp": "ทรัพย์สินที่คนนี้ถือครองอยู่ในรอบตรวจนับที่ยังเปิดอยู่",
+      "currentAuditEmpty": "ไม่มีทรัพย์สินที่ถือครองอยู่ในรอบตรวจนับที่เปิดอยู่",
+      "currentAuditMeta": "{count} รายการ · สิ้นสุด {date}",
+      "currentAuditBreakdown": "พบตรง {found} · ไม่ตรง {mismatch} · ไม่พบ {notFound} · รอตรวจ {pending}",
+      "openRepair": "งานซ่อม {repairNo}",
+      "transfer": "โอนย้าย",
+      "printHandover": "พิมพ์ใบส่งมอบ"
     },
     "summaryTotalBreakdown": "ทำงานอยู่ {active} · ลาออก {resigned} · พักงาน {suspended}",
     "formerHolderNote": "ยังถือครองอยู่ ควรรับคืน",

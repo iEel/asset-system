@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Boxes, Edit, History, LogIn, LogOut, ShieldCheck, Wrench } from "lucide-react"
+import { ArrowLeftRight, Boxes, ClipboardCheck, Edit, History, LogIn, LogOut, Printer, ShieldCheck, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -35,6 +35,7 @@ import { orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
+import { RowActions, type RowActionItem } from "@/components/ui/row-actions"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendMasterDataReturnTo, normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
@@ -57,6 +58,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
   const user = await requirePagePermission(locale, "employee", "view")
   const canViewUsers = hasPermission(user, "user", "view")
   const canEditAssets = hasPermission(user, "asset", "edit")
+  // พิมพ์ใบส่งมอบ: the HO- print page's own permission (asset:view).
+  const canViewAssets = hasPermission(user, "asset", "view")
 
   const data = await readEmployeePage(prisma as unknown as EmployeePageDb, id, { canViewUsers }, { heldPage: parseEmployeeHeldPage(rawSearchParams.heldPage) })
   if (!data) notFound()
@@ -110,6 +113,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
     tDetail,
     reason: (key) => tAll(key),
     auditResult: (key) => tAuditRound(key),
+    moreActions: (code) => tCommon("moreActionsFor", { code }),
   }
 
   return (
@@ -178,7 +182,19 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
 
       <StatStrip
         items={[
-          { key: "held", label: tDetail("heldStat"), value: formatCount(data.held.total), foot: tDetail("heldStatFoot"), href: hrefs.assets },
+          {
+            key: "held",
+            label: tDetail("heldStat"),
+            value: formatCount(data.held.total),
+            // G7F-R4: every held asset, not the page, split by an open handover; the plain foot while nothing is held.
+            foot: data.held.total > 0
+              ? tDetail("heldStatFootSplit", {
+                withHandover: formatCount(data.heldHandoverSplit.withHandover),
+                withoutHandover: formatCount(data.heldHandoverSplit.withoutHandover),
+              })
+              : tDetail("heldStatFoot"),
+            href: hrefs.assets,
+          },
           {
             key: "openHandovers",
             label: tDetail("openHandovers"),
@@ -214,7 +230,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 <ContentPanelRows className="md:hidden">
                   {data.held.rows.map((row) => (
                     <li key={row.assetId}>
-                      <HeldCard row={row} locale={locale} pageHref={pageHref} canEdit={canEditAssets} now={now} labels={heldLabels} />
+                      <HeldCard row={row} locale={locale} pageHref={pageHref} canEdit={canEditAssets} canViewAssets={canViewAssets} now={now} labels={heldLabels} />
                     </li>
                   ))}
                 </ContentPanelRows>
@@ -238,7 +254,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                           <HeldAssetName row={row} locale={locale} />
                         </DataTableCell>
                         <DataTableCell className="min-w-36">
-                          <HeldStatusLocation row={row} />
+                          <HeldStatusLocation row={row} locale={locale} labels={heldLabels} />
                         </DataTableCell>
                         <DataTableCell className="min-w-40">
                           <HeldHandover row={row} locale={locale} pageHref={pageHref} canEdit={canEditAssets} now={now} labels={heldLabels} />
@@ -247,7 +263,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                           <HeldLastAudit row={row} locale={locale} labels={heldLabels} />
                         </DataTableCell>
                         <DataTableCell align="right" sticky="right">
-                          <HeldReturnAction row={row} pageHref={pageHref} locale={locale} canEdit={canEditAssets} labels={heldLabels} />
+                          <div className="flex items-start justify-end gap-1">
+                            <HeldReturnAction row={row} pageHref={pageHref} locale={locale} canEdit={canEditAssets} labels={heldLabels} />
+                            <HeldRowMenu row={row} locale={locale} pageHref={pageHref} canEdit={canEditAssets} canViewAssets={canViewAssets} labels={heldLabels} />
+                          </div>
                         </DataTableCell>
                       </DataTableRow>
                     ))}
@@ -393,6 +412,37 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             )}
           </ContentPanel>
 
+          {/* ตรวจนับรอบปัจจุบัน (G7F-R4): each open round holding a held asset, linked, with how its items stand. */}
+          <ContentPanel title={tDetail("currentAuditTitle")} description={tDetail("currentAuditHelp")}>
+            {data.currentAudits.length === 0 ? (
+              <EmptyNote>{tDetail("currentAuditEmpty")}</EmptyNote>
+            ) : (
+              <div className="space-y-2">
+                {data.currentAudits.map((audit) => (
+                  <Link key={audit.roundId} href={`/${locale}/audit/rounds/${audit.roundId}`} className={quietRowLinkClasses} data-employee-current-audit="">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-foreground"><span className="tag">{audit.auditNo}</span> {audit.name}</div>
+                        <div className="mt-1 text-meta text-muted-foreground">
+                          {tDetail("currentAuditMeta", { count: formatCount(audit.total), date: formatDate(audit.endDate) })}
+                        </div>
+                      </div>
+                      <ClipboardCheck aria-hidden="true" className="size-4 shrink-0 text-faint-foreground" />
+                    </div>
+                    <div className={cn("mt-1 text-meta", audit.notFound + audit.mismatch > 0 ? "text-warning" : "text-muted-foreground")}>
+                      {tDetail("currentAuditBreakdown", {
+                        found: formatCount(audit.found),
+                        mismatch: formatCount(audit.mismatch),
+                        notFound: formatCount(audit.notFound),
+                        pending: formatCount(audit.pending),
+                      })}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </ContentPanel>
+
           <ContentPanel title={t("auditRelatedTitle")} description={t("auditRelatedHelp")}>
             <div className="space-y-4">
               <MiniList
@@ -487,9 +537,10 @@ type HeldLabels = {
   // The return form's own reason (HeldAssetReturnBlock.reasonKey is a full message key).
   reason: (key: string) => string
   auditResult: (key: string) => string
+  moreActions: (code: string) => string
 }
 
-type HeldRowProps = { row: EmployeeHeldAssetRow; locale: string; pageHref: string; canEdit: boolean; now: Date; labels: HeldLabels }
+type HeldRowProps = { row: EmployeeHeldAssetRow; locale: string; pageHref: string; canEdit: boolean; canViewAssets: boolean; now: Date; labels: HeldLabels }
 
 function HeldAssetName({ row, locale }: { row: EmployeeHeldAssetRow; locale: string }) {
   return (
@@ -500,10 +551,22 @@ function HeldAssetName({ row, locale }: { row: EmployeeHeldAssetRow; locale: str
   )
 }
 
-function HeldStatusLocation({ row }: { row: EmployeeHeldAssetRow }) {
+// The status, the open repair's MT- (G7F-R4: the latest open one, linked) beside it, then the location.
+function HeldStatusLocation({ row, locale, labels }: { row: EmployeeHeldAssetRow; locale: string; labels: HeldLabels }) {
   return (
     <>
-      <StatusBadge label={row.status.nameTh} tone={getAssetStateTone(row.status.name)} />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <StatusBadge label={row.status.nameTh} tone={getAssetStateTone(row.status.name)} />
+        {row.openRepairRecord ? (
+          <Link
+            href={`/${locale}/maintenance/${row.openRepairRecord.id}`}
+            aria-label={labels.tDetail("openRepair", { repairNo: row.openRepairRecord.repairNo })}
+            className={linkVariants({ size: "meta" })}
+          >
+            <span className="tag">{row.openRepairRecord.repairNo}</span>
+          </Link>
+        ) : null}
+      </div>
       <div className="mt-1 text-meta text-muted-foreground">{row.location.name}</div>
     </>
   )
@@ -511,7 +574,7 @@ function HeldStatusLocation({ row }: { row: EmployeeHeldAssetRow }) {
 
 // The open handover: its HO- and kind, a loan's due date (warning once past, G7P2-R4); else ข้อมูลเก่า and the way to
 // backfill it, the return form's legacy path (the only backfill there is: it creates the HO- and continues to รับคืน).
-function HeldHandover({ row, locale, pageHref, canEdit, now, labels }: HeldRowProps) {
+function HeldHandover({ row, locale, pageHref, canEdit, now, labels }: Omit<HeldRowProps, "canViewAssets">) {
   const { tDetail } = labels
   if (row.handover) {
     const loan = row.handover.kind === "loan"
@@ -584,6 +647,46 @@ function HeldReturnAction({ row, locale, pageHref, canEdit, labels }: { row: Emp
   )
 }
 
+// Row ⋯ (G7F-R4, board MD-Employee): โอนย้าย for asset:edit (the transfer page's permission) to the transfer form with the
+// asset picked, back to this page; a machine the transfer form refuses shows it unavailable with the form's own reason
+// (G7F-R2; getTransferVerdict, as the asset page). พิมพ์ใบส่งมอบ opens the open handover's HO- print for asset:view (the
+// print page's permission). รับคืน stays the row's button beside it. No item, no ⋯.
+function HeldRowMenu({ row, locale, pageHref, canEdit, canViewAssets, labels }: Omit<HeldRowProps, "now">) {
+  const transferLabel = labels.tDetail("transfer")
+  const items: RowActionItem[] = []
+  if (canEdit) {
+    items.push(
+      row.transferBlockReasonKey
+        ? { kind: "unavailable", key: "transfer", label: transferLabel, reason: labels.reason(row.transferBlockReasonKey), icon: <ArrowLeftRight aria-hidden="true" /> }
+        : {
+          kind: "link",
+          key: "transfer",
+          label: transferLabel,
+          href: appendReturnTo(`/${locale}/asset-management/transfer?assetId=${row.assetId}`, pageHref),
+          icon: <ArrowLeftRight aria-hidden="true" />,
+        },
+    )
+  }
+  if (canViewAssets && row.handover) {
+    items.push({
+      kind: "link",
+      key: "print-handover",
+      label: labels.tDetail("printHandover"),
+      href: appendReturnTo(`/${locale}/asset-management/checkouts/${row.handover.id}`, pageHref),
+      icon: <Printer aria-hidden="true" />,
+    })
+  }
+  if (items.length === 0) return null
+  return (
+    <RowActions
+      code={row.assetTag}
+      name={row.name}
+      menuLabel={labels.moreActions(row.assetTag)}
+      groups={[{ key: "more", items }]}
+    />
+  )
+}
+
 // The phone card: the same facts as a table row, stacked (the round page's MachineCard pattern).
 function HeldCard(props: HeldRowProps) {
   const { row, locale, labels } = props
@@ -594,10 +697,13 @@ function HeldCard(props: HeldRowProps) {
         <div className="text-sm font-medium">
           <HeldAssetName row={row} locale={locale} />
         </div>
-        <div><HeldStatusLocation row={row} /></div>
+        <div><HeldStatusLocation row={row} locale={locale} labels={labels} /></div>
         <div className="text-sm"><HeldHandover {...props} /></div>
         <div className="text-sm"><HeldLastAudit row={row} locale={locale} labels={labels} /></div>
-        <HeldReturnAction row={row} locale={locale} pageHref={props.pageHref} canEdit={props.canEdit} labels={labels} />
+        <div className="flex items-start gap-1">
+          <HeldReturnAction row={row} locale={locale} pageHref={props.pageHref} canEdit={props.canEdit} labels={labels} />
+          <HeldRowMenu row={row} locale={locale} pageHref={props.pageHref} canEdit={props.canEdit} canViewAssets={props.canViewAssets} labels={labels} />
+        </div>
       </div>
     </article>
   )

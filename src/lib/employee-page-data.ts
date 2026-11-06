@@ -1,11 +1,12 @@
 import type { Prisma } from "@prisma/client"
 
 import { outstandingLinkWhere } from "./asset-component-outstanding.ts"
-import type { AssetOperationOutstandingFact } from "./asset-operation-eligibility.ts"
+import { getTransferVerdict, type AssetOperationFacts, type AssetOperationOutstandingFact } from "./asset-operation-eligibility.ts"
 import { openCheckoutWhere } from "./asset-operation-search-rules.ts"
 import { normalizeAssetOwnershipType } from "./asset-ownership.ts"
 import { readAssetPhotoPreviews, type AssetPhotoPreview } from "./asset-photo-preview.ts"
-import { auditRoundCoverageWhere } from "./audit-round-status.ts"
+import { foldAuditRoundResultCounts, type AuditRoundResultCountRow } from "./audit-round-result-filters.ts"
+import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "./audit-round-status.ts"
 import { buildEmployeeFollowUpItems, isFormerEmployee, type EmployeeDetailSummaryInput, type EmployeeFollowUpKey } from "./employee-detail.ts"
 import { getHeldAssetReturnBlock, type HeldAssetReturnBlock } from "./held-asset-return-block.ts"
 import { startOfBangkokDay } from "./preventive-maintenance.ts"
@@ -27,7 +28,7 @@ export type EmployeePageDb = {
   assetComponent: { findMany(args: object): Promise<unknown[]> }
   maintenanceTicket: { findMany(args: object): Promise<unknown[]>; count(args: object): Promise<number> }
   auditFinding: { findMany(args: object): Promise<unknown[]>; count(args: object): Promise<number> }
-  auditItem: { findMany(args: object): Promise<unknown[]> }
+  auditItem: { findMany(args: object): Promise<unknown[]>; groupBy(args: object): Promise<unknown[]> }
   auditRound: { findMany(args: object): Promise<unknown[]> }
   disposalRequest: { findMany(args: object): Promise<unknown[]>; count(args: object): Promise<number> }
   user: { findFirst(args: object): Promise<unknown> }
@@ -230,7 +231,25 @@ export type EmployeeHeldAssetRow = {
   outstandingComponent: boolean
   /** An open repair record on the asset (G7P4-R2). */
   openRepair: boolean
+  /** That open repair, the latest reported, for its MT- link (G7F-R4); null when none is open. */
+  openRepairRecord: { id: string; repairNo: string } | null
+  /** Why the transfer form refuses the asset (getTransferVerdict, as the asset page's โอนย้าย), a full message key; null when it takes it. */
+  transferBlockReasonKey: string | null
   lastAudit: EmployeeHeldLastAudit | null
+}
+
+/** A round still open (not closed or cancelled) holding some of the person's held assets, and how its items stand (G7F-R4). */
+export type EmployeeCurrentAudit = {
+  roundId: string
+  auditNo: string
+  name: string
+  endDate: Date
+  /** The round's own items among the held assets; total = found + mismatch + notFound + pending. */
+  total: number
+  found: number
+  mismatch: number
+  notFound: number
+  pending: number
 }
 
 export type EmployeePageData = {
@@ -238,6 +257,10 @@ export type EmployeePageData = {
   /** "พ้นสภาพแล้ว ยังถือครอง {n} รายการ": a former employee (G7P2-R1) holding at least one active asset. */
   warning: { former: boolean; heldCount: number } | null
   held: { rows: EmployeeHeldAssetRow[]; total: number; page: number; pageSize: number }
+  /** Every held asset (not the page) with an open handover, and without one (G7F-R4): the two add up to held.total. */
+  heldHandoverSplit: { withHandover: number; withoutHandover: number }
+  /** ตรวจนับรอบปัจจุบัน (G7F-R4), the latest round first; empty when no open round holds a held asset. */
+  currentAudits: EmployeeCurrentAudit[]
   /** Open handovers to this person: regular = not a temporary loan; overdueLoans ⊆ loans (G7P2-R4). */
   openHandovers: { regular: number; loans: number; overdueLoans: number }
   /** The user linked to the employee; null when none, or when the viewer may not view users. */
@@ -258,8 +281,13 @@ function firstByKey<T>(rows: readonly T[], key: (row: T) => string): Map<string,
   return map
 }
 
+/** What the page calls held: the person is the custodian of an active asset. */
+function heldAssetWhere(employeeId: string) {
+  return { custodianId: employeeId, isActive: true }
+}
+
 async function readHeldPage(db: EmployeePageDb, employeeId: string, requestedPage: number) {
-  const where = { custodianId: employeeId, isActive: true }
+  const where = heldAssetWhere(employeeId)
   // The count first, so a stale or crafted page never sends a skip past the end (the bulk-move list's rule).
   const total = await db.asset.count({ where })
   const lastPage = Math.max(1, Math.ceil(total / employeeHeldPageSize))
@@ -284,9 +312,10 @@ async function readHeldRows(db: EmployeePageDb, assets: HeldAssetRecord[]): Prom
       select: heldCheckoutSelect,
       orderBy: { checkoutDate: "desc" },
     })),
-    findManyInChunks<{ assetId: string }>(ids, (chunk) => db.maintenanceTicket.findMany({
+    findManyInChunks<{ id: string; repairNo: string; assetId: string; reportedDate: Date }>(ids, (chunk) => db.maintenanceTicket.findMany({
       where: { ...openRepairRecordWhere, assetId: { in: chunk } },
-      select: { assetId: true },
+      select: { id: true, repairNo: true, assetId: true, reportedDate: true },
+      orderBy: [{ reportedDate: "desc" }, { id: "asc" }],
     })),
     findManyInChunks<{ id: string; componentAssetId: string; referenceId: string | null }>(ids, (chunk) => db.assetComponent.findMany({
       where: { componentAssetId: { in: chunk }, ...outstandingLinkWhere },
@@ -304,6 +333,12 @@ async function readHeldRows(db: EmployeePageDb, assets: HeldAssetRecord[]): Prom
   // The latest open handover per asset wins, as the return search (asset-operation-search.ts).
   const checkoutByAssetId = firstByKey(checkouts, (checkout) => checkout.assetId)
   const repairAssetIds = new Set(repairs.map((repair) => repair.assetId))
+  // Chunks may come back in any order: the latest reported open repair per asset is chosen here.
+  const repairByAssetId = new Map<string, (typeof repairs)[number]>()
+  for (const repair of repairs) {
+    const known = repairByAssetId.get(repair.assetId)
+    if (!known || repair.reportedDate.getTime() > known.reportedDate.getTime()) repairByAssetId.set(repair.assetId, repair)
+  }
   const outstandingByAssetId = firstByKey(outstanding, (link) => link.componentAssetId)
   // Chunks may come back in any order, so the latest audit item is chosen here, not by the read's order alone.
   const auditByAssetId = new Map<string, HeldAuditItemRecord>()
@@ -313,15 +348,20 @@ async function readHeldRows(db: EmployeePageDb, assets: HeldAssetRecord[]): Prom
     const checkout = checkoutByAssetId.get(asset.id) ?? null
     const link = outstandingByAssetId.get(asset.id) ?? null
     const outstandingFact: AssetOperationOutstandingFact | null = link ? { linkId: link.id, checkinId: link.referenceId } : null
-    const returnBlock = getHeldAssetReturnBlock({
+    const ownership = normalizeAssetOwnershipType(asset.ownershipType)
+    const facts: AssetOperationFacts = {
       statusName: asset.status.name,
-      ownership: normalizeAssetOwnershipType(asset.ownershipType),
+      ownership,
       custodianId: asset.custodianId,
       openCheckout: checkout && { id: checkout.id, handoverMode: checkout.handoverMode },
       hasOpenRepair: repairAssetIds.has(asset.id),
       conditionName: asset.condition?.name ?? null,
       outstanding: outstandingFact,
-    })
+    }
+    const returnBlock = getHeldAssetReturnBlock(facts)
+    // The asset page's โอนย้าย (asset-actions.ts): a personal asset gets a new holder, anything else is a move.
+    const transferVerdict = getTransferVerdict(facts, { assignCustodian: ownership === "personal" })
+    const repair = repairByAssetId.get(asset.id) ?? null
     const audit = auditByAssetId.get(asset.id) ?? null
     return {
       assetId: asset.id,
@@ -343,6 +383,8 @@ async function readHeldRows(db: EmployeePageDb, assets: HeldAssetRecord[]): Prom
       returnBlock,
       outstandingComponent: link !== null,
       openRepair: repairAssetIds.has(asset.id),
+      openRepairRecord: repair && { id: repair.id, repairNo: repair.repairNo },
+      transferBlockReasonKey: transferVerdict.eligible ? null : transferVerdict.reasonKey,
       lastAudit: audit && {
         roundId: audit.auditRound.id,
         roundNo: audit.auditRound.auditNo,
@@ -352,6 +394,48 @@ async function readHeldRows(db: EmployeePageDb, assets: HeldAssetRecord[]): Prom
       },
     }
   })
+}
+
+// ตรวจนับรอบปัจจุบัน (G7F-R4): the person's held assets (custodian now, active) in rounds still open, the audit pages'
+// operational rounds (not closed or cancelled; an old draft is open). One grouped count by round, status and result, so
+// no item row is loaded; foldAuditRoundResultCounts sorts them as the round page does (out of scope apart, a checked item
+// with no result is ไม่ตรง). The rounds are few: their names in one read by id, in chunks of 2,000 all the same.
+async function readCurrentAudits(db: EmployeePageDb, employeeId: string): Promise<EmployeeCurrentAudit[]> {
+  const grouped = (await db.auditItem.groupBy({
+    by: ["auditRoundId", "auditStatus", "auditResult"],
+    where: {
+      asset: { custodianId: employeeId, isActive: true },
+      auditRound: { isActive: true, status: auditRoundOperationalWhere },
+    },
+    _count: { _all: true },
+  })) as Array<{ auditRoundId: string; auditStatus: string; auditResult: string | null; _count: { _all: number } }>
+  const rowsByRound = new Map<string, AuditRoundResultCountRow[]>()
+  for (const group of grouped) {
+    const rows = rowsByRound.get(group.auditRoundId) ?? []
+    rows.push({ auditStatus: group.auditStatus, auditResult: group.auditResult, count: group._count._all })
+    rowsByRound.set(group.auditRoundId, rows)
+  }
+  if (rowsByRound.size === 0) return []
+  const rounds = await findManyInChunks<{ id: string; auditNo: string; name: string; startDate: Date; endDate: Date }>([...rowsByRound.keys()], (chunk) => db.auditRound.findMany({
+    where: { id: { in: chunk } },
+    select: { id: true, auditNo: true, name: true, startDate: true, endDate: true },
+  }))
+  return rounds
+    .map((round) => ({ round, counts: foldAuditRoundResultCounts(rowsByRound.get(round.id) ?? []) }))
+    // Only out-of-scope finds: not one of the round's own items.
+    .filter(({ counts }) => counts.all > 0)
+    .sort((left, right) => right.round.startDate.getTime() - left.round.startDate.getTime() || left.round.auditNo.localeCompare(right.round.auditNo))
+    .map(({ round, counts }) => ({
+      roundId: round.id,
+      auditNo: round.auditNo,
+      name: round.name,
+      endDate: round.endDate,
+      total: counts.all,
+      found: counts.found,
+      mismatch: counts.mismatch,
+      notFound: counts.notFound,
+      pending: counts.pending,
+    }))
 }
 
 export async function readEmployeePage(
@@ -388,6 +472,9 @@ export async function readEmployeePage(
     auditRounds,
     pendingDisposalCount,
     disposalRequests,
+    heldWithHandoverCount,
+    heldWithoutHandoverCount,
+    currentAudits,
   ] = await Promise.all([
     readHeldPage(db, id, options.heldPage ?? 1),
     db.assetCheckout.count({ where: openHandoverWhere }),
@@ -435,6 +522,10 @@ export async function readEmployeePage(
       orderBy: { requestDate: "desc" },
       take: 10,
     }) as Promise<EmployeePageDisposalRow[]>,
+    // G7F-R4: over every held asset, one count each; an open handover is the held rows' own (openCheckoutWhere).
+    db.asset.count({ where: { ...heldAssetWhere(id), checkouts: { some: openCheckoutWhere } } }),
+    db.asset.count({ where: { ...heldAssetWhere(id), checkouts: { none: openCheckoutWhere } } }),
+    readCurrentAudits(db, id),
   ])
 
   const rows = await readHeldRows(db, heldPage.assets)
@@ -451,6 +542,8 @@ export async function readEmployeePage(
     employee,
     warning: isFormerEmployee(employee) && heldCount > 0 ? { former: true, heldCount } : null,
     held: { rows, total: heldCount, page: heldPage.page, pageSize: employeeHeldPageSize },
+    heldHandoverSplit: { withHandover: heldWithHandoverCount, withoutHandover: heldWithoutHandoverCount },
+    currentAudits,
     openHandovers: { regular: openCheckoutCount - loanCount, loans: loanCount, overdueLoans: overdueLoanCount },
     account: account ? { username: account.username, isActive: account.isActive } : null,
     counts,

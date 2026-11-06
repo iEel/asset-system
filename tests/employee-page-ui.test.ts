@@ -94,7 +94,40 @@ test("the follow-up panel's handover item is overdue loans only, with the count"
 test("the held table pins the รับคืน column right and keeps its text columns narrow enough to read", () => {
   const table = page.slice(page.indexOf('caption={tDetail("heldTitle")}'), page.indexOf("</DataTable>", page.indexOf('caption={tDetail("heldTitle")}')))
   assert.match(table, /<DataTableHead align="right" sticky="right" hideLabel>\{tDetail\("colActions"\)\}<\/DataTableHead>/)
-  assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+<HeldReturnAction /)
+  assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+<div className="flex items-start justify-end gap-1">\n\s+<HeldReturnAction /)
   for (const width of ["min-w-48", "min-w-36", "min-w-40", "min-w-32"]) assert.match(table, new RegExp(`<DataTableCell className="${width}">`))
   assert.doesNotMatch(table, /min-w-(?:52|44)/)
+})
+
+// Group 7 follow-ups Task 3 (G7F-R4): the board items.
+test("G7F-R4: the held stat's foot splits every held asset by handover", () => {
+  assert.match(page, /tDetail\("heldStatFootSplit", \{\n\s+withHandover: formatCount\(data\.heldHandoverSplit\.withHandover\),\n\s+withoutHandover: formatCount\(data\.heldHandoverSplit\.withoutHandover\),/)
+  assert.equal(th.employee.detail.heldStatFootSplit, "มีใบส่งมอบ {withHandover} · ไม่มีใบส่งมอบ {withoutHandover}")
+})
+
+test("G7F-R4: ตรวจนับรอบปัจจุบัน lists each open round with its link and found / mismatch / not found / pending", () => {
+  assert.match(page, /title=\{tDetail\("currentAuditTitle"\)\}/)
+  assert.match(page, /data\.currentAudits\.map\(\(audit\) => \(/)
+  assert.match(page, /href=\{`\/\$\{locale\}\/audit\/rounds\/\$\{audit\.roundId\}`\}/)
+  assert.match(page, /tDetail\("currentAuditBreakdown", \{/)
+  assert.equal(th.employee.detail.currentAuditTitle, "ตรวจนับรอบปัจจุบัน")
+  assert.equal(th.employee.detail.currentAuditBreakdown, "พบตรง {found} · ไม่ตรง {mismatch} · ไม่พบ {notFound} · รอตรวจ {pending}")
+})
+
+test("G7F-R4: a held row under an open repair links its MT- number", () => {
+  assert.match(page, /\{row\.openRepairRecord \? \(/)
+  assert.match(page, /href=\{`\/\$\{locale\}\/maintenance\/\$\{row\.openRepairRecord\.id\}`\}/)
+  assert.match(page, /<span className="tag">\{row\.openRepairRecord\.repairNo\}<\/span>/)
+})
+
+test("G7F-R4: row ⋯ holds โอนย้าย (asset:edit; the transfer form's refusal as an unavailable item) and พิมพ์ใบส่งมอบ (asset:view, when a handover exists)", () => {
+  assert.match(page, /const canViewAssets = hasPermission\(user, "asset", "view"\)/)
+  assert.match(page, /appendReturnTo\(`\/\$\{locale\}\/asset-management\/transfer\?assetId=\$\{row\.assetId\}`, pageHref\)/)
+  assert.match(page, /row\.transferBlockReasonKey\n\s+\? \{ kind: "unavailable", key: "transfer", label: transferLabel, reason: labels\.reason\(row\.transferBlockReasonKey\)/)
+  assert.match(page, /canViewAssets && row\.handover/)
+  assert.match(page, /appendReturnTo\(`\/\$\{locale\}\/asset-management\/checkouts\/\$\{row\.handover\.id\}`, pageHref\)/)
+  assert.match(page, /<RowActions\n\s+code=\{row\.assetTag\}/)
+  assert.match(page, /menuLabel=\{labels\.moreActions\(row\.assetTag\)\}/)
+  // รับคืน stays the row's button, beside the ⋯.
+  assert.match(page, /<HeldReturnAction row=\{row\} pageHref=\{pageHref\} locale=\{locale\} canEdit=\{canEditAssets\} labels=\{heldLabels\} \/>\n\s+<HeldRowMenu /)
 })

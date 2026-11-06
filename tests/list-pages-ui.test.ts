@@ -541,7 +541,9 @@ test("the employee page builds on PageHeader, FactStrip, StatStrip and three Dat
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
   assert.match(source, /<Link href=\{editHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.match(source, /<StatusBadge label=\{row\.status\.nameTh\} tone=\{getAssetStateTone\(row\.status\.name\)\} \/>/, "bug §5.10 #7: the status badge takes the tone of the status")
-  assert.match(source, /\{ key: "held", label: tDetail\("heldStat"\), value: formatCount\(data\.held\.total\), foot: tDetail\("heldStatFoot"\), href: hrefs\.assets \}/)
+  // Group 7 follow-ups Task 3 (G7F-R4): the foot splits the held assets by handover, the plain foot while none is held.
+  assert.match(source, /key: "held",\n\s+label: tDetail\("heldStat"\),\n\s+value: formatCount\(data\.held\.total\),/)
+  assert.match(source, /: tDetail\("heldStatFoot"\),\n\s+href: hrefs\.assets,/)
   assert.doesNotMatch(source, /function (?:SummaryTile|Info|ColumnHeader)\b|<table\b|<th\b|toLocaleString\(|"-"/)
 })
 

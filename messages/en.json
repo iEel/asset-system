@@ -1863,7 +1863,16 @@
       "noAccount": "No user account",
       "accountActive": "Active",
       "accountInactive": "Inactive",
-      "returnMany": "Return several assets"
+      "returnMany": "Return several assets",
+      "heldStatFootSplit": "With handover {withHandover} · without {withoutHandover}",
+      "currentAuditTitle": "Current audit rounds",
+      "currentAuditHelp": "Assets this person holds in audit rounds still open",
+      "currentAuditEmpty": "No held asset is in an open audit round",
+      "currentAuditMeta": "{count} items · ends {date}",
+      "currentAuditBreakdown": "Found {found} · mismatch {mismatch} · not found {notFound} · pending {pending}",
+      "openRepair": "Repair {repairNo}",
+      "transfer": "Transfer",
+      "printHandover": "Print handover"
     },
     "summaryTotalBreakdown": "{active} active · {resigned} resigned · {suspended} suspended",
     "formerHolderNote": "Still holds assets; take them back",

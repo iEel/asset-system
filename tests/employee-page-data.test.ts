@@ -41,6 +41,12 @@ function matches(row: Row, where: Row | undefined): boolean {
     const value = row[key]
     if (condition !== null && typeof condition === "object" && !(condition instanceof Date)) {
       const keys = Object.keys(condition)
+      // A to-many relation filter: the fake attaches the related rows as an array.
+      if (keys.length === 1 && (keys[0] === "some" || keys[0] === "none")) {
+        const any = ((value as Row[] | undefined) ?? []).some((related) => matches(related, (condition as Row)[keys[0]] as Row))
+        if (keys[0] === "some" ? !any : any) return false
+        continue
+      }
       if (keys.length > 0 && keys.every((k) => operatorKeys.has(k))) {
         if (!matchesCondition(value, condition as Row)) return false
       } else if (!value || !matches(value as Row, condition as Row)) return false
@@ -87,11 +93,12 @@ type FakeData = {
   repairs?: Row[]
   components?: Row[]
   auditItems?: Row[]
+  auditRounds?: Row[]
   users?: Row[]
 }
 
 function fakeDb(data: FakeData) {
-  const calls = { assetFindMany: [] as Row[], userFindFirst: 0, inLists: [] as number[] }
+  const calls = { assetFindMany: [] as Row[], userFindFirst: 0, inLists: [] as number[], auditGroupBy: 0 }
   const table = (rows: Row[] = []) => ({
     async findMany(args: Row) {
       const where = args.where as Row | undefined
@@ -107,7 +114,9 @@ function fakeDb(data: FakeData) {
       return query(rows, { where: args.where as Row })[0] ?? null
     },
   })
-  const assets = table(data.assets)
+  // Each asset carries its checkouts, so `checkouts: { some | none }` reads them.
+  const assets = table((data.assets ?? []).map((row) => ({ ...row, checkouts: (data.checkouts ?? []).filter((co) => co.assetId === row.id) })))
+  const auditItems = table(data.auditItems)
   const db: EmployeePageDb = {
     employee: table(data.employees),
     asset: {
@@ -121,8 +130,22 @@ function fakeDb(data: FakeData) {
     assetComponent: table(data.components),
     maintenanceTicket: table(data.repairs),
     auditFinding: table([]),
-    auditItem: table(data.auditItems),
-    auditRound: table([]),
+    auditItem: {
+      findMany: (args: object) => auditItems.findMany(args as Row),
+      async groupBy(args: object) {
+        const { by, where } = args as { by: string[]; where?: Row }
+        calls.auditGroupBy += 1
+        const groups = new Map<string, Row>()
+        for (const row of query(data.auditItems ?? [], { where })) {
+          const key = JSON.stringify(by.map((field) => row[field] ?? null))
+          const group = groups.get(key) ?? { ...Object.fromEntries(by.map((field) => [field, row[field] ?? null])), _count: { _all: 0 } }
+          ;(group._count as { _all: number })._all += 1
+          groups.set(key, group)
+        }
+        return [...groups.values()]
+      },
+    },
+    auditRound: table(data.auditRounds),
     disposalRequest: table([]),
     user: {
       async findFirst(args: object) {
@@ -415,4 +438,99 @@ test("group 7 plan 4: the multi-return reads every held asset (not paged) with t
   assert.equal(byId.get("a-3")?.outstandingComponent, false)
   assert.equal(employeeReturnBatchReadLimit, 200)
   assert.equal(await readEmployeeReturnBatch(db, "nobody"), null)
+})
+
+// Group 7 follow-ups Task 3 (G7F-R4): the board items of the employee page.
+
+test("G7F-R4: held totals with and without a handover count every held asset, not the page", async () => {
+  const assets = Array.from({ length: 30 }, (_, index) => asset(`a-${index}`, `T-${String(index).padStart(2, "0")}`))
+  const { db } = fakeDb({
+    employees: [employee()],
+    assets: [...assets, asset("a-gone", "T-99", { isActive: false })],
+    checkouts: [
+      checkout("co-1", "a-1"),
+      // Past the first page: still counted.
+      checkout("co-28", "a-28"),
+      checkout("co-29", "a-29", { handoverMode: "temporary_loan" }),
+      // Returned or cancelled handovers are no handover.
+      checkout("co-2", "a-2", { isReturned: true }),
+      checkout("co-3", "a-3", { transactionStatus: "cancelled" }),
+      checkout("co-gone", "a-gone"),
+    ],
+  })
+  const page = await readEmployeePage(db, "emp-1", { canViewUsers: false }, { now })
+  assert.equal(page?.held.total, 30)
+  assert.deepEqual(page?.heldHandoverSplit, { withHandover: 3, withoutHandover: 27 })
+})
+
+test("G7F-R4: ตรวจนับรอบปัจจุบัน counts the held assets' items in open rounds only, per round, with found / mismatch / not found / pending", async () => {
+  const heldAsset = { custodianId: "emp-1", isActive: true }
+  const round = (id: string, overrides: Row = {}) => ({ id, isActive: true, status: "open", ...overrides })
+  const item = (auditRoundId: string, auditStatus: string, auditResult: string | null, overrides: Row = {}) =>
+    ({ auditRoundId, auditStatus, auditResult, asset: heldAsset, auditRound: round(auditRoundId), ...overrides })
+  const { db, calls } = fakeDb({
+    employees: [employee()],
+    auditItems: [
+      item("r-open", "scanned", "found"),
+      item("r-open", "scanned", "location_mismatch"),
+      item("r-open", "reviewed", "not_found"),
+      item("r-open", "pending", null),
+      item("r-open", "pending", null),
+      // Out of scope is not one of the round's own items.
+      item("r-open", "scanned", "out_of_scope"),
+      // Someone else's asset, a deactivated asset.
+      item("r-open", "scanned", "found", { asset: { custodianId: "emp-2", isActive: true } }),
+      item("r-open", "scanned", "found", { asset: { custodianId: "emp-1", isActive: false } }),
+      // An old draft round is open too.
+      item("r-draft", "pending", null, { auditRound: round("r-draft", { status: "draft" }) }),
+      item("r-closed", "scanned", "found", { auditRound: round("r-closed", { status: "closed" }) }),
+      item("r-cancel", "scanned", "found", { auditRound: round("r-cancel", { status: "cancelled" }) }),
+      item("r-off", "scanned", "found", { auditRound: round("r-off", { isActive: false }) }),
+    ],
+    auditRounds: [
+      { id: "r-open", auditNo: "AUD-2026-0003", name: "ตรวจนับประจำปี 2569", startDate: new Date("2026-10-01T00:00:00.000Z"), endDate: new Date("2026-10-31T00:00:00.000Z") },
+      { id: "r-draft", auditNo: "AUD-2026-0001", name: "รอบเก่า", startDate: new Date("2026-01-01T00:00:00.000Z"), endDate: new Date("2026-01-31T00:00:00.000Z") },
+      { id: "r-closed", auditNo: "AUD-2025-0001", name: "ปิดแล้ว", startDate: new Date("2025-01-01T00:00:00.000Z"), endDate: new Date("2025-01-31T00:00:00.000Z") },
+    ],
+  })
+  const page = await readEmployeePage(db, "emp-1", { canViewUsers: false }, { now })
+  assert.equal(calls.auditGroupBy, 1, "one grouped count, no item rows loaded")
+  assert.deepEqual(page?.currentAudits, [
+    { roundId: "r-open", auditNo: "AUD-2026-0003", name: "ตรวจนับประจำปี 2569", endDate: new Date("2026-10-31T00:00:00.000Z"), total: 5, found: 1, mismatch: 1, notFound: 1, pending: 2 },
+    { roundId: "r-draft", auditNo: "AUD-2026-0001", name: "รอบเก่า", endDate: new Date("2026-01-31T00:00:00.000Z"), total: 1, found: 0, mismatch: 0, notFound: 0, pending: 1 },
+  ])
+
+  const none = fakeDb({ employees: [employee()] })
+  assert.deepEqual((await readEmployeePage(none.db, "emp-1", { canViewUsers: false }, { now }))?.currentAudits, [])
+})
+
+test("G7F-R4: a held row carries its open repair's number and id, the latest open one; a closed repair is none", async () => {
+  const { db } = fakeDb({
+    employees: [employee()],
+    assets: [asset("a-1", "T-1"), asset("a-2", "T-2")],
+    repairs: [
+      { id: "mt-old", repairNo: "MT-20260901-0001", assetId: "a-1", isActive: true, repairStatus: "in_progress", reportedDate: new Date("2026-09-01T00:00:00.000Z") },
+      { id: "mt-new", repairNo: "MT-20261014-0002", assetId: "a-1", isActive: true, repairStatus: "waiting_parts", reportedDate: new Date("2026-10-14T00:00:00.000Z") },
+      { id: "mt-done", repairNo: "MT-20261001-0001", assetId: "a-2", isActive: true, repairStatus: "closed", reportedDate: new Date("2026-10-01T00:00:00.000Z") },
+    ],
+  })
+  const page = await readEmployeePage(db, "emp-1", { canViewUsers: false }, { now })
+  const byId = new Map(page!.held.rows.map((row) => [row.assetId, row]))
+  assert.deepEqual(byId.get("a-1")?.openRepairRecord, { id: "mt-new", repairNo: "MT-20261014-0002" })
+  assert.equal(byId.get("a-1")?.openRepair, true)
+  assert.equal(byId.get("a-2")?.openRepairRecord, null)
+  assert.equal(byId.get("a-2")?.openRepair, false)
+})
+
+test("G7F-R4: โอนย้าย carries the transfer form's own refusal (an open handover is returned first); a legacy holding moves", async () => {
+  const { db } = fakeDb({
+    employees: [employee()],
+    assets: [asset("a-ho", "T-1"), asset("a-legacy", "T-2"), asset("a-license", "T-3", { ownershipType: "software_license" })],
+    checkouts: [checkout("co-1", "a-ho")],
+  })
+  const page = await readEmployeePage(db, "emp-1", { canViewUsers: false }, { now })
+  const byId = new Map(page!.held.rows.map((row) => [row.assetId, row]))
+  assert.equal(byId.get("a-ho")?.transferBlockReasonKey, "asset.transactionReasonOpenCheckout")
+  assert.equal(byId.get("a-legacy")?.transferBlockReasonKey, null)
+  assert.equal(byId.get("a-license")?.transferBlockReasonKey, "asset.transactionReasonLicenseMove")
 })
