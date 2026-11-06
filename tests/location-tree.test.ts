@@ -7,6 +7,8 @@ import {
   buildLocationTree,
   checkLocationParent,
   locationDescendantIds,
+  locationNamePath,
+  readLocationAncestry,
   type LocationNodeInput,
   type LocationTreeNode,
 } from "../src/lib/location-tree.ts"
@@ -243,4 +245,49 @@ test("the three codes have catalog keys and Thai and English messages", () => {
     assert.equal(typeof th[key], "string", key)
     assert.equal(typeof en[key], "string", key)
   }
+})
+
+// Page group 7 plan 3 Task 4 (spec §7): the register's locationId chip names the location by its path.
+test("the ancestry walk reads the location and its parents up, and stops on a cycle or a missing parent", async () => {
+  const stored = new Map([
+    ["room", { id: "room", parentId: "floor" }],
+    ["floor", { id: "floor", parentId: "bldg" }],
+    ["bldg", { id: "bldg", parentId: null }],
+    ["a", { id: "a", parentId: "b" }],
+    ["b", { id: "b", parentId: "a" }],
+    ["orphan", { id: "orphan", parentId: "gone" }],
+  ])
+  const reads: string[] = []
+  const readOne = async (id: string) => {
+    reads.push(id)
+    return stored.get(id) ?? null
+  }
+  assert.deepEqual((await readLocationAncestry("room", readOne)).map((r) => r.id), ["room", "floor", "bldg"])
+  assert.deepEqual(reads, ["room", "floor", "bldg"], "only the chain is read")
+  assert.deepEqual((await readLocationAncestry("a", readOne)).map((r) => r.id), ["a", "b"])
+  assert.deepEqual((await readLocationAncestry("orphan", readOne)).map((r) => r.id), ["orphan"])
+  assert.deepEqual(await readLocationAncestry("none", readOne), [])
+})
+
+test("the name path follows the tree: root first, the location last; an inactive parent starts the path", () => {
+  const chain = [
+    row({ id: "room", name: "ห้อง IT", parentId: "floor" }),
+    row({ id: "floor", name: "ชั้น 3", parentId: "bldg" }),
+    row({ id: "bldg", name: "อาคาร A" }),
+  ]
+  assert.deepEqual(locationNamePath(chain, "room"), ["อาคาร A", "ชั้น 3", "ห้อง IT"])
+  assert.deepEqual(locationNamePath(chain, "bldg"), ["อาคาร A"])
+  assert.equal(locationNamePath(chain, "none"), undefined)
+  const withInactive = chain.map((r) => (r.id === "bldg" ? { ...r, isActive: false } : r))
+  assert.deepEqual(locationNamePath(withInactive, "room"), ["ชั้น 3", "ห้อง IT"])
+  const looped = [row({ id: "a", name: "A", parentId: "b" }), row({ id: "b", name: "B", parentId: "a" })]
+  assert.ok(locationNamePath(looped, "a"), "a cycle in old data still names the location")
+})
+
+test("the register's location chip shows the branch and the name path", () => {
+  const source = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+  assert.match(source, /readLocationAncestry\(filters\.locationId,/)
+  assert.match(source, /prisma\.location\.findUnique\(\{\s+where: \{ id \},/)
+  assert.match(source, /location: selectedLocationPath\?\.join\(" › "\),/)
+  assert.doesNotMatch(source, /location: selectedLocation \? `\$\{selectedLocation\.code\} - \$\{selectedLocation\.name\}` : undefined,/)
 })

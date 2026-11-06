@@ -35,7 +35,7 @@ test("every hidden filter gets a readable chip, including activity, department a
   assert.match(source, /activity: \{ idle_180d: t\("activityIdle180d"\) \}/)
   assert.match(source, /warranty: t\("dataQualityWarranty"\),\n\s+licenseExpiry: t\("dataQualityLicenseExpiry"\),\n\s+returnDue: t\("dataQualityReturnDue"\),/)
   assert.match(source, /custodianState: \{ assigned: t\("custodianStateAssigned"\) \}/)
-  assert.match(source, /location: selectedLocation \? `\$\{selectedLocation\.code\} - \$\{selectedLocation\.name\}` : undefined,/)
+  assert.match(source, /location: selectedLocationPath\?\.join\(" › "\),/)
   assert.match(source, /location: t\("location"\),/)
   assert.match(source, /prisma\.supplier\.findUnique\(/)
   assert.match(source, /buildAssetRegisterClearAllHref\(`\/\$\{locale\}\/assets`, filters\)/)

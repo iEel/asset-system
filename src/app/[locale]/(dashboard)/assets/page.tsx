@@ -27,6 +27,7 @@ import { formatCount } from "@/lib/display-format"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { locationNamePath, locationRuleSelect, readLocationAncestry } from "@/lib/location-tree"
 import { hasPermission } from "@/lib/auth-utils"
 import { firstIdByAssetId, getAssetActions, openDisposalRequestWhere, outstandingFactByAssetId } from "@/lib/asset-actions"
 import { outstandingLinkWhere } from "@/lib/asset-component-outstanding"
@@ -67,6 +68,19 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   // A saved view is current when its query equals this one (group 4 spec §6.4): the list query without the page.
   const savedViewQuery = assetRegisterSavedViewQuery(filters)
   const { statusCountWhere, where } = await buildAssetRegisterWhere(filters)
+  // The location chip names the location by its path (group 7 plan 3 Task 4): only its own chain is read, up the parents.
+  const selectedLocationPathPromise = filters.locationId
+    ? readLocationAncestry(filters.locationId, (id) =>
+        prisma.location.findUnique({
+          where: { id },
+          select: { ...locationRuleSelect, branch: { select: { name: true } } },
+        }),
+      ).then((chain) => {
+        if (chain.length === 0) return undefined
+        const path = locationNamePath(chain.map((row) => ({ ...row, ownAssetCount: 0 })), chain[0].id)
+        return path ? [chain[0].branch.name, ...path] : undefined
+      })
+    : Promise.resolve(undefined)
   const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel, statusCounts, selectedSupplier] = await withPerformanceTiming(
     "assets.initial-data",
     () => Promise.all([
@@ -284,7 +298,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const selectedBranch = branches.find((branch) => branch.id === filters.branchId)
   const selectedCategory = categories.find((category) => category.id === filters.categoryId)
   const selectedCustodian = employees.find((employee) => employee.id === filters.custodianId)
-  const selectedLocation = locations.find((location) => location.id === filters.locationId)
+  const selectedLocationPath = await selectedLocationPathPromise
   const filterChips = buildAssetRegisterChips({
     basePath,
     filters,
@@ -298,7 +312,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       brand: selectedBrand?.name,
       model: selectedModel ? `${selectedModel.brand.name} / ${selectedModel.name}` : undefined,
       custodian: selectedCustodian ? `${selectedCustodian.code} - ${selectedCustodian.fullNameTh}` : undefined,
-      location: selectedLocation ? `${selectedLocation.code} - ${selectedLocation.name}` : undefined,
+      location: selectedLocationPath?.join(" › "),
       supplier: selectedSupplier ? `${selectedSupplier.code} - ${selectedSupplier.name}` : undefined,
     },
     labels: {

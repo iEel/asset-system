@@ -163,3 +163,36 @@ export function locationParentRefusalBody(code: LocationParentRefusal) {
   }[code]
   return { error: code, code, fieldErrors: { [field]: key } }
 }
+
+// Task 4 (spec §7): the location and its ancestors, nearest first, read one row at a time up the stored parentId, so a
+// name path needs only its own chain rather than every location. Stops at a missing parent, a cycle in old data or a
+// depth no building has.
+export async function readLocationAncestry<T extends { id: string; parentId: string | null }>(
+  id: string,
+  readOne: (id: string) => Promise<T | null>,
+  maxDepth = 64,
+): Promise<T[]> {
+  const chain: T[] = []
+  const seen = new Set<string>()
+  let next: string | null = id
+  while (next && !seen.has(next) && chain.length < maxDepth) {
+    seen.add(next)
+    const found: T | null = await readOne(next)
+    if (!found) break
+    chain.push(found)
+    next = found.parentId
+  }
+  return chain
+}
+
+// The name path of one location as the tree writes it (root first, the location last), from rows holding at least its
+// chain; undefined when the location is not among them.
+export function locationNamePath(rows: readonly LocationNodeInput[], id: string): string[] | undefined {
+  const stack = [...buildLocationTree(rows).values()].flat()
+  while (stack.length > 0) {
+    const node = stack.pop()!
+    if (node.id === id) return node.path
+    stack.push(...node.children)
+  }
+  return undefined
+}
