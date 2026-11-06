@@ -2497,7 +2497,12 @@
     "lateSuccess": "Component returned",
     "phonePeople": "Returned by / received by: {returnBy} / {receiveBy}",
     "phonePeopleEdit": "Edit who returns it and who receives it",
-    "phoneFooterComponents": "Components back: {returned} · missing: {missing}"
+    "phoneFooterComponents": "Components back: {returned} · missing: {missing}",
+    "documentMachines": "Returned assets",
+    "documentMachineCount": "{count} items",
+    "documentMachineColumn": "Asset",
+    "documentMachineVoided": "Cancelled",
+    "documentMachineActions": "Actions"
   },
   "transfer": {
     "title": "Transfer Asset",

@@ -2497,7 +2497,12 @@
     "lateSuccess": "รับคืนส่วนควบสำเร็จ",
     "phonePeople": "ผู้คืน / ผู้รับคืน: {returnBy} / {receiveBy}",
     "phonePeopleEdit": "แก้ไขผู้คืนและผู้รับคืน",
-    "phoneFooterComponents": "ส่วนควบได้คืน {returned} · ขาด {missing}"
+    "phoneFooterComponents": "ส่วนควบได้คืน {returned} · ขาด {missing}",
+    "documentMachines": "ทรัพย์สินที่รับคืน",
+    "documentMachineCount": "{count} รายการ",
+    "documentMachineColumn": "ทรัพย์สิน",
+    "documentMachineVoided": "ยกเลิกแล้ว",
+    "documentMachineActions": "การดำเนินการ"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",

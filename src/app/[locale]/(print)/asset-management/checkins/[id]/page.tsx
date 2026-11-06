@@ -13,11 +13,48 @@ import { TransactionCancelDialog } from "@/components/asset-operations/transacti
 import { linkVariants } from "@/components/ui/button-variants"
 import { ASSET_MOVEMENT_DOCUMENT_PERMISSION } from "@/lib/asset-movement-labels"
 import { buildCheckinDocumentLines, checkinDocumentReadIds, type CheckinDocumentLines } from "@/lib/checkin-document-lines"
+import { buildCheckinDocumentMachineRows, readCheckinDocumentGroup } from "@/lib/checkin-document-group"
+import { orNil } from "@/components/ui/nil"
+import { formatCount } from "@/lib/display-format"
+import type { Prisma } from "@prisma/client"
 
 type CheckinPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
   searchParams: Promise<{ returnTo?: string | string[] }>
 }
+
+const checkinInclude = {
+  asset: {
+    select: {
+      id: true,
+      assetTag: true,
+      name: true,
+      serialNumber: true,
+      fixedAssetCode: true,
+      company: { select: { code: true, nameTh: true } },
+      branch: { select: { code: true, name: true } },
+      category: { select: { code: true, name: true } },
+    },
+  },
+  checkout: {
+    select: {
+      id: true,
+      documentNo: true,
+      checkoutType: true,
+      handoverMode: true,
+      checkoutDate: true,
+      expectedReturnDate: true,
+      custodianId: true,
+      departmentId: true,
+      locationId: true,
+      parentAssetId: true,
+      custodian: { select: { code: true, fullNameTh: true } },
+    },
+  },
+} satisfies Prisma.AssetCheckinInclude
+
+type CheckinDocumentRecord = Prisma.AssetCheckinGetPayload<{ include: typeof checkinInclude }>
+type Translator = Awaited<ReturnType<typeof getTranslations>>
 
 export default async function CheckinPrintPage({ params, searchParams }: CheckinPrintPageProps) {
   const { locale, id } = await params
@@ -30,39 +67,24 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
   const tCommon = await getTranslations("common")
   const tCancellation = await getTranslations("transactionCancellation")
 
-  const checkin = await prisma.assetCheckin.findUnique({
-    where: { id },
-    include: {
-      asset: {
-        select: {
-          id: true,
-          assetTag: true,
-          name: true,
-          serialNumber: true,
-          fixedAssetCode: true,
-          company: { select: { code: true, nameTh: true } },
-          branch: { select: { code: true, name: true } },
-          category: { select: { code: true, name: true } },
-        },
-      },
-      checkout: {
-        select: {
-          id: true,
-          documentNo: true,
-          checkoutType: true,
-          handoverMode: true,
-          checkoutDate: true,
-          expectedReturnDate: true,
-          custodianId: true,
-          departmentId: true,
-          locationId: true,
-          parentAssetId: true,
-          custodian: { select: { code: true, fullNameTh: true } },
-        },
-      },
-    },
-  })
+  const checkin = await prisma.assetCheckin.findUnique({ where: { id }, include: checkinInclude })
   if (!checkin) notFound()
+
+  // A multi-asset return (group 7 plan 4, G7P4-R1): the records that share this RT- number, date, returner and receiver.
+  // A one-machine document keeps the layout below.
+  const documentRecords = await readCheckinDocumentGroup(checkin, (query) => prisma.assetCheckin.findMany({ ...query, include: checkinInclude }))
+  if (documentRecords.length > 1) {
+    return renderMultiMachineDocument({
+      anchor: checkin,
+      records: documentRecords,
+      backHref: filters.returnTo ? normalizeAssetReturnTo(locale, filters.returnTo) : `/${locale}/assets/${checkin.asset.id}`,
+      canCancel: hasPermission(user, "asset", "edit"),
+      t,
+      tCommon,
+      tCheckout,
+      tCancellation,
+    })
+  }
 
   const beforeSnapshot = parseAssetTransactionSnapshot(checkin.beforeSnapshotJson)
   const afterSnapshot = parseAssetTransactionSnapshot(checkin.afterSnapshotJson)
@@ -194,6 +216,146 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
         },
       ]}
       lines={documentLines.components.length > 0 || documentLines.repair ? renderCheckinDocumentLines(documentLines, t) : null}
+      signatures={[
+        { title: t("returnBy"), helper: t("signatureDate"), imageSrc: returnSignatureAttachment ? `/api/attachments/${returnSignatureAttachment.id}?inline=1` : null },
+        { title: t("receiveBy"), helper: t("signatureDate"), imageSrc: receiveSignatureAttachment ? `/api/attachments/${receiveSignatureAttachment.id}?inline=1` : null },
+        { title: t("approver"), helper: t("signatureDate") },
+      ]}
+    />
+  )
+}
+
+// The RT- of a multi-asset return (group 7 plan 4): one row per machine with its HO-, a voided row struck through, the
+// signatures once (the same files are attached to every record, G7P4-R5) and each active row's own cancel, which voids
+// that record only. The whole document reads VOID only when every row is voided.
+async function renderMultiMachineDocument({
+  anchor, records, backHref, canCancel, t, tCommon, tCheckout, tCancellation,
+}: {
+  anchor: CheckinDocumentRecord
+  records: CheckinDocumentRecord[]
+  backHref: string
+  canCancel: boolean
+  t: Translator
+  tCommon: Translator
+  tCheckout: Translator
+  tCancellation: Translator
+}) {
+  const snapshots = new Map(records.map((record) => [record.id, {
+    before: parseAssetTransactionSnapshot(record.beforeSnapshotJson),
+    after: parseAssetTransactionSnapshot(record.afterSnapshotJson),
+  }]))
+  const [returnSignatureAttachment, receiveSignatureAttachment, labels] = await Promise.all([
+    prisma.attachment.findFirst({
+      where: { module: "checkin_return_signature", referenceId: anchor.id },
+      select: { id: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+    prisma.attachment.findFirst({
+      where: { module: "checkin_receive_signature", referenceId: anchor.id },
+      select: { id: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+    buildReferenceLabelMap(records.flatMap((record) => {
+      const { before, after } = snapshots.get(record.id) ?? { before: null, after: null }
+      return [record.conditionAfter, record.nextStatus, record.nextLocationId, before?.statusId, before?.currentLocationId, after?.statusId, after?.currentLocationId]
+    })),
+  ])
+  const rows = buildCheckinDocumentMachineRows(records, labels)
+  const recordById = new Map(records.map((record) => [record.id, record]))
+  const cancellationLabels = buildCancellationLabels(tCancellation)
+  const allVoided = records.every((record) => record.transactionStatus === "void")
+  const machineCount = t("documentMachineCount", { count: formatCount(records.length) })
+
+  return (
+    <OperationDocumentPrint
+      title={t("returnDocumentTitle")}
+      subtitle={`${anchor.documentNo ?? anchor.id} · ${machineCount}`}
+      backHref={backHref}
+      backLabel={tCommon("back")}
+      printLabel={t("printReturn")}
+      voidInfo={allVoided ? {
+        label: tCancellation("voidLabel"), voidReasonLabel: tCancellation("voidReason"), voidedByLabel: tCancellation("voidedBy"),
+        voidedAtLabel: tCancellation("voidedAt"), voidReason: anchor.voidReason, voidedBy: anchor.voidedBy,
+        voidedAt: formatDateTime(anchor.voidedAt),
+      } : null}
+      sections={[
+        {
+          title: t("documentInfo"),
+          fields: [
+            { label: t("documentNo"), value: anchor.documentNo ?? anchor.id },
+            { label: t("returnDate"), value: formatDate(anchor.returnDate) },
+            { label: t("documentMachines"), value: machineCount },
+            { label: t("createdAt"), value: formatDateTime(anchor.createdAt) },
+          ],
+        },
+        {
+          title: t("returnInfo"),
+          fields: [
+            { label: t("returnBy"), value: anchor.returnBy },
+            { label: t("receiveBy"), value: anchor.receiveBy },
+          ],
+        },
+      ]}
+      lines={(
+        <section>
+          <h2 className="mb-2 text-sm font-bold text-foreground">{t("documentMachines")}</h2>
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[640px] border-collapse border border-border text-sm print:min-w-0">
+              <thead>
+                <tr className="text-left text-xs font-semibold text-muted-foreground">
+                  <th scope="col" className="border-b border-border px-3 py-2">{t("documentMachineColumn")}</th>
+                  <th scope="col" className="border-b border-border px-3 py-2">{t("conditionAfter")}</th>
+                  <th scope="col" className="border-b border-border px-3 py-2">{t("nextStatus")}</th>
+                  <th scope="col" className="border-b border-border px-3 py-2">{t("nextLocation")}</th>
+                  <th scope="col" className="border-b border-border px-3 py-2">{tCheckout("documentNo")}</th>
+                  {canCancel ? <th scope="col" className="print:hidden border-b border-border px-3 py-2"><span className="sr-only">{t("documentMachineActions")}</span></th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const record = recordById.get(row.checkinId) ?? anchor
+                  const snapshot = snapshots.get(row.checkinId) ?? { before: null, after: null }
+                  return (
+                    <tr
+                      key={row.checkinId}
+                      data-document-machine={row.checkinId}
+                      data-voided={row.voided ? "true" : undefined}
+                      className="break-inside-avoid border-b border-border-soft align-top last:border-b-0"
+                    >
+                      <td className="px-3 py-2">
+                        <div className={row.voided ? "line-through" : undefined}>
+                          <span className="font-semibold">{row.assetTag}</span> {row.assetName}
+                        </div>
+                        {row.voided ? <div className="mt-1 text-xs font-semibold text-danger">{t("documentMachineVoided")}</div> : null}
+                      </td>
+                      <td className={row.voided ? "px-3 py-2 line-through" : "px-3 py-2"}>{orNil(row.condition)}</td>
+                      <td className={row.voided ? "px-3 py-2 line-through" : "px-3 py-2"}>{orNil(row.nextStatus)}</td>
+                      <td className={row.voided ? "px-3 py-2 line-through" : "px-3 py-2"}>{orNil(row.nextLocation)}</td>
+                      <td className={row.voided ? "px-3 py-2 line-through" : "px-3 py-2"}>{row.handoverNo}</td>
+                      {canCancel ? (
+                        <td className="print:hidden px-3 py-2 text-right">
+                          {record.transactionStatus === "active" ? (
+                            <TransactionCancelDialog
+                              type="checkin"
+                              transactionId={record.id}
+                              expectedUpdatedAt={record.updatedAt.toISOString()}
+                              originalOperator={record.receiveBy}
+                              currentState={formatSnapshotState(snapshot.after, labels)}
+                              restoreState={formatSnapshotState(snapshot.before, labels)}
+                              componentCount={snapshot.before?.components.length ?? 0}
+                              labels={cancellationLabels}
+                            />
+                          ) : null}
+                        </td>
+                      ) : null}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       signatures={[
         { title: t("returnBy"), helper: t("signatureDate"), imageSrc: returnSignatureAttachment ? `/api/attachments/${returnSignatureAttachment.id}?inline=1` : null },
         { title: t("receiveBy"), helper: t("signatureDate"), imageSrc: receiveSignatureAttachment ? `/api/attachments/${receiveSignatureAttachment.id}?inline=1` : null },
