@@ -278,3 +278,91 @@ test("the org lists spec: run-marked organisation by the seed admin, the three b
   assert.ok(spec.includes(`page.getByRole("dialog")`))
   assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 10)
 })
+
+// The categories list and form E2E spec of page group 8 plan 2 (plan docs/superpowers/plans/2026-11-07-group8-categories.md,
+// Task 4).
+test("the categories spec reads the app's own words, and the category guard's reason is the server's (group 8 plan 2 task 4)", async () => {
+  const { CATEGORY_WORDS } = await import("../e2e/master-data/categories-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(CATEGORY_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  assert.equal(CATEGORY_WORDS.categoriesTitle, th.category.title)
+  assert.equal(CATEGORY_WORDS.createTitle, th.category.createTitle)
+  assert.equal(CATEGORY_WORDS.recordStatusLabel, th.common.recordStatus.label)
+  assert.equal(CATEGORY_WORDS.footerCounts, th.common.recordStatus.footerCounts)
+  assert.equal(CATEGORY_WORDS.moreActionsFor, th.common.moreActionsFor)
+  assert.equal(CATEGORY_WORDS.tableScrollHint, th.common.tableScrollHint)
+  assert.equal(CATEGORY_WORDS.save, th.common.save)
+  assert.equal(CATEGORY_WORDS.listTotals, th.category.list.totals)
+  assert.equal(CATEGORY_WORDS.prefixMissing, th.category.list.prefixMissing)
+  assert.equal(CATEGORY_WORDS.prefixFallback, th.category.list.prefixFallback)
+  assert.equal(CATEGORY_WORDS.customFieldCount, th.category.list.customFieldCount)
+  assert.equal(CATEGORY_WORDS.none, th.category.list.none)
+  assert.equal(CATEGORY_WORDS.viewModels, th.category.list.viewModels)
+  assert.equal(CATEGORY_WORDS.viewAssets, th.category.list.viewAssets)
+  assert.equal(CATEGORY_WORDS.setPrefixInSettings, th.category.list.setPrefixInSettings)
+  assert.equal(CATEGORY_WORDS.deactivate, th.category.deactivate.action)
+  assert.equal(CATEGORY_WORDS.editTitle, th.category.form.editTitle)
+  assert.equal(CATEGORY_WORDS.usageLine, th.category.form.usageLine)
+  assert.equal(CATEGORY_WORDS.formPrefixFallback, th.category.form.prefixFallback)
+  assert.equal(CATEGORY_WORDS.addCustomField, th.category.addCustomField)
+  assert.equal(CATEGORY_WORDS.fieldTypeDate, th.category.fieldTypeDate)
+  assert.equal(CATEGORY_WORDS.fieldTypeBoolean, th.category.fieldTypeBoolean)
+  assert.equal(CATEGORY_WORDS.newBadge, th.category.form.newBadge)
+  assert.equal(CATEGORY_WORDS.summaryTitle, th.category.form.summaryTitle)
+  assert.equal(CATEGORY_WORDS.summaryModels, th.category.form.summaryModels)
+  assert.equal(CATEGORY_WORDS.summaryFieldCount, th.category.form.summaryFieldCount)
+  assert.equal(CATEGORY_WORDS.summaryNewFields, th.category.form.summaryNewFields)
+  assert.equal(CATEGORY_WORDS.footerEdit, th.category.form.footerEdit)
+  assert.equal(CATEGORY_WORDS.noChanges, th.category.form.noChanges)
+  assert.equal(CATEGORY_WORDS.changeFieldsAdded, th.category.form.changeFieldsAdded)
+  // The locked status's reason is a server string (not a message): the spec's constant is what the guard gives for one
+  // model and no asset.
+  const { getCategoryDeleteBlockReason } = await import("../src/lib/category-delete-guard.ts")
+  const spec = read("e2e/master-data/categories.spec.ts")
+  const reason = getCategoryDeleteBlockReason({ assets: 0, models: 1 })
+  assert.ok(spec.includes(`const CATEGORY_BLOCKED = "${reason}"`), reason ?? "a reason")
+})
+
+test("the IT head's run role views and edits categories, creates and deletes none, IT staff hold none (group 8 plan 2 task 4)", async () => {
+  const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
+  for (const permission of ["category:view", "category:edit"]) assert.ok(E2E_ROLE_PERMISSIONS.itHead.includes(permission), permission)
+  for (const action of ["create", "delete"]) assert.ok(!E2E_ROLE_PERMISSIONS.itHead.includes(`category:${action}`), `the IT head holds no category:${action}`)
+  // The prefix lives in the settings: the run's role cannot open them, so ⋯ has no prefix link.
+  assert.ok(!E2E_ROLE_PERMISSIONS.itHead.some((permission) => permission.startsWith("setting:")), "no setting permission")
+  for (const key of ["itStaff", "viewer", "employee"] as const) {
+    assert.ok(!E2E_ROLE_PERMISSIONS[key].some((permission) => permission.startsWith("category:")), `${key} holds no category permission`)
+  }
+})
+
+test("the categories spec: a run-marked category with a run model by the seed admin, the list's board facts and ⋯, the locked status, two fields added and kept, the phone (group 8 plan 2 task 4)", () => {
+  const spec = read("e2e/master-data/categories.spec.ts")
+  assert.ok(spec.includes(`import { asUser, expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!/import \{[^}]*\b(?:test|expect)\b[^}]*\} from "@playwright\/test"/.test(spec), "test and expect from the fixtures")
+  assert.ok(spec.includes(`asUser("itHead")`))
+  // Run-marked: the category's code carries the run and the project; the seed admin creates the category, brand and model.
+  assert.ok(spec.includes("code: `${runId}-${projectCode(projectName)}-CTG`"))
+  for (const route of ["/api/categories", "/api/brands", "/api/models"]) assert.ok(spec.includes(`admin.post("${route}"`), route)
+  // The model's name has four words, so readOneModel (one to three) never picks it.
+  assert.ok(spec.includes(`name("รุ่น ทดสอบหมวดหมู่")`))
+  // The list: the counts, the row, ⋯ with แก้ไข / ดูรุ่น / ดูทรัพย์สิน only.
+  assert.ok(spec.includes(`await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })`))
+  assert.ok(spec.includes("{ label: W.edit, reason: null, available: true }"))
+  assert.ok(spec.includes("await expect(menuItem(rowMenu, W.deactivate)).toHaveCount(0)"))
+  assert.ok(spec.includes("await expect(menuItem(rowMenu, W.setPrefixInSettings)).toHaveCount(0)"))
+  // The form: the locked status, the panel and the footer, the two types, the save and the reopen.
+  assert.ok(spec.includes("await expect(statusBox).toBeDisabled()"))
+  assert.ok(spec.includes(`fieldType: "date"`) && spec.includes(`fieldType: "boolean"`))
+  assert.ok(spec.includes("fillTemplate(W.summaryFieldCount, { count: 3 })"))
+  assert.ok(spec.includes("fillTemplate(W.changeFieldsAdded, { count: 2 })"))
+  assert.ok(spec.includes(`response.request().method() === "PUT"`))
+  assert.ok(spec.includes("await page.goto(editPath, { waitUntil: \"load\" })"))
+  assert.ok(spec.includes(`getByText(W.newBadge, { exact: true })).toHaveCount(0)`))
+  // Never a DELETE, never isActive false, never the settings.
+  assert.doesNotMatch(spec, /method: "DELETE"|\.delete\(|isActive: false/)
+  assert.doesNotMatch(spec, /\/api\/admin|signInOnce\(/)
+  // The phone's table and sheet, axe through recordSettled.
+  assert.ok(spec.includes("if (phone) await expectPhoneTable(page, W.categoriesTitle)"))
+  assert.ok(spec.includes(`page.getByRole("dialog")`))
+  assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 7)
+})

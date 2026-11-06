@@ -155,8 +155,9 @@ test("the setup creates the spec's users with exactly the spec's permissions, ma
   // The IT head also holds the three module exports (decision DX6 (ก), spec §7) and the work center (user decision
   // 2026-10-25), the brands page's view, create and edit (group 7 plan 1 Task 5: the run's role, IT staff without), and the
   // employee pages' view (group 7 plan 2 Task 5), the locations page's view, create and edit (group 7 plan 3 Task 5) and the
-  // companies, branches and departments lists' view with branch:create (group 8 plan 1 Task 5).
-  assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.itHead, [...itStaff, "audit:approve", "disposal:approve", "audit:export", "maintenance:export", "disposal:export", "dashboard:view", "brand:view", "brand:create", "brand:edit", "employee:view", "location:view", "location:create", "location:edit", "company:view", "branch:view", "branch:create", "department:view"])
+  // companies, branches and departments lists' view with branch:create (group 8 plan 1 Task 5) and the categories list's
+  // view and edit (group 8 plan 2 Task 4).
+  assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.itHead, [...itStaff, "audit:approve", "disposal:approve", "audit:export", "maintenance:export", "disposal:export", "dashboard:view", "brand:view", "brand:create", "brand:edit", "employee:view", "location:view", "location:create", "location:edit", "company:view", "branch:view", "branch:create", "department:view", "category:view", "category:edit"])
   assert.ok(!plan.E2E_ROLE_PERMISSIONS.itStaff.some((permission) => permission.startsWith("brand:")), "IT staff hold no brand permission")
   assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.viewer, ["asset:view", "audit:view", "maintenance:view", "disposal:view", "report:view"])
   assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.employee, [])

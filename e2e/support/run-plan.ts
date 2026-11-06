@@ -10,7 +10,7 @@ export type E2eUserKey = "itStaff" | "itHead" | "viewer" | "employee"
 // audit, maintenance and disposal exports (decision DX6 (ก)), the work center (user decision 2026-10-25), the brands
 // page's view, create and edit (group 7 plan 1 Task 5), the employee pages' view (group 7 plan 2 Task 5), the
 // locations page's view, create and edit (group 7 plan 3 Task 5) and the companies, branches and departments lists'
-// view with branch:create (group 8 plan 1 Task 5); the
+// view with branch:create (group 8 plan 1 Task 5) and the categories list's view and edit (group 8 plan 2 Task 4); the
 // viewer: view only, on the modules the IT staff work in; the employee: no permission (lands on My Assets).
 const IT_STAFF_PERMISSIONS = [
   "asset:view", "asset:create", "asset:edit",
@@ -41,6 +41,10 @@ export const E2E_ROLE_PERMISSIONS: Record<E2eUserKey, readonly string[]> = {
     // the spec's company, branch and department. No company:, branch: or department:delete or edit, so ⋯ ปิดใช้งาน is
     // checked absent. IT staff stay without them.
     "company:view", "branch:view", "branch:create", "department:view",
+    // and the categories list with its edit form (group 8 plan 2 Task 4): view, and edit, which the form's page needs to
+    // open (the spec adds two fields to the run's own category). The seed admin creates the spec's category, brand and
+    // model. No category:create or delete, so no เพิ่มหมวดหมู่ and no ⋯ ปิดใช้งาน. IT staff stay without them.
+    "category:view", "category:edit",
   ],
   viewer: ["asset:view", "audit:view", "maintenance:view", "disposal:view", "report:view"],
   employee: [],
