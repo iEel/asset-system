@@ -49,7 +49,13 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // its out-of-scope tail.
   // Group 5 plan 4 Task 4 added 6: the PM form's "+n เดือน" and "+n วัน" steps, the change count "แก้ n ช่อง", the edit
   // footer with that count, the impact title "ใช้งาน n แผน" and a custom rhythm's "ทุก n วัน".
-  assert.equal(pluralKeys.size, 88,[...pluralKeys.keys()].join(", "))
+  // The group 7 follow-ups final review added 3: the employee list's "{n} คน · ถือครองรวม {a} รายการ" (keyed on people;
+  // assets is a plural too), the employee page's open audit round "{n} รายการ" and the location parent row's "ย่อย {n}".
+  assert.equal(pluralKeys.size, 91,[...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("employee.listTotals"), "people")
+  assert.match(en.get("employee.listTotals") ?? "", /\{assets, plural, one \{# asset\} other \{# assets\}\}/)
+  assert.equal(pluralKeys.get("employee.detail.currentAuditMeta"), "count")
+  assert.equal(pluralKeys.get("location.form.parentChildCount"), "count")
   for (const [key, arg] of [["pmFormStepMonths", "n"], ["pmFormStepDays", "n"], ["pmFormChangeCount", "count"], ["pmFormFooterEdit", "count"], ["pmFormImpactTitle", "count"], ["pmFormFrequencyCustomDays", "days"]]) {
     assert.equal(pluralKeys.get(`maintenancePage.${key}`), arg, key)
   }

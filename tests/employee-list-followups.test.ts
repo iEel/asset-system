@@ -100,7 +100,7 @@ test("employees list: the merged name and department columns, every sort kept th
 test("employees list: the totals line over the filtered set, '{n} คน · ถือครองรวม {a} รายการ'", () => {
   const source = read(PAGE)
   assert.match(source, /prisma\.asset\.count\(\{ where: employeeHeldAssetsWhere\(where\) \}\)/)
-  assert.match(source, /t\("listTotals", \{ people: formatCount\(total\), assets: formatCount\(heldTotal\) \}\)/)
+  assert.match(source, /t\("listTotals", \{ people: total, assets: heldTotal \}\)/, "numbers, so English plurals read 1 person (final review fix 4)")
 })
 
 test("employees list: row ⋯ through EmployeeRowActions: held assets link, ปิดใช้งาน with the delete-block reason (G7F-R2)", () => {
@@ -133,7 +133,46 @@ test("employee list messages exist in Thai and English", () => {
       assert.equal(typeof messages.employee.deactivate[key], "string", key)
     }
   }
-  assert.equal(th.employee.listTotals, "{people} คน · ถือครองรวม {assets} รายการ")
+  assert.equal(th.employee.listTotals, "{people, number} คน · ถือครองรวม {assets, number} รายการ")
+  assert.equal(en.employee.listTotals, "{people, plural, one {# person} other {# people}} · {assets, plural, one {# asset} other {# assets}} held")
   assert.equal(th.employee.viewHeldAssets, "ดูทรัพย์สินที่ถือครอง ({n})")
   assert.equal(th.employee.deactivate.action, "ปิดใช้งาน")
+})
+
+// Final whole-branch review fixes (group 7 follow-ups). Sources are read with LF endings.
+test("employees list: while LDAP sync owns ใช้งาน, ปิดใช้งาน is the unavailable item with the AD hint (final review fix 1)", () => {
+  const source = read(PAGE)
+  assert.match(source, /import \{ isLdapSyncEnabled \} from "@\/lib\/ldap-sync-enabled"/)
+  assert.match(source, /const activeLockedBySync = canDeactivate \? await isLdapSyncEnabled\(\) : false/)
+  assert.match(source, /blocked: activeLockedBySync\n\s+\? t\("activeLockedBySyncHint"\)\n\s+: getEmployeeDeleteBlockReason\(\{/)
+})
+
+test("employees list: ดูทรัพย์สินที่ถือครอง only with asset:view (final review fix 2)", () => {
+  const source = read(PAGE)
+  assert.match(source, /const canViewAssets = hasPermission\(user, "asset", "view"\)/)
+  assert.match(source, /heldAssets:\n\s+canViewAssets && employee\._count\.custodianAssets > 0\n\s+\? \{ label: t\("viewHeldAssets"/)
+})
+
+test("employees list: the sort select has a direction select beside it, the header links keep theirs (final review fix 3)", () => {
+  const source = read(PAGE)
+  assert.doesNotMatch(source, /<input type="hidden" name="direction"/, "the direction is a visible choice now")
+  assert.match(source, /<FilterSelect label=\{t\("sortDirection"\)\} name="direction" defaultValue=\{listState\.direction\}>\n\s+<option value="asc">\{t\("sortAsc"\)\}<\/option>\n\s+<option value="desc">\{t\("sortDesc"\)\}<\/option>/)
+  assert.match(source, /direction: listState\.sort === field && listState\.direction === "asc" \? "desc" : "asc"/, "a header click still flips")
+  const th = JSON.parse(read("messages/th.json"))
+  const en = JSON.parse(read("messages/en.json"))
+  for (const messages of [th, en]) for (const key of ["sortDirection", "sortAsc", "sortDesc"]) assert.equal(typeof messages.employee[key], "string", key)
+})
+
+test("the employee ⋯ ปิดใช้งาน calls DELETE /api/employees/${id} (final review fix 5)", () => {
+  const source = read(PAGE)
+  assert.ok(source.includes("endpoint: `/api/employees/${employee.id}`,"), "the row's endpoint")
+  assert.match(read(ROW_ACTIONS), /fetch\(deactivate\.endpoint, \{ method: "DELETE" \}\)/)
+})
+
+test("English counts on this branch use plurals (final review fix 4)", () => {
+  const th = JSON.parse(read("messages/th.json"))
+  const en = JSON.parse(read("messages/en.json"))
+  assert.equal(en.employee.detail.currentAuditMeta, "{count, plural, one {# item} other {# items}} · ends {date}")
+  assert.equal(th.employee.detail.currentAuditMeta, "{count, number} รายการ · สิ้นสุด {date}")
+  assert.match(read("src/app/[locale]/(dashboard)/master-data/employees/[id]/page.tsx"), /tDetail\("currentAuditMeta", \{ count: audit\.total, date: formatDate\(audit\.endDate\) \}\)/)
 })

@@ -21,7 +21,7 @@ export const EMPLOYEE_WORDS = {
   // record-status segmented control (G7F-R1, common.recordStatus) and the status column under ทั้งหมด, the totals line,
   // the sort select, and row ⋯ with ดูทรัพย์สินที่ถือครอง and ปิดใช้งาน (G7F-R2: hidden without employee:delete).
   recordStatusLabel: "สถานะข้อมูล", recordActive: "ใช้งาน", recordInactive: "ไม่ใช้งาน", recordAll: "ทั้งหมด", statusColumn: "สถานะ",
-  listTotals: "{people} คน · ถือครองรวม {assets} รายการ", sortLabel: "เรียงตาม", moreActionsFor: "การดำเนินการของ {code}",
+  listTotals: "{people, number} คน · ถือครองรวม {assets, number} รายการ", sortLabel: "เรียงตาม", moreActionsFor: "การดำเนินการของ {code}",
   viewHeldAssets: "ดูทรัพย์สินที่ถือครอง ({n})", deactivate: "ปิดใช้งาน",
   // The employee page (Task 3, G7F-R4): the held stat's foot, ตรวจนับรอบปัจจุบัน, a held row's open repair and its ⋯ with
   // โอนย้าย (unavailable with the transfer form's reason while a handover is open) and พิมพ์ใบส่งมอบ.

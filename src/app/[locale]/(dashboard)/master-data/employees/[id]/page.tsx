@@ -424,7 +424,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-foreground"><span className="tag">{audit.auditNo}</span> {audit.name}</div>
                         <div className="mt-1 text-meta text-muted-foreground">
-                          {tDetail("currentAuditMeta", { count: formatCount(audit.total), date: formatDate(audit.endDate) })}
+                          {tDetail("currentAuditMeta", { count: audit.total, date: formatDate(audit.endDate) })}
                         </div>
                       </div>
                       <ClipboardCheck aria-hidden="true" className="size-4 shrink-0 text-faint-foreground" />

@@ -1868,7 +1868,7 @@
       "currentAuditTitle": "ตรวจนับรอบปัจจุบัน",
       "currentAuditHelp": "ทรัพย์สินที่คนนี้ถือครองอยู่ในรอบตรวจนับที่ยังเปิดอยู่",
       "currentAuditEmpty": "ไม่มีทรัพย์สินที่ถือครองอยู่ในรอบตรวจนับที่เปิดอยู่",
-      "currentAuditMeta": "{count} รายการ · สิ้นสุด {date}",
+      "currentAuditMeta": "{count, number} รายการ · สิ้นสุด {date}",
       "currentAuditBreakdown": "พบตรง {found} · ไม่ตรง {mismatch} · ไม่พบ {notFound} · รอตรวจ {pending}",
       "openRepair": "งานซ่อม {repairNo}",
       "transfer": "โอนย้าย",
@@ -1881,7 +1881,7 @@
     "clearFilter": "ล้างตัวกรองนี้",
     "filtersTitle": "ค้นหาและตัวกรอง",
     "heldCount": "ถือครอง {count} รายการ",
-    "listTotals": "{people} คน · ถือครองรวม {assets} รายการ",
+    "listTotals": "{people, number} คน · ถือครองรวม {assets, number} รายการ",
     "viewHeldAssets": "ดูทรัพย์สินที่ถือครอง ({n})",
     "departmentBranch": "แผนก · สาขา",
     "sortLabel": "เรียงตาม",
@@ -1891,7 +1891,10 @@
       "confirmTitle": "ปิดใช้งาน {name}?",
       "confirmBody": "พนักงานนี้จะไม่แสดงในรายการเลือกผู้ถือครองของหน้าอื่น เช่น ส่งมอบ และโอนย้าย ประวัติเดิมยังอยู่ หาเจอได้จาก \"ไม่ใช้งาน\" และเปิดใช้งานอีกครั้งได้จากหน้าแก้ไข",
       "success": "ปิดใช้งานแล้ว"
-    }
+    },
+    "sortDirection": "ลำดับ",
+    "sortAsc": "น้อยไปมาก (ก → ฮ)",
+    "sortDesc": "มากไปน้อย (ฮ → ก)"
   },
   "location": {
     "title": "ที่ตั้ง",
@@ -1978,7 +1981,7 @@
       "footerCreateRoot": "เพิ่ม <b>{name}</b> เป็นระดับบนสุดของ {branch}",
       "footerEdit": "บันทึก <b>{name}</b> ใต้ {parent}",
       "footerEditRoot": "บันทึก <b>{name}</b> เป็นระดับบนสุดของ {branch}",
-      "parentChildCount": "ย่อย {count}"
+      "parentChildCount": "ย่อย {count, number}"
     },
     "view": {
       "label": "มุมมอง",

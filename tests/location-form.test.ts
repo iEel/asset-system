@@ -139,8 +139,8 @@ test("the parent picker's rich rows: name · code, path line, type chip, active 
   assert.match(source, /aside: t\("form\.parentChildCount", \{ count: option\.activeChildCount \}\),/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8")).location.form as Record<string, string>
   const en = JSON.parse(readFileSync("messages/en.json", "utf8")).location.form as Record<string, string>
-  assert.equal(th.parentChildCount, "ย่อย {count}")
-  assert.equal(en.parentChildCount, "{count} children")
+  assert.equal(th.parentChildCount, "ย่อย {count, number}")
+  assert.equal(en.parentChildCount, "{count, plural, one {# child} other {# children}}", "English reads 1 child (final review fix 4)")
 })
 
 test("the form's new copy is in th and en", () => {

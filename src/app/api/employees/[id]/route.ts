@@ -141,6 +141,12 @@ export async function DELETE(_request: NextRequest, context: EmployeeRouteContex
       return NextResponse.json({ error: "Employee not found" }, { status: 404 })
     }
 
+    // While LDAP sync is on, the sync owns "ใช้งาน" (Y4): ปิดใช้งาน is refused with the PUT's reason, and the list shows
+    // the item unavailable with the same words (final review fix 1).
+    if (await isLdapSyncEnabled()) {
+      return NextResponse.json({ error: "Employee active status comes from AD while LDAP sync is on" }, { status: 409 })
+    }
+
     const [userAccounts, openCheckouts] = await Promise.all([
       prisma.user.count({ where: { employeeId: id, isActive: true } }),
       prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false, transactionStatus: "active" } }),

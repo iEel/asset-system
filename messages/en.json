@@ -1868,7 +1868,7 @@
       "currentAuditTitle": "Current audit rounds",
       "currentAuditHelp": "Assets this person holds in audit rounds still open",
       "currentAuditEmpty": "No held asset is in an open audit round",
-      "currentAuditMeta": "{count} items · ends {date}",
+      "currentAuditMeta": "{count, plural, one {# item} other {# items}} · ends {date}",
       "currentAuditBreakdown": "Found {found} · mismatch {mismatch} · not found {notFound} · pending {pending}",
       "openRepair": "Repair {repairNo}",
       "transfer": "Transfer",
@@ -1881,7 +1881,7 @@
     "clearFilter": "Clear this filter",
     "filtersTitle": "Search and filters",
     "heldCount": "Holds {count}",
-    "listTotals": "{people} people · {assets} assets held",
+    "listTotals": "{people, plural, one {# person} other {# people}} · {assets, plural, one {# asset} other {# assets}} held",
     "viewHeldAssets": "View held assets ({n})",
     "departmentBranch": "Department · Branch",
     "sortLabel": "Sort by",
@@ -1891,7 +1891,10 @@
       "confirmTitle": "Deactivate {name}?",
       "confirmBody": "This employee will no longer be offered as a holder on other pages such as handover and transfer. Their history stays, they can be found under \"Inactive\", and they can be reactivated from the edit page",
       "success": "Deactivated"
-    }
+    },
+    "sortDirection": "Order",
+    "sortAsc": "Ascending (A → Z)",
+    "sortDesc": "Descending (Z → A)"
   },
   "location": {
     "title": "Locations",
@@ -1978,7 +1981,7 @@
       "footerCreateRoot": "Add <b>{name}</b> at the top level of {branch}",
       "footerEdit": "Save <b>{name}</b> under {parent}",
       "footerEditRoot": "Save <b>{name}</b> at the top level of {branch}",
-      "parentChildCount": "{count} children"
+      "parentChildCount": "{count, plural, one {# child} other {# children}}"
     },
     "view": {
       "label": "View",

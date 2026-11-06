@@ -139,3 +139,29 @@ test("the employee PUT refuses a change to ใช้งาน while LDAP sync is
   const route = read("src/app/api/employees/[id]/route.ts")
   assert.ok(route.indexOf("isLdapSyncEnabled()") < route.indexOf("isDeactivation(existing.isActive"), "the sync check runs before the deactivation guard")
 })
+
+type Remove = { DELETE(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> }
+test("the employee DELETE (ปิดใช้งาน) refuses with 409 while LDAP sync is on, the PUT's reason; sync off deactivates as today", async () => {
+  const { DELETE } = await load<Remove>("src/app/api/employees/[id]/route.ts")
+  const run = async (sync: boolean) => {
+    const updates: unknown[] = []
+    stubDb({
+      employee: {
+        findFirst: () => ({ id: "emp-1", isActive: true, _count: { custodianAssets: 0, subordinates: 0, auditRounds: 0 } }),
+        update: (args: unknown) => { updates.push(args); return { id: "emp-1", isActive: false } },
+      },
+      user: { count: () => 0 },
+      assetCheckout: { count: () => 0 },
+      systemSetting: { findUnique: () => ({ value: sync ? "true" : "false" }) },
+    })
+    const response = await DELETE(new Request("http://asset.local/api", { method: "DELETE" }), params("emp-1"))
+    return { response, updates }
+  }
+  const on = await run(true)
+  assert.equal(on.response.status, 409)
+  assert.deepEqual(await on.response.json(), { error: "Employee active status comes from AD while LDAP sync is on" })
+  assert.equal(on.updates.length, 0, "deactivated despite the sync")
+  const off = await run(false)
+  assert.equal(off.response.status, 200)
+  assert.equal(off.updates.length, 1)
+})

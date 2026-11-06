@@ -5,6 +5,7 @@ import { Pencil, Plus, SlidersHorizontal } from "lucide-react"
 import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { isLdapSyncEnabled } from "@/lib/ldap-sync-enabled"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
@@ -58,6 +59,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const user = await requirePagePermission(locale, "employee", "view")
   // G7F-R2: "ปิดใช้งาน" in ⋯ needs employee:delete (DELETE /api/employees/[id] only deactivates).
   const canDeactivate = hasPermission(user, "employee", "delete")
+  // While LDAP sync is on, the sync owns "ใช้งาน" (Y4): ปิดใช้งาน shows unavailable with the edit form's hint, and the
+  // DELETE route refuses it too (final review fix 1).
+  const activeLockedBySync = canDeactivate ? await isLdapSyncEnabled() : false
+  // The held-assets link opens the asset register, so it needs asset:view (final review fix 2).
+  const canViewAssets = hasPermission(user, "asset", "view")
 
   const t = await getTranslations("employee")
   const tCommon = await getTranslations("common")
@@ -171,20 +177,22 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       formerHolder,
       // Row ⋯ (board MD-Employees): the held assets in the register, and ปิดใช้งาน for an active employee.
       heldAssets:
-        employee._count.custodianAssets > 0
+        canViewAssets && employee._count.custodianAssets > 0
           ? { label: t("viewHeldAssets", { n: formatCount(employee._count.custodianAssets) }), href: assetsHref }
           : null,
       deactivate:
         canDeactivate && employee.isActive
           ? {
               endpoint: `/api/employees/${employee.id}`,
-              blocked: getEmployeeDeleteBlockReason({
-                custodianAssets: employee._count.custodianAssets,
-                subordinates: employee._count.subordinates,
-                userAccounts: extraCounts?.userAccounts ?? 0,
-                openCheckouts: extraCounts?.openCheckouts ?? 0,
-                auditRounds: employee._count.auditRounds,
-              }),
+              blocked: activeLockedBySync
+                ? t("activeLockedBySyncHint")
+                : getEmployeeDeleteBlockReason({
+                    custodianAssets: employee._count.custodianAssets,
+                    subordinates: employee._count.subordinates,
+                    userAccounts: extraCounts?.userAccounts ?? 0,
+                    openCheckouts: extraCounts?.openCheckouts ?? 0,
+                    auditRounds: employee._count.auditRounds,
+                  }),
             }
           : null,
       assetsHref,
@@ -220,7 +228,6 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
     <form role="search" action={basePath} className={className}>
       <input type="hidden" name="page" value="1" />
       <input type="hidden" name="pageSize" value={listState.pageSize} />
-      <input type="hidden" name="direction" value={listState.direction} />
       {formerList ? <input type="hidden" name="former" value="withAssets" /> : null}
       {/* The record status is the segmented control above the list (G7F-R1); a search keeps it. */}
       {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
@@ -270,6 +277,12 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             {sortLabel(sort)}
           </option>
         ))}
+      </FilterSelect>
+      {/* The direction beside the sort, so phones (no header links) can choose it too; a header click still flips it
+          (final review fix 3). */}
+      <FilterSelect label={t("sortDirection")} name="direction" defaultValue={listState.direction}>
+        <option value="asc">{t("sortAsc")}</option>
+        <option value="desc">{t("sortDesc")}</option>
       </FilterSelect>
       <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
     </form>
@@ -341,7 +354,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         {filterForm("grid gap-3 border-t border-border p-4")}
       </details>
 
-      {/* Search, six selects and the buttons do not fit one row at 1440 or 1024: the row wraps (the brands page's fix). */}
+      {/* Search, seven selects and the buttons do not fit one row at 1440 or 1024: the row wraps (the brands page's fix). */}
       <FilterPanel className="hidden md:block">
         {filterForm("grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3")}
       </FilterPanel>
@@ -363,7 +376,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
           />
         )}
         <p className="num text-meta text-muted-foreground md:ml-auto">
-          {t("listTotals", { people: formatCount(total), assets: formatCount(heldTotal) })}
+          {t("listTotals", { people: total, assets: heldTotal })}
         </p>
       </div>
 
