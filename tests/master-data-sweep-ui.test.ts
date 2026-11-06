@@ -70,8 +70,9 @@ test("employees list: the filter row wraps and the held-count column follows the
   const source = read(`${D}master-data/employees/page.tsx`)
   assert.match(source, /\{filterForm\("grid grid-cols-\[repeat\(auto-fit,minmax\(min\(100%,11rem\),1fr\)\)\] gap-3"\)\}/)
   assert.doesNotMatch(source, /repeat\(6,minmax\(150px,1fr\)\)/)
-  assert.match(source, /<DataTableHead sort=\{sortBy\("fullNameTh"\)\}>\{t\("fullNameTh"\)\}<\/DataTableHead>\n(?:\s+\{\/\*[^\n]*\*\/\}\n)?\s+<DataTableHead align="right" sort=\{sortBy\("assets"\)\}>\{t\("assets"\)\}<\/DataTableHead>\n\s+<DataTableHead sort=\{sortBy\("company"\)\}>/)
-  const rowCells = source.slice(source.indexOf("{employee.fullNameTh}</div>"), source.indexOf("{employee.company.code}</span> - {employee.company.nameTh}"))
+  // Group 7 follow-ups Task 2: the department column (board MD-Employees' merged แผนก · สาขา) follows the count.
+  assert.match(source, /<DataTableHead sort=\{sortBy\("fullNameTh"\)\}>\{t\("fullNameTh"\)\}<\/DataTableHead>\n(?:\s+\{\/\*[^\n]*\*\/\}\n)?\s+<DataTableHead align="right" sort=\{sortBy\("assets"\)\}>\{t\("assets"\)\}<\/DataTableHead>\n\s+<DataTableHead sort=\{sortBy\("department"\)\}>/)
+  const rowCells = source.slice(source.indexOf("{employee.fullNameTh}</div>"), source.indexOf("<div>{employee.department.name}</div>"))
   assert.match(rowCells, /<DataTableCell numeric className="text-muted-foreground">\n\s+\{employee\._count\.custodianAssets > 0 \? \(\n\s+<Link\n\s+href=\{assetsHref\}/, "the count cell, with its link, between the name and the company")
 })
 
@@ -95,7 +96,7 @@ test("employees list: phone cards below md and the table from md up, the filters
   assert.match(cards, /\{formerHolder \? <span className="text-meta text-warning">\{t\("formerHolderNote"\)\}<\/span> : null\}/)
   assert.match(cards, /"num relative z-10 inline-flex min-h-11 items-center text-sm font-medium", formerHolder && "font-semibold text-warning"/, "the held count sits above the card link")
   assert.match(cards, /t\("heldCount", \{ count: formatCount\(employee\._count\.custodianAssets\) \}\)/)
-  assert.match(cards, /<RowActions\n\s+className="relative z-10"/)
+  assert.match(cards, /<EmployeeRowActions\n\s+className="relative z-10"/)
   assert.match(cards, /formerHolder \? "border-warning-border" : "border-border"/)
   assert.match(source, /\{pagination \? <DataTableFoot>\{pagination\}<\/DataTableFoot> : null\}/, "one pagination under both layouts")
 })

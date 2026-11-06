@@ -84,6 +84,11 @@ test("inactive master data is reachable: a status filter, the real badge, inacti
       // Group 7 plan 3 Task 3: LocationDeactivateButton offers "ปิดใช้งาน" (and "เพิ่มที่ตั้งในนี้") on active rows only.
       assert.match(source, /isActive=\{location\.isActive\}/, `${page}: ปิดใช้งาน follows isActive`)
       assert.match(read("src/components/master-data/location-deactivate-button.tsx"), /const items: RowActionItem\[\] = isActive\n\s+\? \[/)
+    } else if (page === "employees") {
+      // Group 7 follow-ups Task 2 (G7F-R2): EmployeeRowActions offers "ปิดใช้งาน" on active rows only, and only with
+      // employee:delete; the status filter is RecordStatusSegmented (G7F-R1), kept in the form by a hidden input.
+      assert.match(source, /deactivate:\n\s+canDeactivate && employee\.isActive\n\s+\? \{/, `${page}: ปิดใช้งาน follows isActive`)
+      assert.match(source, /<RecordStatusSegmented\n/, `${page}: no status filter`)
     } else {
       assert.match(source, /deleteAction=\{\w+\.isActive \? \{ endpoint: `\/api\/[\w/]+\$\{\w+\.id\}` \} : undefined\}/, `${page}: ลบ shows on inactive rows`)
     }

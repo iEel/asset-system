@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { Pencil, Plus, SlidersHorizontal } from "lucide-react"
+import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
@@ -12,13 +13,14 @@ import { Field } from "@/components/ui/field"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
-import { Nil, orNil } from "@/components/ui/nil"
+import { Nil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions } from "@/components/ui/row-actions"
+import { RecordStatusSegmented } from "@/components/ui/record-status-segmented"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { EmployeeRowActions } from "@/components/master-data/employee-row-actions"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
@@ -32,9 +34,14 @@ import {
   buildEmployeeQueryString,
   buildEmployeeSummary,
   buildEmployeeWhere,
+  employeeHeldAssetsWhere,
   employeeListHasFieldFilters,
+  employeeRecordStatusCountWheres,
+  employeeSorts,
   employeeSummaryWheres,
+  getEmployeeDeleteBlockReason,
   parseEmployeeListParams,
+  readEmployeeDeactivateCounts,
   type EmployeeListParams,
   type EmployeeListState,
   type EmployeeSort,
@@ -48,7 +55,9 @@ type EmployeesPageProps = {
 export default async function EmployeesPage({ params, searchParams }: EmployeesPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "employee", "view")
+  const user = await requirePagePermission(locale, "employee", "view")
+  // G7F-R2: "ปิดใช้งาน" in ⋯ needs employee:delete (DELETE /api/employees/[id] only deactivates).
+  const canDeactivate = hasPermission(user, "employee", "delete")
 
   const t = await getTranslations("employee")
   const tCommon = await getTranslations("common")
@@ -56,8 +65,9 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const where = buildEmployeeWhere(listState)
 
   const summaryWheres = employeeSummaryWheres()
+  const statusCountWheres = employeeRecordStatusCountWheres(listState)
 
-  const [employees, total, summaryTotal, summaryWithAssets, summaryFormerWithAssets, summaryStatusCounts, companies, branches, departments] = await Promise.all([
+  const [employees, total, heldTotal, activeCount, inactiveCount, summaryTotal, summaryWithAssets, summaryFormerWithAssets, summaryStatusCounts, companies, branches, departments] = await Promise.all([
     prisma.employee.findMany({
       where,
       include: {
@@ -65,9 +75,12 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         branch: { select: { id: true, code: true, name: true, companyId: true } },
         department: { select: { id: true, code: true, name: true, companyId: true } },
         manager: { select: { code: true, fullNameTh: true } },
+        // subordinates and auditRounds with the DELETE route's wheres, for the ปิดใช้งาน reason (G7F-R2).
         _count: {
           select: {
             custodianAssets: { where: { isActive: true } },
+            subordinates: { where: { isActive: true } },
+            auditRounds: { where: { isActive: true } },
           },
         },
       },
@@ -76,6 +89,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       take: listState.pageSize,
     }),
     prisma.employee.count({ where }),
+    // "{n} คน · ถือครองรวม {a} รายการ" over the filtered set (board MD-Employees).
+    prisma.asset.count({ where: employeeHeldAssetsWhere(where) }),
+    // The record-status segmented control's counts, the list's other filters kept (G7F-R1).
+    prisma.employee.count({ where: statusCountWheres.active }),
+    prisma.employee.count({ where: statusCountWheres.inactive }),
     // The cards are counts, not rows. The former card counts with the ?former=withAssets list's where, every record
     // (the ones AD sync deactivated included, G7P2-R1); the others count active records only.
     prisma.employee.count({ where: summaryWheres.records }),
@@ -98,6 +116,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       orderBy: { code: "asc" },
     }),
   ])
+  // The two blockers the rows' _count cannot read, for the active rows only (an inactive one has no ปิดใช้งาน): one
+  // grouped query per kind over the page's ids, chunked by 2,000.
+  const activeIds = canDeactivate ? employees.filter((employee) => employee.isActive).map((employee) => employee.id) : []
+  const deactivateCounts = await readEmployeeDeactivateCounts(prisma, activeIds)
+  const recordStatusCounts = { active: activeCount, inactive: inactiveCount, all: activeCount + inactiveCount }
   const basePath = `/${locale}/master-data/employees`
   const employeeReturnHref = `${basePath}?${buildEmployeeQueryString(listState, {})}`
   const summary = buildEmployeeSummary({
@@ -121,14 +144,16 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const formerList = listState.former === "withAssets"
   // The phone disclosure opens for a set form field only; the former filter is the chip below (final review fix 4).
   const hasFieldFilters = employeeListHasFieldFilters(listState)
-  const hasActiveFilters = formerList || hasFieldFilters
-  // The board hides the record-status column while the list shows active records only; ?former=withAssets shows both.
-  const showRecordStatus = formerList || listState.status !== "active"
-  const columnCount = showRecordStatus ? 10 : 9
+  // The record status is the segmented control above the list now, not a form field; the clear link still resets it.
+  const hasActiveFilters = formerList || hasFieldFilters || listState.status !== "active"
+  // G7F-R1: the record-status column shows only under ทั้งหมด; ?former=withAssets shows both kinds, so it keeps it.
+  const showRecordStatus = formerList || listState.status === "all"
+  const columnCount = showRecordStatus ? 7 : 6
   const sortBy = (field: EmployeeSort): DataTableSort => ({
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
   })
+  const sortLabel = (sort: EmployeeSort) => (sort === "createdAt" ? t("sortCreatedAt") : t(sort))
   const filteredBranches = listState.companyId
     ? branches.filter((branch) => branch.companyId === listState.companyId)
     : branches
@@ -139,10 +164,30 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const rows = employees.map((employee) => {
     // G7P2-R1, spec §5.1: a former employee (or an AD-deactivated record) still holding assets.
     const formerHolder = isFormerEmployee(employee) && employee._count.custodianAssets > 0
+    const assetsHref = buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id }).assets
+    const extraCounts = deactivateCounts.get(employee.id)
     return {
       employee,
       formerHolder,
-      assetsHref: buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id }).assets,
+      // Row ⋯ (board MD-Employees): the held assets in the register, and ปิดใช้งาน for an active employee.
+      heldAssets:
+        employee._count.custodianAssets > 0
+          ? { label: t("viewHeldAssets", { n: formatCount(employee._count.custodianAssets) }), href: assetsHref }
+          : null,
+      deactivate:
+        canDeactivate && employee.isActive
+          ? {
+              endpoint: `/api/employees/${employee.id}`,
+              blocked: getEmployeeDeleteBlockReason({
+                custodianAssets: employee._count.custodianAssets,
+                subordinates: employee._count.subordinates,
+                userAccounts: extraCounts?.userAccounts ?? 0,
+                openCheckouts: extraCounts?.openCheckouts ?? 0,
+                auditRounds: employee._count.auditRounds,
+              }),
+            }
+          : null,
+      assetsHref,
       detailHref: appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref),
       editHref: appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref),
     }
@@ -175,9 +220,10 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
     <form role="search" action={basePath} className={className}>
       <input type="hidden" name="page" value="1" />
       <input type="hidden" name="pageSize" value={listState.pageSize} />
-      <input type="hidden" name="sort" value={listState.sort} />
       <input type="hidden" name="direction" value={listState.direction} />
       {formerList ? <input type="hidden" name="former" value="withAssets" /> : null}
+      {/* The record status is the segmented control above the list (G7F-R1); a search keeps it. */}
+      {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
       <Field label={tCommon("search")}>
         <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
       </Field>
@@ -216,18 +262,15 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         <option value="withAssets">{t("withAssets")}</option>
         <option value="withoutAssets">{t("withoutAssets")}</option>
       </FilterSelect>
-      <FilterSelect
-        label={tCommon("status")}
-        name="status"
-        defaultValue={listState.status}
-        // ?former=withAssets ignores the record status (G7P2-R1); the chip below says so.
-        disabled={formerList}
-        options={[
-          { value: "active", label: tCommon("active") },
-          { value: "inactive", label: tCommon("inactive") },
-          { value: "all", label: tCommon("all") },
-        ]}
-      />
+      {/* The merged name and department columns sort by name and department; the code, company and branch sorts
+          (and every other) stay here, on phones too. */}
+      <FilterSelect label={t("sortLabel")} name="sort" defaultValue={listState.sort}>
+        {employeeSorts.map((sort) => (
+          <option key={sort} value={sort}>
+            {sortLabel(sort)}
+          </option>
+        ))}
+      </FilterSelect>
       <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
     </form>
   )
@@ -303,25 +346,37 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         {filterForm("grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3")}
       </FilterPanel>
 
-      {formerList ? (
-        <FilterChipList
-          chips={[{ key: "former", label: t("formerFilterChip"), href: listHref({ former: "all", page: 1 }) }]}
-          label={t("activeFilters")}
-          removeLabel={t("clearFilter")}
-        />
-      ) : null}
+      {/* G7F-R1: ใช้งาน / ไม่ใช้งาน / ทั้งหมด with counts, in place of the status select. ?former=withAssets ignores the
+          record status (G7P2-R1), so its chip stands there instead. Then the people and held totals of the filtered set. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {formerList ? (
+          <FilterChipList
+            chips={[{ key: "former", label: t("formerFilterChip"), href: listHref({ former: "all", page: 1 }) }]}
+            label={t("activeFilters")}
+            removeLabel={t("clearFilter")}
+          />
+        ) : (
+          <RecordStatusSegmented
+            value={listState.status}
+            counts={recordStatusCounts}
+            hrefFor={(status) => listHref({ status, page: 1 })}
+          />
+        )}
+        <p className="num text-meta text-muted-foreground md:ml-auto">
+          {t("listTotals", { people: formatCount(total), assets: formatCount(heldTotal) })}
+        </p>
+      </div>
 
       <div className={cn(getPanelClasses(), "overflow-hidden")}>
         <DataTable data-employee-desktop-table framed={false} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
           <DataTableHeader>
             <tr>
-              <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
+              {/* Board MD-Employees: the name with the code and position under it, and the department with the branch
+                  and company under it. Their other sorts are in the filter form's sort select. */}
               <DataTableHead sort={sortBy("fullNameTh")}>{t("fullNameTh")}</DataTableHead>
               {/* The held count right after the name: the key column of the former-holder view (final review fix 3b). */}
               <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
-              <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
-              <DataTableHead sort={sortBy("branch")}>{t("branch")}</DataTableHead>
-              <DataTableHead sort={sortBy("department")}>{t("department")}</DataTableHead>
+              <DataTableHead sort={sortBy("department")}>{t("departmentBranch")}</DataTableHead>
               <DataTableHead>{t("manager")}</DataTableHead>
               <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
               {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
@@ -336,20 +391,19 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                 <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
               )
             ) : (
-              rows.map(({ employee, formerHolder, assetsHref, detailHref, editHref }) => (
+              rows.map(({ employee, formerHolder, assetsHref, detailHref, editHref, heldAssets, deactivate }) => (
                 <ClickableTableRow
                   key={employee.id}
                   href={detailHref}
                   label={`${tCommon("view")}: ${employee.code}`}
                 >
-                  <DataTableCell className="whitespace-nowrap">
-                    <span className="tag font-medium text-foreground">{employee.code}</span>
-                  </DataTableCell>
                   <DataTableCell className="min-w-56 text-foreground">
-                    <div className="font-medium">{employee.fullNameTh}</div>
+                    <div className="font-semibold">{employee.fullNameTh}</div>
                     <div className="text-xs text-muted-foreground">
-                      {orNil([employee.position, employee.email].filter(Boolean).join(" / "))}
+                      <span className="tag">{employee.code}</span>
+                      {employee.position ? ` · ${employee.position}` : null}
                     </div>
+                    {employee.email ? <div className="text-xs text-muted-foreground">{employee.email}</div> : null}
                   </DataTableCell>
                   <DataTableCell numeric className="text-muted-foreground">
                     {employee._count.custodianAssets > 0 ? (
@@ -363,14 +417,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       formatCount(0)
                     )}
                   </DataTableCell>
-                  <DataTableCell className="min-w-56 text-muted-foreground">
-                    <span className="tag">{employee.company.code}</span> - {employee.company.nameTh}
-                  </DataTableCell>
-                  <DataTableCell className="min-w-44 text-muted-foreground">
-                    <span className="tag">{employee.branch.code}</span> - {employee.branch.name}
-                  </DataTableCell>
-                  <DataTableCell className="min-w-44 text-muted-foreground">
-                    <span className="tag">{employee.department.code}</span> - {employee.department.name}
+                  <DataTableCell className="min-w-56 text-foreground">
+                    <div>{employee.department.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {employee.branch.name} · {employee.company.nameTh}
+                    </div>
                   </DataTableCell>
                   <DataTableCell className="min-w-44 text-muted-foreground">
                     {employee.manager ? (
@@ -391,13 +442,13 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                     </DataTableCell>
                   ) : null}
                   <DataTableCell align="right" sticky="right">
-                    <RowActions
+                    <EmployeeRowActions
                       code={employee.code}
                       name={employee.fullNameTh}
                       menuLabel={tCommon("moreActionsFor", { code: employee.code })}
                       next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
-                      groups={[]}
-                      deleteAction={employee.isActive ? { endpoint: `/api/employees/${employee.id}` } : undefined}
+                      heldAssets={heldAssets}
+                      deactivate={deactivate}
                     />
                   </DataTableCell>
                 </ClickableTableRow>
@@ -418,7 +469,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             />
           ) : (
             <div className="grid gap-3 p-3">
-              {rows.map(({ employee, formerHolder, assetsHref, detailHref, editHref }) => (
+              {rows.map(({ employee, formerHolder, assetsHref, detailHref, editHref, heldAssets, deactivate }) => (
                 <article
                   key={employee.id}
                   className={cn("relative min-w-0 rounded-md border bg-background p-3", formerHolder ? "border-warning-border" : "border-border")}
@@ -455,14 +506,14 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       ) : (
                         <span className="inline-flex min-h-11 items-center text-sm text-muted-foreground">{t("withoutAssets")}</span>
                       )}
-                      <RowActions
+                      <EmployeeRowActions
                         className="relative z-10"
                         code={employee.code}
                         name={employee.fullNameTh}
                         menuLabel={tCommon("moreActionsFor", { code: employee.code })}
                         next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
-                        groups={[]}
-                        deleteAction={employee.isActive ? { endpoint: `/api/employees/${employee.id}` } : undefined}
+                        heldAssets={heldAssets}
+                        deactivate={deactivate}
                       />
                     </span>
                   </div>

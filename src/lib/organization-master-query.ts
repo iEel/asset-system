@@ -212,8 +212,8 @@ export function parseEmployeeListParams(input: EmployeeListParams): EmployeeList
  * former-holder card's ?former=withAssets is not one; it shows as a chip above the list (final review fix 4).
  */
 export function employeeListHasFieldFilters(state: EmployeeListState): boolean {
+  // The record status is not one either: since group 7 follow-ups Task 2 it is the segmented control above the list.
   return (
-    state.status !== "active" ||
     Boolean(state.search || state.companyId || state.branchId || state.departmentId) ||
     state.employmentStatus !== "all" ||
     state.custodyUsage !== "all"
@@ -325,6 +325,75 @@ export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhe
     ...(state.custodyUsage === "withoutAssets" ? { custodianAssets: { none: { isActive: true } } } : {}),
     ...(former ? formerEmployeeWithAssetsWhere() : {}),
   }
+}
+
+// G7F-R1: the counts on the employee list's record-status segmented control. Each is the list's own where (every other
+// filter kept) with that record status; ทั้งหมด is their sum, as isActive is never null.
+export function employeeRecordStatusCountWheres(state: EmployeeListState) {
+  return {
+    active: buildEmployeeWhere({ ...state, status: "active" }),
+    inactive: buildEmployeeWhere({ ...state, status: "inactive" }),
+  } satisfies Record<string, Prisma.EmployeeWhereInput>
+}
+
+// "{n} คน · ถือครองรวม {a} รายการ" (board MD-Employees): the active assets held by the people the list finds, over the
+// whole filtered set, not the page.
+export function employeeHeldAssetsWhere(where: Prisma.EmployeeWhereInput): Prisma.AssetWhereInput {
+  return { isActive: true, custodian: { is: where } }
+}
+
+export const employeeListIdChunkSize = 2000
+
+export type EmployeeDeactivateCounts = { userAccounts: number; openCheckouts: number }
+
+// What the page needs to read the two blockers the employee rows' _count cannot: the DELETE route's user and open
+// handover counts. Structural, so the tests pass a fake.
+export type EmployeeDeactivateCountReader = {
+  user: { groupBy(args: object): Promise<unknown[]> }
+  assetCheckout: { groupBy(args: object): Promise<unknown[]> }
+}
+
+// G7F-R2: the active user accounts and open handovers of the list's rows, with the DELETE route's wheres, so "ปิดใช้งาน"
+// shows the reason the server would give. One grouped query per kind; SQL Server takes at most 2,100 parameters, so the
+// ids go in chunks of 2,000. An id with neither is left out of the map.
+export async function readEmployeeDeactivateCounts(
+  db: EmployeeDeactivateCountReader,
+  ids: readonly string[]
+): Promise<Map<string, EmployeeDeactivateCounts>> {
+  const counts = new Map<string, EmployeeDeactivateCounts>()
+  if (ids.length === 0) return counts
+  const chunks: string[][] = []
+  for (let start = 0; start < ids.length; start += employeeListIdChunkSize) chunks.push(ids.slice(start, start + employeeListIdChunkSize))
+  const [userParts, checkoutParts] = await Promise.all([
+    Promise.all(
+      chunks.map((chunk) =>
+        db.user.groupBy({ by: ["employeeId"], where: { employeeId: { in: chunk }, isActive: true }, _count: { _all: true } })
+      )
+    ),
+    Promise.all(
+      chunks.map((chunk) =>
+        db.assetCheckout.groupBy({
+          by: ["custodianId"],
+          where: { custodianId: { in: chunk }, isReturned: false, transactionStatus: "active" },
+          _count: { _all: true },
+        })
+      )
+    ),
+  ])
+  const entry = (id: string) => {
+    const existing = counts.get(id)
+    if (existing) return existing
+    const created = { userAccounts: 0, openCheckouts: 0 }
+    counts.set(id, created)
+    return created
+  }
+  for (const row of userParts.flat() as { employeeId: string | null; _count: { _all: number } }[]) {
+    if (row.employeeId) entry(row.employeeId).userAccounts += row._count._all
+  }
+  for (const row of checkoutParts.flat() as { custodianId: string | null; _count: { _all: number } }[]) {
+    if (row.custodianId) entry(row.custodianId).openCheckouts += row._count._all
+  }
+  return counts
 }
 
 export function buildSupplierWhere(state: SupplierListState): Prisma.SupplierWhereInput {

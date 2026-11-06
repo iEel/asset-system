@@ -426,13 +426,13 @@ test("the summary cards count with where clauses, the former card with the ?form
 
 // Final review fix 4: the phone filters disclosure is closed on the bare list and on the former-holder card's
 // ?former=withAssets (a chip, not a form field); it opens when a field of the filter form is set (the suppliers rule).
+// Group 7 follow-ups Task 2: the record status left the form for the segmented control, so it no longer counts.
 test("the employee list's phone filters open only when a form field is set, not for ?former=withAssets", () => {
   assert.equal(employeeListHasFieldFilters(parseEmployeeListParams({})), false)
   assert.equal(employeeListHasFieldFilters(parseEmployeeListParams({ former: "withAssets" })), false)
   assert.equal(employeeListHasFieldFilters(parseEmployeeListParams({ sort: "code", direction: "asc", page: "3", pageSize: "50" })), false)
   for (const params of [
     { search: "สมชาย" },
-    { status: "inactive" },
     { companyId: "c-1" },
     { branchId: "b-1" },
     { departmentId: "d-1" },

@@ -1871,7 +1871,18 @@
     "activeFilters": "Active filters",
     "clearFilter": "Clear this filter",
     "filtersTitle": "Search and filters",
-    "heldCount": "Holds {count}"
+    "heldCount": "Holds {count}",
+    "listTotals": "{people} people · {assets} assets held",
+    "viewHeldAssets": "View held assets ({n})",
+    "departmentBranch": "Department · Branch",
+    "sortLabel": "Sort by",
+    "sortCreatedAt": "Date added",
+    "deactivate": {
+      "action": "Deactivate",
+      "confirmTitle": "Deactivate {name}?",
+      "confirmBody": "This employee will no longer be offered as a holder on other pages such as handover and transfer. Their history stays, they can be found under \"Inactive\", and they can be reactivated from the edit page",
+      "success": "Deactivated"
+    }
   },
   "location": {
     "title": "Locations",

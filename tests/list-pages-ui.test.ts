@@ -29,7 +29,8 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: ["/api/categories/${category.id}"], removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },
   { path: `${D}master-data/companies/page.tsx`, deleteEndpoints: ["/api/companies/${company.id}"], removedWrappers: [`${C}master-data/company-delete-button.tsx`], stats: true },
   { path: `${D}master-data/departments/page.tsx`, deleteEndpoints: ["/api/departments/${department.id}"], removedWrappers: [`${C}master-data/department-delete-button.tsx`], stats: false },
-  { path: `${D}master-data/employees/page.tsx`, deleteEndpoints: ["/api/employees/${employee.id}"], removedWrappers: [`${C}master-data/employee-delete-button.tsx`], stats: true },
+  // Group 7 follow-ups Task 2: employees say "ปิดใช้งาน" through EmployeeRowActions (it renders RowActions, G7F-R2).
+  { path: `${D}master-data/employees/page.tsx`, deleteEndpoints: [], rowActions: "<EmployeeRowActions", removedWrappers: [`${C}master-data/employee-delete-button.tsx`], stats: true },
   // Group 7 plan 3 Task 3: locations say "ปิดใช้งาน" through LocationDeactivateButton (it renders RowActions).
   { path: `${D}master-data/locations/page.tsx`, deleteEndpoints: [], rowActions: "<LocationDeactivateButton", removedWrappers: [`${C}master-data/location-delete-button.tsx`], stats: true },
   { path: `${D}admin/users/page.tsx`, deleteEndpoints: [], removedWrappers: [], stats: false },
@@ -157,7 +158,7 @@ test("wide lists pin the actions column to the right, so edit and ⋯ stay visib
     const source = read(file)
     assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>/, `${file}: the actions header is pinned`)
     // The brands page renders its row actions through modelActions (BrandModelDeactivateButton, group 7 plan 1 Task 4).
-    assert.match(source, /<DataTableCell align="right" sticky="right">\s*(?:<RowActions|<LocationDeactivateButton|\{modelActions\(model, editModelHref\)\})/, `${file}: the actions cell is pinned`)
+    assert.match(source, /<DataTableCell align="right" sticky="right">\s*(?:<RowActions|<LocationDeactivateButton|<EmployeeRowActions|\{modelActions\(model, editModelHref\)\})/, `${file}: the actions cell is pinned`)
     assert.doesNotMatch(source, /<DataTableCell align="right">\s*<RowActions/, `${file}: no unpinned actions cell is left`)
   }
 })
