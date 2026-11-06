@@ -60,7 +60,8 @@ test("master data new and edit pages pass sanitized return targets to forms", ()
     const editPageSource = readFileSync(`src/app/[locale]/(dashboard)/master-data/${item.section}/[id]/edit/page.tsx`, "utf8")
     const formSource = readFileSync(`src/components/master-data/${item.form}`, "utf8")
 
-    assert.match(newPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+    // The location's new page also reads ?branchId=&parentId= (group 7 plan 3, "เพิ่มที่ตั้งในนี้").
+    assert.match(newPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\](?:; branchId\?: string \| string\[\]; parentId\?: string \| string\[\])? \}>/)
     assert.match(newPageSource, new RegExp(`normalizeMasterDataReturnTo\\(locale, "${item.section}", rawSearchParams\\.returnTo\\)`))
     assert.match(newPageSource, /backHref=\{returnToHref\}/)
     assert.match(editPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)

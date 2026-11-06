@@ -76,6 +76,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin", "/th/asset-management/transfer", "/th/maintenance/new", "/th/maintenance/pm/new", "/th/maintenance/pm/sample-1/edit", "/th/disposal/new", "/th/disposal/rounds/new"],
   // Group 3 plan 1 Task 7: the phone steps' own bar (P1-R4).
   [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
+  // Group 7 plan 3 Task 2: the location form's save bar (board MD-Location-New).
+  [`${C}master-data/location-form.tsx`]: ["/th/master-data/locations/new", "/th/master-data/locations/sample-1/edit"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
@@ -156,7 +158,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}master-data/company-form.tsx`]: [2, 6, 0],
   [`${C}master-data/department-form.tsx`]: [2, 2, 0],
   [`${C}master-data/employee-form.tsx`]: [6, 5, 0],
-  [`${C}master-data/location-form.tsx`]: [4, 3, 0],
+  // Group 7 plan 3 Task 2: the type's NativeSelect became three Segmented rows (board MD-Location-New), so its required goes; code, name and branch keep theirs.
+  [`${C}master-data/location-form.tsx`]: [3, 3, 0],
   [`${C}master-data/supplier-form.tsx`]: [2, 6, 0],
   [`${C}audit/audit-round-form.tsx`]: [6, 1, 0],
   [`${C}audit/audit-round-cancel-button.tsx`]: [1, 0, 0],

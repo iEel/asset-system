@@ -179,10 +179,16 @@ test("category form: three ContentPanels with the add buttons as panel actions, 
 })
 
 test("the seven simple master-data forms: a <form> cannot be ContentPanel, so it takes the panel classes and the one panel spacing (spec 2D D9, 2D-2 R4)", () => {
-  for (const name of ["branch", "brand", "company", "department", "employee", "location", "supplier"]) {
+  for (const name of ["branch", "brand", "company", "department", "employee", "supplier"]) {
     const source = read(`src/components/master-data/${name}-form.tsx`)
     // noValidate straight after onSubmit: the form validates itself (v-track plan 1, M1 to M4).
     assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
     assert.doesNotMatch(source, /rounded-lg border/, name)
   }
+  // Group 7 plan 3 Task 2: the location form wraps its board (the fields' panel, the preview and the save bar), so the
+  // panel classes and the one spacing move to the fields' column.
+  const location = read("src/components/master-data/location-form.tsx")
+  assert.match(location, /<form onSubmit=\{handleSubmit\} noValidate className="mx-auto max-w-6xl">/)
+  assert.match(location, /<div className=\{cn\(getPanelClasses\(\), "grid min-w-0 content-start gap-8 p-4 sm:p-5"\)\}>/)
+  assert.doesNotMatch(location, /rounded-lg border/)
 })

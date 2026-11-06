@@ -20,7 +20,8 @@ test("the 9 master-data forms: PageHeader with the subtitle as meta and the back
     assert.ok(source.includes(HEADER_IMPORT), `${path}: imports PageHeader and PageBackLink`)
     assert.match(
       source,
-      /<PageHeader\n\s+title=\{title\}\n\s+meta=\{t\("subtitle"\)\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\}(?: onClick=\{confirmNavigation\})? label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/,
+      // Group 7 plan 3 Task 2: the location form's meta is its board's lead line, one for create and one for edit.
+      /<PageHeader\n\s+title=\{title\}\n\s+meta=\{(?:t\("subtitle"\)|isEdit \? t\("form\.introEdit"\) : t\("form\.introCreate"\))\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\}(?: onClick=\{confirmNavigation\})? label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/,
       path,
     )
     assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b/, path)

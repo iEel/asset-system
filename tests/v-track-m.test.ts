@@ -110,10 +110,12 @@ test("branch and location: errors under the field, and the no-company or no-bran
       options: "companies",
       reason: "branch-save-reason",
       message: ["branch", "saveNeedsCompany"],
+      footer: /<div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-border pt-5">/,
     },
     {
       path: `${C}master-data/location-form.tsx`,
-      ids: { code: "location-code", name: "location-name", branchId: "location-branch", locationType: "location-type", parentId: "location-parent", description: "location-description" },
+      // Group 7 plan 3 Task 2: the board MD-Location-New puts where it sits first, then the type, then name and code.
+      ids: { branchId: "location-branch", parentId: "location-parent", locationType: "location-type", name: "location-name", code: "location-code", description: "location-description" },
       rules: [
         'check("code", required(values.code) ?? maxLength(values.code, 50))',
         'check("name", required(values.name) ?? maxLength(values.name, 200))',
@@ -125,6 +127,8 @@ test("branch and location: errors under the field, and the no-company or no-bran
       options: "branches",
       reason: "location-save-reason",
       message: ["location", "saveNeedsBranch"],
+      // Group 7 plan 3 Task 2: the board's save bar; the reason sits in its status line.
+      footer: /<StickyFormFooter\n\s+className="lg:col-span-2"\n\s+status=\{\(/,
     },
   ] as const
   for (const form of forms) {
@@ -138,7 +142,7 @@ test("branch and location: errors under the field, and the no-company or no-bran
     assert.match(source, new RegExp(`event\\.preventDefault\\(\\)\\n\\s+if \\(${form.gate}\\) return\\n`))
     assert.ok(source.includes(`{${form.gate} ? <p id="${form.reason}" className="basis-full text-meta text-muted-foreground sm:mr-auto sm:basis-auto sm:self-center">{t("${form.message[1]}")}</p> : null}`), form.reason)
     assert.ok(source.includes(`<Button type="submit" busy={saving} aria-disabled={${form.gate} || undefined} aria-describedby={${form.gate} ? "${form.reason}" : undefined}>`), `${form.path}: the gated button`)
-    assert.match(source, /<div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-border pt-5">/)
+    assert.match(source, form.footer)
     assert.doesNotMatch(source, /(?<![\w-])disabled=\{/, "no disabled attribute")
     assert.equal(typeof th[form.message[0]][form.message[1]], "string", `th ${form.message.join(".")}`)
     assert.equal(typeof en[form.message[0]][form.message[1]], "string", `en ${form.message.join(".")}`)
@@ -208,9 +212,11 @@ test("supplier: on the shared hook, codes and messages like the other forms, wit
     for (const key of ["duplicateCode", "invalidEmail", "fieldTooLong"]) assert.equal(messages.supplier[key], undefined, `${locale} supplier.${key}`)
   }
   // All seven simple master-data forms now carry noValidate (M1 to M4).
-  for (const name of ["branch", "brand", "company", "department", "employee", "location", "supplier"]) {
+  // Group 7 plan 3 Task 2: the location form is its board's page frame (the panel and the preview inside it).
+  for (const name of ["branch", "brand", "company", "department", "employee", "supplier"]) {
     assert.match(read(`${C}master-data/${name}-form.tsx`), /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
   }
+  assert.match(read(`${C}master-data/location-form.tsx`), /<form onSubmit=\{handleSubmit\} noValidate className="mx-auto max-w-6xl">/, "location")
 })
 
 test("category: errors under the field, also on each custom field and photo checklist row, keyed like the server's dotted paths (v-track M5)", () => {

@@ -4,6 +4,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { LocationForm } from "@/components/master-data/location-form"
 import type { locationTypes } from "@/lib/validations/location"
 import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
+import { locationRuleSelect } from "@/lib/location-tree"
 
 type EditLocationPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -16,7 +17,9 @@ export default async function EditLocationPage({ params, searchParams }: EditLoc
   const returnToHref = normalizeMasterDataReturnTo(locale, "locations", rawSearchParams.returnTo)
   await requirePagePermission(locale, "location", "edit")
 
-  const [location, branches, parentLocations] = await Promise.all([
+  // Every location once, inactive ones too: the form leaves out this location and all its descendants, also below an
+  // inactive middle node (spec §6.2, Review Focus 1).
+  const [location, branches, locationRows] = await Promise.all([
     prisma.location.findFirst({
       where: { id },
     }),
@@ -36,15 +39,7 @@ export default async function EditLocationPage({ params, searchParams }: EditLoc
       orderBy: { code: "asc" },
     }),
     prisma.location.findMany({
-      where: {
-        isActive: true,
-        id: { not: id },
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-      },
+      select: locationRuleSelect,
       orderBy: { code: "asc" },
     }),
   ])
@@ -54,7 +49,7 @@ export default async function EditLocationPage({ params, searchParams }: EditLoc
   return (
     <LocationForm
       branches={branches}
-      parentLocations={parentLocations}
+      locationRows={locationRows}
       location={{
         id: location.id,
         code: location.code,
