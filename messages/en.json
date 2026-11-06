@@ -87,7 +87,13 @@
     "offlineBannerWith": "You're offline · {detail}",
     "fieldChanged": "Changed",
     "fieldWas": "Was: {value}",
-    "restoreField": "Restore"
+    "restoreField": "Restore",
+    "recordStatus": {
+      "label": "Record status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "all": "All"
+    }
   },
   "globalSearch": {
     "label": "Search globally",

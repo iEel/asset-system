@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useState } from "react"
 import { Check, ChevronDown, Plus, X } from "lucide-react"
+import { Chip } from "@/components/ui/chip"
 import { FieldError, FieldHint, FieldLabel } from "@/components/ui/field"
 import { fieldControlVariants, triggerInvalidClasses, type FieldSize } from "@/components/ui/field-variants"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -159,19 +160,33 @@ export function SearchableSelect({
                   aria-controls) and the empty line sits outside it, so no listbox is ever empty. */}
               <CommandEmpty>{blockedHint ?? emptyLabel}</CommandEmpty>
               <CommandList className="max-h-64" hidden={filteredOptions.length === 0 && !offerCreate}>
-                {filteredOptions.map((option) => {
+                {filteredOptions.map((option, index) => {
                   const current = markCurrent && option.id === currentValue
+                  // G7F-R3: a rich option shows a second muted line and a right-side chip, but its name stays the label
+                  // (aria-labelledby) and the two extras only describe it, so a screen reader and E2E find it by label.
+                  const rich = Boolean(option.description || option.meta)
+                  const optionId = `${triggerId}-option-${index}`
                   return (
                     <CommandItem
                       key={option.id}
                       value={option.id}
                       disabled={option.disabled || current}
                       data-searchable-current={current || undefined}
+                      aria-labelledby={rich ? `${optionId}-label` : undefined}
+                      aria-describedby={rich ? [option.description ? `${optionId}-description` : null, option.meta ? `${optionId}-meta` : null].filter(Boolean).join(" ") : undefined}
                       onSelect={() => selectValue(option.id)}
                       className={option.id === value ? "font-medium" : undefined}
                     >
-                      <span className="min-w-0 truncate">{option.label}</span>
+                      {rich ? (
+                        <span className="grid min-w-0 flex-1">
+                          <span id={`${optionId}-label`} className={cn("min-w-0 truncate", option.description && "font-medium")}>{option.label}</span>
+                          {option.description ? <span id={`${optionId}-description`} className="min-w-0 truncate text-meta text-muted-foreground">{option.description}</span> : null}
+                        </span>
+                      ) : (
+                        <span className="min-w-0 truncate">{option.label}</span>
+                      )}
                       {current ? <span className="shrink-0 text-meta text-muted-foreground">{currentMark}</span> : null}
+                      {option.meta ? <Chip id={`${optionId}-meta`} className="shrink-0">{option.meta}</Chip> : null}
                       {option.id === value ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
                     </CommandItem>
                   )

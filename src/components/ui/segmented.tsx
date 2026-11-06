@@ -25,13 +25,13 @@ type SegmentedProps<T extends string> = SegmentedName & {
 }
 
 // Mockup .seg (base.css): white frame with a 1px line, 8px corners, 2px padding and gap.
-const segmentedFrameClasses = "gap-0.5 rounded-md border border-border bg-surface p-0.5"
+export const segmentedFrameClasses = "gap-0.5 rounded-md border border-border bg-surface p-0.5"
 // No font weight here: the chosen option and the others bring their own, so font-medium and font-semibold never
 // sit in one class list. No ring offset: the options are only 2px apart, and an offset ring would cover the neighbour.
-const segmentedOptionClasses = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-control text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-const segmentedSizeClasses = { sm: "md:min-h-8", md: "md:min-h-9" } as const
-const segmentedPressedClasses = "bg-primary-soft font-semibold text-primary-hover"
-const segmentedIdleClasses = "font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+export const segmentedOptionClasses = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-control text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+export const segmentedSizeClasses = { sm: "md:min-h-8", md: "md:min-h-9" } as const
+export const segmentedPressedClasses = "bg-primary-soft font-semibold text-primary-hover"
+export const segmentedIdleClasses = "font-medium text-muted-foreground hover:bg-background hover:text-foreground"
 const segmentedDisabledClasses = "disabled:cursor-not-allowed disabled:bg-background disabled:text-faint-foreground"
 
 // A row of toggle buttons where exactly one is on (aria-pressed), each reachable with Tab (no roving tabindex, like

@@ -181,6 +181,7 @@ test("Kbd works in server components and uses the sans font", () => {
 test("searchable select marks the chosen option with weight and a trailing check, and the current value with its word between the label and the check (group 3 plan 3, P3-R11)", () => {
   const source = read("src/components/ui/searchable-select.tsx")
   assert.match(source, /className=\{option\.id === value \? "font-medium" : undefined\}/)
-  assert.match(source, /<span className="min-w-0 truncate">\{option\.label\}<\/span>\s*\{current \? <span className="shrink-0 text-meta text-muted-foreground">\{currentMark\}<\/span> : null\}\s*\{option\.id === value \? <Check className="ml-auto size-4 text-primary" aria-hidden="true" \/> : null\}/)
+  // G7F-R3 (group 7 follow-ups Task 1): a plain option keeps this label span; a rich option's chip sits between the word and the check.
+  assert.match(source, /<span className="min-w-0 truncate">\{option\.label\}<\/span>\s*\)\}\s*\{current \? <span className="shrink-0 text-meta text-muted-foreground">\{currentMark\}<\/span> : null\}\s*\{option\.meta \? <Chip [^\n]*<\/Chip> : null\}\s*\{option\.id === value \? <Check className="ml-auto size-4 text-primary" aria-hidden="true" \/> : null\}/)
   assert.doesNotMatch(source, /text-transparent/)
 })

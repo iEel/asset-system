@@ -87,7 +87,13 @@
     "offlineBannerWith": "ออฟไลน์อยู่ · {detail}",
     "fieldChanged": "แก้แล้ว",
     "fieldWas": "เดิม: {value}",
-    "restoreField": "คืนค่าเดิม"
+    "restoreField": "คืนค่าเดิม",
+    "recordStatus": {
+      "label": "สถานะข้อมูล",
+      "active": "ใช้งาน",
+      "inactive": "ไม่ใช้งาน",
+      "all": "ทั้งหมด"
+    }
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
