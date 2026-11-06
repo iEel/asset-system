@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, Copy, Plus, Save, Trash2 } from "lucide-react"
@@ -9,6 +9,7 @@ import Link from "next/link"
 import { moveArrayItem, type CategoryCustomFieldDraft } from "@/lib/category-form-arrays"
 import type { CategoryFormContext } from "@/lib/category-form-context"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { linkVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
@@ -17,18 +18,21 @@ import { Input } from "@/components/ui/input"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
+import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { CategoryEditSummary } from "@/components/master-data/category-form/edit-summary"
 import { CategoryPrefixBox } from "@/components/master-data/category-form/prefix-box"
 import { CategoryFormSection } from "@/components/master-data/category-form/section-card"
 import {
+  ADD_CUSTOM_FIELD_ID,
   CUSTOM_FIELD_ID_SUFFIX,
   CustomFieldTemplateTable,
   createCustomFieldDefinition,
 } from "@/components/master-data/category-form/template-table"
 import {
   categoryChangeParts,
+  categoryCreateHasValues,
   categoryFormTotals,
   categoryStatusLocked,
   diffCategoryForm,
@@ -138,10 +142,12 @@ export function CategoryForm({
   const locale = useLocale()
   const apiError = useApiError()
   const router = useRouter()
+  const confirm = useConfirm()
   const t = useTranslations("category")
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<CategoryFormValues>(category ?? emptyCategory)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const fieldErrors = useFieldErrors<string>()
 
   const isEdit = Boolean(category?.id)
@@ -153,6 +159,33 @@ export function CategoryForm({
   const statusLocked = categoryStatusLocked({ savedIsActive: category?.isActive, isActive: values.isActive, blockReason: context.deactivationBlockReason })
 
   const focusFirstError = () => fieldErrors.focusFirst(fieldOrder(values), { idFor: fieldId })
+
+  // Leave without saving (the supplier form's guard, final review fix 7): dirty while the footer lists a change (edit) or
+  // anything is filled in (create), until the save succeeds.
+  const changeParts = category ? categoryChangeParts(diffCategoryForm(category, values)) : []
+  const isDirty = !saved && (category ? changeParts.length > 0 : categoryCreateHasValues(values))
+
+  useEffect(() => {
+    if (!isDirty) return
+
+    function warnBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", warnBeforeUnload)
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload)
+  }, [isDirty])
+
+  function confirmNavigation(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!isDirty || !shouldGuardLinkClick(event, event.currentTarget)) return
+    event.preventDefault()
+    const href = event.currentTarget.getAttribute("href")
+    if (!href) return
+    void confirm({ title: t("form.unsavedChangesConfirm"), confirmLabel: t("form.unsavedChangesLeave"), tone: "destructive" }).then((confirmed) => {
+      if (confirmed) router.push(href)
+    })
+  }
 
   function setField<K extends keyof CategoryFormValues>(field: K, value: CategoryFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -198,6 +231,7 @@ export function CategoryForm({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
+      setSaved(true)
       toast.success(tCommon("savedSuccess"))
       router.push(backHref)
       router.refresh()
@@ -211,7 +245,7 @@ export function CategoryForm({
   // "รหัส {code} · ใช้อยู่กับ {m} รุ่น และ {a} ทรัพย์สิน · …": each count links to its list with that list's view permission.
   function usageLink(href: string | null) {
     return function UsageCount(chunks: React.ReactNode) {
-      return href ? <Link href={href} className={linkVariants({ size: "inherit" })}>{chunks}</Link> : <span>{chunks}</span>
+      return href ? <Link href={href} onClick={confirmNavigation} className={linkVariants({ size: "inherit" })}>{chunks}</Link> : <span>{chunks}</span>
     }
   }
   const title = isEdit ? t("form.editTitle", { name: category?.name ?? "" }) : t("createTitle")
@@ -232,7 +266,6 @@ export function CategoryForm({
     )
 
   // The sticky footer: "แก้ไข {name} · เพิ่มช่องข้อมูล 1 ช่อง · …" against the saved category; create counts what it holds.
-  const changeParts = category ? categoryChangeParts(diffCategoryForm(category, values)) : []
   const bold = (chunks: React.ReactNode) => <b className="font-semibold text-foreground">{chunks}</b>
   const createTotals = categoryFormTotals(values)
   const footerLine = isEdit ? (
@@ -257,7 +290,7 @@ export function CategoryForm({
         title={title}
         meta={meta}
         className="mb-6"
-        back={<PageBackLink href={backHref} label={tCommon("back")} />}
+        back={<PageBackLink href={backHref} onClick={confirmNavigation} label={tCommon("back")} />}
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -293,7 +326,7 @@ export function CategoryForm({
               </Field>
             </div>
 
-            <CategoryPrefixBox context={context} code={values.code} isEdit={isEdit} />
+            <CategoryPrefixBox context={context} code={values.code} isEdit={isEdit} onLinkClick={confirmNavigation} />
           </CategoryFormSection>
 
           <CategoryFormSection
@@ -305,6 +338,7 @@ export function CategoryForm({
             flush
             action={
               <Button
+                id={ADD_CUSTOM_FIELD_ID}
                 variant="outline"
                 size="sm"
                 onClick={() => setCustomFields([...values.customFieldDefs, createCustomFieldDefinition(values.customFieldDefs.length)])}
@@ -377,13 +411,13 @@ export function CategoryForm({
           </CategoryFormSection>
         </div>
 
-        <CategoryEditSummary saved={category} values={values} context={context} />
+        <CategoryEditSummary saved={category} values={values} context={context} onLinkClick={confirmNavigation} />
 
         <StickyFormFooter
           className="lg:col-span-2"
           status={<span data-category-footer className="break-words">{footerLine}</span>}
         >
-          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
+          <Link href={backHref} onClick={confirmNavigation} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
           <Button type="submit" busy={saving}>

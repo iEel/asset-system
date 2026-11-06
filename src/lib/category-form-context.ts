@@ -68,6 +68,7 @@ export async function readCategoryFormContext({
   ).flat()
   const digits = Number(setting("asset_tag_running_digits") || 5)
   const hrefs = categoryId ? buildCategoryDrilldownHrefs({ locale, categoryId }) : null
+  const today = new Date()
 
   return {
     prefix,
@@ -77,10 +78,13 @@ export async function readCategoryFormContext({
       template: setting(assetTagFormatTemplateKey) || defaultAssetTagFormatTemplate,
       separator: setting("asset_tag_separator"),
       globalPrefix: setting("asset_tag_prefix"),
-      companyCode: company?.assetTagCode?.trim() || company?.code || "CO",
+      companyCode: company?.code || "CO",
+      assetCompanyCode: company?.assetTagCode?.trim() || company?.code || "CO",
       branchCode: company?.branches[0]?.code ?? "HQ",
       runningDigits: Number.isFinite(digits) && digits > 0 ? Math.min(Math.floor(digits), 12) : 5,
-      year: new Date().getFullYear(),
+      year: today.getFullYear(),
+      month: today.getMonth() + 1,
+      day: today.getDate(),
     },
     usage:
       usage && hrefs

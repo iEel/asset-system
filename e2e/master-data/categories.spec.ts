@@ -40,7 +40,7 @@ type RunModel = { id: string; name: string }
 
 // The reason the category guard gives for one model and no asset (getCategoryDeleteBlockReason; a server string, not a
 // message key, so it is here and tests/e2e-master-data.test.ts pins it to the function).
-const CATEGORY_BLOCKED = "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังมีรุ่น 1 รายการใช้งานอยู่"
+const CATEGORY_BLOCKED = "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังผูกกับรุ่น 1 รายการ (นับรวมที่ปิดใช้งานแล้ว)"
 
 // The saved field the category starts with, and the two this spec adds (a วันที่ and a ใช่/ไม่ใช่).
 const SAVED_FIELD = { fieldName: "serial_note", fieldLabel: "Serial note", fieldLabelTh: "หมายเหตุซีเรียล" }
@@ -206,7 +206,7 @@ test.describe("the IT head reads the categories list and adds fields to a catego
     await expect(statusBox).toBeChecked()
     await expect(statusBox).toBeDisabled()
     await expect(statusSection.locator("#category-status-locked")).toHaveText(CATEGORY_BLOCKED)
-    await expect(statusBox).toHaveAccessibleDescription(new RegExp(CATEGORY_BLOCKED))
+    await expect(statusBox).toHaveAccessibleDescription(new RegExp(CATEGORY_BLOCKED.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
 
     // The side panel and the footer before any change: 1 ช่อง both sides, รุ่นในหมวดหมู่ 1, nothing changed yet.
     const panel = page.locator("[data-category-edit-summary]")

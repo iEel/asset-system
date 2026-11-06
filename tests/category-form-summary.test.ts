@@ -123,7 +123,7 @@ test("code or name, description and the status each add their part, in the foote
 })
 
 test("the status checkbox locks only while an active saved category with models or assets stays ticked", () => {
-  const reason = "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังมีทรัพย์สิน 2 รายการใช้งานอยู่"
+  const reason = "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังผูกกับทรัพย์สิน 2 รายการ (นับรวมที่ปิดใช้งานแล้ว)"
   assert.equal(categoryStatusLocked({ savedIsActive: true, isActive: true, blockReason: reason }), true)
   assert.equal(categoryStatusLocked({ savedIsActive: true, isActive: true, blockReason: null }), false, "nothing in it")
   assert.equal(categoryStatusLocked({ savedIsActive: false, isActive: false, blockReason: reason }), false, "an inactive category can always be ticked back on")

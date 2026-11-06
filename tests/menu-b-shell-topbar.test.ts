@@ -30,7 +30,7 @@ test("a skip link comes first in the shell and moves focus to <main id=\"main\">
   assert.match(shell, /<a\s+href="#main"\s+onClick=\{skipToMain\}\s+className="sr-only focus:not-sr-only focus:fixed [^"]*"\s*>\s*\{tNav\("skipToContent"\)\}\s*<\/a>/)
   assert.match(shell, /event\.preventDefault\(\)\s+mainRef\.current\?\.focus\(\{ preventScroll: true \}\)/)
   assert.match(shell, /<main\s+ref=\{mainRef\}\s+id="main"\s+tabIndex=\{-1\}\s+data-dashboard-main/)
-  assert.match(shell, /"min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6"/)
+  assert.match(shell, /"min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6 has-\[\[data-slot=sticky-form-footer\]\]:scroll-pb-56 sm:has-\[\[data-slot=sticky-form-footer\]\]:scroll-pb-28"/)
   // #main is the shell's own main: the hash logic never scrolls to it, and never waits for it.
   assert.match(shell, /if \(target === main\) return "none"/)
   for (const [locale, text] of [["th", "ข้ามไปเนื้อหาหลัก"], ["en", "Skip to main content"]]) {

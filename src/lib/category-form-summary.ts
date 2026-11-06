@@ -143,3 +143,14 @@ export function categoryStatusLocked({
 }): boolean {
   return savedIsActive === true && isActive && Boolean(blockReason)
 }
+
+// The create form's leave-without-saving guard (final review fix 7): anything filled in, a row added (even an empty
+// one) or ใช้งาน unticked counts. The edit form counts the footer's change summary instead.
+export function categoryCreateHasValues(values: CategoryFormSnapshot): boolean {
+  return (
+    Boolean(values.code.trim() || values.name.trim() || values.description?.trim()) ||
+    values.customFieldDefs.length > 0 ||
+    values.photoChecklist.length > 0 ||
+    !values.isActive
+  )
+}

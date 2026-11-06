@@ -1692,8 +1692,8 @@
       "addBranch": "Add a branch to this company",
       "sortLabel": "Sort by",
       "sortDirection": "Order",
-      "sortAsc": "Ascending (A → Z)",
-      "sortDesc": "Descending (Z → A)",
+      "sortAsc": "Ascending",
+      "sortDesc": "Descending",
       "sortCreatedAt": "Date added"
     },
     "deactivate": {
@@ -1755,8 +1755,8 @@
       "viewEmployees": "View employees in this branch ({count, number})",
       "sortLabel": "Sort by",
       "sortDirection": "Order",
-      "sortAsc": "Ascending (A → Z)",
-      "sortDesc": "Descending (Z → A)",
+      "sortAsc": "Ascending",
+      "sortDesc": "Descending",
       "sortCreatedAt": "Date added"
     },
     "deactivate": {
@@ -1813,8 +1813,8 @@
       "moveBeforeDeactivate": "Move them before deactivating",
       "sortLabel": "Sort by",
       "sortDirection": "Order",
-      "sortAsc": "Ascending (A → Z)",
-      "sortDesc": "Descending (Z → A)",
+      "sortAsc": "Ascending",
+      "sortDesc": "Descending",
       "sortCreatedAt": "Date added"
     },
     "deactivate": {
@@ -2006,8 +2006,8 @@
       "success": "Deactivated"
     },
     "sortDirection": "Order",
-    "sortAsc": "Ascending (A → Z)",
-    "sortDesc": "Descending (Z → A)"
+    "sortAsc": "Ascending",
+    "sortDesc": "Descending"
   },
   "location": {
     "title": "Locations",
@@ -2227,8 +2227,8 @@
       "setPrefixInSettings": "Set a tag prefix in settings",
       "sortLabel": "Sort by",
       "sortDirection": "Order",
-      "sortAsc": "Ascending (A → Z)",
-      "sortDesc": "Descending (Z → A)",
+      "sortAsc": "Ascending",
+      "sortDesc": "Descending",
       "sortCreatedAt": "Date added"
     },
     "deactivate": {
@@ -2319,7 +2319,12 @@
       "changeInfo": "Change the code or name",
       "changeDescription": "Change the description",
       "changeActivated": "Activate",
-      "changeDeactivated": "Deactivate"
+      "changeDeactivated": "Deactivate",
+      "optionsOfField": "(field {name})",
+      "optionsEditFor": "Edit options of field {name}",
+      "optionsDoneFor": "Done editing options of field {name}",
+      "unsavedChangesConfirm": "You have unsaved category changes. Leave this page?",
+      "unsavedChangesLeave": "Leave without saving"
     }
   },
   "brandModel": {

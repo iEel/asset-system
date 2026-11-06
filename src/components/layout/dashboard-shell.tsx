@@ -215,7 +215,10 @@ export function DashboardShell({
 
               <ShellBanner />
 
-              <main ref={mainRef} id="main" tabIndex={-1} data-dashboard-main className={cn("min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6", mobileFieldNavigationVisible && "scroll-pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:scroll-pb-0")}>
+              {/* A page with a sticky save bar (StickyFormFooter): a control the browser scrolls to on focus (Tab) stops above the
+                  bar, not under it. The bar is one row from sm; on phones it stacks the status line over full-width
+                  buttons. Pages without the bar keep no scroll padding (group 8 plan 2 final review fix 8). */}
+              <main ref={mainRef} id="main" tabIndex={-1} data-dashboard-main className={cn("min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6 has-[[data-slot=sticky-form-footer]]:scroll-pb-56 sm:has-[[data-slot=sticky-form-footer]]:scroll-pb-28", mobileFieldNavigationVisible && "scroll-pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:scroll-pb-0")}>
                 <div
                   className={cn(
                     "min-w-0 max-w-full",

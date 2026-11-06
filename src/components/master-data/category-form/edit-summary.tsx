@@ -14,15 +14,18 @@ const emptySnapshot: CategoryFormSnapshot = { code: "", name: "", description: "
 // The side panel ผลของการแก้ไข (board MD-Category-Edit, G8P2-R3): the usage counts (edit), ตอนนี้ (the saved category)
 // against หลังบันทึก (the live form state) for the custom fields, the required ones, the photo items and the status,
 // what the new fields mean for the assets already in the category, and the prefix note. The create page has no saved
-// column: หลังบันทึก only. Sticky beside the form from lg; on phones it follows the form in the DOM.
+// column: หลังบันทึก only. Sticky beside the form from lg; on phones it follows the form in the DOM. onLinkClick is the
+// form's leave-without-saving guard.
 export function CategoryEditSummary({
   saved,
   values,
   context,
+  onLinkClick,
 }: {
   saved?: CategoryFormSnapshot
   values: CategoryFormSnapshot
   context: CategoryFormContext
+  onLinkClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void
 }) {
   const t = useTranslations("category")
   const tCommon = useTranslations("common")
@@ -81,7 +84,7 @@ export function CategoryEditSummary({
             return (
               <li key={item.key}>
                 {item.href ? (
-                  <Link href={item.href} className="flex min-h-9 items-center gap-2 -mx-2 rounded-md px-2 hover:bg-row-hover">
+                  <Link href={item.href} onClick={onLinkClick} className="flex min-h-9 items-center gap-2 -mx-2 rounded-md px-2 hover:bg-row-hover">
                     {content}
                     <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-faint-foreground" />
                   </Link>

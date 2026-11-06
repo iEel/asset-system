@@ -1692,8 +1692,8 @@
       "addBranch": "เพิ่มสาขาให้บริษัทนี้",
       "sortLabel": "เรียงตาม",
       "sortDirection": "ลำดับ",
-      "sortAsc": "น้อยไปมาก (ก → ฮ)",
-      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortAsc": "น้อยไปมาก",
+      "sortDesc": "มากไปน้อย",
       "sortCreatedAt": "วันที่เพิ่ม"
     },
     "deactivate": {
@@ -1755,8 +1755,8 @@
       "viewEmployees": "ดูพนักงานในสาขานี้ ({count, number})",
       "sortLabel": "เรียงตาม",
       "sortDirection": "ลำดับ",
-      "sortAsc": "น้อยไปมาก (ก → ฮ)",
-      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortAsc": "น้อยไปมาก",
+      "sortDesc": "มากไปน้อย",
       "sortCreatedAt": "วันที่เพิ่ม"
     },
     "deactivate": {
@@ -1813,8 +1813,8 @@
       "moveBeforeDeactivate": "โอนย้ายก่อนปิดใช้งาน",
       "sortLabel": "เรียงตาม",
       "sortDirection": "ลำดับ",
-      "sortAsc": "น้อยไปมาก (ก → ฮ)",
-      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortAsc": "น้อยไปมาก",
+      "sortDesc": "มากไปน้อย",
       "sortCreatedAt": "วันที่เพิ่ม"
     },
     "deactivate": {
@@ -2006,8 +2006,8 @@
       "success": "ปิดใช้งานแล้ว"
     },
     "sortDirection": "ลำดับ",
-    "sortAsc": "น้อยไปมาก (ก → ฮ)",
-    "sortDesc": "มากไปน้อย (ฮ → ก)"
+    "sortAsc": "น้อยไปมาก",
+    "sortDesc": "มากไปน้อย"
   },
   "location": {
     "title": "ที่ตั้ง",
@@ -2227,8 +2227,8 @@
       "setPrefixInSettings": "ตั้งคำนำหน้ารหัสในการตั้งค่า",
       "sortLabel": "เรียงตาม",
       "sortDirection": "ลำดับ",
-      "sortAsc": "น้อยไปมาก (ก → ฮ)",
-      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortAsc": "น้อยไปมาก",
+      "sortDesc": "มากไปน้อย",
       "sortCreatedAt": "วันที่เพิ่ม"
     },
     "deactivate": {
@@ -2319,7 +2319,12 @@
       "changeInfo": "แก้รหัสหรือชื่อ",
       "changeDescription": "แก้รายละเอียด",
       "changeActivated": "เปิดใช้งาน",
-      "changeDeactivated": "ปิดใช้งาน"
+      "changeDeactivated": "ปิดใช้งาน",
+      "optionsOfField": "(ช่อง {name})",
+      "optionsEditFor": "แก้ตัวเลือกของช่อง {name}",
+      "optionsDoneFor": "เสร็จ แก้ตัวเลือกของช่อง {name}",
+      "unsavedChangesConfirm": "มีข้อมูลหมวดหมู่ที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?",
+      "unsavedChangesLeave": "ออกโดยไม่บันทึก"
     }
   },
   "brandModel": {

@@ -11,8 +11,15 @@ test("allows deleting unused categories", () => {
 test("blocks deleting categories that still have assets or models", () => {
   assert.equal(
     getCategoryDeleteBlockReason({ assets: 2, models: 1 }),
-    "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังมีทรัพย์สิน 2 รายการ และรุ่น 1 รายการใช้งานอยู่"
+    "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังผูกกับรุ่น 1 รายการ และทรัพย์สิน 2 รายการ (นับรวมที่ปิดใช้งานแล้ว)"
   )
+  // It counts inactive rows too, so it names them and does not claim they are in use (final review fix 2).
+  assert.equal(
+    getCategoryDeleteBlockReason({ assets: 0, models: 2 }),
+    "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังผูกกับรุ่น 2 รายการ (นับรวมที่ปิดใช้งานแล้ว)"
+  )
+  assert.equal(getCategoryDeleteBlockReason({ assets: 1200, models: 0 }), "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังผูกกับทรัพย์สิน 1,200 รายการ (นับรวมที่ปิดใช้งานแล้ว)")
+  assert.doesNotMatch(getCategoryDeleteBlockReason({ assets: 3, models: 2 }) ?? "", /ใช้งานอยู่/)
 })
 
 test("category delete route checks active asset and model references before soft delete", () => {

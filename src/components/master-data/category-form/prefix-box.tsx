@@ -10,8 +10,19 @@ import { cn } from "@/lib/utils"
 
 // The read-only prefix box of section 1 (board MD-Category-Edit): the prefix from the settings (or ยังไม่ตั้ง, the code
 // used instead), the categories that share it, an example tag rendered from the settings with the code as typed, and
-// "แก้ในการตั้งค่า" with setting:view only. Nothing here is saved by the form.
-export function CategoryPrefixBox({ context, code, isEdit }: { context: CategoryFormContext; code: string; isEdit: boolean }) {
+// "แก้ในการตั้งค่า" with setting:view only. Nothing here is saved by the form. onLinkClick is the form's leave-without-
+// saving guard.
+export function CategoryPrefixBox({
+  context,
+  code,
+  isEdit,
+  onLinkClick,
+}: {
+  context: CategoryFormContext
+  code: string
+  isEdit: boolean
+  onLinkClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void
+}) {
   const t = useTranslations("category.form")
   const mono = (chunks: React.ReactNode) => <span className="tag text-foreground">{chunks}</span>
   const bold = (chunks: React.ReactNode) => <b className="font-semibold text-foreground">{chunks}</b>
@@ -39,7 +50,7 @@ export function CategoryPrefixBox({ context, code, isEdit }: { context: Category
         <p className="text-meta text-faint-foreground">{isEdit ? t("prefixHelpEdit") : t("prefixHelpCreate")}</p>
       </div>
       {context.settingsHref ? (
-        <Link href={context.settingsHref} className={cn(linkVariants({ size: "meta" }), "inline-flex min-h-11 items-center gap-1 self-start sm:self-center md:min-h-0")}>
+        <Link href={context.settingsHref} onClick={onLinkClick} className={cn(linkVariants({ size: "meta" }), "inline-flex min-h-11 items-center gap-1 self-start sm:self-center md:min-h-0")}>
           {t("prefixSettingsLink")}
           <ChevronRight aria-hidden="true" className="size-3.5" />
         </Link>

@@ -10,6 +10,9 @@ import {
   buildCategoryPrefixCells,
   buildCategoryPrefixSettingsHref,
   categoryFooterTotalWheres,
+  isCategoryCountSort,
+  orderCategoryIdsByCount,
+  readCategoryPageIdsByActiveCount,
   parseCategoryListParams,
   parseCategoryPrefixMap,
   sharedPrefixCategoryIds,
@@ -47,13 +50,34 @@ test("falls back to name A→Z for unsupported or missing sort fields", () => {
   }
 })
 
-test("builds relation-count order by for model and asset columns", () => {
-  // The id is the tie-breaker, so equal counts or names keep one order across pages (group 8 plan 2 Task 1).
-  assert.deepEqual(buildCategoryOrderBy({ sort: "models", direction: "desc" }), [{ models: { _count: "desc" } }, { id: "asc" }])
-  assert.deepEqual(buildCategoryOrderBy({ sort: "assets", direction: "asc" }), [{ assets: { _count: "asc" } }, { id: "asc" }])
-  assert.deepEqual(buildCategoryOrderBy({ sort: "customFields", direction: "asc" }), [{ customFieldDefs: { _count: "asc" } }, { id: "asc" }])
+test("orders the name, code and date sorts in the query with the id as tie-breaker", () => {
   assert.deepEqual(buildCategoryOrderBy({ sort: "code", direction: "asc" }), [{ code: "asc" }, { id: "asc" }])
   assert.deepEqual(buildCategoryOrderBy({ sort: "name", direction: "desc" }), [{ name: "desc" }, { id: "asc" }])
+  assert.deepEqual(buildCategoryOrderBy({ sort: "createdAt", direction: "desc" }), [{ createdAt: "desc" }, { id: "asc" }])
+  assert.deepEqual(["models", "assets", "customFields"].map((sort) => isCategoryCountSort(sort as never)), [true, true, true])
+  assert.deepEqual(["code", "name", "createdAt"].map((sort) => isCategoryCountSort(sort as never)), [false, false, false])
+})
+
+test("the count sorts order by the active counts the columns show, id as tie-breaker (final review fix 1)", () => {
+  // A has 2 active assets (40 inactive ones do not count), B 10, C none, D 2.
+  const counts = new Map([["a", 2], ["b", 10], ["d", 2]])
+  assert.deepEqual(orderCategoryIdsByCount(["d", "c", "b", "a"], counts, "desc"), ["b", "a", "d", "c"])
+  assert.deepEqual(orderCategoryIdsByCount(["d", "c", "b", "a"], counts, "asc"), ["c", "a", "d", "b"])
+})
+
+test("a count sort reads the active counts 2,000 ids at a time, then pages the ordered ids", async () => {
+  const ids = Array.from({ length: 4500 }, (_, index) => `id-${String(index).padStart(4, "0")}`)
+  const chunks: number[] = []
+  const readCounts = async (chunk: string[]) => {
+    chunks.push(chunk.length)
+    return chunk.map((categoryId) => ({ categoryId, count: Number(categoryId.slice(3)) % 7 }))
+  }
+  const first = await readCategoryPageIdsByActiveCount({ ids, direction: "desc", page: 1, pageSize: 3, readCounts })
+  assert.deepEqual(chunks, [2000, 2000, 500])
+  assert.deepEqual(first, ["id-0006", "id-0013", "id-0020"])
+  const second = await readCategoryPageIdsByActiveCount({ ids, direction: "desc", page: 2, pageSize: 3, readCounts })
+  assert.deepEqual(second, ["id-0027", "id-0034", "id-0041"])
+  assert.deepEqual(await readCategoryPageIdsByActiveCount({ ids: [], direction: "asc", page: 1, pageSize: 25, readCounts }), [])
 })
 
 test("parses category health filters safely", () => {

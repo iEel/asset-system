@@ -27,6 +27,37 @@ export function fieldScrollTop(box: FieldScrollBox): number | null {
   return Math.max(0, next)
 }
 
+// Viewport coordinates across: the horizontal scroller (a wide table's scroll region) from viewLeft to viewRight and the
+// field from fieldLeft to fieldRight.
+export type FieldScrollXBox = {
+  scrollLeft: number
+  viewLeft: number
+  viewRight: number
+  fieldLeft: number
+  fieldRight: number
+}
+
+// The scrollLeft that shows the field inside its horizontal scroller, or null when it already shows. A field wider than
+// the room is aligned by its start, so the label and the start of the control show (final review fix 6).
+export function fieldScrollLeft(box: FieldScrollXBox): number | null {
+  const left = box.viewLeft + FIELD_FOCUS_MARGIN
+  const right = box.viewRight - FIELD_FOCUS_MARGIN
+  if (box.fieldLeft >= box.viewLeft && box.fieldRight <= box.viewRight) return null
+  const tooWide = box.fieldRight - box.fieldLeft > right - left
+  const next = box.fieldLeft < left || tooWide ? box.scrollLeft + box.fieldLeft - left : box.scrollLeft + box.fieldRight - right
+  return Math.max(0, next)
+}
+
+// The nearest ancestor inside main that scrolls sideways (a DataTable's scroll region on a phone).
+function horizontalScroller(control: HTMLElement, main: HTMLElement): HTMLElement | null {
+  for (let node = control.parentElement; node && node !== main; node = node.parentElement) {
+    if (node.scrollWidth <= node.clientWidth) continue
+    const overflowX = getComputedStyle(node).overflowX
+    if (overflowX === "auto" || overflowX === "scroll") return node
+  }
+  return null
+}
+
 const CONTROL_SELECTOR =
   'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
 const CHECKED_RADIO_SELECTOR = 'input[type="radio"]:checked:not([disabled])'
@@ -46,7 +77,7 @@ function openClosedDetails(target: HTMLElement) {
 }
 
 // From the label (or the field's wrapper) to the error line.
-function fieldBounds(target: HTMLElement, control: HTMLElement): { top: number; bottom: number } {
+function fieldBounds(target: HTMLElement, control: HTMLElement): { top: number; bottom: number; left: number; right: number } {
   const parts: (Element | null)[] = [target, control, control.closest(WRAPPER_SELECTOR) ?? target.closest(WRAPPER_SELECTOR)]
   if (control.id) {
     parts.push(document.querySelector(`label[for="${CSS.escape(control.id)}"]`))
@@ -61,7 +92,10 @@ function fieldBounds(target: HTMLElement, control: HTMLElement): { top: number; 
     top = Math.min(top, rect.top)
     bottom = Math.max(bottom, rect.bottom)
   }
-  return { top, bottom }
+  // Across, the control and its wrapper: a label or an error line may run wider than the cell.
+  const across = (control.closest(WRAPPER_SELECTOR) ?? control).getBoundingClientRect()
+  const own = control.getBoundingClientRect()
+  return { top, bottom, left: Math.min(across.left, own.left), right: Math.max(across.right, own.right) }
 }
 
 // Focuses the field's control and scrolls the dashboard scroll area so the field shows. Returns the focused control.
@@ -77,6 +111,14 @@ export function focusField(target: HTMLElement): HTMLElement | null {
     return control
   }
   control.focus({ preventScroll: true })
+  // A field in a table that scrolls sideways (a phone) comes into view across first; the vertical scroll below is as before.
+  const scroller = horizontalScroller(control, main)
+  if (scroller) {
+    const box = scroller.getBoundingClientRect()
+    const across = fieldBounds(target, control)
+    const left = fieldScrollLeft({ scrollLeft: scroller.scrollLeft, viewLeft: box.left, viewRight: box.right, fieldLeft: across.left, fieldRight: across.right })
+    if (left !== null) scroller.scrollTo({ left, behavior: "auto" })
+  }
   const view = main.getBoundingClientRect()
   // The bar that shows: a page can hold a phone bar and a desktop bar (ส่งมอบ's phone steps, group 3 spec §7.4).
   const footer = [...main.querySelectorAll<HTMLElement>('[data-slot="sticky-form-footer"]')].find((bar) => bar.getClientRects().length > 0)

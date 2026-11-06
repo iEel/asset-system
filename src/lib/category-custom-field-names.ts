@@ -68,3 +68,18 @@ export function addCustomFieldValueCounts(counts: Map<string, number>, json: str
     counts.set(name, (counts.get(name) ?? 0) + 1)
   }
 }
+
+// The options editor of a รายการเลือก row (template-table.tsx): open while the row is in `open` (by row key), or by
+// itself while the row has no option yet. Typing an option or choosing รายการเลือก puts the row in `open`, so the
+// editor stays mounted once the first character makes an option (final review fix 4); เสร็จ closes it.
+export function isOptionsEditorOpen(
+  open: ReadonlySet<string>,
+  key: string,
+  field: { fieldType: string; options?: string | null }
+): boolean {
+  return open.has(key) || (field.fieldType === "select" && splitCustomFieldOptions(field.options).length === 0)
+}
+
+export function keepsOptionsEditorOpen(edited: string, value: string | boolean): boolean {
+  return edited === "options" || (edited === "fieldType" && value === "select")
+}

@@ -28,7 +28,7 @@ test("the category form uses the shared fields, buttons and a busy save button (
   assert.equal(table.match(/<Field label=/g)?.length, 5, "field name, label, Thai label, type, options")
   assert.equal(source.match(/^\s+required$/gm)?.length, 2, "code and name keep the browser's own required check")
   assert.equal(table.match(/^\s+required$/gm)?.length, 2, "field name and label keep the browser's own required check")
-  assert.match(source, /<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
+  assert.match(source, /<Link href=\{backHref\} onClick=\{confirmNavigation\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{tCommon\("save"\)\}/)
 })
 
@@ -57,7 +57,7 @@ test("section 1: the board's hints and the read-only prefix box with แก้�
   assert.match(source, /hint=\{t\("form\.nameHint"\)\}/)
   assert.equal(th.category.form.codeHintEdit, "แก้รหัสหมวดหมู่ไม่เปลี่ยนรหัสทรัพย์สินที่ออกไปแล้ว")
   assert.equal(th.category.form.nameHint, "ชื่อที่เห็นในหน้าเพิ่มทรัพย์สิน รายงาน และตัวกรอง")
-  assert.match(source, /<CategoryPrefixBox context=\{context\} code=\{values\.code\} isEdit=\{isEdit\} \/>/)
+  assert.match(source, /<CategoryPrefixBox context=\{context\} code=\{values\.code\} isEdit=\{isEdit\} onLinkClick=\{confirmNavigation\} \/>/)
   assert.match(prefixBox, /renderAssetTagExample\(context\.tagExample, context\.prefix, typedCode\)/)
   assert.match(prefixBox, /context\.sharedWith\.length > 0 \?/)
   assert.match(prefixBox, /\{context\.settingsHref \? \(\n\s+<Link href=\{context\.settingsHref\}/)
@@ -76,7 +76,7 @@ test("section 2: the compact table keeps all five types, ขึ้น/ลง, �
   assert.match(table, /menuLabel=\{t\("form\.fieldMenu", \{ name \}\)\}/)
   // Option chips with แก้ตัวเลือก; an empty รายการเลือก opens its editor.
   assert.match(table, /const options = splitCustomFieldOptions\(field\.options\)/)
-  assert.match(table, /const optionsOpen = openOptions\.has\(index\) \|\| \(field\.fieldType === "select" && options\.length === 0\)/)
+  assert.match(table, /const optionsOpen = isOptionsEditorOpen\(openOptions, rowKey, field\)/)
   assert.match(table, /<Chip key=\{`\$\{optionIndex\}-\$\{option\}`\} title=\{option\}>\{option\}<\/Chip>/)
   assert.match(table, /aria-expanded=\{optionsOpen\}/)
   // G8P2-R2 and G8P2-R1.
@@ -98,7 +98,7 @@ test("the save sends the form values as before: the API and its payload are unch
 
 test("section 3: numbered photo items keep the editor's move limits and the shared button looks (board MD-Category-Edit, Task 3)", () => {
   assert.equal(source.match(/<Button variant="outline" size="sm"/g)?.length, 1, "add photo item")
-  assert.match(source, /<Button\n\s+variant="outline"\n\s+size="sm"\n\s+onClick=\{\(\) => setCustomFields/, "add custom field in the section head")
+  assert.match(source, /<Button\n\s+id=\{ADD_CUSTOM_FIELD_ID\}\n\s+variant="outline"\n\s+size="sm"\n\s+onClick=\{\(\) => setCustomFields/, "add custom field in the section head")
   assert.match(source, /meta=\{photoCount > 0 \? t\("list\.photoCount", \{ count: photoCount \}\) : null\}/)
   // An ordered list: the visible "1." is decoration, the hidden label carries the number.
   assert.match(source, /<ol className="grid gap-2">/)
@@ -123,7 +123,7 @@ test("section 4: ใช้งาน is disabled only while an active saved categ
 })
 
 test("the side panel ผลของการแก้ไข: ตอนนี้ against หลังบันทึก from the live form state (G8P2-R3), sticky from lg, under the form on phones", () => {
-  assert.match(source, /<\/div>\n\n\s+<CategoryEditSummary saved=\{category\} values=\{values\} context=\{context\} \/>/, "after the main column in the DOM")
+  assert.match(source, /<\/div>\n\n\s+<CategoryEditSummary saved=\{category\} values=\{values\} context=\{context\} onLinkClick=\{confirmNavigation\} \/>/, "after the main column in the DOM")
   assert.match(summary, /<aside\n\s+data-category-edit-summary\n\s+aria-labelledby="category-summary-title"\n\s+className=\{cn\(getPanelClasses\(\), "grid min-w-0 content-start gap-4 p-4 sm:p-5 lg:sticky lg:top-4 lg:self-start"\)\}/)
   assert.match(summary, /const after = categoryFormTotals\(values\)/)
   assert.match(summary, /const now = saved \? categoryFormTotals\(saved\) : null/)

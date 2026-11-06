@@ -248,8 +248,9 @@ test("category: errors under the field, also on each custom field and photo chec
   // A row's error clears when that row's field changes; removing, copying or moving a row clears that template's errors.
   assert.match(table, /if \(field in CUSTOM_FIELD_ID_SUFFIX\) onFieldEdit\(index, field as CustomFieldErrorField\)/)
   assert.equal(source.match(/\n    onRowsShift\(\)\n/g)?.length, 3, "remove, duplicate and move of the photo items")
-  assert.equal(table.match(/\n    shiftRows\(\)\n/g)?.length, 3, "remove, duplicate and move of the template rows")
-  assert.match(table, /function shiftRows\(\) \{\n    setOpenOptions\(new Set\(\)\)\n    onRowsShift\(\)\n  \}/)
+  // The options editors are keyed by the row's stable key now, so a shift keeps them as they are (group 8 plan 2 final
+  // review fixes 4 and 5); the row errors still clear.
+  assert.equal(table.match(/\n    onRowsShift\(\)\n/g)?.length, 3, "remove, duplicate and move of the template rows")
   assert.ok(source.includes('onRowsShift={() => clearRowErrors("customFieldDefs.")}'))
   assert.ok(source.includes('onRowsShift={() => clearRowErrors("photoChecklist.")}'))
 })

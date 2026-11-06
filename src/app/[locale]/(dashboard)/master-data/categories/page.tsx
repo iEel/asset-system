@@ -37,9 +37,13 @@ import {
   buildCategoryWhere,
   categoryFooterTotalWheres,
   categorySorts,
+  isCategoryCountSort,
   parseCategoryListParams,
   parseCategoryPrefixMap,
+  readCategoryPageIdsByActiveCount,
   sharedPrefixCategoryIds,
+  type CategoryActiveCountRow,
+  type CategoryCountSort,
   type CategoryListParams,
   type CategoryListState,
   type CategorySort,
@@ -94,23 +98,45 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
   const footerWheres = categoryFooterTotalWheres(where)
   const sharedIds = sharedPrefixCategoryIds(prefixSetting?.value)
 
-  const [categories, total, summaryCategories, recordStatusCounts, footerModels, footerAssets, sharedPrefixCategories] = await Promise.all([
-    prisma.assetCategory.findMany({
-      where,
-      include: {
-        // Active records only, as the board footers say (spec §3).
-        _count: {
-          select: {
-            models: { where: { isActive: true } },
-            assets: { where: { isActive: true } },
-            customFieldDefs: { where: { isActive: true } },
-          },
-        },
+  // Active records only, as the board footers say (spec §3).
+  const rowInclude = {
+    _count: {
+      select: {
+        models: { where: { isActive: true } },
+        assets: { where: { isActive: true } },
+        customFieldDefs: { where: { isActive: true } },
       },
-      orderBy: buildCategoryOrderBy(listState),
-      skip: (listState.page - 1) * listState.pageSize,
-      take: listState.pageSize,
-    }),
+    },
+  } as const
+  const sort = listState.sort
+  // รุ่น, ทรัพย์สิน and ข้อมูลเพิ่ม order by the active counts the columns show (final review fix 1): the filtered ids'
+  // counts are read in chunks and ordered in memory, then the page's rows are read by id in that order.
+  const readRows = isCategoryCountSort(sort)
+    ? async () => {
+        const ids = (await prisma.assetCategory.findMany({ where, select: { id: true } })).map((row) => row.id)
+        const pageIds = await readCategoryPageIdsByActiveCount({
+          ids,
+          direction: listState.direction,
+          page: listState.page,
+          pageSize: listState.pageSize,
+          readCounts: (chunk) => readActiveCategoryCounts(sort, chunk),
+        })
+        if (pageIds.length === 0) return []
+        const rows = await prisma.assetCategory.findMany({ where: { id: { in: pageIds } }, include: rowInclude })
+        const position = new Map(pageIds.map((id, index) => [id, index]))
+        return rows.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0))
+      }
+    : () =>
+        prisma.assetCategory.findMany({
+          where,
+          include: rowInclude,
+          orderBy: buildCategoryOrderBy({ sort, direction: listState.direction }),
+          skip: (listState.page - 1) * listState.pageSize,
+          take: listState.pageSize,
+        })
+
+  const [categories, total, summaryCategories, recordStatusCounts, footerModels, footerAssets, sharedPrefixCategories] = await Promise.all([
+    readRows(),
     prisma.assetCategory.count({ where }),
     prisma.assetCategory.findMany({
       where: { isActive: true },
@@ -555,4 +581,16 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
       </DataTable>
     </div>
   )
+}
+
+// The active models, assets or custom fields of these categories, counted per category (one chunk of at most 2,000 ids).
+async function readActiveCategoryCounts(sort: CategoryCountSort, chunk: string[]): Promise<CategoryActiveCountRow[]> {
+  const where = { isActive: true, categoryId: { in: chunk } }
+  const rows =
+    sort === "models"
+      ? await prisma.assetModel.groupBy({ by: ["categoryId"], where, _count: { _all: true } })
+      : sort === "assets"
+        ? await prisma.asset.groupBy({ by: ["categoryId"], where, _count: { _all: true } })
+        : await prisma.customFieldDefinition.groupBy({ by: ["categoryId"], where, _count: { _all: true } })
+  return rows.map((row) => ({ categoryId: row.categoryId, count: row._count._all }))
 }

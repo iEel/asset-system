@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -93,9 +94,12 @@ test("the example asset tag renders the settings' template with the category seg
     separator: "-",
     globalPrefix: "GRL",
     companyCode: "SNI",
+    assetCompanyCode: "SNI",
     branchCode: "HQ",
     runningDigits: 4,
     year: 2026,
+    month: 11,
+    day: 7,
   }
   assert.equal(renderAssetTagExample(parts, "COM", "NB"), "GRL-COM-26-0001")
   assert.equal(renderAssetTagExample(parts, null, " NB "), "GRL-NB-26-0001", "no prefix: the category code as typed, trimmed")
@@ -105,4 +109,23 @@ test("the example asset tag renders the settings' template with the category seg
     "SNI-HQ-COM-00001"
   )
   assert.equal(renderAssetTagExample({ ...parts, template: "{assetPrefix}" }, "COM", "NB"), "SNI-HQ-COM-0001", "a template without {running} falls back to the default")
+})
+
+test("the example tag maps the company tokens and the date as generateAssetTags does (final review fix 3)", () => {
+  const parts = {
+    template: "{companyCode}{separator}{assetCompanyCode}{separator}{year}{month}{day}{separator}{running}",
+    separator: "-",
+    globalPrefix: "",
+    companyCode: "ELTROSS",
+    assetCompanyCode: "ELT",
+    branchCode: "HQ",
+    runningDigits: 5,
+    year: 2026,
+    month: 11,
+    day: 7,
+  }
+  assert.equal(renderAssetTagExample(parts, "COM", "NB"), "ELTROSS-ELT-20261107-00001")
+  const context = readFileSync("src/lib/category-form-context.ts", "utf8").replace(/\r\n/g, "\n")
+  assert.match(context, /companyCode: company\?\.code \|\| "CO",\n\s+assetCompanyCode: company\?\.assetTagCode\?\.trim\(\) \|\| company\?\.code \|\| "CO",/)
+  assert.match(context, /year: today\.getFullYear\(\),\n\s+month: today\.getMonth\(\) \+ 1,\n\s+day: today\.getDate\(\),/)
 })

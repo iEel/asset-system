@@ -99,15 +99,19 @@ export function categoryPrefixFor(rows: CategoryPrefixRow[], categoryId: string 
 }
 
 // What "ตัวอย่างรหัส" needs from the settings (asset_tag_format_template, _separator, _prefix, _running_digits) and one
-// company and branch to fill their tokens; the server page reads them.
+// company and branch to fill their tokens; the server page reads them. As generateAssetTags: {companyCode} is the
+// company's code and {assetCompanyCode} its asset-tag code (else its code); year, month and day come from one Date.
 export type AssetTagExampleParts = {
   template: string
   separator: string
   globalPrefix: string
   companyCode: string
+  assetCompanyCode: string
   branchCode: string
   runningDigits: number
   year: number
+  month: number
+  day: number
 }
 
 // defaultAssetTagFormatTemplate (system-setting-defaults.ts), restated: this file is imported by tests without the @ alias.
@@ -120,7 +124,7 @@ export function renderAssetTagExample(parts: AssetTagExampleParts, prefix: strin
   const year = String(parts.year)
   const tokens: Record<string, string> = {
     companyCode: parts.companyCode,
-    assetCompanyCode: parts.companyCode,
+    assetCompanyCode: parts.assetCompanyCode,
     branchCode: parts.branchCode,
     categoryCode: categoryCode.trim() || "CAT",
     assetPrefix: prefix || categoryCode.trim() || "CAT",
@@ -128,8 +132,8 @@ export function renderAssetTagExample(parts: AssetTagExampleParts, prefix: strin
     separator: parts.separator.trim() || "-",
     year,
     year2: year.slice(-2),
-    month: "01",
-    day: "01",
+    month: String(parts.month).padStart(2, "0"),
+    day: String(parts.day).padStart(2, "0"),
     running: "1".padStart(Math.max(1, parts.runningDigits), "0"),
   }
   return template.replace(/\{([A-Za-z0-9]+)\}/g, (_match, token: string) => tokens[token] ?? "")

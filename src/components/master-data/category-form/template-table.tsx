@@ -8,6 +8,8 @@ import {
   countSavedFieldsWithValues,
   customFieldRenameWarning,
   isNewCustomField,
+  isOptionsEditorOpen,
+  keepsOptionsEditorOpen,
   splitCustomFieldOptions,
 } from "@/lib/category-custom-field-names"
 import { Button } from "@/components/ui/button"
@@ -21,6 +23,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Textarea } from "@/components/ui/textarea"
+import { focusField, waitForDialogToClose } from "@/lib/field-focus"
 
 // The row fields whose errors show under them, keyed like the server's dotted paths (customFieldDefs.0.fieldName), with
 // the id suffix focus moves to (v-track M-R1). The form's fieldOrder and fieldId read it.
@@ -60,8 +63,18 @@ export function CustomFieldTemplateTable({
 }) {
   const t = useTranslations("category")
   const tCommon = useTranslations("common")
-  // The rows whose options editor is open, by index: a remove, copy or move closes them all, as it clears the row errors.
-  const [openOptions, setOpenOptions] = useState<ReadonlySet<number>>(new Set())
+  // One stable key per row (the saved id, else a client key), moved with its row: a move, copy or remove keeps the other
+  // rows and their focused controls mounted (final review fix 5). The form appends rows (เพิ่มช่องข้อมูล), so a longer
+  // list gets keys for its new rows here, during render, as React's "adjusting state on a prop change" pattern.
+  const [rowKeys, setRowKeys] = useState<readonly string[]>(() => fields.map(rowKeyFor))
+  let keys = rowKeys
+  if (keys.length !== fields.length) {
+    keys = keys.length < fields.length ? [...keys, ...fields.slice(keys.length).map(rowKeyFor)] : keys.slice(0, fields.length)
+    setRowKeys(keys)
+  }
+  // The rows whose options editor is open, by row key. An empty รายการเลือก opens its editor by itself; typing in it or
+  // choosing รายการเลือก adds the row here, so the editor stays open once its first option exists (final review fix 4).
+  const [openOptions, setOpenOptions] = useState<ReadonlySet<string>>(new Set())
   const savedIds = useMemo(() => new Set(savedFields.flatMap((field) => (field.id ? [field.id] : []))), [savedFields])
   const savedNameById = useMemo(
     () => new Map(savedFields.flatMap((field) => (field.id ? [[field.id, field.fieldName] as const] : []))),
@@ -72,35 +85,49 @@ export function CustomFieldTemplateTable({
   function updateField(index: number, field: keyof CategoryCustomFieldDraft, value: string | boolean) {
     onChange(fields.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item)))
     if (field in CUSTOM_FIELD_ID_SUFFIX) onFieldEdit(index, field as CustomFieldErrorField)
+    if (keepsOptionsEditorOpen(field, value)) keepOptionsOpen(keys[index])
   }
 
+  // ลบ: focus moves to the next row's ⋯, else to เพิ่มช่องข้อมูล (the row and its menu are gone).
   function removeField(index: number) {
     onChange(fields.filter((_, itemIndex) => itemIndex !== index))
-    shiftRows()
+    setRowKeys(keys.filter((_, keyIndex) => keyIndex !== index))
+    onRowsShift()
+    focusAfterRowChange(() => (index < fields.length - 1 ? rowMenuButton(index) : document.getElementById(ADD_CUSTOM_FIELD_ID)))
   }
 
+  // ทำซ้ำ: focus moves to the copy's ชื่อ field.
   function duplicateField(index: number) {
     const field = fields[index]
     if (!field) return
     onChange([...fields.slice(0, index + 1), duplicateCategoryCustomField(field), ...fields.slice(index + 1)])
-    shiftRows()
-  }
-
-  function moveField(index: number, direction: -1 | 1) {
-    onChange(moveArrayItem(fields, index, index + direction))
-    shiftRows()
-  }
-
-  function shiftRows() {
-    setOpenOptions(new Set())
+    setRowKeys([...keys.slice(0, index + 1), newRowKey(), ...keys.slice(index + 1)])
     onRowsShift()
+    focusAfterRowChange(() => document.getElementById(`category-field-${index + 1}-name`))
   }
 
-  function toggleOptions(index: number) {
+  // ขึ้น/ลง: the row keeps its key, and focus stays on the pressed arrow at the row's new place, or on the other arrow
+  // once the row reaches the top or the bottom (the pressed one is disabled there).
+  function moveField(index: number, direction: -1 | 1) {
+    const target = index + direction
+    onChange(moveArrayItem(fields, index, target))
+    setRowKeys(moveArrayItem([...keys], index, target))
+    onRowsShift()
+    const pressed = direction === -1 ? "up" : "down"
+    const other = direction === -1 ? "down" : "up"
+    focusAfterRowChange(() => rowMoveButton(target, pressed) ?? rowMoveButton(target, other))
+  }
+
+  function keepOptionsOpen(key: string | undefined) {
+    if (!key || openOptions.has(key)) return
+    setOpenOptions((open) => new Set(open).add(key))
+  }
+
+  function toggleOptions(key: string) {
     setOpenOptions((open) => {
       const next = new Set(open)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
@@ -142,13 +169,21 @@ export function CustomFieldTemplateTable({
           {fields.map((field, index) => {
             const row = index + 1
             const name = field.fieldLabelTh?.trim() || field.fieldLabel.trim() || field.fieldName.trim() || t("form.rowName", { row })
+            const rowKey = keys[index] ?? `row-at-${index}`
             const options = splitCustomFieldOptions(field.options)
-            const optionsOpen = openOptions.has(index) || (field.fieldType === "select" && options.length === 0)
+            const optionsOpen = isOptionsEditorOpen(openOptions, rowKey, field)
             const warning = customFieldRenameWarning(field, savedNameById, valueCounts)
             const isNew = isNewCustomField(field, savedIds)
             const hasSubRow = field.fieldType === "select" || warning
+            // The visible hint, then the field's name for a screen reader, so each row's editor has its own name.
+            const optionsLabel = (
+              <>
+                {t("fieldOptions")}
+                <span className="sr-only"> {t("form.optionsOfField", { name })}</span>
+              </>
+            )
             return (
-              <Fragment key={`${field.id ?? "new"}-${index}`}>
+              <Fragment key={rowKey}>
                 <DataTableRow data-category-field-row={index} className={hasSubRow ? "[&>td]:border-b-0" : undefined}>
                   <DataTableCell className="px-1.5">
                     <Field label={cell(t("fieldName"), row)} hideLabel id={`category-field-${index}-name`} required error={errorFor(index, "fieldName")}>
@@ -210,6 +245,7 @@ export function CustomFieldTemplateTable({
                         size="icon-sm"
                         onClick={() => moveField(index, -1)}
                         disabled={index === 0}
+                        data-field-move="up"
                         aria-label={t("form.moveFieldUp", { name })}
                         title={t("form.moveFieldUp", { name })}
                       >
@@ -220,6 +256,7 @@ export function CustomFieldTemplateTable({
                         size="icon-sm"
                         onClick={() => moveField(index, 1)}
                         disabled={index === fields.length - 1}
+                        data-field-move="down"
                         aria-label={t("form.moveFieldDown", { name })}
                         title={t("form.moveFieldDown", { name })}
                       >
@@ -267,14 +304,15 @@ export function CustomFieldTemplateTable({
                                   className="ml-auto text-primary"
                                   aria-expanded={optionsOpen}
                                   aria-controls={`category-field-${index}-options`}
-                                  onClick={() => toggleOptions(index)}
+                                  aria-label={optionsOpen ? t("form.optionsDoneFor", { name }) : t("form.optionsEditFor", { name })}
+                                  onClick={() => toggleOptions(rowKey)}
                                 >
                                   {optionsOpen ? t("form.optionsDone") : t("form.optionsEdit")}
                                 </Button>
                               ) : null}
                             </div>
                             {optionsOpen ? (
-                              <Field label={t("fieldOptions")} id={`category-field-${index}-options`}>
+                              <Field label={optionsLabel} id={`category-field-${index}-options`}>
                                 <Textarea
                                   value={field.options ?? ""}
                                   onChange={(event) => updateField(index, "options", event.target.value)}
@@ -325,6 +363,39 @@ export function createCustomFieldDefinition(sortOrder: number): CategoryCustomFi
     sortOrder,
     isActive: true,
   }
+}
+
+// เพิ่มช่องข้อมูล in the section head (category-form.tsx): where focus goes after the last row is removed.
+export const ADD_CUSTOM_FIELD_ID = "category-add-custom-field"
+
+let lastRowKey = 0
+function newRowKey() {
+  lastRowKey += 1
+  return `new-${lastRowKey}`
+}
+
+function rowKeyFor(field: CategoryCustomFieldDraft) {
+  return field.id ? `saved-${field.id}` : newRowKey()
+}
+
+function rowMenuButton(index: number) {
+  return document.querySelector<HTMLElement>(`[data-category-field-row="${index}"] [data-slot="row-actions"] button`)
+}
+
+function rowMoveButton(index: number, which: "up" | "down") {
+  return document.querySelector<HTMLElement>(`[data-category-field-row="${index}"] [data-field-move="${which}"]:not([disabled])`)
+}
+
+// ทำซ้ำ and ลบ run from ⋯, an "action" item: RowActions keeps the closing menu or phone sheet from handing focus back,
+// as it would for a dialog, so focus is placed here on purpose once the sheet has closed and the rows have re-rendered.
+// ขึ้น/ลง use it too: React may move the pressed row's DOM node, which drops its focus.
+function focusAfterRowChange(find: () => HTMLElement | null) {
+  void waitForDialogToClose().then(() => {
+    requestAnimationFrame(() => {
+      const target = find()
+      if (target) focusField(target)
+    })
+  })
 }
 
 function toFieldName(value: string) {
