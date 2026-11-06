@@ -269,7 +269,7 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 | Companies | CRUD, active flag, company code, Asset Tag Code, tax/address fields |
 | Branches | CRUD, company relation, branch code/name/address/contact |
 | Departments | CRUD, optional company relation, department code/name; the list pages on the server (25/50/100) and edit → back keeps the page |
-| Employees | CRUD, company/branch/department, manager, employment status, linked user/self-service context |
+| Employees | CRUD, company/branch/department, manager, employment status, linked user/self-service context; "พ้นสภาพแต่ยังถือครอง" includes AD-deactivated holders (`?former=withAssets`); phone cards; the employee page to its board: every held asset with its handover or ข้อมูลเก่า, รับคืน per asset (or the reason it cannot be returned), ส่งมอบทรัพย์สินให้คนนี้, open handovers split with only overdue loans as a warning, the user-account line (group 7 plan 2, 2026-11-06) |
 | Locations | CRUD, branch relation, parent/child hierarchy, location type |
 | Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support, and count drilldowns to models/assets |
 | Brands/Models | Compact brand navigator, model workspace, structured specs, model photos with a load-failure placeholder, active count summaries, drilldowns to brand/model asset lists; one duplicate rule (normalized names, active and inactive) with the existing record offered; add a brand or model from the asset create/batch/edit forms (`brand:create`); เพิ่มล่าสุด 7/30 days with who and from where; ปิดใช้งาน with a usage confirm; phone view (group 7 plan 1, 2026-11-05) |
