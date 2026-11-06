@@ -127,6 +127,22 @@ test("the form: the parent is a searchable picker of the branch's paths, the typ
   assert.match(source, /data-location-preview/)
 })
 
+// Group 7 follow-ups Task 4 (MD-Location-New): each parent row shows the name (with its code) bold, the path from the
+// branch as a muted second line, the type as a chip and "ย่อย {n}" (active children); the path stays searchable through
+// keywords, and the kept stored parent still says so in its label.
+test("the parent picker's rich rows: name · code, path line, type chip, active child count, path searchable", () => {
+  const source = read("src/components/master-data/location-form.tsx")
+  assert.match(source, /label: `\$\{option\.name\} · \$\{option\.code\}\$\{option\.kept \? ` \(\$\{t\("form\.parentKept"\)\}\)` : ""\}`,/)
+  assert.match(source, /description: pathOf\(option\)\.join\(PATH_SEPARATOR\),/)
+  assert.match(source, /keywords: pathOf\(option\)\.join\(PATH_SEPARATOR\),/)
+  assert.match(source, /meta: formatLocationType\(option\.locationType, t\),/)
+  assert.match(source, /aside: t\("form\.parentChildCount", \{ count: option\.activeChildCount \}\),/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).location.form as Record<string, string>
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).location.form as Record<string, string>
+  assert.equal(th.parentChildCount, "ย่อย {count}")
+  assert.equal(en.parentChildCount, "{count} children")
+})
+
 test("the form's new copy is in th and en", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8")).location.form as Record<string, string>
   const en = JSON.parse(readFileSync("messages/en.json", "utf8")).location.form as Record<string, string>

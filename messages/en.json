@@ -1977,7 +1977,8 @@
       "footerCreate": "Add <b>{name}</b> under {parent}",
       "footerCreateRoot": "Add <b>{name}</b> at the top level of {branch}",
       "footerEdit": "Save <b>{name}</b> under {parent}",
-      "footerEditRoot": "Save <b>{name}</b> at the top level of {branch}"
+      "footerEditRoot": "Save <b>{name}</b> at the top level of {branch}",
+      "parentChildCount": "{count} children"
     },
     "view": {
       "label": "View",

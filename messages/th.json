@@ -1977,7 +1977,8 @@
       "footerCreate": "เพิ่ม <b>{name}</b> ใต้ {parent}",
       "footerCreateRoot": "เพิ่ม <b>{name}</b> เป็นระดับบนสุดของ {branch}",
       "footerEdit": "บันทึก <b>{name}</b> ใต้ {parent}",
-      "footerEditRoot": "บันทึก <b>{name}</b> เป็นระดับบนสุดของ {branch}"
+      "footerEditRoot": "บันทึก <b>{name}</b> เป็นระดับบนสุดของ {branch}",
+      "parentChildCount": "ย่อย {count}"
     },
     "view": {
       "label": "มุมมอง",

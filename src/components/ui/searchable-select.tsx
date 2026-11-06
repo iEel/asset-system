@@ -163,8 +163,8 @@ export function SearchableSelect({
                 {filteredOptions.map((option, index) => {
                   const current = markCurrent && option.id === currentValue
                   // G7F-R3: a rich option shows a second muted line and a right-side chip, but its name stays the label
-                  // (aria-labelledby) and the two extras only describe it, so a screen reader and E2E find it by label.
-                  const rich = Boolean(option.description || option.meta)
+                  // (aria-labelledby) and the extras (and Task 4's aside) only describe it, so a screen reader and E2E find it by label.
+                  const rich = Boolean(option.description || option.meta || option.aside)
                   const optionId = `${triggerId}-option-${index}`
                   return (
                     <CommandItem
@@ -173,7 +173,7 @@ export function SearchableSelect({
                       disabled={option.disabled || current}
                       data-searchable-current={current || undefined}
                       aria-labelledby={rich ? `${optionId}-label` : undefined}
-                      aria-describedby={rich ? [option.description ? `${optionId}-description` : null, option.meta ? `${optionId}-meta` : null].filter(Boolean).join(" ") : undefined}
+                      aria-describedby={rich ? [option.description ? `${optionId}-description` : null, option.meta ? `${optionId}-meta` : null, option.aside ? `${optionId}-aside` : null].filter(Boolean).join(" ") : undefined}
                       onSelect={() => selectValue(option.id)}
                       className={option.id === value ? "font-medium" : undefined}
                     >
@@ -187,6 +187,7 @@ export function SearchableSelect({
                       )}
                       {current ? <span className="shrink-0 text-meta text-muted-foreground">{currentMark}</span> : null}
                       {option.meta ? <Chip id={`${optionId}-meta`} className="shrink-0">{option.meta}</Chip> : null}
+                      {option.aside ? <span id={`${optionId}-aside`} className="shrink-0 text-meta text-muted-foreground num">{option.aside}</span> : null}
                       {option.id === value ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
                     </CommandItem>
                   )

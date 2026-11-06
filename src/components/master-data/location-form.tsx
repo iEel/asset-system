@@ -151,9 +151,16 @@ export function LocationForm({
   const chosenBranch = branches.find((branch) => branch.id === values.branchId)
   const chosenParent = parentOptions.find((option) => option.id === values.parentId)
   const branchParentCount = parentOptions.filter((option) => !option.kept).length
+  // Group 7 follow-ups Task 4 (MD-Location-New): the name with its code is the row's bold label (and its accessible name),
+  // the path from the branch a muted second line, the type a chip, "ย่อย {n}" the active children; the path stays
+  // searchable through keywords, as the hint says.
   const selectOptions = parentOptions.map((option) => ({
     id: option.id,
-    label: `${pathOf(option).join(PATH_SEPARATOR)} · ${option.code}${option.kept ? ` (${t("form.parentKept")})` : ""}`,
+    label: `${option.name} · ${option.code}${option.kept ? ` (${t("form.parentKept")})` : ""}`,
+    description: pathOf(option).join(PATH_SEPARATOR),
+    keywords: pathOf(option).join(PATH_SEPARATOR),
+    meta: formatLocationType(option.locationType, t),
+    aside: t("form.parentChildCount", { count: option.activeChildCount }),
   }))
 
   function setField<K extends keyof LocationFormValues>(field: K, value: LocationFormValues[K]) {

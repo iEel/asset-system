@@ -216,7 +216,9 @@ test.describe("the IT head reads and arranges a building's locations", () => {
     await page.waitForURL((url) => url.pathname === "/th/master-data/locations/new" && url.searchParams.get("parentId") === floor.id && url.searchParams.get("branchId") === runBranch.id)
     await expect(page.getByRole("heading", { level: 1, name: W.createTitle, exact: true })).toBeVisible()
     await expect(page.locator("#location-branch")).toHaveValue(runBranch.id)
-    await expect(page.locator("#location-parent")).toContainText(`${runBranch.name}${PATH}${building.name}${PATH}${floor.name}`)
+    // Group 7 follow-ups Task 4: the picker's label is the name · code; the path from the branch is in the preview.
+    await expect(page.locator("#location-parent")).toContainText(`${floor.name} · ${floor.code}`)
+    await expect(page.locator("[data-location-preview-path]")).toContainText(`${runBranch.name}${PATH}${building.name}${PATH}${floor.name}`)
     await recordSettled(page, measure, "location form, เพิ่มที่ตั้งในนี้ on the floor")
     const added: RunLocation = { id: "", code: `${prefix}N`, name: txAssetName(runId, project, "ห้องใหม่ทดสอบที่ตั้ง"), locationType: "Room", branchId: runBranch.id, parentId: floor.id }
     await page.locator("#location-name").fill(added.name)
