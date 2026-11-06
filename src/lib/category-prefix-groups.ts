@@ -88,3 +88,49 @@ export function applyCategoryPrefixGroupEdit(
 function unique(values: string[]) {
   return Array.from(new Set(values))
 }
+
+// The read-only prefix box of the category form (board MD-Category-Edit): the category's prefix from the settings, or
+// null when none is set (the asset tag then uses the category code), and the other categories of its prefix group.
+export function categoryPrefixFor(rows: CategoryPrefixRow[], categoryId: string | null | undefined): { prefix: string | null; sharedWithIds: string[] } {
+  if (!categoryId) return { prefix: null, sharedWithIds: [] }
+  const group = buildCategoryPrefixGroups(rows).find((candidate) => candidate.categoryIds.includes(categoryId))
+  if (!group) return { prefix: null, sharedWithIds: [] }
+  return { prefix: group.prefix, sharedWithIds: group.categoryIds.filter((id) => id !== categoryId) }
+}
+
+// What "ตัวอย่างรหัส" needs from the settings (asset_tag_format_template, _separator, _prefix, _running_digits) and one
+// company and branch to fill their tokens; the server page reads them.
+export type AssetTagExampleParts = {
+  template: string
+  separator: string
+  globalPrefix: string
+  companyCode: string
+  branchCode: string
+  runningDigits: number
+  year: number
+}
+
+// defaultAssetTagFormatTemplate (system-setting-defaults.ts), restated: this file is imported by tests without the @ alias.
+const fallbackAssetTagTemplate = "{assetCompanyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
+
+// An example tag as generateAssetTags (asset-tag.ts) would render it, with the first running number. The category segment
+// is the prefix, else the category code as typed; "CAT" while the code is still empty.
+export function renderAssetTagExample(parts: AssetTagExampleParts, prefix: string | null, categoryCode: string): string {
+  const template = parts.template.trim() && parts.template.includes("{running}") ? parts.template.trim() : fallbackAssetTagTemplate
+  const year = String(parts.year)
+  const tokens: Record<string, string> = {
+    companyCode: parts.companyCode,
+    assetCompanyCode: parts.companyCode,
+    branchCode: parts.branchCode,
+    categoryCode: categoryCode.trim() || "CAT",
+    assetPrefix: prefix || categoryCode.trim() || "CAT",
+    globalPrefix: parts.globalPrefix.trim() || "AST",
+    separator: parts.separator.trim() || "-",
+    year,
+    year2: year.slice(-2),
+    month: "01",
+    day: "01",
+    running: "1".padStart(Math.max(1, parts.runningDigits), "0"),
+  }
+  return template.replace(/\{([A-Za-z0-9]+)\}/g, (_match, token: string) => tokens[token] ?? "")
+}

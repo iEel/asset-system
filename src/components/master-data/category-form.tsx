@@ -1,32 +1,36 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, Copy, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
-import {
-  duplicateCategoryCustomField,
-  moveArrayItem,
-  type CategoryCustomFieldDraft,
-} from "@/lib/category-form-arrays"
+import { moveArrayItem, type CategoryCustomFieldDraft } from "@/lib/category-form-arrays"
+import type { CategoryFormContext } from "@/lib/category-form-context"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { ContentPanel } from "@/components/ui/content-panel"
+import { linkVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
-import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { CategoryPrefixBox } from "@/components/master-data/category-form/prefix-box"
+import { CategoryFormSection } from "@/components/master-data/category-form/section-card"
+import {
+  CUSTOM_FIELD_ID_SUFFIX,
+  CustomFieldTemplateTable,
+  createCustomFieldDefinition,
+} from "@/components/master-data/category-form/template-table"
 import { maxLength, required } from "@/lib/validation-rules"
 
 type CustomFieldDefinitionValue = CategoryCustomFieldDraft
 
-type CategoryFormValues = {
+// The save sends this object as it is (POST /api/categories, PUT /api/categories/[id]): the API is unchanged.
+export type CategoryFormValues = {
   id?: string
   code: string
   name: string
@@ -45,13 +49,14 @@ const emptyCategory: CategoryFormValues = {
   photoChecklist: [],
 }
 
+const emptySavedFields: readonly CustomFieldDefinitionValue[] = []
+
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
 const FIELD_IDS = {
   code: "category-code",
   name: "category-name",
   description: "category-description",
 } as const
-const CUSTOM_FIELD_ID_SUFFIX = { fieldName: "name", fieldLabel: "label", fieldLabelTh: "label-th" } as const
 type CustomFieldErrorField = keyof typeof CUSTOM_FIELD_ID_SUFFIX
 
 function fieldOrder(values: CategoryFormValues): string[] {
@@ -92,12 +97,18 @@ function validate(values: CategoryFormValues): Partial<Record<string, string>> {
   return errors
 }
 
+// Board MD-Category-Edit (group 8 plan 2): one client form state over numbered section cards in the main column, with
+// the side column beside it from lg (Task 3 adds the side panel ผลของการแก้ไข and the sticky footer, and rebuilds sections
+// 3 and 4). The edit page passes the saved category and context (usage counts, the prefix box, G8P2-R1's values per field
+// name); the create page passes context only, so no counts and nothing to mark ใหม่ or renamed against.
 export function CategoryForm({
   category,
   backHref: providedBackHref,
+  context,
 }: {
   category?: CategoryFormValues
   backHref?: string
+  context: CategoryFormContext
 }) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -110,7 +121,9 @@ export function CategoryForm({
 
   const isEdit = Boolean(category?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/categories`
-  const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
+  // The saved definition: ใหม่ (G8P2-R2) and the rename warning (G8P2-R1) compare the rows against it.
+  const savedFields = category?.customFieldDefs ?? emptySavedFields
+  const requiredCount = values.customFieldDefs.filter((field) => field.isRequired).length
 
   const focusFirstError = () => fieldErrors.focusFirst(fieldOrder(values), { idFor: fieldId })
 
@@ -168,127 +181,149 @@ export function CategoryForm({
     }
   }
 
+  // "รหัส {code} · ใช้อยู่กับ {m} รุ่น และ {a} ทรัพย์สิน · …": each count links to its list with that list's view permission.
+  function usageLink(href: string | null) {
+    return function UsageCount(chunks: React.ReactNode) {
+      return href ? <Link href={href} className={linkVariants({ size: "inherit" })}>{chunks}</Link> : <span>{chunks}</span>
+    }
+  }
+  const title = isEdit ? t("form.editTitle", { name: category?.name ?? "" }) : t("createTitle")
+  const meta =
+    isEdit && context.usage ? (
+      <span data-category-usage className="num">
+        {t.rich("form.usageLine", {
+          code: category?.code ?? "",
+          models: context.usage.models,
+          assets: context.usage.assets,
+          mono: (chunks) => <span className="tag text-foreground">{chunks}</span>,
+          modelsLink: usageLink(context.usage.modelsHref),
+          assetsLink: usageLink(context.usage.assetsHref),
+        })}
+      </span>
+    ) : (
+      t("subtitle")
+    )
+
   return (
-    <div className="mx-auto max-w-3xl">
+    <form onSubmit={handleSubmit} noValidate className="mx-auto max-w-6xl">
       <PageHeader
         title={title}
-        meta={t("subtitle")}
+        meta={meta}
         className="mb-6"
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        <ContentPanel>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} id="category-code" required error={fieldErrors.message("code")}>
-            <Input
-              value={values.code}
-              onChange={(event) => setField("code", event.target.value)}
-              maxLength={20}
-              required
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div data-category-form-main className="grid min-w-0 content-start gap-4">
+          <CategoryFormSection number={1} title={t("form.sectionInfo")} titleId="category-section-info">
+            <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
+              <Field label={t("code")} id="category-code" required hint={isEdit ? t("form.codeHintEdit") : t("form.codeHintCreate")} error={fieldErrors.message("code")}>
+                <Input
+                  value={values.code}
+                  onChange={(event) => setField("code", event.target.value)}
+                  maxLength={20}
+                  required
+                  className="font-mono"
+                />
+              </Field>
+
+              <Field label={t("name")} id="category-name" required hint={t("form.nameHint")} error={fieldErrors.message("name")}>
+                <Input
+                  value={values.name}
+                  onChange={(event) => setField("name", event.target.value)}
+                  maxLength={200}
+                  required
+                />
+              </Field>
+
+              <Field label={t("description")} id="category-description" error={fieldErrors.message("description")} className="md:col-span-2">
+                <Textarea
+                  value={values.description ?? ""}
+                  onChange={(event) => setField("description", event.target.value)}
+                  maxLength={500}
+                  rows={2}
+                />
+              </Field>
+            </div>
+
+            <CategoryPrefixBox context={context} code={values.code} isEdit={isEdit} />
+          </CategoryFormSection>
+
+          <CategoryFormSection
+            number={2}
+            title={t("customFieldTemplate")}
+            titleId="category-section-template"
+            meta={values.customFieldDefs.length > 0 ? t("form.templateCount", { count: values.customFieldDefs.length, required: requiredCount }) : null}
+            description={t("customFieldTemplateHelp")}
+            flush
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCustomFields([...values.customFieldDefs, createCustomFieldDefinition(values.customFieldDefs.length)])}
+              >
+                <Plus aria-hidden="true" />
+                {t("addCustomField")}
+              </Button>
+            }
+          >
+            <CustomFieldTemplateTable
+              fields={values.customFieldDefs}
+              savedFields={savedFields}
+              valueCounts={context.fieldValueCounts}
+              onChange={setCustomFields}
+              errorFor={(index, field) => fieldErrors.message(`customFieldDefs.${index}.${field}`)}
+              onFieldEdit={(index, field) => fieldErrors.clear(`customFieldDefs.${index}.${field}`)}
+              onRowsShift={() => clearRowErrors("customFieldDefs.")}
             />
-          </Field>
+          </CategoryFormSection>
 
-          <Field label={t("name")} id="category-name" required error={fieldErrors.message("name")}>
-            <Input
-              value={values.name}
-              onChange={(event) => setField("name", event.target.value)}
-              maxLength={200}
-              required
+          {/* Task 3 rebuilds sections 3 and 4 to the board (numbered photo items; the status rule). */}
+          <CategoryFormSection
+            number={3}
+            title={t("photoChecklistTemplate")}
+            titleId="category-section-photos"
+            description={t("photoChecklistTemplateHelp")}
+            action={
+              <Button variant="outline" size="sm" onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}>
+                <Plus aria-hidden="true" />
+                {t("addPhotoChecklist")}
+              </Button>
+            }
+          >
+            <PhotoChecklistEditor
+              items={values.photoChecklist}
+              labels={{
+                item: t("photoChecklistItem"),
+                empty: t("photoChecklistEmpty"),
+                remove: t("removePhotoChecklist"),
+                duplicate: t("duplicateItem"),
+                moveUp: t("moveUp"),
+                moveDown: t("moveDown"),
+              }}
+              onChange={setPhotoChecklist}
+              errorFor={(index) => fieldErrors.message(`photoChecklist.${index}`)}
+              onItemEdit={(index) => fieldErrors.clear(`photoChecklist.${index}`)}
+              onRowsShift={() => clearRowErrors("photoChecklist.")}
             />
-          </Field>
+          </CategoryFormSection>
 
-          <Field label={t("description")} id="category-description" error={fieldErrors.message("description")}>
-            <Textarea
-              value={values.description ?? ""}
-              onChange={(event) => setField("description", event.target.value)}
-              maxLength={500}
-              rows={4}
-              className="min-h-28"
-            />
-          </Field>
+          <CategoryFormSection number={4} title={t("form.sectionStatus")} titleId="category-section-status">
+            <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={values.isActive}
+                onChange={(event) => setField("isActive", event.target.checked)}
+                className={checkboxVariants()}
+              />
+              {tCommon("active")}
+            </label>
+          </CategoryFormSection>
+        </div>
 
-          <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm md:self-start">
-            <input
-              type="checkbox"
-              checked={values.isActive}
-              onChange={(event) => setField("isActive", event.target.checked)}
-              className={checkboxVariants()}
-            />
-            {tCommon("active")}
-          </label>
-          </div>
-        </ContentPanel>
+        {/* The side column from lg: Task 3 puts the side panel ผลของการแก้ไข here (G8P2-R3). */}
 
-        <ContentPanel
-          title={t("customFieldTemplate")}
-          description={t("customFieldTemplateHelp")}
-          actions={
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => setCustomFields([...values.customFieldDefs, createCustomFieldDefinition(values.customFieldDefs.length)])}
-            >
-              <Plus aria-hidden="true" />
-              {t("addCustomField")}
-            </Button>
-          }
-        >
-          <CustomFieldTemplateEditor
-            fields={values.customFieldDefs}
-            labels={{
-              fieldName: t("fieldName"),
-              fieldLabel: t("fieldLabel"),
-              fieldLabelTh: t("fieldLabelTh"),
-              fieldType: t("fieldType"),
-              options: t("fieldOptions"),
-              required: t("fieldRequired"),
-              remove: t("removeCustomField"),
-              empty: t("customFieldTemplateEmpty"),
-              text: t("fieldTypeText"),
-              number: t("fieldTypeNumber"),
-              date: t("fieldTypeDate"),
-              select: t("fieldTypeSelect"),
-              boolean: t("fieldTypeBoolean"),
-              duplicate: t("duplicateItem"),
-              moveUp: t("moveUp"),
-              moveDown: t("moveDown"),
-            }}
-            onChange={setCustomFields}
-            errorFor={(index, field) => fieldErrors.message(`customFieldDefs.${index}.${field}`)}
-            onFieldEdit={(index, field) => fieldErrors.clear(`customFieldDefs.${index}.${field}`)}
-            onRowsShift={() => clearRowErrors("customFieldDefs.")}
-          />
-        </ContentPanel>
-
-        <ContentPanel
-          title={t("photoChecklistTemplate")}
-          description={t("photoChecklistTemplateHelp")}
-          actions={
-            <Button variant="outline" size="md" onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}>
-              <Plus aria-hidden="true" />
-              {t("addPhotoChecklist")}
-            </Button>
-          }
-        >
-          <PhotoChecklistEditor
-            items={values.photoChecklist}
-            labels={{
-              item: t("photoChecklistItem"),
-              empty: t("photoChecklistEmpty"),
-              remove: t("removePhotoChecklist"),
-              duplicate: t("duplicateItem"),
-              moveUp: t("moveUp"),
-              moveDown: t("moveDown"),
-            }}
-            onChange={setPhotoChecklist}
-            errorFor={(index) => fieldErrors.message(`photoChecklist.${index}`)}
-            onItemEdit={(index) => fieldErrors.clear(`photoChecklist.${index}`)}
-            onRowsShift={() => clearRowErrors("photoChecklist.")}
-          />
-        </ContentPanel>
-
-        <div className="flex justify-end gap-3 border-t border-border pt-5">
+        <div className="flex justify-end gap-3 border-t border-border pt-5 lg:col-span-2">
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
@@ -297,183 +332,9 @@ export function CategoryForm({
             {tCommon("save")}
           </Button>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   )
-}
-
-function CustomFieldTemplateEditor({
-  fields,
-  labels,
-  onChange,
-  errorFor,
-  onFieldEdit,
-  onRowsShift,
-}: {
-  fields: CustomFieldDefinitionValue[]
-  labels: {
-    fieldName: string
-    fieldLabel: string
-    fieldLabelTh: string
-    fieldType: string
-    options: string
-    required: string
-    remove: string
-    empty: string
-    text: string
-    number: string
-    date: string
-    select: string
-    boolean: string
-    duplicate: string
-    moveUp: string
-    moveDown: string
-  }
-  onChange: (fields: CustomFieldDefinitionValue[]) => void
-  errorFor: (index: number, field: CustomFieldErrorField) => string | undefined
-  onFieldEdit: (index: number, field: CustomFieldErrorField) => void
-  onRowsShift: () => void
-}) {
-  function updateField(index: number, field: keyof CustomFieldDefinitionValue, value: string | boolean) {
-    onChange(fields.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item)))
-    if (field in CUSTOM_FIELD_ID_SUFFIX) onFieldEdit(index, field as CustomFieldErrorField)
-  }
-
-  function removeField(index: number) {
-    onChange(fields.filter((_, itemIndex) => itemIndex !== index))
-    onRowsShift()
-  }
-
-  function duplicateField(index: number) {
-    const field = fields[index]
-    if (!field) return
-    onChange([...fields.slice(0, index + 1), duplicateCategoryCustomField(field), ...fields.slice(index + 1)])
-    onRowsShift()
-  }
-
-  function moveField(index: number, direction: -1 | 1) {
-    onChange(moveArrayItem(fields, index, index + direction))
-    onRowsShift()
-  }
-
-  if (fields.length === 0) {
-    return <EmptyNote>{labels.empty}</EmptyNote>
-  }
-
-  return (
-    <div className="space-y-4">
-      {fields.map((field, index) => (
-        <div key={`${field.id ?? "new"}-${index}`} className="rounded-md border border-border bg-background p-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label={labels.fieldName} id={`category-field-${index}-name`} required error={errorFor(index, "fieldName")}>
-              <Input
-                value={field.fieldName}
-                onChange={(event) => updateField(index, "fieldName", toFieldName(event.target.value))}
-                maxLength={100}
-                required
-                placeholder="cpu"
-              />
-            </Field>
-
-            <Field label={labels.fieldLabel} id={`category-field-${index}-label`} required error={errorFor(index, "fieldLabel")}>
-              <Input
-                value={field.fieldLabel}
-                onChange={(event) => updateField(index, "fieldLabel", event.target.value)}
-                maxLength={200}
-                required
-                placeholder="CPU"
-              />
-            </Field>
-
-            <Field label={labels.fieldLabelTh} id={`category-field-${index}-label-th`} error={errorFor(index, "fieldLabelTh")}>
-              <Input
-                value={field.fieldLabelTh ?? ""}
-                onChange={(event) => updateField(index, "fieldLabelTh", event.target.value)}
-                maxLength={200}
-              />
-            </Field>
-
-            <Field label={labels.fieldType}>
-              <NativeSelect
-                value={field.fieldType}
-                onChange={(event) => updateField(index, "fieldType", event.target.value)}
-              >
-                <option value="text">{labels.text}</option>
-                <option value="number">{labels.number}</option>
-                <option value="date">{labels.date}</option>
-                <option value="select">{labels.select}</option>
-                <option value="boolean">{labels.boolean}</option>
-              </NativeSelect>
-            </Field>
-
-            {field.fieldType === "select" && (
-              <div className="md:col-span-2">
-                <Field label={labels.options}>
-                  <Textarea
-                    value={field.options ?? ""}
-                    onChange={(event) => updateField(index, "options", event.target.value)}
-                    rows={3}
-                    placeholder="Windows 11&#10;Windows 10&#10;macOS"
-                  />
-                </Field>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="inline-flex min-h-11 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={field.isRequired}
-                onChange={(event) => updateField(index, "isRequired", event.target.checked)}
-                className={checkboxVariants()}
-              />
-              {labels.required}
-            </label>
-
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="md" onClick={() => moveField(index, -1)} disabled={index === 0}>
-                <ArrowUp aria-hidden="true" />
-                {labels.moveUp}
-              </Button>
-              <Button variant="outline" size="md" onClick={() => moveField(index, 1)} disabled={index === fields.length - 1}>
-                <ArrowDown aria-hidden="true" />
-                {labels.moveDown}
-              </Button>
-              <Button variant="outline" size="md" onClick={() => duplicateField(index)}>
-                <Copy aria-hidden="true" />
-                {labels.duplicate}
-              </Button>
-              <Button variant="danger" size="md" onClick={() => removeField(index)}>
-                <Trash2 aria-hidden="true" />
-                {labels.remove}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function createCustomFieldDefinition(sortOrder: number): CustomFieldDefinitionValue {
-  return {
-    fieldName: "",
-    fieldLabel: "",
-    fieldLabelTh: "",
-    fieldType: "text",
-    options: "",
-    isRequired: false,
-    sortOrder,
-    isActive: true,
-  }
-}
-
-function toFieldName(value: string) {
-  return value
-    .trim()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9_]/g, "")
 }
 
 function PhotoChecklistEditor({

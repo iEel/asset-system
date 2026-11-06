@@ -172,13 +172,22 @@ test("asset model form: the form on the panel classes, the photo panel a Content
   assert.doesNotMatch(source, /rounded-lg border|border-dashed|\btext-xs\b|\btext-lg\b|rounded-md border border-border bg-background p-3/)
 })
 
-test("category form: three ContentPanels with the add buttons as panel actions, and EmptyNote for empty templates (spec 2D D9, M21)", () => {
+test("category form: numbered section cards with the add buttons in their heads, and EmptyNote for empty templates (board MD-Category-Edit, group 8 plan 2 Task 2)", () => {
   const source = read("src/components/master-data/category-form.tsx")
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 3, "the fields, the custom field template, the photo checklist")
-  assert.match(source, /<ContentPanel\n\s+title=\{t\("customFieldTemplate"\)\}\n\s+description=\{t\("customFieldTemplateHelp"\)\}\n\s+actions=\{/)
-  assert.match(source, /<ContentPanel\n\s+title=\{t\("photoChecklistTemplate"\)\}\n\s+description=\{t\("photoChecklistTemplateHelp"\)\}\n\s+actions=\{/)
-  assert.equal(source.match(/<EmptyNote>\{labels\.empty\}<\/EmptyNote>/g)?.length, 2)
-  assert.doesNotMatch(source, /rounded-lg border|border-dashed|\btext-lg\b|<section\b/)
+  const table = read("src/components/master-data/category-form/template-table.tsx")
+  assert.doesNotMatch(source, /<ContentPanel\b/)
+  assert.deepEqual(
+    [...source.matchAll(/<CategoryFormSection\s+number=\{(\d)\}/g)].map((match) => match[1]),
+    ["1", "2", "3", "4"],
+    "ข้อมูลหมวดหมู่, แม่แบบ, รูปที่ต้องถ่าย, สถานะ"
+  )
+  assert.match(source, /title=\{t\("customFieldTemplate"\)\}[\s\S]*?description=\{t\("customFieldTemplateHelp"\)\}\n\s+flush\n\s+action=\{/)
+  assert.match(source, /title=\{t\("photoChecklistTemplate"\)\}[\s\S]*?description=\{t\("photoChecklistTemplateHelp"\)\}\n\s+action=\{/)
+  assert.equal(source.match(/<EmptyNote>\{labels\.empty\}<\/EmptyNote>/g)?.length, 1, "the photo checklist")
+  assert.match(table, /<EmptyNote padded>\{t\("customFieldTemplateEmpty"\)\}<\/EmptyNote>/)
+  for (const text of [source, table]) assert.doesNotMatch(text, /rounded-lg border|border-dashed|<section\b/)
+  // The section card is the one <section> (aria-labelledby its h2).
+  assert.match(read("src/components/master-data/category-form/section-card.tsx"), /<section aria-labelledby=\{titleId\} className=\{cn\(getPanelClasses\(\), "min-w-0"\)\}>/)
 })
 
 test("the seven simple master-data forms: a <form> cannot be ContentPanel, so it takes the panel classes and the one panel spacing (spec 2D D9, 2D-2 R4)", () => {

@@ -232,18 +232,24 @@ test("category: errors under the field, also on each custom field and photo chec
     "check(`customFieldDefs.${index}.fieldLabelTh`, maxLength(field.fieldLabelTh, 200))",
     "check(`photoChecklist.${index}`, required(item) ?? maxLength(item, 100))",
   ]) assert.ok(rules.includes(rule), rule)
-  // The rows' ids and focus order follow the server's keys (spec §6.1: customFieldDefs.0.fieldName).
-  assert.ok(source.includes("const CUSTOM_FIELD_ID_SUFFIX = { fieldName: \"name\", fieldLabel: \"label\", fieldLabelTh: \"label-th\" } as const"))
+  // The rows' ids and focus order follow the server's keys (spec §6.1: customFieldDefs.0.fieldName). Group 8 plan 2
+  // Task 2: the template table (board MD-Category-Edit) moved to category-form/template-table.tsx, one hidden-label
+  // Field per cell, named by column and row.
+  const table = read(`${C}master-data/category-form/template-table.tsx`)
+  assert.ok(table.includes("export const CUSTOM_FIELD_ID_SUFFIX = { fieldName: \"name\", fieldLabel: \"label\", fieldLabelTh: \"label-th\" } as const"))
+  assert.ok(source.includes("type CustomFieldErrorField = keyof typeof CUSTOM_FIELD_ID_SUFFIX"))
   assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(fieldOrder(values), { idFor: fieldId })"))
   for (const field of [
-    '<Field label={labels.fieldName} id={`category-field-${index}-name`} required error={errorFor(index, "fieldName")}>',
-    '<Field label={labels.fieldLabel} id={`category-field-${index}-label`} required error={errorFor(index, "fieldLabel")}>',
-    '<Field label={labels.fieldLabelTh} id={`category-field-${index}-label-th`} error={errorFor(index, "fieldLabelTh")}>',
-    "<Field label={labels.item} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>",
-  ]) assert.ok(source.includes(field), field)
+    '<Field label={cell(t("fieldName"), row)} hideLabel id={`category-field-${index}-name`} required error={errorFor(index, "fieldName")}>',
+    '<Field label={cell(t("fieldLabel"), row)} hideLabel id={`category-field-${index}-label`} required error={errorFor(index, "fieldLabel")}>',
+    '<Field label={cell(t("fieldLabelTh"), row)} hideLabel id={`category-field-${index}-label-th`} error={errorFor(index, "fieldLabelTh")}>',
+  ]) assert.ok(table.includes(field), field)
+  assert.ok(source.includes("<Field label={labels.item} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>"))
   // A row's error clears when that row's field changes; removing, copying or moving a row clears that template's errors.
-  assert.match(source, /if \(field in CUSTOM_FIELD_ID_SUFFIX\) onFieldEdit\(index, field as CustomFieldErrorField\)/)
-  assert.equal(source.match(/\n    onRowsShift\(\)\n/g)?.length, 6, "remove, duplicate and move in each editor")
+  assert.match(table, /if \(field in CUSTOM_FIELD_ID_SUFFIX\) onFieldEdit\(index, field as CustomFieldErrorField\)/)
+  assert.equal(source.match(/\n    onRowsShift\(\)\n/g)?.length, 3, "remove, duplicate and move of the photo items")
+  assert.equal(table.match(/\n    shiftRows\(\)\n/g)?.length, 3, "remove, duplicate and move of the template rows")
+  assert.match(table, /function shiftRows\(\) \{\n    setOpenOptions\(new Set\(\)\)\n    onRowsShift\(\)\n  \}/)
   assert.ok(source.includes('onRowsShift={() => clearRowErrors("customFieldDefs.")}'))
   assert.ok(source.includes('onRowsShift={() => clearRowErrors("photoChecklist.")}'))
 })

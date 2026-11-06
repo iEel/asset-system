@@ -21,7 +21,8 @@ test("the 9 master-data forms: PageHeader with the subtitle as meta and the back
     assert.match(
       source,
       // Group 7 plan 3 Task 2: the location form's meta is its board's lead line, one for create and one for edit.
-      /<PageHeader\n\s+title=\{title\}\n\s+meta=\{(?:t\("subtitle"\)|isEdit \? t\("form\.introEdit"\) : t\("form\.introCreate"\))\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\}(?: onClick=\{confirmNavigation\})? label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/,
+      // Group 8 plan 2 Task 2: the category form's meta is the usage line on edit and the subtitle on create.
+      /<PageHeader\n\s+title=\{title\}\n\s+meta=\{(?:t\("subtitle"\)|meta|isEdit \? t\("form\.introEdit"\) : t\("form\.introCreate"\))\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\}(?: onClick=\{confirmNavigation\})? label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/,
       path,
     )
     assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b/, path)

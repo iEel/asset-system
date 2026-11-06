@@ -4,6 +4,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { CategoryForm } from "@/components/master-data/category-form"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
+import { readCategoryFormContext } from "@/lib/category-form-context"
 
 type EditCategoryPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -14,9 +15,10 @@ export default async function EditCategoryPage({ params, searchParams }: EditCat
   const { id, locale } = await params
   const rawSearchParams = await searchParams
   const returnToHref = normalizeMasterDataReturnTo(locale, "categories", rawSearchParams.returnTo)
-  await requirePagePermission(locale, "category", "edit")
+  const user = await requirePagePermission(locale, "category", "edit")
 
-  const [category, photoChecklist] = await Promise.all([
+  // The header's usage counts, the prefix box and G8P2-R1's values per field name (board MD-Category-Edit).
+  const [category, photoChecklist, context] = await Promise.all([
     prisma.assetCategory.findFirst({
       where: { id },
       include: {
@@ -27,6 +29,7 @@ export default async function EditCategoryPage({ params, searchParams }: EditCat
       },
     }),
     getCategoryPhotoChecklist(id),
+    readCategoryFormContext({ locale, user, categoryId: id }),
   ])
 
   if (!category) notFound()
@@ -53,6 +56,7 @@ export default async function EditCategoryPage({ params, searchParams }: EditCat
         photoChecklist,
       }}
       backHref={returnToHref}
+      context={context}
     />
   )
 }

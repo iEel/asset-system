@@ -156,7 +156,10 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}admin/system-settings-form.tsx`]: [0, 1, 0],
   [`${C}master-data/branch-form.tsx`]: [3, 4, 0],
   [`${C}master-data/brand-form.tsx`]: [1, 1, 0],
-  [`${C}master-data/category-form.tsx`]: [4, 7, 0],
+  // Group 8 plan 2 Task 2: the template table's row fields (field name, label: required; and the Thai label: maxLength)
+  // went to category-form/template-table.tsx; the rows add up to [4, 7, 0].
+  [`${C}master-data/category-form.tsx`]: [2, 4, 0],
+  [`${C}master-data/category-form/template-table.tsx`]: [2, 3, 0],
   [`${C}master-data/company-form.tsx`]: [2, 6, 0],
   [`${C}master-data/department-form.tsx`]: [2, 2, 0],
   [`${C}master-data/employee-form.tsx`]: [6, 5, 0],

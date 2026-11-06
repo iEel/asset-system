@@ -59,7 +59,12 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // "{n} แผนก · ยังมีทรัพย์สินผูกอยู่ {d} แผนก รวม {a} รายการ" (keyed on departments; withAssets and assets are plurals too).
   // Group 8 plan 2 Task 1 added 3: the categories' "รุ่นรวม {m} · ทรัพย์สินรวม {a}" (keyed on models; assets is a plural
   // too) on the total card and the footer, and the cells "{n} ช่อง" and "{n} รายการ".
-  assert.equal(pluralKeys.size, 98,[...pluralKeys.keys()].join(", "))
+  // Group 8 plan 2 Task 2 added 5: the category form's usage line (keyed on models; assets is a plural too), the template
+  // head "{n} ช่อง · จำเป็น {r}", the table's caption, the rename warning "ทรัพย์สิน {n} รายการ" and the saved-values note.
+  assert.equal(pluralKeys.size, 103,[...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("category.form.usageLine"), "models")
+  assert.match(en.get("category.form.usageLine") ?? "", /\{assets, plural, one \{# asset\} other \{# assets\}\}/)
+  for (const key of ["templateCount", "templateCaption", "renameWarning", "savedValuesNote"]) assert.equal(pluralKeys.get(`category.form.${key}`), "count", key)
   assert.equal(pluralKeys.get("department.summaryWithEmployeesFoot"), "employees")
   assert.equal(pluralKeys.get("department.list.summaryLine"), "departments")
   assert.equal(pluralKeys.get("branch.list.footerTotals"), "locations")

@@ -153,7 +153,9 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
   LF1: {},
   LT1: {},
   LT2: {},
-  LT3: {},
+  LT3: {
+    [`${C}master-data/category-form/template-table.tsx`]: { count: 1, kind: "permanent", why: "the detail row under a template row (option chips, the rename warning), not an empty row", ruling: "group 8 plan 2 Task 2 (board MD-Category-Edit)" },
+  },
   LT4: {},
   LT5: {},
   LV1: {},
@@ -173,6 +175,7 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
     "src/lib/asset-import-history.ts": { count: 3, kind: "permanent", why: "server-built import history: the batch id, the file name and the approver", ruling: "2B R-n" },
     "src/lib/asset-operation-search-rules.ts": { count: 2, kind: "permanent", why: "the label of a handover destination that cannot be read, built on the server", ruling: "2B R-n" },
     "src/lib/asset-tag.ts": { count: 1, kind: "permanent", why: "the asset tag separator's default, not an empty value", ruling: "2B R-n" },
+    "src/lib/category-prefix-groups.ts": { count: 1, kind: "permanent", why: "the asset tag separator's default in the category form's example tag, not an empty value", ruling: "group 8 plan 2 Task 2" },
     "src/lib/audit-correction-history.ts": { count: 1, kind: "permanent", why: "the correction's user name, an argument of a translated sentence", ruling: "2B R-n" },
     "src/lib/audit-pdf.tsx": { count: 1, kind: "permanent", why: "an empty cell of the audit PDF", ruling: "2B R-n" },
     "src/lib/disposal-approval-service.ts": { count: 2, kind: "permanent", why: "the stand-in asset tag of a request that cannot be found", ruling: "2B R-n" },
