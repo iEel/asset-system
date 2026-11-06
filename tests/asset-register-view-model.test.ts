@@ -148,6 +148,7 @@ const chipLabels = {
   custodian: "ผู้ถือครอง",
   location: "ที่ตั้ง",
   supplier: "ผู้ขาย",
+  department: "แผนก",
   rowsPerPage: "จำนวนต่อหน้า",
   ownershipTypes: { shared: "ใช้ร่วมกัน" },
   dataQuality: { serial: "ไม่มี Serial", department: "แผนกไม่ครบ", licenseExpiry: "License ใกล้หมดอายุ", returnDue: "ใกล้/เกินกำหนดคืน" },
@@ -161,7 +162,7 @@ function chipsFor(query: string) {
     basePath: "/th/assets",
     filters: filters(query),
     tabStatusIds: ["s-ready"],
-    names: { company: "SNI - สยาม", status: "สูญหาย", brand: "Dell", custodian: "E001 - สมชาย", location: "L-01 - ห้อง IT ชั้น 3", supplier: "SUP1 - ร้านเอ" },
+    names: { company: "SNI - สยาม", status: "สูญหาย", brand: "Dell", custodian: "E001 - สมชาย", location: "L-01 - ห้อง IT ชั้น 3", supplier: "SUP1 - ร้านเอ", department: "IT - ฝ่ายไอที" },
     labels: chipLabels,
   })
 }
@@ -242,6 +243,20 @@ test("locationId gets the chip ที่ตั้ง: <name> at every width, and
   const [raw] = buildAssetRegisterChips({ basePath: "/th/assets", filters: filters("locationId=loc-404"), tabStatusIds: [], names: {}, labels: chipLabels })
   assert.equal(raw.label, "ที่ตั้ง: loc-404")
   assert.equal(paramsOf(buildAssetRegisterClearAllHref("/th/assets", filters("locationId=loc-1"))).get("locationId"), null)
+})
+
+test("departmentId gets the chip แผนก: <name> at every width, apart from dataQuality=department; removing it or clearing all drops it (group 8 plan 1 Task 4)", () => {
+  const chips = chipsFor("departmentId=d-1&dataQuality=department")
+  assert.deepEqual(chips.map((chip) => [chip.key, chip.label, chip.mobileOnly]), [
+    ["dataQuality", "แผนกไม่ครบ", false],
+    ["department", "แผนก: IT - ฝ่ายไอที", false],
+  ])
+  const withoutDepartment = paramsOf(chips[1].href)
+  assert.equal(withoutDepartment.get("departmentId"), null)
+  assert.equal(withoutDepartment.get("dataQuality"), "department")
+  const [raw] = buildAssetRegisterChips({ basePath: "/th/assets", filters: filters("departmentId=d-404"), tabStatusIds: [], names: {}, labels: chipLabels })
+  assert.equal(raw.label, "แผนก: d-404")
+  assert.equal(paramsOf(buildAssetRegisterClearAllHref("/th/assets", filters("departmentId=d-1"))).get("departmentId"), null)
 })
 
 test("clear all keeps only the sort order", () => {

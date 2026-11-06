@@ -1787,7 +1787,54 @@
     "code": "Department Code",
     "name": "Department Name",
     "company": "Company",
-    "sharedDepartment": "Shared department / no company"
+    "sharedDepartment": "Shared department / no company",
+    "employees": "Employees",
+    "assets": "Assets",
+    "searchPlaceholder": "Search department code, name, or company",
+    "employeeUsageFilter": "Employees",
+    "assetUsageFilter": "Assets",
+    "withEmployees": "Has employees",
+    "withoutEmployees": "No employees yet",
+    "withAssets": "Has assets",
+    "withoutAssets": "No assets yet",
+    "clearFilters": "Clear filters",
+    "activeFilters": "Active filters",
+    "clearFilter": "Clear this filter",
+    "summaryTotal": "Departments (active)",
+    "summaryCompanyCount": "{name} {count, number}",
+    "summarySharedCount": "Shared {count, number}",
+    "summaryWithEmployees": "Has Employees",
+    "summaryWithEmployeesFoot": "{employees, plural, one {# employee} other {# employees}} in total · Select to list the departments with employees",
+    "summaryWithoutEmployees": "No Employees",
+    "summaryWithoutEmployeesFoot": "{withEmployees, number} + {withoutEmployees, number} = {total, number} · Check whether they are still used or can be deactivated",
+    "list": {
+      "summaryLine": "{departments, plural, one {# department} other {# departments}} · {withAssets, plural, one {# still holds} other {# still hold}} {assets, plural, one {# asset} other {# assets}} · Sorted by {sort}",
+      "countsNote": "Employee and asset numbers count active records only · Select a number to list the records of that department",
+      "moveBeforeDeactivate": "Move them before deactivating",
+      "sortLabel": "Sort by",
+      "sortDirection": "Order",
+      "sortAsc": "Ascending (A → Z)",
+      "sortDesc": "Descending (Z → A)",
+      "sortCreatedAt": "Date added"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "hint": "No employees, assets or open audit rounds use it, so it can be deactivated. You will be asked to confirm",
+      "confirmTitle": "Deactivate \"{name}\"?",
+      "confirmBody": "This department will no longer be offered on other pages such as new employees, handovers and new assets. Its history stays, and it can be reactivated from the \"Inactive\" filter",
+      "clear": {
+        "employees": "No employees",
+        "assets": "No assets assigned",
+        "auditRounds": "Not in the scope of an open audit round"
+      },
+      "success": "Deactivated"
+    },
+    "reactivate": {
+      "action": "Reactivate",
+      "confirmTitle": "Reactivate \"{name}\"?",
+      "confirmBody": "This department will be offered again on other pages such as new employees, handovers and new assets",
+      "success": "Reactivated"
+    }
   },
   "employee": {
     "title": "Employees",

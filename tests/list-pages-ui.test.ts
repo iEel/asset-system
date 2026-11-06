@@ -32,7 +32,8 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: ["/api/categories/${category.id}"], removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },
   // Group 8 plan 1 Task 2: companies say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions (it renders RowActions).
   { path: `${D}master-data/companies/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/company-delete-button.tsx`], stats: true },
-  { path: `${D}master-data/departments/page.tsx`, deleteEndpoints: ["/api/departments/${department.id}"], removedWrappers: [`${C}master-data/department-delete-button.tsx`], stats: false },
+  // Group 8 plan 1 Task 4: departments say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions, as companies and branches.
+  { path: `${D}master-data/departments/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/department-delete-button.tsx`], stats: true },
   // Group 7 follow-ups Task 2: employees say "ปิดใช้งาน" through EmployeeRowActions (it renders RowActions, G7F-R2).
   { path: `${D}master-data/employees/page.tsx`, deleteEndpoints: [], rowActions: "<EmployeeRowActions", removedWrappers: [`${C}master-data/employee-delete-button.tsx`], stats: true },
   // Group 7 plan 3 Task 3: locations say "ปิดใช้งาน" through LocationDeactivateButton (it renders RowActions).
@@ -89,8 +90,9 @@ test("the selected brand keeps the vertical brand picker and gets RowActions: ed
 })
 
 // B4 (spec 2B §5.9): the lists that now page on the server. Plans 2B-2 and 2B-5 add theirs, one line each, before the "]".
-const B4_LISTS = [
-  `${D}master-data/departments/page.tsx`,
+const B4_LISTS: string[] = [
+  // departments left in group 8 plan 1 Task 4: it reads page and pageSize through parseDepartmentListParams
+  // (src/lib/department-list-query.ts), and tests/departments-list-board.test.ts pins its paging.
   // disposal/batches left in request batches Task 4: it pages through readDisposalBatchList (listPageWindow there), and
   // tests/disposal-batch-page-ui.test.ts and tests/disposal-batch-page-data.test.ts pin it.
 ]
@@ -108,11 +110,12 @@ test("B4 lists read page and pageSize with parseListPage and count the whole lis
 })
 
 test("the departments list keeps its page and page size in returnTo, in its page links and in its search (spec 2B §5.9.2 row 8)", () => {
+  // Group 8 plan 1 Task 4: the list state (page and page size included) is departmentListHref's query string.
   const source = read(`${D}master-data/departments/page.tsx`)
-  assert.match(source, /const departmentReturnHref = listHref\(listPage\)/)
-  assert.match(source, /appendListPage\(new URLSearchParams\(searchText \? \{ search: searchText \} : \{\}\), next\)/)
-  assert.match(source, /hiddenInputs=\{Object\.fromEntries\(appendListPage\(new URLSearchParams\(\), \{ pageSize: listPage\.pageSize \}\)\)\}/)
-  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(source, /const listHref = \(next: Partial<DepartmentListState>\) => departmentListHref\(basePath, listState, next\)/)
+  assert.match(source, /const departmentReturnHref = listHref\(\{\}\)/)
+  assert.match(source, /\{listState\.pageSize !== 25 \? <input type="hidden" name="pageSize" value=\{listState\.pageSize\} \/> : null\}/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value, page: 1 \}\) \}\)\)\}/)
 })
 
 // Suppliers is not in MASTER_DATA_LISTS: its table, row actions and foot live in supplier-list-view.tsx, and its empty

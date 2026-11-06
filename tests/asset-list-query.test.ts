@@ -64,6 +64,17 @@ test("builds exact asset filters and preserves them in query strings", () => {
   )
 })
 
+test("departmentId filters by the asset's department and stays in the query string; dataQuality=department still means no department (group 8 plan 1 Task 4)", () => {
+  const filters = parseAssetListParams(new URLSearchParams("departmentId=%20dept-1%20&sort=name&direction=asc&page=2"))
+  assert.equal(filters.departmentId, "dept-1")
+  assert.deepEqual(buildAssetWhere(filters), { isActive: true, departmentId: "dept-1" })
+  assert.equal(buildAssetQueryString(filters, { page: 3 }), "departmentId=dept-1&sort=name&direction=asc&page=3&pageSize=25")
+  assert.equal(parseAssetListParams({}).departmentId, "")
+  assert.deepEqual(buildAssetWhere(parseAssetListParams({ dataQuality: "department" })).AND, [{ departmentId: null }])
+  // The status tabs and the export read the same where and query string.
+  assert.equal(buildAssetStatusCountWhere(filters).departmentId, "dept-1")
+})
+
 test("rejects unknown cross-scope asset filters", () => {
   assert.equal(parseAssetListParams({ crossScope: "bad-filter" }).crossScope, "")
   assert.equal(parseAssetListParams({ crossScope: "location_branch" }).crossScope, "location_branch")

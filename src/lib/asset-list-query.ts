@@ -30,6 +30,9 @@ export type AssetListParams = {
   custodianState?: string
   locationId?: string
   supplierId?: string
+  // The asset's department (the departments list's ทรัพย์สิน count, group 8 plan 1 Task 4). dataQuality=department is
+  // a different filter: assets with no department.
+  departmentId?: string
   dataQuality?: string
   crossScope?: string
   activity?: string
@@ -73,6 +76,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     custodianState: normalizeAssetCustodianStateFilter(getValue("custodianState")),
     locationId: String(getValue("locationId") ?? "").trim(),
     supplierId: String(getValue("supplierId") ?? "").trim(),
+    departmentId: String(getValue("departmentId") ?? "").trim(),
     dataQuality,
     crossScope,
     activity,
@@ -115,6 +119,7 @@ export function buildAssetWhere(
     ...(filters.custodianId ? { custodianId: filters.custodianId } : {}),
     ...(filters.locationId ? { currentLocationId: filters.locationId } : {}),
     ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
+    ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
     ...(filters.search
       ? {
           OR: assetSearchConditions(filters.search),
@@ -191,7 +196,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "statusGroup", "conditionId", "ownershipType", "custodianId", "custodianState", "locationId", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "statusGroup", "conditionId", "ownershipType", "custodianId", "custodianState", "locationId", "supplierId", "departmentId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

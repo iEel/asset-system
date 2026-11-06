@@ -6,6 +6,8 @@ import { isDeactivation } from "@/lib/master-data-query"
 import { errorResponse } from "@/lib/api-response"
 import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { departmentSchema } from "@/lib/validations/department"
+import { departmentDeactivateCountSelect, departmentDeactivateCounts } from "@/lib/department-list-query"
+import { getDepartmentDeleteBlockReason } from "@/lib/organization-master-query"
 
 type DepartmentRouteContext = {
   params: Promise<{ id: string }>
@@ -56,6 +58,19 @@ export async function PUT(request: NextRequest, context: DepartmentRouteContext)
       return NextResponse.json({ error: "Department not found" }, { status: 404 })
     }
 
+    // G8P1-R3: unticking "ใช้งาน" removes the department from use the way ปิดใช้งาน (DELETE) does, so the same counts
+    // refuse it: active employees, active assets and open audit rounds scoped to it.
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      const usage = await prisma.department.findFirst({
+        where: { id },
+        select: { _count: { select: departmentDeactivateCountSelect } },
+      })
+      const blockReason = usage ? getDepartmentDeleteBlockReason(departmentDeactivateCounts(usage._count)) : null
+      if (blockReason) {
+        return NextResponse.json({ error: blockReason }, { status: 409 })
+      }
+    }
+
     const department = await prisma.department.update({
       where: { id },
       data: {
@@ -100,10 +115,17 @@ export async function DELETE(_request: NextRequest, context: DepartmentRouteCont
     const { id } = await context.params
     const existing = await prisma.department.findFirst({
       where: { id, isActive: true },
+      // G8P1-R3: the counts the guard reads (the list's ⋯ shows the same reason before anyone presses it).
+      include: { _count: { select: departmentDeactivateCountSelect } },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Department not found" }, { status: 404 })
+    }
+
+    const blockReason = getDepartmentDeleteBlockReason(departmentDeactivateCounts(existing._count))
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const department = await prisma.department.update({

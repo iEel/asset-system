@@ -81,7 +81,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         return path ? [chain[0].branch.name, ...path] : undefined
       })
     : Promise.resolve(undefined)
-  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel, statusCounts, selectedSupplier] = await withPerformanceTiming(
+  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel, statusCounts, selectedSupplier, selectedDepartment] = await withPerformanceTiming(
     "assets.initial-data",
     () => Promise.all([
       prisma.asset.findMany({
@@ -174,6 +174,13 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       filters.supplierId
         ? prisma.supplier.findUnique({
             where: { id: filters.supplierId },
+            select: { code: true, name: true },
+          })
+        : Promise.resolve(null),
+      // ?departmentId= (the departments list's ทรัพย์สิน count): one lookup for its chip, inactive departments too.
+      filters.departmentId
+        ? prisma.department.findUnique({
+            where: { id: filters.departmentId },
             select: { code: true, name: true },
           })
         : Promise.resolve(null),
@@ -314,6 +321,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       custodian: selectedCustodian ? `${selectedCustodian.code} - ${selectedCustodian.fullNameTh}` : undefined,
       location: selectedLocationPath?.join(" › "),
       supplier: selectedSupplier ? `${selectedSupplier.code} - ${selectedSupplier.name}` : undefined,
+      department: selectedDepartment ? `${selectedDepartment.code} - ${selectedDepartment.name}` : undefined,
     },
     labels: {
       company: t("company"),
@@ -327,6 +335,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       custodian: t("custodian"),
       location: t("location"),
       supplier: t("supplier"),
+      department: t("department"),
       rowsPerPage: t("pageSizeLabel"),
       ownershipTypes: Object.fromEntries(assetOwnershipTypes.map((type) => [type, t(`ownershipType_${type}`)])) as Record<string, string>,
       dataQuality: {

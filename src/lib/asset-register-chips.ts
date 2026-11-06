@@ -8,7 +8,7 @@ export type AssetRegisterChipInput = {
   filters: AssetListFilters
   tabStatusIds: readonly string[]
   names: Partial<Record<
-    "company" | "branch" | "category" | "status" | "condition" | "brand" | "model" | "custodian" | "location" | "supplier",
+    "company" | "branch" | "category" | "status" | "condition" | "brand" | "model" | "custodian" | "location" | "supplier" | "department",
     string
   >>
   labels: {
@@ -23,6 +23,7 @@ export type AssetRegisterChipInput = {
     custodian: string
     location: string
     supplier: string
+    department: string
     rowsPerPage: string
     ownershipTypes: Record<string, string>
     dataQuality: Record<string, string>
@@ -62,6 +63,8 @@ export function buildAssetRegisterChips({ basePath, filters, tabStatusIds, names
   // Every width: the filter sheet has no location, so the chip is the only place that shows it (group 1 spec §7.4).
   if (filters.locationId) add("location", named(labels.location, names.location, filters.locationId), { locationId: "" })
   if (filters.supplierId) add("supplier", named(labels.supplier, names.supplier, filters.supplierId), { supplierId: "" })
+  // Every width: the filter sheet has no department, so the chip is the only place that shows it (group 8 plan 1 Task 4).
+  if (filters.departmentId) add("department", named(labels.department, names.department, filters.departmentId), { departmentId: "" })
   if (filters.activity) add("activity", labels.activity[filters.activity] ?? filters.activity, { activity: "" })
 
   return chips
@@ -83,6 +86,7 @@ export function buildAssetRegisterClearAllHref(basePath: string, filters: AssetL
     custodianState: "",
     locationId: "",
     supplierId: "",
+    departmentId: "",
     dataQuality: "",
     crossScope: "",
     activity: "",

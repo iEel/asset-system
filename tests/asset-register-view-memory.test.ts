@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -47,6 +48,13 @@ test("locationId arrives only on an exact link and is never saved as the view (g
   assert.equal(isExactAssetRegisterLink(new URL(href, "http://asset.local").searchParams), true)
   assert.equal(hasExplicitAssetRegisterView(new URLSearchParams("locationId=loc-1")), false)
   assert.equal(getPersistedAssetRegisterView(new URLSearchParams("locationId=loc-1&search=a")).toString(), "search=a")
+})
+
+test("departmentId (the departments list's ทรัพย์สิน count) is never saved as the view (group 8 plan 1 Task 4)", () => {
+  assert.equal(hasExplicitAssetRegisterView(new URLSearchParams("departmentId=d-1")), false)
+  assert.equal(getPersistedAssetRegisterView(new URLSearchParams("departmentId=d-1&search=a")).toString(), "search=a")
+  const memory = readFileSync("src/components/assets/asset-register-view-memory.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(memory, /if \(current\.get\("custodianState"\) \|\| current\.get\("locationId"\) \|\| current\.get\("departmentId"\)\) return/)
 })
 
 test("the สถานะอื่น tab is remembered with the view (group 4 plan 1)", () => {

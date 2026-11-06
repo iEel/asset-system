@@ -40,6 +40,7 @@ const registerFilterKeys = [
   "custodianState",
   "locationId",
   "supplierId",
+  "departmentId",
   "dataQuality",
   "crossScope",
   "activity",

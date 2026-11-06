@@ -59,7 +59,7 @@ const LOADERS = [
   "suppliers/[id]/edit",
 ]
 const PUT_ROUTES = ["companies", "branches", "departments", "locations", "categories", "brands", "models", "employees", "suppliers"]
-const GUARDED_PUT_ROUTES = ["companies", "branches", "locations", "employees", "categories"]
+const GUARDED_PUT_ROUTES = ["companies", "branches", "departments", "locations", "employees", "categories"]
 const putSource = (dir: string) => {
   const source = read(`src/app/api/${dir}/[id]/route.ts`)
   const start = source.indexOf("export async function PUT")
@@ -93,6 +93,11 @@ test("inactive master data is reachable: a status filter, the real badge, inacti
       // Group 8 plan 1 Task 3 (spec §3, §5): as companies, with branch:delete and branch:edit.
       assert.match(source, /deactivate:\n\s+canDeactivate && branch\.isActive\n\s+\? \{/, `${page}: ปิดใช้งาน follows isActive`)
       assert.match(source, /canReactivate && !branch\.isActive\n\s+\? \{/, `${page}: เปิดใช้งาน on inactive rows`)
+      assert.match(source, /<RecordStatusSegmented /, `${page}: no status filter`)
+    } else if (page === "departments") {
+      // Group 8 plan 1 Task 4 (spec §3, §5): as companies, with department:delete and department:edit.
+      assert.match(source, /deactivate:\n\s+canDeactivate && department\.isActive\n\s+\? \{/, `${page}: ปิดใช้งาน follows isActive`)
+      assert.match(source, /canReactivate && !department\.isActive\n\s+\? \{/, `${page}: เปิดใช้งาน on inactive rows`)
       assert.match(source, /<RecordStatusSegmented /, `${page}: no status filter`)
     } else if (page === "companies") {
       // Group 8 plan 1 Task 2 (spec §3): MasterDataRowActions offers "ปิดใช้งาน" on active rows only, with company:delete,
@@ -195,6 +200,14 @@ test("a referenced record that is inactive comes back when ticked ใช้ง�
       body: { code: "BKK", name: "Bangkok", companyId: "c1", address: "", contactPerson: "", isActive: true },
       counts: { locations: 1, employees: 0, assets: 4, auditRounds: 0 },
       reason: org.getBranchDeleteBlockReason({ locations: 1, employees: 0, assets: 4, auditRounds: 0 }),
+      extra: {},
+    },
+    {
+      // G8P1-R3 (group 8 plan 1 Task 4): the route reads auditRounds as the open rounds scoped to the department.
+      dir: "departments", model: "department",
+      body: { code: "D1", name: "IT", companyId: "", isActive: true },
+      counts: { employees: 2, assets: 0, auditRounds: 1 },
+      reason: org.getDepartmentDeleteBlockReason({ employees: 2, assets: 0, openAuditRounds: 1 }),
       extra: {},
     },
     {

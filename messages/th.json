@@ -1787,7 +1787,54 @@
     "code": "รหัสแผนก",
     "name": "ชื่อแผนก",
     "company": "บริษัท",
-    "sharedDepartment": "แผนกกลาง / ไม่ระบุบริษัท"
+    "sharedDepartment": "แผนกกลาง / ไม่ระบุบริษัท",
+    "employees": "พนักงาน",
+    "assets": "ทรัพย์สิน",
+    "searchPlaceholder": "ค้นหารหัสแผนก ชื่อแผนก หรือบริษัท",
+    "employeeUsageFilter": "พนักงาน",
+    "assetUsageFilter": "ทรัพย์สิน",
+    "withEmployees": "มีพนักงาน",
+    "withoutEmployees": "ยังไม่มีพนักงาน",
+    "withAssets": "มีทรัพย์สิน",
+    "withoutAssets": "ยังไม่มีทรัพย์สิน",
+    "clearFilters": "ล้างตัวกรอง",
+    "activeFilters": "ตัวกรองที่ใช้อยู่",
+    "clearFilter": "ล้างตัวกรองนี้",
+    "summaryTotal": "แผนกทั้งหมด (ใช้งาน)",
+    "summaryCompanyCount": "{name} {count, number}",
+    "summarySharedCount": "แผนกกลาง {count, number}",
+    "summaryWithEmployees": "มีพนักงาน",
+    "summaryWithEmployeesFoot": "รวมพนักงาน {employees, number} คน · กดเพื่อดูแผนกที่มีพนักงาน",
+    "summaryWithoutEmployees": "ยังไม่มีพนักงาน",
+    "summaryWithoutEmployeesFoot": "{withEmployees, number} + {withoutEmployees, number} = {total, number} · ควรตรวจว่ายังใช้อยู่หรือปิดใช้งานได้",
+    "list": {
+      "summaryLine": "{departments, number} แผนก · ยังมีทรัพย์สินผูกอยู่ {withAssets, number} แผนก รวม {assets, number} รายการ · เรียงตาม{sort}",
+      "countsNote": "ตัวเลขพนักงานและทรัพย์สิน นับเฉพาะที่ใช้งาน · กดตัวเลขเพื่อดูรายการที่กรองตามแผนกนั้น",
+      "moveBeforeDeactivate": "โอนย้ายก่อนปิดใช้งาน",
+      "sortLabel": "เรียงตาม",
+      "sortDirection": "ลำดับ",
+      "sortAsc": "น้อยไปมาก (ก → ฮ)",
+      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortCreatedAt": "วันที่เพิ่ม"
+    },
+    "deactivate": {
+      "action": "ปิดใช้งาน",
+      "hint": "ไม่มีพนักงาน ทรัพย์สิน หรือรอบตรวจนับที่เปิดอยู่ผูกอยู่ จึงปิดได้ ระบบจะถามยืนยันอีกครั้ง",
+      "confirmTitle": "ปิดใช้งาน \"{name}\"?",
+      "confirmBody": "แผนกนี้จะไม่แสดงในรายการเลือกแผนกของหน้าอื่น เช่น เพิ่มพนักงาน ส่งมอบ และเพิ่มทรัพย์สิน ประวัติเดิมยังอยู่ และเปิดใช้งานอีกครั้งได้จากตัวกรอง \"ไม่ใช้งาน\"",
+      "clear": {
+        "employees": "ไม่มีพนักงาน",
+        "assets": "ไม่มีทรัพย์สินผูกอยู่",
+        "auditRounds": "ไม่อยู่ในขอบเขตรอบตรวจนับที่เปิดอยู่"
+      },
+      "success": "ปิดใช้งานแล้ว"
+    },
+    "reactivate": {
+      "action": "เปิดใช้งาน",
+      "confirmTitle": "เปิดใช้งาน \"{name}\"?",
+      "confirmBody": "แผนกนี้จะกลับมาให้เลือกในหน้าอื่นอีกครั้ง เช่น เพิ่มพนักงาน ส่งมอบ และเพิ่มทรัพย์สิน",
+      "success": "เปิดใช้งานแล้ว"
+    }
   },
   "employee": {
     "title": "พนักงาน",

@@ -28,7 +28,7 @@ test("the middle crumb names the search, else says the list is filtered, else is
   assert.equal(crumb("sort=name&direction=asc&page=3&pageSize=50"), null, "the order, the page and the page size are not filters")
   assert.equal(crumb("dataQuality=bogus&ownershipType=bogus"), null, "a value the register ignores is not a filter")
   // Every filter the register can clear is a filter here, and a cleared list has none.
-  const everyFilter = "companyId=c&branchId=b&categoryId=k&brandId=br&modelId=m&statusId=s&conditionId=co&ownershipType=stock&custodianId=e&custodianState=assigned&locationId=l&supplierId=sp&dataQuality=serial&crossScope=all&activity=idle_180d"
+  const everyFilter = "companyId=c&branchId=b&categoryId=k&brandId=br&modelId=m&statusId=s&conditionId=co&ownershipType=stock&custodianId=e&custodianState=assigned&locationId=l&supplierId=sp&departmentId=d&dataQuality=serial&crossScope=all&activity=idle_180d"
   for (const pair of everyFilter.split("&")) assert.deepEqual(crumb(pair), { kind: "filters" }, pair)
   const cleared = buildAssetRegisterClearAllHref("/th/assets", parseAssetListParams(new URLSearchParams(everyFilter)))
   assert.equal(crumb(cleared.slice(cleared.indexOf("?") + 1)), null)
