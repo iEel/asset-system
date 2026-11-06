@@ -1862,7 +1862,9 @@
     "formerHolderNote": "Still holds assets; take them back",
     "formerFilterChip": "Former, still holding (inactive records included)",
     "activeFilters": "Active filters",
-    "clearFilter": "Clear this filter"
+    "clearFilter": "Clear this filter",
+    "filtersTitle": "Search and filters",
+    "heldCount": "Holds {count}"
   },
   "location": {
     "title": "Locations",

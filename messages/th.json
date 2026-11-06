@@ -1862,7 +1862,9 @@
     "formerHolderNote": "ยังถือครองอยู่ ควรรับคืน",
     "formerFilterChip": "พ้นสภาพแต่ยังถือครอง (รวมระเบียนที่ไม่ใช้งาน)",
     "activeFilters": "ตัวกรองที่ใช้อยู่",
-    "clearFilter": "ล้างตัวกรองนี้"
+    "clearFilter": "ล้างตัวกรองนี้",
+    "filtersTitle": "ค้นหาและตัวกรอง",
+    "heldCount": "ถือครอง {count} รายการ"
   },
   "location": {
     "title": "ที่ตั้ง",

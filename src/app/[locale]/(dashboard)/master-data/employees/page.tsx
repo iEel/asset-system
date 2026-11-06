@@ -1,12 +1,13 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Pencil, Plus } from "lucide-react"
+import { Pencil, Plus, SlidersHorizontal } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
@@ -18,6 +19,7 @@ import { RowActions } from "@/components/ui/row-actions"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
@@ -30,6 +32,7 @@ import {
   buildEmployeeQueryString,
   buildEmployeeSummary,
   buildEmployeeWhere,
+  employeeSummaryWheres,
   parseEmployeeListParams,
   type EmployeeListParams,
   type EmployeeListState,
@@ -51,7 +54,9 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const listState = parseEmployeeListParams(rawSearchParams)
   const where = buildEmployeeWhere(listState)
 
-  const [employees, total, summaryEmployees, companies, branches, departments] = await Promise.all([
+  const summaryWheres = employeeSummaryWheres()
+
+  const [employees, total, summaryTotal, summaryWithAssets, summaryFormerWithAssets, summaryStatusCounts, companies, branches, departments] = await Promise.all([
     prisma.employee.findMany({
       where,
       include: {
@@ -70,19 +75,12 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       take: listState.pageSize,
     }),
     prisma.employee.count({ where }),
-    // Every record: the former-holder card counts the ones AD sync deactivated (G7P2-R1); buildEmployeeSummary keeps
-    // the other cards to active records.
-    prisma.employee.findMany({
-      select: {
-        isActive: true,
-        employmentStatus: true,
-        _count: {
-          select: {
-            custodianAssets: { where: { isActive: true } },
-          },
-        },
-      },
-    }),
+    // The cards are counts, not rows. The former card counts with the ?former=withAssets list's where, every record
+    // (the ones AD sync deactivated included, G7P2-R1); the others count active records only.
+    prisma.employee.count({ where: summaryWheres.records }),
+    prisma.employee.count({ where: summaryWheres.withAssets }),
+    prisma.employee.count({ where: summaryWheres.formerWithAssets }),
+    prisma.employee.groupBy({ by: ["employmentStatus"], where: summaryWheres.records, _count: { _all: true } }),
     prisma.company.findMany({
       where: { isActive: true },
       select: { id: true, code: true, nameTh: true },
@@ -101,7 +99,12 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   ])
   const basePath = `/${locale}/master-data/employees`
   const employeeReturnHref = `${basePath}?${buildEmployeeQueryString(listState, {})}`
-  const summary = buildEmployeeSummary(summaryEmployees)
+  const summary = buildEmployeeSummary({
+    total: summaryTotal,
+    withAssets: summaryWithAssets,
+    formerWithAssets: summaryFormerWithAssets,
+    statusCounts: summaryStatusCounts,
+  })
   const totalBreakdown = t("summaryTotalBreakdown", {
     active: formatCount(summary.active),
     resigned: formatCount(summary.resigned),
@@ -129,6 +132,102 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const filteredDepartments = listState.companyId
     ? departments.filter((department) => !department.companyId || department.companyId === listState.companyId)
     : departments
+  // One row model for the table (md and up) and the phone cards (spec 2B §5.1: one list, two layouts).
+  const rows = employees.map((employee) => {
+    // G7P2-R1, spec §5.1: a former employee (or an AD-deactivated record) still holding assets.
+    const formerHolder = isFormerEmployee(employee) && employee._count.custodianAssets > 0
+    return {
+      employee,
+      formerHolder,
+      assetsHref: buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id }).assets,
+      detailHref: appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref),
+      editHref: appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref),
+    }
+  })
+  // Shown once, under both the table and the phone cards.
+  const pagination =
+    total > 0 ? (
+      <Pagination
+        page={listState.page}
+        totalPages={totalPages}
+        previousHref={listHref({ page: listState.page - 1 })}
+        nextHref={listHref({ page: listState.page + 1 })}
+        pageSize={listState.pageSize}
+        pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+        labels={{
+          navigation: tCommon("pagination"),
+          previous: tCommon("previous"),
+          next: tCommon("next"),
+          pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+          range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+          pageSizeGroup: tCommon("pageSizeLabel"),
+          rowsPerPage: tCommon("rowsPerPage"),
+        }}
+      />
+    ) : null
+  // Rendered twice: in the phone disclosure and in the desktop panel (the suppliers list's pattern). Field gives each
+  // copy its own ids (useId), and the copy that is display: none leaves the accessibility tree, so the page keeps one
+  // search landmark (spec 2B §6.2 6-ช).
+  const filterForm = (className: string) => (
+    <form role="search" action={basePath} className={className}>
+      <input type="hidden" name="page" value="1" />
+      <input type="hidden" name="pageSize" value={listState.pageSize} />
+      <input type="hidden" name="sort" value={listState.sort} />
+      <input type="hidden" name="direction" value={listState.direction} />
+      {formerList ? <input type="hidden" name="former" value="withAssets" /> : null}
+      <Field label={tCommon("search")}>
+        <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
+      </Field>
+      <FilterSelect label={t("company")} name="companyId" defaultValue={listState.companyId}>
+        <option value="">{t("allCompanies")}</option>
+        {companies.map((company) => (
+          <option key={company.id} value={company.id}>
+            {company.code} - {company.nameTh}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect label={t("branch")} name="branchId" defaultValue={listState.branchId}>
+        <option value="">{t("allBranches")}</option>
+        {filteredBranches.map((branch) => (
+          <option key={branch.id} value={branch.id}>
+            {branch.company.code} / {branch.code} - {branch.name}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect label={t("department")} name="departmentId" defaultValue={listState.departmentId}>
+        <option value="">{t("allDepartments")}</option>
+        {filteredDepartments.map((department) => (
+          <option key={department.id} value={department.id}>
+            {department.code} - {department.name}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect label={t("employmentStatus")} name="employmentStatus" defaultValue={listState.employmentStatus}>
+        <option value="all">{tCommon("all")}</option>
+        <option value="active">{t("status_active")}</option>
+        <option value="resigned">{t("status_resigned")}</option>
+        <option value="suspended">{t("status_suspended")}</option>
+      </FilterSelect>
+      <FilterSelect label={t("custodyUsageFilter")} name="custodyUsage" defaultValue={listState.custodyUsage}>
+        <option value="all">{tCommon("all")}</option>
+        <option value="withAssets">{t("withAssets")}</option>
+        <option value="withoutAssets">{t("withoutAssets")}</option>
+      </FilterSelect>
+      <FilterSelect
+        label={tCommon("status")}
+        name="status"
+        defaultValue={listState.status}
+        // ?former=withAssets ignores the record status (G7P2-R1); the chip below says so.
+        disabled={formerList}
+        options={[
+          { value: "active", label: tCommon("active") },
+          { value: "inactive", label: tCommon("inactive") },
+          { value: "all", label: tCommon("all") },
+        ]}
+      />
+      <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
+    </form>
+  )
 
   return (
     <div className="space-y-6">
@@ -186,129 +285,53 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
         ]}
       />
 
-      <FilterPanel>
-        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(6,minmax(150px,1fr))_auto]">
-          <input type="hidden" name="page" value="1" />
-          <input type="hidden" name="pageSize" value={listState.pageSize} />
-          <input type="hidden" name="sort" value={listState.sort} />
-          <input type="hidden" name="direction" value={listState.direction} />
-          {formerList ? <input type="hidden" name="former" value="withAssets" /> : null}
-          <Field label={tCommon("search")}>
-            <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
-          </Field>
-          <FilterSelect label={t("company")} name="companyId" defaultValue={listState.companyId}>
-            <option value="">{t("allCompanies")}</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.code} - {company.nameTh}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect label={t("branch")} name="branchId" defaultValue={listState.branchId}>
-            <option value="">{t("allBranches")}</option>
-            {filteredBranches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.company.code} / {branch.code} - {branch.name}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect label={t("department")} name="departmentId" defaultValue={listState.departmentId}>
-            <option value="">{t("allDepartments")}</option>
-            {filteredDepartments.map((department) => (
-              <option key={department.id} value={department.id}>
-                {department.code} - {department.name}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect label={t("employmentStatus")} name="employmentStatus" defaultValue={listState.employmentStatus}>
-            <option value="all">{tCommon("all")}</option>
-            <option value="active">{t("status_active")}</option>
-            <option value="resigned">{t("status_resigned")}</option>
-            <option value="suspended">{t("status_suspended")}</option>
-          </FilterSelect>
-          <FilterSelect label={t("custodyUsageFilter")} name="custodyUsage" defaultValue={listState.custodyUsage}>
-            <option value="all">{tCommon("all")}</option>
-            <option value="withAssets">{t("withAssets")}</option>
-            <option value="withoutAssets">{t("withoutAssets")}</option>
-          </FilterSelect>
-          <FilterSelect
-            label={tCommon("status")}
-            name="status"
-            defaultValue={listState.status}
-            // ?former=withAssets ignores the record status (G7P2-R1); the chip below says so.
-            disabled={formerList}
-            options={[
-              { value: "active", label: tCommon("active") },
-              { value: "inactive", label: tCommon("inactive") },
-              { value: "all", label: tCommon("all") },
-            ]}
-          />
-          <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
-        </form>
-        {formerList ? (
-          <FilterChipList
-            className="mt-3"
-            chips={[{ key: "former", label: t("formerFilterChip"), href: listHref({ former: "all", page: 1 }) }]}
-            label={t("activeFilters")}
-            removeLabel={t("clearFilter")}
-          />
-        ) : null}
+      {/* Phones: the filters fold into a disclosure, open while a filter is on (the suppliers list's pattern). A <details>
+          cannot be ContentPanel: the panel classes (2D-2 R4). */}
+      <details className={cn(getPanelClasses(), "md:hidden")} open={hasActiveFilters}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          {t("filtersTitle")}
+        </summary>
+        {filterForm("grid gap-3 border-t border-border p-4")}
+      </details>
+
+      <FilterPanel className="hidden md:block">
+        {filterForm("grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(6,minmax(150px,1fr))_auto]")}
       </FilterPanel>
 
-      <DataTable
-        caption={t("title")}
-        scrollHint={tCommon("tableScrollHint")}
-        footer={
-          total > 0 ? (
-            <Pagination
-              page={listState.page}
-              totalPages={totalPages}
-              previousHref={listHref({ page: listState.page - 1 })}
-              nextHref={listHref({ page: listState.page + 1 })}
-              pageSize={listState.pageSize}
-              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
-              labels={{
-                navigation: tCommon("pagination"),
-                previous: tCommon("previous"),
-                next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
-                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
-                pageSizeGroup: tCommon("pageSizeLabel"),
-                rowsPerPage: tCommon("rowsPerPage"),
-              }}
-            />
-          ) : undefined
-        }
-      >
-        <DataTableHeader>
-          <tr>
-            <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
-            <DataTableHead sort={sortBy("fullNameTh")}>{t("fullNameTh")}</DataTableHead>
-            <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
-            <DataTableHead sort={sortBy("branch")}>{t("branch")}</DataTableHead>
-            <DataTableHead sort={sortBy("department")}>{t("department")}</DataTableHead>
-            <DataTableHead>{t("manager")}</DataTableHead>
-            <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
-            <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
-            {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
-            <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
-          </tr>
-        </DataTableHeader>
-        <DataTableBody>
-          {employees.length === 0 ? (
-            hasActiveFilters ? (
-              <TableEmptyRow colSpan={columnCount} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+      {formerList ? (
+        <FilterChipList
+          chips={[{ key: "former", label: t("formerFilterChip"), href: listHref({ former: "all", page: 1 }) }]}
+          label={t("activeFilters")}
+          removeLabel={t("clearFilter")}
+        />
+      ) : null}
+
+      <div className={cn(getPanelClasses(), "overflow-hidden")}>
+        <DataTable data-employee-desktop-table framed={false} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
+              <DataTableHead sort={sortBy("fullNameTh")}>{t("fullNameTh")}</DataTableHead>
+              <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
+              <DataTableHead sort={sortBy("branch")}>{t("branch")}</DataTableHead>
+              <DataTableHead sort={sortBy("department")}>{t("department")}</DataTableHead>
+              <DataTableHead>{t("manager")}</DataTableHead>
+              <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
+              <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
+              {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
+              <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {rows.length === 0 ? (
+              hasActiveFilters ? (
+                <TableEmptyRow colSpan={columnCount} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+              ) : (
+                <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
+              )
             ) : (
-              <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
-            )
-          ) : (
-            employees.map((employee) => {
-              const drilldown = buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id })
-              const detailHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref)
-              const editHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref)
-              // G7P2-R1, spec §5.1: a former employee (or an AD-deactivated record) still holding assets.
-              const formerHolder = isFormerEmployee(employee) && employee._count.custodianAssets > 0
-              return (
+              rows.map(({ employee, formerHolder, assetsHref, detailHref, editHref }) => (
                 <ClickableTableRow
                   key={employee.id}
                   href={detailHref}
@@ -348,7 +371,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                   <DataTableCell numeric className="text-muted-foreground">
                     {employee._count.custodianAssets > 0 ? (
                       <Link
-                        href={drilldown.assets}
+                        href={assetsHref}
                         className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0", formerHolder && "font-semibold text-warning")}
                       >
                         {formatCount(employee._count.custodianAssets)}
@@ -373,11 +396,79 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                     />
                   </DataTableCell>
                 </ClickableTableRow>
-              )
-            })
+              ))
+            )}
+          </DataTableBody>
+        </DataTable>
+
+        {/* Phones (MD-Employees-Phone board): one card per employee. The name link stretches over the card (after:inset-0),
+            so the whole card opens the employee page; the held count and ⋯ sit above it (relative z-10). */}
+        <div data-employee-mobile-list className="md:hidden">
+          {rows.length === 0 ? (
+            <ActionEmptyState
+              title={tCommon("noData")}
+              actionHref={hasActiveFilters ? basePath : undefined}
+              actionLabel={hasActiveFilters ? t("clearFilters") : undefined}
+              actionVariant="secondary"
+            />
+          ) : (
+            <div className="grid gap-3 p-3">
+              {rows.map(({ employee, formerHolder, assetsHref, detailHref, editHref }) => (
+                <article
+                  key={employee.id}
+                  className={cn("relative min-w-0 rounded-md border bg-background p-3", formerHolder ? "border-warning-border" : "border-border")}
+                >
+                  <h2 className="break-words text-base font-semibold text-primary">
+                    <Link
+                      href={detailHref}
+                      className="rounded-md after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                    >
+                      {employee.fullNameTh}
+                    </Link>
+                  </h2>
+                  <p className="text-meta text-muted-foreground">
+                    <span className="tag">{employee.code}</span>
+                    {employee.position ? ` · ${employee.position}` : null}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {employee.department.name} · {employee.branch.name}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-1">
+                    <StatusBadge label={t(`status_${employee.employmentStatus}`)} tone={employmentStatusTone(employee.employmentStatus)} />
+                    {showRecordStatus ? (
+                      <StatusBadge label={employee.isActive ? tCommon("active") : tCommon("inactive")} tone={employee.isActive ? "success" : "muted"} />
+                    ) : null}
+                    {formerHolder ? <span className="text-meta text-warning">{t("formerHolderNote")}</span> : null}
+                    <span className="ml-auto flex items-center">
+                      {employee._count.custodianAssets > 0 ? (
+                        <Link
+                          href={assetsHref}
+                          className={cn(linkVariants({ size: "inherit" }), "num relative z-10 inline-flex min-h-11 items-center text-sm font-medium", formerHolder && "font-semibold text-warning")}
+                        >
+                          {t("heldCount", { count: formatCount(employee._count.custodianAssets) })}
+                        </Link>
+                      ) : (
+                        <span className="inline-flex min-h-11 items-center text-sm text-muted-foreground">{t("withoutAssets")}</span>
+                      )}
+                      <RowActions
+                        className="relative z-10"
+                        code={employee.code}
+                        name={employee.fullNameTh}
+                        menuLabel={tCommon("moreActionsFor", { code: employee.code })}
+                        next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
+                        groups={[]}
+                        deleteAction={employee.isActive ? { endpoint: `/api/employees/${employee.id}` } : undefined}
+                      />
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
           )}
-        </DataTableBody>
-      </DataTable>
+        </div>
+
+        {pagination ? <DataTableFoot>{pagination}</DataTableFoot> : null}
+      </div>
     </div>
   )
 }

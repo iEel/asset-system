@@ -1,5 +1,4 @@
 import type { Prisma } from "@prisma/client"
-import { isFormerEmployee } from "./employee-detail.ts"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
 
 export const companySorts = ["createdAt", "code", "assetTagCode", "nameTh", "branches", "employees", "assets"] as const
@@ -139,14 +138,13 @@ export type BranchSummaryItem = {
   }
 }
 
-// Every record, active or not: the former-holder card counts the ones AD sync deactivated (G7P2-R1); the other cards
-// count active records only.
-export type EmployeeSummaryItem = {
-  isActive: boolean
-  employmentStatus: string
-  _count: {
-    custodianAssets: number
-  }
+// The employee cards, read with count queries (employeeSummaryWheres) and an employment-status groupBy over active
+// records. formerWithAssets counts every record, active or not (G7P2-R1).
+export type EmployeeSummaryCounts = {
+  total: number
+  withAssets: number
+  formerWithAssets: number
+  statusCounts: ReadonlyArray<{ employmentStatus: string; _count: { _all: number } }>
 }
 
 export type SupplierSummaryItem = {
@@ -271,7 +269,8 @@ export function buildBranchWhere(state: BranchListState): Prisma.BranchWhereInpu
 }
 
 // G7P2-R1: not active by employment status or by record (AD sync deactivates a leaver: isActive false, resigned), and
-// still the custodian of an active asset. The query form of isFormerEmployee (employee-detail.ts) plus the holding.
+// still the custodian of an active asset. The query form of isFormerEmployee (employee-detail.ts) plus the holding. The
+// ?former=withAssets list and the card's count (employeeSummaryWheres) both use it, so the card counts what it opens.
 export function formerEmployeeWithAssetsWhere(): Prisma.EmployeeWhereInput {
   return {
     AND: [
@@ -460,18 +459,26 @@ export function buildBranchSummary(branches: BranchSummaryItem[]) {
   }
 }
 
-export function buildEmployeeSummary(employees: EmployeeSummaryItem[]) {
-  const records = employees.filter((employee) => employee.isActive)
+// The where of each count behind the employee cards. records (the total and the employment-status groupBy) and
+// withAssets are active records only, as the default list; formerWithAssets is the ?former=withAssets list's where.
+export function employeeSummaryWheres() {
   return {
-    total: records.length,
-    active: records.filter((employee) => employee.employmentStatus === "active").length,
-    inactive: records.filter((employee) => employee.employmentStatus !== "active").length,
-    resigned: records.filter((employee) => employee.employmentStatus === "resigned").length,
-    suspended: records.filter((employee) => employee.employmentStatus === "suspended").length,
-    withAssets: records.filter((employee) => employee._count.custodianAssets > 0).length,
-    withoutAssets: records.filter((employee) => employee._count.custodianAssets === 0).length,
-    // G7P2-R1: over every record, so it equals what ?former=withAssets lists.
-    formerWithAssets: employees.filter((employee) => isFormerEmployee(employee) && employee._count.custodianAssets > 0).length,
+    records: { isActive: true },
+    withAssets: { isActive: true, custodianAssets: { some: { isActive: true } } },
+    formerWithAssets: formerEmployeeWithAssetsWhere(),
+  } satisfies Record<string, Prisma.EmployeeWhereInput>
+}
+
+export function buildEmployeeSummary({ total, withAssets, formerWithAssets, statusCounts }: EmployeeSummaryCounts) {
+  const byStatus = (status: string) => statusCounts.find((row) => row.employmentStatus === status)?._count._all ?? 0
+  return {
+    total,
+    active: byStatus("active"),
+    resigned: byStatus("resigned"),
+    suspended: byStatus("suspended"),
+    withAssets,
+    withoutAssets: total - withAssets,
+    formerWithAssets,
   }
 }
 
