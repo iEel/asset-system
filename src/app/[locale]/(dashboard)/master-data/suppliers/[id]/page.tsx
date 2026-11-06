@@ -5,7 +5,7 @@ import { Edit } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildSupplierDetailHrefs, buildSupplierFollowUpItems, readSupplierDetail, type SupplierFollowUpKey } from "@/lib/supplier-detail"
+import { buildSupplierDetailHrefs, buildSupplierFollowUpItems, readSupplierDetail } from "@/lib/supplier-detail"
 import { getSupplierDeactivateBlockReason } from "@/lib/organization-master-query"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { cn, formatDate } from "@/lib/utils"
@@ -76,8 +76,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
   const hasContact = Boolean(supplier.contactPerson || supplier.phone || supplier.email)
   const followUpItems = buildSupplierFollowUpItems({
     hasContact,
-    assetCount: figures.assets,
-    purchaseDocumentCount: figures.purchaseDocuments,
+    assetsWithoutDocument: figures.assetsWithoutDocument,
     openMaintenanceTicketCount: figures.repairs.open,
   })
   const maintenanceStatusLabels = Object.fromEntries(maintenanceStatuses.map((status) => [status, tMaintenance(`statuses.${status}`)]))
@@ -161,7 +160,10 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
       />
 
       <section aria-label={t("summaryLabel")}>
+        {/* ค่าซ่อมสะสม in the 28px metric size needs about 230px (reports' money strips): one figure a row below sm, and
+            two a row from lg until xl, where four beside the sidebar would leave about 170px a figure; one row from xl. */}
         <StatStrip
+          className="max-sm:grid-cols-1 lg:max-xl:grid-flow-row lg:max-xl:grid-cols-2 lg:max-xl:grid-rows-none"
           items={[
             {
               key: "assets",
@@ -217,7 +219,10 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             {detail.latestAssets.length === 0 ? (
               <ActionEmptyState title={t("noAssets")} description={t("noAssetsHelp")} />
             ) : (
-              <DataTable framed={false} caption={t("detail.assetsCaption")}>
+              <>
+              {/* From md the table (its scroll area named by the caption until the main column is wide enough); below md
+                  one card per asset with the same facts, as the documents panel does. */}
+              <DataTable data-supplier-assets-desktop framed={false} caption={t("detail.assetsCaption")} scrollHint={tCommon("tableScrollHint")} className="hidden md:block">
                 <DataTableHeader>
                   <tr>
                     <DataTableHead>{t("detail.columns.asset")}</DataTableHead>
@@ -264,6 +269,44 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                   ))}
                 </DataTableBody>
               </DataTable>
+              <div data-supplier-assets-mobile className="grid gap-3 p-4 md:hidden">
+                {detail.latestAssets.map((asset) => (
+                  <article key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      {canViewAssets ? (
+                        <Link href={`/${locale}/assets/${asset.id}`} className={cn(linkVariants(), "inline-flex min-h-11 min-w-0 items-center font-medium")}>
+                          {asset.name}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 font-medium text-foreground">{asset.name}</span>
+                      )}
+                      <StatusBadge label={locale === "en" ? asset.status.name : asset.status.nameTh} status={asset.status.name} />
+                    </div>
+                    <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag">{asset.assetTag}</span></div>
+                    <KeyValueList
+                      className="mt-3"
+                      items={[
+                        { key: "categoryLocation", label: t("detail.columns.categoryLocation"), value: `${asset.categoryName} · ${asset.locationName} · ${asset.branchName}` },
+                        {
+                          key: "document",
+                          label: t("detail.columns.document"),
+                          value:
+                            asset.documents.length === 0 ? (
+                              <span className="text-warning">{t("detail.noDocument")}</span>
+                            ) : (
+                              <>
+                                <span className="tag">{asset.documents[0].documentNo}</span>
+                                {asset.documents.length > 1 ? <span className="ml-1 text-muted-foreground">{t("detail.moreDocuments", { count: asset.documents.length - 1 })}</span> : null}
+                              </>
+                            ),
+                        },
+                        { key: "purchasePrice", label: t("detail.columns.purchasePrice"), value: asset.purchasePrice == null ? null : <span className="num">{formatMoney(asset.purchasePrice)}</span> },
+                      ]}
+                    />
+                  </article>
+                ))}
+              </div>
+              </>
             )}
           </ContentPanel>
 
@@ -306,7 +349,11 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 <ul className="list-disc space-y-1 pl-5">
                   {followUpItems.map((item) => (
                     <li key={item}>
-                      {followUpText(item, t)}
+                      {item === "missing_contact"
+                        ? t("followUpMissingContact")
+                        : item === "assets_without_purchase_documents"
+                          ? t("followUpAssetsWithoutPurchaseDocuments", { count: figures.assetsWithoutDocument })
+                          : t("followUpOpenMaintenance")}
                       {item === "open_vendor_maintenance" ? (
                         <ul className="mt-2 space-y-2">
                           {detail.openRepairs.map((repair) => (
@@ -387,10 +434,4 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
       </div>
     </div>
   )
-}
-
-function followUpText(item: SupplierFollowUpKey, t: (key: string) => string) {
-  if (item === "missing_contact") return t("followUpMissingContact")
-  if (item === "assets_without_purchase_documents") return t("followUpAssetsWithoutPurchaseDocuments")
-  return t("followUpOpenMaintenance")
 }

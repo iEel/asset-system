@@ -46,20 +46,20 @@ export function buildSupplierDetailHrefs({ locale, supplierId }: { locale: strin
 }
 
 
+// assetsWithoutDocument is figures.assetsWithoutDocument (G8P3-R3), the count the strip's ทรัพย์สิน foot shows, so the
+// item and the strip never disagree.
 export function buildSupplierFollowUpItems({
   hasContact,
-  assetCount,
-  purchaseDocumentCount,
+  assetsWithoutDocument,
   openMaintenanceTicketCount,
 }: {
   hasContact: boolean
-  assetCount: number
-  purchaseDocumentCount: number
+  assetsWithoutDocument: number
   openMaintenanceTicketCount: number
 }) {
   const items: SupplierFollowUpKey[] = []
   if (!hasContact) items.push("missing_contact")
-  if (assetCount > 0 && purchaseDocumentCount === 0) items.push("assets_without_purchase_documents")
+  if (assetsWithoutDocument > 0) items.push("assets_without_purchase_documents")
   if (openMaintenanceTicketCount > 0) items.push("open_vendor_maintenance")
   return items
 }

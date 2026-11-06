@@ -27,10 +27,10 @@ export const SUPPLIER_WORDS = {
   latestAssets: "{shown, number} รายการล่าสุด จาก {total, number}", viewAllAssets: "ดูทรัพย์สินทั้งหมด ({count, number})",
   assetsCaption: "ทรัพย์สินล่าสุดจากผู้ขายนี้", noDocument: "ยังไม่ผูก", moreDocuments: "+{count, number}",
   // The documents panel: its caption, the type labels, an amount not given, the total row.
-  documentsCaption: "เอกสารจัดซื้อของผู้ขายนี้ {count, number} เอกสาร", documentsTotal: "รวม {count, number} เอกสาร",
+  documentsCaption: "เอกสารจัดซื้อของผู้ขายนี้ {count, number} ใบ", documentsTotal: "รวม {count, number} ใบ",
   typePurchaseOrder: "ใบ PO", typeInvoice: "ใบกำกับ", amountUnset: "ยังไม่ระบุ",
-  // The side panels: สิ่งที่ควรติดตาม with its count and the open repair's link, ข้อมูลผู้ขาย.
-  followUpTitle: "สิ่งที่ควรติดตาม", followUpCount: "{count, number} เรื่อง", openRepairLink: "เปิดงานซ่อม {repairNo}",
+  // The side panels: สิ่งที่ควรติดตาม with its count, the assets-without-documents item and the open repair's link, ข้อมูลผู้ขาย.
+  followUpTitle: "สิ่งที่ควรติดตาม", followUpCount: "{count, number} เรื่อง", followUpAssetsWithoutDocument: "ทรัพย์สิน {count, number} รายการยังไม่ผูกเอกสารจัดซื้อ", openRepairLink: "เปิดงานซ่อม {repairNo}",
   repairHistoryTitle: "ประวัติงานซ่อมกับผู้ขาย", profileTitle: "ข้อมูลผู้ขาย",
   // The register by the supplier: the chip group and the supplier chip's label.
   activeFilters: "ตัวกรองที่ใช้อยู่", supplierChip: "ผู้ขาย",

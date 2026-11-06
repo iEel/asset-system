@@ -2484,7 +2484,7 @@
     "followUpTitle": "Follow-up Items",
     "noFollowUp": "No important follow-up items right now",
     "followUpMissingContact": "This supplier has no contact person, phone, or email yet.",
-    "followUpAssetsWithoutPurchaseDocuments": "Assets reference this supplier, but no central purchase documents are linked yet.",
+    "followUpAssetsWithoutPurchaseDocuments": "{count, plural, one {# asset has} other {# assets have}} no purchase document linked yet.",
     "followUpOpenMaintenance": "There are vendor repair jobs that are not closed yet.",
     "linkedAssetsTitle": "Assets Bought From / Referencing This Supplier",
     "noAssets": "No assets yet",

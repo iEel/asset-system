@@ -91,3 +91,32 @@ test("messages exist in th and en, English counts as ICU plurals", () => {
   assert.equal(th.supplier.detail.repairCostFoot, "รวมจากใบซ่อม {count, number} ใบที่มีค่าใช้จ่าย")
   assert.match(en.supplier.detail.assetsWithoutDocument, /\{count, plural, one \{/)
 })
+
+// Group 8 plan 3 final review fixes.
+test("follow-up: the assets-without-documents item is the strip's count, with the count in the message (G8P3-R3)", () => {
+  assert.match(page, /buildSupplierFollowUpItems\(\{\s*hasContact,\s*assetsWithoutDocument: figures\.assetsWithoutDocument,/)
+  assert.match(page, /t\("followUpAssetsWithoutPurchaseDocuments", \{ count: figures\.assetsWithoutDocument \}\)/)
+  const thRoot = JSON.parse(read("messages/th.json")) as { supplier: Record<string, string> }
+  const enRoot = JSON.parse(read("messages/en.json")) as { supplier: Record<string, string> }
+  assert.equal(thRoot.supplier.followUpAssetsWithoutPurchaseDocuments, "ทรัพย์สิน {count, number} รายการยังไม่ผูกเอกสารจัดซื้อ")
+  assert.match(enRoot.supplier.followUpAssetsWithoutPurchaseDocuments, /\{count, plural, one \{/)
+})
+
+test("the strip: one figure a row on a phone, two a row until xl (a 7-figure ค่าซ่อมสะสม beside the sidebar), four from xl", () => {
+  assert.match(page, /<StatStrip\s+className="max-sm:grid-cols-1 lg:max-xl:grid-flow-row lg:max-xl:grid-cols-2 lg:max-xl:grid-rows-none"/)
+})
+
+test("latest assets: phone cards below md, the table from md with its scroll hint", () => {
+  assert.match(page, /<DataTable data-supplier-assets-desktop framed=\{false\} caption=\{t\("detail\.assetsCaption"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\} className="hidden md:block">/)
+  assert.match(page, /<div data-supplier-assets-mobile className="grid gap-3 p-4 md:hidden">/)
+  assert.match(page, /<article key=\{asset\.id\}/)
+})
+
+test("purchase documents are counted with ใบ (glossary นับเอกสารจัดซื้อ)", () => {
+  assert.equal(th.supplier.detail.documentsDescription, "{count, number} ใบ · เรียงจากวันที่ล่าสุด")
+  assert.equal(th.supplier.detail.documentsCaption, "เอกสารจัดซื้อของผู้ขายนี้ {count, number} ใบ")
+  assert.equal(th.supplier.detail.documentsTotal, "รวม {count, number} ใบ")
+  for (const key of ["documentsDescription", "documentsCaption", "documentsTotal"]) assert.match(en.supplier.detail[key], /\{count, plural, one \{# document\} other \{# documents\}\}/, key)
+  const counted = JSON.stringify(th.supplier).match(/\{count, number\} เอกสาร/g)
+  assert.equal(counted, null, "no supplier message counts documents with เอกสาร")
+})

@@ -255,15 +255,18 @@ test.describe("the IT head reads the suppliers list and a supplier's page", () =
     await expect(costStat.cell).toContainText(W.baht)
     await expect(costStat.foot).toContainText(fillTemplate(W.repairCostFoot, { count: 1 }))
 
-    // The assets panel: 3 of 3, C ยังไม่ผูก, A's first document with +1 (D1 and D3).
+    // The assets panel: 3 of 3, C ยังไม่ผูก, A's first document with +1 (D1 and D3). Phone: a card per asset; from md
+    // the table.
     const assetsPanel = panel(page, W.assetsPanelTitle)
     await expect(assetsPanel.getByText(fillTemplate(W.latestAssets, { shown: 3, total: 3 }), { exact: true })).toBeVisible()
-    const assetsTable = page.getByRole("table", { name: W.assetsCaption, exact: true })
-    await expect(assetsTable.locator("tbody tr")).toHaveCount(3)
-    await expect(assetsTable.locator("tbody tr").filter({ hasText: assetC.assetTag })).toContainText(W.noDocument)
-    const rowA = assetsTable.locator("tbody tr").filter({ hasText: assetA.assetTag })
-    await expect(rowA.getByText(fillTemplate(W.moreDocuments, { count: 1 }), { exact: true })).toBeVisible()
-    await expect(assetsTable.locator("tbody tr").filter({ hasText: assetB.assetTag })).toContainText(d2.documentNo)
+    const assetEntries = phone
+      ? page.locator("[data-supplier-assets-mobile] article")
+      : page.getByRole("table", { name: W.assetsCaption, exact: true }).locator("tbody tr")
+    await expect(assetEntries).toHaveCount(3)
+    await expect(assetEntries.filter({ hasText: assetC.assetTag })).toContainText(W.noDocument)
+    const entryA = assetEntries.filter({ hasText: assetA.assetTag })
+    await expect(entryA.getByText(fillTemplate(W.moreDocuments, { count: 1 }), { exact: true })).toBeVisible()
+    await expect(assetEntries.filter({ hasText: assetB.assetTag })).toContainText(d2.documentNo)
 
     // The documents: every run document with its type label; D3 has no amount; the total row is the rows' sum (R2).
     if (phone) {
@@ -289,9 +292,11 @@ test.describe("the IT head reads the suppliers list and a supplier's page", () =
       await expect(totalRow.locator("td").last()).toHaveText(money(documentsTotal))
     }
 
-    // สิ่งที่ควรติดตาม: one item, the open repair with its link (maintenance:view); the history lists both repairs.
+    // สิ่งที่ควรติดตาม: two items, C without a document (the strip's count, G8P3-R3) and the open repair with its link
+    // (maintenance:view); the history lists both repairs.
     const followUp = panel(page, W.followUpTitle)
-    await expect(followUp.getByText(fillTemplate(W.followUpCount, { count: 1 }), { exact: true })).toBeVisible()
+    await expect(followUp.getByText(fillTemplate(W.followUpCount, { count: 2 }), { exact: true })).toBeVisible()
+    await expect(followUp).toContainText(fillTemplate(W.followUpAssetsWithoutDocument, { count: 1 }))
     await expect(followUp).toContainText(openRepair.problem)
     await expect(followUp.getByRole("link", { name: fillTemplate(W.openRepairLink, { repairNo: openRepair.repairNo }), exact: true })).toHaveAttribute("href", `/th/maintenance/${openRepair.id}`)
     const history = panel(page, W.repairHistoryTitle)
