@@ -80,6 +80,10 @@ test("inactive master data is reachable: a status filter, the real badge, inacti
       // "ปิดใช้งาน" on active records only (tests/brand-model-recent.test.ts).
       assert.equal(source.match(/isActive=\{(?:selectedBrand|model)\.isActive\}/g)?.length, 2, `${page}: ปิดใช้งาน follows isActive`)
       assert.match(read("src/components/master-data/brand-model-deactivate-button.tsx"), /groups=\{\n\s+isActive\n\s+\? \[/)
+    } else if (page === "locations") {
+      // Group 7 plan 3 Task 3: LocationDeactivateButton offers "ปิดใช้งาน" (and "เพิ่มที่ตั้งในนี้") on active rows only.
+      assert.match(source, /isActive=\{location\.isActive\}/, `${page}: ปิดใช้งาน follows isActive`)
+      assert.match(read("src/components/master-data/location-deactivate-button.tsx"), /const items: RowActionItem\[\] = isActive\n\s+\? \[/)
     } else {
       assert.match(source, /deleteAction=\{\w+\.isActive \? \{ endpoint: `\/api\/[\w/]+\$\{\w+\.id\}` \} : undefined\}/, `${page}: ลบ shows on inactive rows`)
     }

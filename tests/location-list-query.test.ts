@@ -118,8 +118,8 @@ test("builds location summary and drilldown links", () => {
     rootLocations: 1,
     leafLocations: 2,
   })
-  assert.deepEqual(buildLocationDrilldownHrefs({ locale: "th", locationCode: "IT-RACK-A" }), {
-    assets: "/th/assets?search=IT-RACK-A&page=1",
+  assert.deepEqual(buildLocationDrilldownHrefs({ locale: "th", locationId: "loc-rack-a" }), {
+    assets: "/th/assets?locationId=loc-rack-a&page=1",
   })
 })
 

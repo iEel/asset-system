@@ -1951,6 +1951,48 @@
       "footerCreateRoot": "Add <b>{name}</b> at the top level of {branch}",
       "footerEdit": "Save <b>{name}</b> under {parent}",
       "footerEditRoot": "Save <b>{name}</b> at the top level of {branch}"
+    },
+    "view": {
+      "label": "View",
+      "tree": "Tree",
+      "list": "List"
+    },
+    "tree": {
+      "label": "Location tree by branch",
+      "subtree": "Subtree total {n}",
+      "parentOtherBranch": "In a different branch from its parent",
+      "addChild": "Add a location here",
+      "addInBranch": "Add a location in this branch",
+      "branchCount": "{n} locations",
+      "expand": "Expand {name}",
+      "collapse": "Collapse {name}",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "assetsAt": "Current assets at {name}: {n}",
+      "match": "Matches the search",
+      "noMatch": "No active location matches \"{search}\"",
+      "empty": "No active locations yet",
+      "footer": "{branches} branches · {locations} active locations",
+      "countNote": "Asset counts cover the location itself only; select one to open the register · \"Subtree total\" adds every level below, for reading",
+      "activeOnly": "The tree shows active locations only. Inactive locations and the other filters are in the list view"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "confirmTitle": "Deactivate {name}?",
+      "confirmBody": "This location will no longer be offered on other pages such as handover, transfer and new asset. Its history stays, it can be found with the \"Inactive\" filter, and it can be reactivated from its edit page",
+      "blocked": {
+        "currentAssets": "Assets here: {n}",
+        "homeAssets": "Home location of assets: {n}",
+        "activeChildren": "Active child locations: {n}",
+        "auditRounds": "Used in audit rounds: {n}"
+      },
+      "blockedFooter": "It cannot be deactivated until the items above are moved or closed",
+      "clear": {
+        "assets": "No assets",
+        "children": "No child locations",
+        "auditRounds": "Not in an audit round"
+      },
+      "success": "Deactivated"
     }
   },
   "category": {

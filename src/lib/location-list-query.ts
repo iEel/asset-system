@@ -14,10 +14,13 @@ export const locationSorts = [
 ] as const
 export const locationAssetUsageFilters = ["all", "withAssets", "withoutAssets"] as const
 export const locationHierarchyFilters = ["all", "root", "child", "leaf"] as const
+// G7P3-R4: the page shows the tree (default) or the list, chosen by ?view= so links and back keep it.
+export const locationViews = ["tree", "list"] as const
 
 export type LocationSort = (typeof locationSorts)[number]
 export type LocationAssetUsageFilter = (typeof locationAssetUsageFilters)[number]
 export type LocationHierarchyFilter = (typeof locationHierarchyFilters)[number]
+export type LocationView = (typeof locationViews)[number]
 
 export type LocationListParams = {
   status?: string | string[] | number | null
@@ -30,6 +33,7 @@ export type LocationListParams = {
   locationType?: string | string[] | null
   assetUsage?: string | string[] | null
   hierarchy?: string | string[] | null
+  view?: string | string[] | null
 }
 
 export type LocationListState = {
@@ -43,6 +47,7 @@ export type LocationListState = {
   locationType: string
   assetUsage: LocationAssetUsageFilter
   hierarchy: LocationHierarchyFilter
+  view: LocationView
 }
 
 export type LocationSummaryItem = {
@@ -76,6 +81,7 @@ export function parseLocationListParams(input: LocationListParams): LocationList
     locationType: firstValue(input.locationType).trim(),
     assetUsage: parseFilter(input.assetUsage, locationAssetUsageFilters, "all"),
     hierarchy: parseFilter(input.hierarchy, locationHierarchyFilters, "all"),
+    view: parseFilter(input.view, locationViews, "tree"),
   }
 }
 
@@ -135,6 +141,7 @@ export function buildLocationQueryString(current: LocationListState, next: Parti
   params.set("assetUsage", merged.assetUsage)
   params.set("hierarchy", merged.hierarchy)
   setRecordStatusParam(params, merged.status)
+  if (merged.view === "list") params.set("view", "list")
   return params.toString()
 }
 
@@ -186,16 +193,23 @@ export function getLocationDeleteBlockReason(counts: {
   return `ไม่สามารถลบที่ตั้งนี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
 }
 
+// G7P3-R3: the register filtered to this location exactly (not its children, not a code search).
 export function buildLocationDrilldownHrefs({
   locale,
-  locationCode,
+  locationId,
 }: {
   locale: string
-  locationCode: string
+  locationId: string
 }) {
   return {
-    assets: `/${locale}/assets?search=${encodeURIComponent(locationCode)}&page=1`,
+    assets: `/${locale}/assets?locationId=${encodeURIComponent(locationId)}&page=1`,
   }
+}
+
+// "เพิ่มที่ตั้งในนี้" / "เพิ่มที่ตั้งในสาขานี้": the create form with the branch (and the parent) chosen (Task 2 reads them).
+export function buildLocationAddChildHref({ locale, branchId, parentId }: { locale: string; branchId: string; parentId?: string }) {
+  const query = `branchId=${encodeURIComponent(branchId)}${parentId ? `&parentId=${encodeURIComponent(parentId)}` : ""}`
+  return `/${locale}/master-data/locations/new?${query}`
 }
 
 function firstValue(value: string | string[] | number | null | undefined) {
