@@ -60,6 +60,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
   const where = buildLocationWhere(listState, matchLocationTypesByLabel(listState.search, getLocationTypeLabels(t)))
 
   // G7P3-R4: the tree is the default view. A search shows the list with paths (board MD-Locations, the user's ruling).
+  // An old link without ?view= that sets a list-only filter or sort opens the list (resolveLocationView, task 4b).
   // The list's page of rows is read only when the list is shown.
   const showList = listState.view === "list" || listState.search !== ""
 
@@ -270,7 +271,8 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
       <input type="hidden" name="pageSize" value={listState.pageSize} />
       <input type="hidden" name="sort" value={listState.sort} />
       <input type="hidden" name="direction" value={listState.direction} />
-      {showList ? <input type="hidden" name="view" value="list" /> : null}
+      {/* Explicit either way: without ?view= a kept list-only sort would open the list (resolveLocationView). */}
+      <input type="hidden" name="view" value={showList ? "list" : "tree"} />
       <Field label={tCommon("search")}>
         <SearchField name="search" defaultValue={searchText} placeholder={t("searchPlaceholder")} />
       </Field>

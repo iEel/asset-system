@@ -70,19 +70,45 @@ export function parseLocationListParams(input: LocationListParams): LocationList
   const sortValue = firstValue(input.sort)
   const directionValue = firstValue(input.direction)
 
-  return {
+  const state = {
     search: firstValue(input.search).trim(),
     status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: locationSorts.includes(sortValue as LocationSort) ? (sortValue as LocationSort) : "createdAt",
-    direction: directionValue === "asc" ? "asc" : "desc",
+    direction: directionValue === "asc" ? ("asc" as const) : ("desc" as const),
     branchId: firstValue(input.branchId).trim(),
     locationType: firstValue(input.locationType).trim(),
     assetUsage: parseFilter(input.assetUsage, locationAssetUsageFilters, "all"),
     hierarchy: parseFilter(input.hierarchy, locationHierarchyFilters, "all"),
-    view: parseFilter(input.view, locationViews, "tree"),
   }
+  return { ...state, view: resolveLocationView(input.view, state) }
+}
+
+type LocationListOnlyFields = Pick<LocationListState, "sort" | "direction" | "locationType" | "assetUsage" | "hierarchy">
+
+// The type, asset-usage and hierarchy filters and the column sorts work in the list only.
+export function locationListOnlyParamsSet(state: LocationListOnlyFields): boolean {
+  return (
+    state.sort !== "createdAt" ||
+    state.direction !== "desc" ||
+    state.locationType !== "" ||
+    state.assetUsage !== "all" ||
+    state.hierarchy !== "all"
+  )
+}
+
+// G7P3-R4 with old links (group 7 follow-ups task 4b): a search shows the list; an explicit ?view= is kept; without
+// one (a link or bookmark from before the tree, e.g. ?assetUsage=withAssets) a list-only filter or sort shows the list
+// instead of the tree silently ignoring it. Otherwise the tree is the default.
+export function resolveLocationView(
+  rawView: string | string[] | null | undefined,
+  state: LocationListOnlyFields & Pick<LocationListState, "search">,
+): LocationView {
+  if (state.search !== "") return "list"
+  const view = firstValue(rawView)
+  if (locationViews.includes(view as LocationView)) return view as LocationView
+  return locationListOnlyParamsSet(state) ? "list" : "tree"
 }
 
 // A field of the filter form is set: the clear link shows, and on phones the folded filters open (the employee and
@@ -150,6 +176,9 @@ export function buildLocationQueryString(current: LocationListState, next: Parti
   params.set("hierarchy", merged.hierarchy)
   setRecordStatusParam(params, merged.status)
   if (merged.view === "list") params.set("view", "list")
+  // The tree is the default, but a link without ?view= that keeps a list-only filter or sort would open the list
+  // (resolveLocationView), so the tree is then written explicitly.
+  else if (locationListOnlyParamsSet(merged)) params.set("view", "tree")
   return params.toString()
 }
 

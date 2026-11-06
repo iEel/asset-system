@@ -8,6 +8,7 @@ import {
   buildLocationQueryString,
   locationListHasFieldFilters,
   parseLocationListParams,
+  resolveLocationView,
 } from "../src/lib/location-list-query.ts"
 import { LOCATION_TREE_LEVEL_PAGE, locationDeactivateBlockers, locationTreeLevelSlice } from "../src/lib/location-tree-view.ts"
 
@@ -40,6 +41,37 @@ test("G7P3-R4: the view is ?view=tree|list, tree by default, and the list's link
   const list = parseLocationListParams({ view: "list" })
   assert.match(buildLocationQueryString(list, { page: 2 }), /(^|&)view=list(&|$)/)
   assert.doesNotMatch(buildLocationQueryString(parseLocationListParams({}), {}), /view=/, "the tree is the default: no parameter")
+})
+
+test("task 4b: an old link without ?view= that sets a list-only filter or sort opens the list; an explicit tree stays", () => {
+  const none = { search: "", sort: "createdAt", direction: "desc", locationType: "", assetUsage: "all", hierarchy: "all" } as const
+  assert.equal(resolveLocationView(undefined, none), "tree", "absent, no filters: the tree")
+  assert.equal(resolveLocationView(undefined, { ...none, assetUsage: "withAssets" }), "list", "absent + assetUsage: the list")
+  assert.equal(resolveLocationView(undefined, { ...none, hierarchy: "leaf" }), "list")
+  assert.equal(resolveLocationView(undefined, { ...none, locationType: "Room" }), "list")
+  assert.equal(resolveLocationView(undefined, { ...none, sort: "code" }), "list", "absent + sort: the list")
+  assert.equal(resolveLocationView(undefined, { ...none, direction: "asc" }), "list")
+  assert.equal(resolveLocationView("tree", { ...none, assetUsage: "withAssets" }), "tree", "view=tree + assetUsage: the tree")
+  assert.equal(resolveLocationView("list", none), "list")
+  assert.equal(resolveLocationView("nonsense", { ...none, assetUsage: "withAssets" }), "list", "an unknown view reads as absent")
+  assert.equal(resolveLocationView(undefined, { ...none, search: "301" }), "list", "search: the list")
+  assert.equal(resolveLocationView("tree", { ...none, search: "301" }), "list", "a search shows the list even under view=tree")
+  // Through the parser: the bookmark ?assetUsage=withAssets now opens the list and its links keep view=list.
+  const old = parseLocationListParams({ assetUsage: "withAssets" })
+  assert.equal(old.view, "list")
+  assert.match(buildLocationQueryString(old, { page: 2 }), /(^|&)view=list(&|$)/)
+  // The view switch's โครงสร้าง link (and any tree link) keeps the list-only params, so it writes view=tree explicitly.
+  const treeHref = buildLocationQueryString(old, { view: "tree", search: "", page: 1 })
+  assert.match(treeHref, /(^|&)view=tree(&|$)/)
+  assert.equal(parseLocationListParams(Object.fromEntries(new URLSearchParams(treeHref))).view, "tree")
+  assert.equal(parseLocationListParams({ view: "tree", sort: "code" }).view, "tree")
+  // The filter form always submits the shown view, so a kept sort under the tree does not flip it to the list.
+  const source = read(PAGE)
+  assert.match(source, /<input type="hidden" name="view" value=\{showList \? "list" : "tree"\} \/>/)
+  assert.match(
+    source,
+    /const viewHref = \(view: LocationListState\["view"\]\) =>\n\s+`\$\{basePath\}\?\$\{buildLocationQueryString\(listState, view === "tree" \? \{ view, search: "", page: 1 \} : \{ view, page: 1 \}\)\}`/,
+  )
 })
 
 test("G7P3-R3: an asset count opens the register filtered to that location exactly", () => {
@@ -197,8 +229,9 @@ test("final review 7: on phones the filters fold, open only while a field filter
   assert.equal(locationListHasFieldFilters(parseLocationListParams({})), false)
   assert.equal(locationListHasFieldFilters(parseLocationListParams({ branchId: "b1" })), true)
   assert.equal(locationListHasFieldFilters(parseLocationListParams({ status: "all" })), true)
-  // The tree's form has no type, usage or hierarchy fields.
-  assert.equal(locationListHasFieldFilters(parseLocationListParams({ hierarchy: "root" })), false)
+  // The tree's form has no type, usage or hierarchy fields (an explicit tree; without ?view= the filter opens the list).
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ view: "tree", hierarchy: "root" })), false)
+  assert.equal(locationListHasFieldFilters(parseLocationListParams({ hierarchy: "root" })), true)
   assert.equal(locationListHasFieldFilters(parseLocationListParams({ view: "list" })), false)
   assert.equal(locationListHasFieldFilters(parseLocationListParams({ view: "list", hierarchy: "root" })), true)
   assert.equal(locationListHasFieldFilters(parseLocationListParams({ search: "301" })), true)

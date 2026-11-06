@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { summarizeModelSpecs } from "@/lib/model-specs"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Button } from "@/components/ui/button"
 import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
@@ -543,8 +544,15 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             }
           >
             {/* Phones: one card per model (name, photo, category, asset count); the table from md (spec §4.3). */}
+            {/* An empty filtered result offers ล้างตัวกรอง on phones too, like the table's empty row (task 4b). */}
             {models.length === 0 ? (
-              <EmptyNote padded className="md:hidden">{tCommon("noData")}</EmptyNote>
+              hasActiveFilters ? (
+                <div className="md:hidden">
+                  <ActionEmptyState title={tCommon("noData")} actionHref={basePath} actionLabel={t("clearFilters")} actionVariant="secondary" />
+                </div>
+              ) : (
+                <EmptyNote padded className="md:hidden">{tCommon("noData")}</EmptyNote>
+              )
             ) : (
               <ContentPanelRows className="md:hidden">
                 {models.map((model) => {

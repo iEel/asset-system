@@ -136,8 +136,10 @@ test("builds location query strings while preserving filters", () => {
 
   assert.equal(
     buildLocationQueryString(current, { locationType: "Rack", page: 1 }),
-    "search=rack&page=1&pageSize=50&sort=code&direction=asc&branchId=branch-1&locationType=Rack&assetUsage=withAssets&hierarchy=all"
+    "search=rack&page=1&pageSize=50&sort=code&direction=asc&branchId=branch-1&locationType=Rack&assetUsage=withAssets&hierarchy=all&view=list"
   )
+  // Task 4b: a search and list-only filters without ?view= read as the list, and the list's links say so.
+  assert.equal(current.view, "list")
 })
 
 test("the location list filters by record status, ใช้งาน by default (critique 2026-10-20 E1)", () => {

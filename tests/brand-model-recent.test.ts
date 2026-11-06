@@ -213,3 +213,13 @@ test("the brands page: the model filter row wraps, so every filter is fully visi
   assert.doesNotMatch(source, /xl:grid-cols-\[minmax\(220px,1\.4fr\)_repeat\(5,minmax\(140px,1fr\)\)_auto\]/)
   assert.match(source, /<form role="search" action=\{basePath\} className="grid grid-cols-\[repeat\(auto-fit,minmax\(min\(100%,11rem\),1fr\)\)\] gap-3">/)
 })
+
+test("task 4b: on phones an empty filtered model list offers ล้างตัวกรอง, as the table's empty row does", () => {
+  const source = read(PAGE)
+  assert.match(
+    source,
+    /\{models\.length === 0 \? \(\n\s+hasActiveFilters \? \(\n\s+<div className="md:hidden">\n\s+<ActionEmptyState title=\{tCommon\("noData"\)\} actionHref=\{basePath\} actionLabel=\{t\("clearFilters"\)\} actionVariant="secondary" \/>\n\s+<\/div>\n\s+\) : \(\n\s+<EmptyNote padded className="md:hidden">\{tCommon\("noData"\)\}<\/EmptyNote>/,
+  )
+  // The desktop row keeps the same link and label.
+  assert.match(source, /emptyState=\{\{ title: tCommon\("noData"\), actionHref: basePath, actionLabel: t\("clearFilters"\), actionVariant: "secondary" \}\}/)
+})
