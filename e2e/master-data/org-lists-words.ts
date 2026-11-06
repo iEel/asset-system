@@ -5,6 +5,8 @@
 export const ORG_LIST_WORDS = {
   // The three lists' headings and the forms their ⋯ opens.
   companiesTitle: "บริษัท", branchesTitle: "สาขา", departmentsTitle: "แผนก", branchCreateTitle: "เพิ่มสาขา", locationCreateTitle: "เพิ่มที่ตั้ง",
+  // The page headers' เพิ่ม… links (only with <module>:create; the run's IT head has branch:create only).
+  companyCreateTitle: "เพิ่มบริษัท", departmentCreateTitle: "เพิ่มแผนก",
   back: "กลับ",
   // The record-status segmented control (common.recordStatus), the status column under ทั้งหมด and its badge, the
   // footer's counts on the companies list.

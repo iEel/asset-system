@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { companySchema } from "@/lib/validations/company"
+import { masterDataReactivateSchema } from "@/lib/validations/master-data-reactivate"
 import { getCompanyDeleteBlockReason } from "@/lib/organization-master-query"
 import { isDeactivation } from "@/lib/master-data-query"
 
@@ -102,6 +103,49 @@ export async function PUT(request: NextRequest, context: CompanyRouteContext) {
     return NextResponse.json(company)
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Company code already exists")
+    return errorResponse(error, 400)
+  }
+}
+
+// เปิดใช้งาน from the list (group 8 plan 1 final review): the body is only { isActive: true }, so nothing else of the
+// record is written (no stale snapshot of the list goes back); the update entry logs the isActive change only.
+export async function PATCH(request: NextRequest, context: CompanyRouteContext) {
+  try {
+    const user = await requireAuth()
+    requirePermission(user, "company", "edit")
+
+    const { id } = await context.params
+    masterDataReactivateSchema.parse(await request.json())
+    const existing = await prisma.company.findFirst({
+      where: { id },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 })
+    }
+    if (existing.isActive) {
+      return NextResponse.json(existing)
+    }
+
+    const company = await prisma.company.update({
+      where: { id },
+      data: {
+        isActive: true,
+        updatedBy: user.id,
+      },
+    })
+
+    await logAudit({
+      userId: user.id,
+      action: "update",
+      module: "company",
+      recordId: id,
+      oldValue: { isActive: false },
+      newValue: { isActive: true },
+    })
+
+    return NextResponse.json(company)
+  } catch (error) {
     return errorResponse(error, 400)
   }
 }

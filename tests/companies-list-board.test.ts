@@ -39,19 +39,26 @@ test("companies: an inactive row reads ปิดใช้งานเมื่�
 
 test("companies ⋯: แก้ไข, เพิ่มสาขาให้บริษัทนี้, ปิดใช้งาน with company:delete and the reason, เปิดใช้งาน with company:edit (spec §3, §4)", () => {
   assert.match(page, /const canDeactivate = hasPermission\(user, "company", "delete"\)/)
-  assert.match(page, /const canReactivate = hasPermission\(user, "company", "edit"\)/)
+  assert.match(page, /const canEdit = hasPermission\(user, "company", "edit"\)/)
+  assert.match(page, /canEdit && !company\.isActive\n\s+\? \{\n\s+endpoint,\n\s+labels: \{/, "เปิดใช้งาน with company:edit, no record snapshot")
   assert.match(page, /const canCreateBranch = hasPermission\(user, "branch", "create"\)/)
   assert.match(page, /appendMasterDataReturnTo\(`\/\$\{locale\}\/master-data\/branches\/new\?companyId=\$\{encodeURIComponent\(company\.id\)\}`, companyReturnHref\)/)
   assert.match(page, /blocked: getCompanyDeleteBlockReason\(company\._count\)/)
   // The counts are the DELETE route's: every relation active, audit rounds with isActive true.
   assert.match(page, /auditRounds: \{ where: \{ isActive: true \} \},\n\s+\},\n\s+\},\n\s+\},\n\s+orderBy: buildCompanyOrderBy/)
   assert.match(page, /\{reactivate \? <MasterDataReactivateButton reactivate=\{reactivate\} \/> : null\}/, "เปิดใช้งาน beside the ไม่ใช้งาน badge")
-  assert.match(page, /record: \{\n\s+code: company\.code,\n\s+assetTagCode: company\.assetTagCode,\n\s+nameTh: company\.nameTh,\n\s+nameEn: company\.nameEn,\n\s+taxId: company\.taxId,\n\s+address: company\.address,\n\s+\}/)
+  assert.doesNotMatch(page, /record: \{/, "no snapshot of the record (final review)")
 
-  assert.match(rowActions, /next=\{null\}/, "the row opens the edit page; no next button")
+  // Final review: no next prop, so RowActions draws no empty 120px next slot (next={null} would).
+  assert.doesNotMatch(rowActions, /\bnext=/, "the row opens the edit page; no next button and no empty slot")
   assert.match(rowActions, /statusItems\.push\(\{ \.\.\.deactivateItem, hint: deactivate\?\.labels\.hint, onSelect: \(\) => setOpen\(true\) \}\)/)
   assert.match(rowActions, /await sendOrThrow\(deactivate\.endpoint, \{ method: "DELETE" \}, tCommon\("error"\)\)/)
-  assert.match(rowActions, /body: JSON\.stringify\(\{ \.\.\.reactivate\.record, isActive: true \}\)/)
+  // Final review: เปิดใช้งาน PATCHes { isActive: true } only; a blocked one is unavailable with the reason, no button.
+  assert.match(rowActions, /\{ method: "PATCH", headers: \{ "Content-Type": "application\/json" \}, body: JSON\.stringify\(\{ isActive: true \}\) \}/)
+  assert.doesNotMatch(rowActions, /method: "PUT"|reactivate\.record/)
+  assert.match(rowActions, /if \(reactivate\?\.blocked\) \{\n\s+statusItems\.push\(\{ kind: "unavailable", key: "reactivate", label: reactivate\.labels\.action, reason: reactivate\.blocked, icon: <RotateCcw aria-hidden="true" \/> \}\)\n\s+\} else if \(reactivate\) \{/)
+  assert.match(rowActions, /if \(!reactivate \|\| reactivate\.blocked \|\| busy\) return/)
+  assert.match(rowActions, /const reactivation = useReactivate\(reactivate, buttonRef\)\n\s+if \(reactivate\.blocked\) return null/)
   assert.match(rowActions, /deactivateMenuItem\(\{/)
 })
 
@@ -65,4 +72,23 @@ test("companies keep every sort, paging, returnTo and the clear link (spec §8);
   assert.match(page, /clear=\{hasActiveFilters \? \{ href: basePath, label: t\("clearFilters"\) \} : undefined\}/)
   assert.match(page, /actionHref: basePath, actionLabel: t\("clearFilters"\)/)
   assert.match(page, /scrollHint=\{tCommon\("tableScrollHint"\)\}/)
+})
+
+// Group 8 plan 1 final review: what the page offers follows the user's permissions, and the form follows the URL.
+test("companies: without company:edit no แก้ไข and a plain row; counts link only with branch:view / asset:view; เพิ่มบริษัท only with company:create (final review)", () => {
+  assert.match(page, /const canCreate = hasPermission\(user, "company", "create"\)/)
+  assert.match(page, /const canViewBranches = hasPermission\(user, "branch", "view"\)/)
+  assert.match(page, /const canViewAssets = hasPermission\(user, "asset", "view"\)/)
+  assert.match(page, /\.\.\.\(canEdit \? \[\{ key: "edit", label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\] : \[\]\),/)
+  assert.match(page, /return canEdit \? \(\n\s+<ClickableTableRow key=\{company\.id\} href=\{editHref\} label=\{`\$\{tCommon\("edit"\)\}: \$\{company\.code\}`\}>\n\s+\{cells\}\n\s+<\/ClickableTableRow>\n\s+\) : \(\n\s+<DataTableRow key=\{company\.id\}>\{cells\}<\/DataTableRow>\n\s+\)/)
+  assert.match(page, /actions=\{\n\s+canCreate \? \(\n\s+<Link href=\{appendMasterDataReturnTo\(`\/\$\{locale\}\/master-data\/companies\/new`/)
+  assert.match(page, /\{canViewBranches && company\._count\.branches > 0 \? \(/)
+  assert.match(page, /\) : company\._count\.branches === 0 && company\.isActive \? \(\n\s+<StatusBadge label=\{t\("withoutBranches"\)\} tone="warning" \/>\n\s+\) : \(\n\s+formatCount\(company\._count\.branches\)\n\s+\)\}/)
+  assert.match(page, /\{canViewAssets && company\._count\.assets > 0 \? \(/)
+  assert.match(page, /\) : \(\n\s+formatCount\(company\._count\.assets\)\n\s+\)\}/)
+})
+
+test("companies: the filter form is keyed on the list's query, so a header sort is what the next search sends (final review)", () => {
+  assert.match(page, /<form key=\{companyReturnHref\} role="search" action=\{basePath\}/)
+  assert.match(page, /const companyReturnHref = `\$\{basePath\}\?\$\{buildCompanyQueryString\(listState, \{\}\)\}`/)
 })

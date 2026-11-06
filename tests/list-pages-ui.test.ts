@@ -53,7 +53,8 @@ test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowAction
     assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/, `${path}: 25, 50 or 100 rows per page (R-k)`)
     assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: [\w.]+ \}\)\}/, `${path}: ⋯ is named after its row (I33)`)
     if (editInMenu) {
-      assert.match(source, /links: \[\n\s+\{ key: "edit", label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \},/, `${path}: แก้ไข is the first link in ⋯`)
+      // Group 8 plan 1 final review: แก้ไข only with <module>:edit (canEdit), still the first link.
+      assert.match(source, /links: (?:\[\n\s+\.\.\.\(canEdit \? \[|canEdit \? \[)\{ key: "edit", label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\]/, `${path}: แก้ไข is the first link in ⋯`)
       assert.doesNotMatch(source, /next=\{\{/, `${path}: no next button`)
     } else {
       assert.match(source, /next=\{\{ label: (?:tCommon\("edit"\)|t\("\w+"\)), href: \w+, icon: <Pencil aria-hidden="true" \/> \}\}/, `${path}: the next step is the edit link (B5)`)

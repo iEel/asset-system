@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
@@ -34,6 +34,7 @@ import {
   buildBranchSummary,
   buildBranchWhere,
   getBranchDeleteBlockReason,
+  getReactivateBlockedByCompanyReason,
   parseBranchListParams,
   type BranchListParams,
   type BranchListState,
@@ -53,9 +54,14 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
   const { locale } = await params
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "branch", "view")
-  // Spec §3: ปิดใช้งาน needs branch:delete (DELETE only deactivates), เปิดใช้งาน branch:edit (PUT isActive true).
+  // Spec §3: ปิดใช้งาน needs branch:delete (DELETE only deactivates), เปิดใช้งาน branch:edit (PATCH isActive true).
   const canDeactivate = hasPermission(user, "branch", "delete")
-  const canReactivate = hasPermission(user, "branch", "edit")
+  // Final review: without branch:edit no แก้ไข in ⋯ and the row is a plain row (it opens nothing); no เพิ่มสาขา without
+  // branch:create; a count links to its list only with that module's view permission, else a plain number.
+  const canEdit = hasPermission(user, "branch", "edit")
+  const canCreate = hasPermission(user, "branch", "create")
+  const canViewLocations = hasPermission(user, "location", "view")
+  const canViewAssets = hasPermission(user, "asset", "view")
   // เพิ่มที่ตั้งในสาขานี้ opens the location form (location:create); the employee list needs employee:view.
   const canCreateLocation = hasPermission(user, "location", "create")
   const canViewEmployees = hasPermission(user, "employee", "view")
@@ -74,6 +80,8 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
           select: {
             code: true,
             nameTh: true,
+            // An inactive company makes เปิดใช้งาน unavailable (getReactivateBlockedByCompanyReason).
+            isActive: true,
           },
         },
         // The counts the DELETE route reads, for the ปิดใช้งาน reason (getBranchDeleteBlockReason).
@@ -158,18 +166,13 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
         : null
     const endpoint = `/api/branches/${branch.id}`
     const at = branch.isActive ? null : deactivatedAt.get(branch.id)
-    // PUT /api/branches/[id] takes the whole record: the stored fields go back with isActive = true.
+    // PATCH /api/branches/[id] with { isActive: true } only (final review: no snapshot of the record goes back); refused
+    // while the company is inactive, so ⋯ shows it unavailable with the server's reason.
     const reactivate: MasterDataReactivate | null =
-      canReactivate && !branch.isActive
+      canEdit && !branch.isActive
         ? {
             endpoint,
-            record: {
-              code: branch.code,
-              name: branch.name,
-              companyId: branch.companyId,
-              address: branch.address,
-              contactPerson: branch.contactPerson,
-            },
+            blocked: getReactivateBlockedByCompanyReason("branch", branch.company),
             labels: {
               action: t("reactivate.action"),
               confirmTitle: t("reactivate.confirmTitle", { name: branch.name }),
@@ -186,7 +189,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
       reactivate,
       deactivatedLine: branch.isActive ? null : tCommon("recordStatus.deactivatedAt", { date: at ? formatDeactivatedAt(at, locale) : "–" }),
       links: [
-        { key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> },
+        ...(canEdit ? [{ key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }] : []),
         ...(addLocationHref ? [{ key: "add-location", label: t("list.addLocation"), href: addLocationHref, icon: <Plus aria-hidden="true" /> }] : []),
         ...(canViewEmployees
           ? [{ key: "employees", label: t("list.viewEmployees", { count: branch._count.employees }), href: drilldown.employees, icon: <Users aria-hidden="true" /> }]
@@ -216,10 +219,12 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
         title={t("title")}
         meta={t("subtitle")}
         actions={
-          <Link href={appendMasterDataReturnTo(`/${locale}/master-data/branches/new`, branchReturnHref)} className={buttonVariants({ size: "md" })}>
-            <Plus aria-hidden="true" />
-            {t("createTitle")}
-          </Link>
+          canCreate ? (
+            <Link href={appendMasterDataReturnTo(`/${locale}/master-data/branches/new`, branchReturnHref)} className={buttonVariants({ size: "md" })}>
+              <Plus aria-hidden="true" />
+              {t("createTitle")}
+            </Link>
+          ) : undefined
         }
       />
 
@@ -268,7 +273,9 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
       <FilterPanel>
         {/* Search, three filters, the sort and its order: every sort stays reachable here (code, company and date added
             too, which no header carries any more), on phones as well. */}
-        <form role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
+        {/* Keyed on the list's query: a header sort, a card or the segmented control changes the URL without this form, and
+            the uncontrolled selects would otherwise send the old sort and filters with the next search (final review). */}
+        <form key={branchReturnHref} role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           {/* The record status is the segmented control below (spec §3); a search keeps it. */}
@@ -374,12 +381,9 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
               <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
             )
           ) : (
-            rows.map(({ branch, drilldown, editHref, addLocationHref, reactivate, deactivatedLine, links, deactivate }) => (
-              <ClickableTableRow
-                key={branch.id}
-                href={editHref}
-                label={`${tCommon("edit")}: ${branch.code}`}
-              >
+            rows.map(({ branch, drilldown, editHref, addLocationHref, reactivate, deactivatedLine, links, deactivate }) => {
+              const cells = (
+                <>
                 <DataTableCell className="min-w-56">
                   <div className={cn("font-semibold", branch.isActive ? "text-foreground" : "text-muted-foreground")}>{branch.name}</div>
                   <div className="text-xs text-muted-foreground">
@@ -391,14 +395,14 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                 </DataTableCell>
                 <DataTableCell className="min-w-40 text-muted-foreground">{orNil(branch.contactPerson)}</DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">
-                  {branch._count.locations > 0 ? (
+                  {canViewLocations && branch._count.locations > 0 ? (
                     <Link
                       href={drilldown.locations}
                       className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
                     >
                       {formatCount(branch._count.locations)}
                     </Link>
-                  ) : branch.isActive ? (
+                  ) : branch._count.locations === 0 && branch.isActive ? (
                     <div className="flex flex-col items-end gap-1">
                       <StatusBadge label={t("withoutLocations")} tone="warning" />
                       {addLocationHref ? (
@@ -408,7 +412,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                       ) : null}
                     </div>
                   ) : (
-                    formatCount(0)
+                    formatCount(branch._count.locations)
                   )}
                 </DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">
@@ -424,7 +428,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                   )}
                 </DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">
-                  {branch._count.assets > 0 ? (
+                  {canViewAssets && branch._count.assets > 0 ? (
                     <Link
                       href={drilldown.assets}
                       className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
@@ -432,7 +436,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                       {formatCount(branch._count.assets)}
                     </Link>
                   ) : (
-                    formatCount(0)
+                    formatCount(branch._count.assets)
                   )}
                 </DataTableCell>
                 {showRecordStatus ? (
@@ -451,8 +455,17 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                     reactivate={reactivate}
                   />
                 </DataTableCell>
-              </ClickableTableRow>
-            ))
+                </>
+              )
+              // Without branch:edit the row is plain: it opens nothing (⋯ has no แก้ไข either).
+              return canEdit ? (
+                <ClickableTableRow key={branch.id} href={editHref} label={`${tCommon("edit")}: ${branch.code}`}>
+                  {cells}
+                </ClickableTableRow>
+              ) : (
+                <DataTableRow key={branch.id}>{cells}</DataTableRow>
+              )
+            })
           )}
         </DataTableBody>
       </DataTable>

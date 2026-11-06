@@ -91,6 +91,8 @@ test("a deactivation saved from the edit form logs a delete entry beside the upd
     const run = async (stored: boolean, next: boolean) => {
       globals.__auditLogs = []
       globals.__deactivateLog = {
+        // The branch's company is active, so a reactivation saves (group 8 plan 1 final review).
+        company: { findFirst: () => ({ nameTh: "บริษัท", isActive: true }) },
         [item.model]: {
           findFirst: (args: { where: Record<string, unknown> }) =>
             args.where.code ? null : { id: "row-1", isActive: stored, _count: item.counts },

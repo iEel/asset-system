@@ -8,7 +8,9 @@ import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type Record
 // string, cards, the summary line, the filter chips and the deactivation counts. Type and plain imports only: tests and
 // the page both load this module; the route reads departmentDeactivateCountSelect.
 
-export const departmentSorts = ["createdAt", "code", "name", "company", "employees", "assets"] as const
+// No employee / asset count sorts: Prisma's _count orderBy counts inactive rows too, while the columns show active ones
+// only (group 8 plan 1 final review). The old list had date added only; every sort here is new or kept.
+export const departmentSorts = ["createdAt", "code", "name", "company"] as const
 export const departmentEmployeeUsageFilters = ["all", "withEmployees", "withoutEmployees"] as const
 export const departmentAssetUsageFilters = ["all", "withAssets", "withoutAssets"] as const
 // The company filter's แผนกกลาง / ไม่ระบุบริษัท choice: a department with no company (the card's แผนกกลาง).
@@ -94,14 +96,7 @@ export function buildDepartmentOrderBy({
   sort,
   direction,
 }: Pick<DepartmentListState, "sort" | "direction">): Prisma.DepartmentOrderByWithRelationInput[] {
-  const primary: Prisma.DepartmentOrderByWithRelationInput =
-    sort === "company"
-      ? { company: { nameTh: direction } }
-      : sort === "employees"
-        ? { employees: { _count: direction } }
-        : sort === "assets"
-          ? { assets: { _count: direction } }
-          : { [sort]: direction }
+  const primary: Prisma.DepartmentOrderByWithRelationInput = sort === "company" ? { company: { nameTh: direction } } : { [sort]: direction }
   return [primary, { id: "asc" }]
 }
 

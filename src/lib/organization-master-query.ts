@@ -416,22 +416,35 @@ export function buildSupplierWhere(state: SupplierListState): Prisma.SupplierWhe
 export function buildCompanyOrderBy({
   sort,
   direction,
-}: Pick<CompanyListState, "sort" | "direction">): Prisma.CompanyOrderByWithRelationInput {
-  if (sort === "branches") return { branches: { _count: direction } }
-  if (sort === "employees") return { employees: { _count: direction } }
-  if (sort === "assets") return { assets: { _count: direction } }
-  return { [sort]: direction }
+}: Pick<CompanyListState, "sort" | "direction">): Prisma.CompanyOrderByWithRelationInput[] {
+  const primary: Prisma.CompanyOrderByWithRelationInput =
+    sort === "branches"
+      ? { branches: { _count: direction } }
+      : sort === "employees"
+        ? { employees: { _count: direction } }
+        : sort === "assets"
+          ? { assets: { _count: direction } }
+          : { [sort]: direction }
+  // The id breaks ties, so no row shows on two pages (spec 2B B4, as buildDepartmentOrderBy).
+  return [primary, { id: "asc" }]
 }
 
 export function buildBranchOrderBy({
   sort,
   direction,
-}: Pick<BranchListState, "sort" | "direction">): Prisma.BranchOrderByWithRelationInput {
-  if (sort === "company") return { company: { code: direction } }
-  if (sort === "locations") return { locations: { _count: direction } }
-  if (sort === "employees") return { employees: { _count: direction } }
-  if (sort === "assets") return { assets: { _count: direction } }
-  return { [sort]: direction }
+}: Pick<BranchListState, "sort" | "direction">): Prisma.BranchOrderByWithRelationInput[] {
+  const primary: Prisma.BranchOrderByWithRelationInput =
+    sort === "company"
+      ? { company: { code: direction } }
+      : sort === "locations"
+        ? { locations: { _count: direction } }
+        : sort === "employees"
+          ? { employees: { _count: direction } }
+          : sort === "assets"
+            ? { assets: { _count: direction } }
+            : { [sort]: direction }
+  // The id breaks ties, so no row shows on two pages (spec 2B B4, as buildDepartmentOrderBy).
+  return [primary, { id: "asc" }]
 }
 
 export function buildEmployeeOrderBy({
@@ -608,7 +621,7 @@ export function getCompanyDeleteBlockReason(counts: {
   const reasons = [
     counts.branches > 0 ? `สาขา ${counts.branches} รายการ` : null,
     counts.departments > 0 ? `แผนก ${counts.departments} รายการ` : null,
-    counts.employees > 0 ? `พนักงาน ${counts.employees} รายการ` : null,
+    counts.employees > 0 ? `พนักงาน ${counts.employees} คน` : null,
     counts.assets > 0 ? `ทรัพย์สิน ${counts.assets} รายการ` : null,
     counts.auditRounds > 0 ? `รอบตรวจนับ ${counts.auditRounds} รายการ` : null,
   ].filter((reason): reason is string => Boolean(reason))
@@ -621,7 +634,7 @@ export function getCompanyDeleteBlockReason(counts: {
 // audit rounds scoped to it that are still open. The route (group 8 plan 1 Task 4) reads the counts.
 export function getDepartmentDeleteBlockReason(counts: { employees: number; assets: number; openAuditRounds: number }) {
   const reasons = [
-    counts.employees > 0 ? `พนักงาน ${counts.employees} รายการ` : null,
+    counts.employees > 0 ? `พนักงาน ${counts.employees} คน` : null,
     counts.assets > 0 ? `ทรัพย์สิน ${counts.assets} รายการ` : null,
     counts.openAuditRounds > 0 ? `รอบตรวจนับ ${counts.openAuditRounds} รายการ` : null,
   ].filter((reason): reason is string => Boolean(reason))
@@ -638,13 +651,24 @@ export function getBranchDeleteBlockReason(counts: {
 }) {
   const reasons = [
     counts.locations > 0 ? `ที่ตั้ง ${counts.locations} รายการ` : null,
-    counts.employees > 0 ? `พนักงาน ${counts.employees} รายการ` : null,
+    counts.employees > 0 ? `พนักงาน ${counts.employees} คน` : null,
     counts.assets > 0 ? `ทรัพย์สิน ${counts.assets} รายการ` : null,
     counts.auditRounds > 0 ? `รอบตรวจนับ ${counts.auditRounds} รายการ` : null,
   ].filter((reason): reason is string => Boolean(reason))
 
   if (reasons.length === 0) return null
   return `ปิดใช้งานสาขานี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+}
+
+// A branch or a department cannot come back (เปิดใช้งาน) while its company is inactive: the PATCH and the PUT that set
+// isActive true refuse it (409) and the list shows เปิดใช้งาน unavailable with this reason (group 8 plan 1 final review).
+// A department with no company (แผนกกลาง) is never blocked.
+export function getReactivateBlockedByCompanyReason(
+  record: "branch" | "department",
+  company: { nameTh: string; isActive: boolean } | null | undefined
+) {
+  if (!company || company.isActive) return null
+  return `เปิดใช้งาน${record === "branch" ? "สาขา" : "แผนก"}นี้ไม่ได้ เพราะบริษัท ${company.nameTh} ปิดใช้งานอยู่ · เปิดใช้งานบริษัทก่อน`
 }
 
 export function getEmployeeDeleteBlockReason(counts: {
@@ -656,7 +680,7 @@ export function getEmployeeDeleteBlockReason(counts: {
 }) {
   const reasons = [
     counts.custodianAssets > 0 ? `ทรัพย์สินที่ถือครอง ${counts.custodianAssets} รายการ` : null,
-    counts.subordinates > 0 ? `ผู้ใต้บังคับบัญชา ${counts.subordinates} รายการ` : null,
+    counts.subordinates > 0 ? `ผู้ใต้บังคับบัญชา ${counts.subordinates} คน` : null,
     counts.userAccounts > 0 ? `บัญชีผู้ใช้ ${counts.userAccounts} รายการ` : null,
     counts.openCheckouts > 0 ? `รายการส่งมอบค้างคืน ${counts.openCheckouts} รายการ` : null,
     counts.auditRounds > 0 ? `รอบตรวจนับ ${counts.auditRounds} รายการ` : null,

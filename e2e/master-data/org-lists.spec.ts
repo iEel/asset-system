@@ -3,9 +3,11 @@
 // to boards MD-Companies, MD-Branches and MD-Departments, in all four projects, as the IT head. The run's role holds
 // company:view, branch:view, branch:create and department:view since this task (e2e/support/run-plan.ts): the three
 // lists, and the branch form ⋯ เพิ่มสาขาให้บริษัทนี้ opens. No company:, branch: or department:delete, so ⋯ ปิดใช้งาน is
-// checked absent on each list (as the group 7 follow-ups did for employees); its unavailable reason and its confirm stay
-// with the unit tests (tests/companies-list-board.test.ts, tests/branches-list-board.test.ts,
-// tests/departments-list-board.test.ts).
+// checked absent on the companies and branches lists (as the group 7 follow-ups did for employees); its unavailable
+// reason and its confirm stay with the unit tests (tests/companies-list-board.test.ts, tests/branches-list-board.test.ts,
+// tests/departments-list-board.test.ts). No company:, branch: or department:edit (final review): no แก้ไข in ⋯ and the
+// rows are plain rows (no tabindex, they open nothing); the departments row has no ⋯ at all (nothing to offer). Only
+// branch:create, so เพิ่มสาขา is in the branches header and neither เพิ่มบริษัท nor เพิ่มแผนก is.
 // - The run's own organisation, created by the seed admin through the same APIs the setup uses (no helper made a
 //   company, a branch or a department of a spec's own): a company with no English name, no asset-tag code and no tax
 //   id (so the run setup, which picks the first company with an asset-tag code, never picks it), a branch of it, a
@@ -15,14 +17,15 @@
 // - Companies: a search for the run company's code: ใช้งาน 1 (aria-current) / ไม่ใช้งาน 0 / ทั้งหมด 1, the row's facts
 //   (name, "code · ยังไม่มีชื่อภาษาอังกฤษ", the code as the asset-tag code with its fallback note, ยังไม่ระบุ, the branch
 //   and asset counts linked to their lists, the employee count), no status column under ใช้งาน and one under ทั้งหมด,
-//   the footer's ใช้งาน/ไม่ใช้งาน counts; ⋯ holds แก้ไข and เพิ่มสาขาให้บริษัทนี้ (no ปิดใช้งาน), which opens the branch form
-//   with the company chosen and กลับ back to the companies list with its search.
+//   the footer's ใช้งาน/ไม่ใช้งาน counts; ⋯ holds เพิ่มสาขาให้บริษัทนี้ only (no แก้ไข, no ปิดใช้งาน), which opens the branch
+//   form with the company chosen and กลับ back to the companies list with its search.
 // - Branches: the run branch's ที่ตั้ง / พนักงาน / ทรัพย์สิน counts link to the lists by the branch (each opened), the
-//   footer's totals over the filtered set; ⋯ holds แก้ไข, เพิ่มที่ตั้งในสาขานี้ and ดูพนักงานในสาขานี้ (1) (no ปิดใช้งาน);
+//   footer's totals over the filtered set; ⋯ holds เพิ่มที่ตั้งในสาขานี้ and ดูพนักงานในสาขานี้ (1) (no แก้ไข, no ปิดใช้งาน);
 //   เพิ่มที่ตั้งในสาขานี้ opens the location form with the branch chosen and กลับ back to the branches list.
 // - Departments: the run department with its employee and asset: the company by name, the พนักงาน count to the employee
 //   list by ?departmentId=, the ทรัพย์สิน count with "โอนย้ายก่อนปิดใช้งาน" to the register by ?departmentId= with the
-//   department chip, the summary line; ⋯ holds แก้ไข only. The deactivation guard (G8P1-R3) is checked through the API
+//   department chip, the summary line; no ⋯ (no แก้ไข without department:edit, no ปิดใช้งาน without department:delete).
+//   The deactivation guard (G8P1-R3) is checked through the API
 //   the edit form uses: the seed admin's PUT with isActive false answers 409 with the reason, and the department stays
 //   active. The suite sends no DELETE; the IT head's role cannot edit departments, so the seed admin sends the PUT, as
 //   the locations spec sets a location inactive (the run department is this test's own, and a refused PUT changes nothing).
@@ -51,7 +54,7 @@ type RunOrg = { company: RunCompany; branch: RunBranch; department: RunDepartmen
 
 // The reason the department guard gives for one employee and one asset (getDepartmentDeleteBlockReason; a server
 // string, not a message key, so it is here and tests/e2e-master-data.test.ts pins it to the function).
-const DEPARTMENT_BLOCKED = "ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมีพนักงาน 1 รายการ และทรัพย์สิน 1 รายการใช้งานอยู่"
+const DEPARTMENT_BLOCKED = "ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมีพนักงาน 1 คน และทรัพย์สิน 1 รายการใช้งานอยู่"
 
 async function created(response: Awaited<ReturnType<APIRequestContext["post"]>>, what: string): Promise<string> {
   expect(response.status(), `POST ${what}: ${(await response.text()).slice(0, 300)}`).toBe(201)
@@ -119,6 +122,10 @@ async function createOrgAsset(page: Page, masters: AssetMasters, projectName: st
 const listRow = (page: Page, code: string): Locator => page.locator("table tbody tr").filter({ hasText: code })
 // A count cell's link by its href (the page writes them whole: /th/…?<key>=<id>&page=1).
 const countLink = (row: Locator, href: string): Locator => row.locator(`a[href="${href}"]`)
+// Final review: without <module>:edit the row is a plain row (no tabindex: it opens nothing).
+const expectPlainRow = (row: Locator) => expect(row).not.toHaveAttribute("tabindex")
+// The page header's เพิ่ม… link, shown only with <module>:create.
+const headerCreateLink = (page: Page, title: string): Locator => page.getByRole("main").getByRole("link", { name: title, exact: true })
 
 // The record-status segmented control: each option a link named by its word and its count.
 function statusLink(page: Page, label: string, count: number): Locator {
@@ -177,6 +184,9 @@ test.describe("the IT head reads the companies, branches and departments lists",
     await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })
     await expect(page.locator("table tbody tr")).toHaveCount(1)
     const companyRow = listRow(page, company.code)
+    // No company:create, no company:edit: no เพิ่มบริษัท, and the row opens nothing.
+    await expect(headerCreateLink(page, W.companyCreateTitle)).toHaveCount(0)
+    await expectPlainRow(companyRow)
     // Name first, "code · ยังไม่มีชื่อภาษาอังกฤษ" under it; the code stands in as the asset-tag code; no tax id yet.
     await expect(companyRow).toContainText(company.nameTh)
     await expect(companyRow).toContainText(`${company.code} · ${W.noNameEn}`)
@@ -192,12 +202,10 @@ test.describe("the IT head reads the companies, branches and departments lists",
     if (phone) await expectPhoneTable(page, W.companiesTitle)
     await recordSettled(page, measure, "companies list, the run company")
 
-    // ⋯: แก้ไข and เพิ่มสาขาให้บริษัทนี้; no ปิดใช้งาน without company:delete.
+    // ⋯: เพิ่มสาขาให้บริษัทนี้ only; no แก้ไข without company:edit, no ปิดใช้งาน without company:delete.
     const companyMenu = await openRowMenu(page, companyRow, company.code, phone)
-    expect(await readMenuEntries(companyMenu)).toEqual([
-      { label: W.edit, reason: null, available: true },
-      { label: W.addBranch, reason: null, available: true },
-    ])
+    expect(await readMenuEntries(companyMenu)).toEqual([{ label: W.addBranch, reason: null, available: true }])
+    await expect(menuItem(companyMenu, W.edit)).toHaveCount(0)
     await expect(menuItem(companyMenu, W.deactivate)).toHaveCount(0)
     await recordSettled(page, measure, "companies list, a company's ⋯")
     await menuItem(companyMenu, W.addBranch).click()
@@ -226,6 +234,9 @@ test.describe("the IT head reads the companies, branches and departments lists",
     await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })
     const branchRow = listRow(page, branch.code)
     await expect(branchRow).toHaveCount(1)
+    // branch:create: เพิ่มสาขา in the header; no branch:edit: the row opens nothing.
+    await expect(headerCreateLink(page, W.branchCreateTitle)).toHaveCount(1)
+    await expectPlainRow(branchRow)
     await expect(branchRow).toContainText(branch.name)
     await expect(branchRow).toContainText(`${branch.code} · ${company.nameTh}`)
     const branchLinks = {
@@ -254,14 +265,14 @@ test.describe("the IT head reads the companies, branches and departments lists",
     await page.waitForURL((url) => url.pathname === "/th/assets" && url.searchParams.get("branchId") === branch.id)
     await expect(page.getByRole("main").getByText(asset.assetTag, { exact: true }).filter({ visible: true }).first()).toBeVisible()
 
-    // ⋯: แก้ไข, เพิ่มที่ตั้งในสาขานี้, ดูพนักงานในสาขานี้ (1); no ปิดใช้งาน without branch:delete.
+    // ⋯: เพิ่มที่ตั้งในสาขานี้, ดูพนักงานในสาขานี้ (1); no แก้ไข without branch:edit, no ปิดใช้งาน without branch:delete.
     await page.goto(branchesHref, { waitUntil: "load" })
     const branchMenu = await openRowMenu(page, listRow(page, branch.code), branch.code, phone)
     expect(await readMenuEntries(branchMenu)).toEqual([
-      { label: W.edit, reason: null, available: true },
       { label: W.addLocation, reason: null, available: true },
       { label: fillTemplate(W.viewEmployees, { count: 1 }), reason: null, available: true },
     ])
+    await expect(menuItem(branchMenu, W.edit)).toHaveCount(0)
     await expect(menuItem(branchMenu, W.deactivate)).toHaveCount(0)
     await recordSettled(page, measure, "branches list, a branch's ⋯")
     await menuItem(branchMenu, W.addLocation).click()
@@ -281,6 +292,9 @@ test.describe("the IT head reads the companies, branches and departments lists",
     await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })
     const departmentRow = listRow(page, department.code)
     await expect(departmentRow).toHaveCount(1)
+    // No department:create, no department:edit: no เพิ่มแผนก, and the row opens nothing.
+    await expect(headerCreateLink(page, W.departmentCreateTitle)).toHaveCount(0)
+    await expectPlainRow(departmentRow)
     await expect(departmentRow).toContainText(department.name)
     await expect(departmentRow).toContainText(company.nameTh)
     const employeesByDepartment = `/th/master-data/employees?departmentId=${department.id}&page=1`
@@ -293,13 +307,8 @@ test.describe("the IT head reads the companies, branches and departments lists",
     if (phone) await expectPhoneTable(page, W.departmentsTitle)
     await recordSettled(page, measure, "departments list, the run department")
 
-    // ⋯: แก้ไข only; no ปิดใช้งาน without department:delete.
-    const departmentMenu = await openRowMenu(page, departmentRow, department.code, phone)
-    expect(await readMenuEntries(departmentMenu)).toEqual([{ label: W.edit, reason: null, available: true }])
-    await expect(menuItem(departmentMenu, W.deactivate)).toHaveCount(0)
-    await recordSettled(page, measure, "departments list, a department's ⋯")
-    await page.keyboard.press("Escape")
-    await expect(departmentMenu).toBeHidden()
+    // No ⋯ at all: no แก้ไข without department:edit and no ปิดใช้งาน without department:delete leave nothing to offer.
+    await expect(departmentRow.getByRole("button", { name: fillTemplate(W.moreActionsFor, { code: department.code }), exact: true })).toHaveCount(0)
 
     // พนักงาน 1 opens the employee list by the department.
     await countLink(departmentRow, employeesByDepartment).click()

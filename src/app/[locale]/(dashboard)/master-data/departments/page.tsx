@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
@@ -25,7 +25,7 @@ import { LIST_PAGE_SIZES, lastListPage, listPageWindow } from "@/lib/list-pagina
 import { paginationRange } from "@/lib/master-data-query"
 import { formatDeactivatedAt, readDeactivatedAt, readRecordStatusCounts, recordStatusCountWheres } from "@/lib/master-data-list-ui"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
-import { getDepartmentDeleteBlockReason } from "@/lib/organization-master-query"
+import { getDepartmentDeleteBlockReason, getReactivateBlockedByCompanyReason } from "@/lib/organization-master-query"
 import {
   buildDepartmentDrilldownHrefs,
   buildDepartmentFilterChips,
@@ -58,9 +58,13 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
   const { locale } = await params
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "department", "view")
-  // Spec §3: ปิดใช้งาน needs department:delete (DELETE only deactivates), เปิดใช้งาน department:edit (PUT isActive true).
+  // Spec §3: ปิดใช้งาน needs department:delete (DELETE only deactivates), เปิดใช้งาน department:edit (PATCH isActive true).
   const canDeactivate = hasPermission(user, "department", "delete")
-  const canReactivate = hasPermission(user, "department", "edit")
+  // Final review: without department:edit no แก้ไข in ⋯ and the row is a plain row (it opens nothing); no เพิ่มแผนก
+  // without department:create; the asset count links to the register only with asset:view, else a plain number.
+  const canEdit = hasPermission(user, "department", "edit")
+  const canCreate = hasPermission(user, "department", "create")
+  const canViewAssets = hasPermission(user, "asset", "view")
   // The employee count opens the employee list (employee:view).
   const canViewEmployees = hasPermission(user, "employee", "view")
 
@@ -75,7 +79,8 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
     prisma.department.findMany({
       where,
       include: {
-        company: { select: { id: true, nameTh: true } },
+        // isActive: an inactive company makes เปิดใช้งาน unavailable (getReactivateBlockedByCompanyReason).
+        company: { select: { id: true, nameTh: true, isActive: true } },
         // The DELETE route's employee and asset counts, for the ปิดใช้งาน reason; open rounds are read below.
         _count: {
           select: {
@@ -171,16 +176,13 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
       assets: department._count.assets,
       openAuditRounds: openAuditRounds.get(department.id) ?? 0,
     }
-    // PUT /api/departments/[id] takes the whole record: the stored fields go back with isActive = true.
+    // PATCH /api/departments/[id] with { isActive: true } only (final review: no snapshot of the record goes back);
+    // refused while the company is inactive (แผนกกลาง never), so ⋯ shows it unavailable with the server's reason.
     const reactivate: MasterDataReactivate | null =
-      canReactivate && !department.isActive
+      canEdit && !department.isActive
         ? {
             endpoint,
-            record: {
-              code: department.code,
-              name: department.name,
-              companyId: department.companyId ?? "",
-            },
+            blocked: getReactivateBlockedByCompanyReason("department", department.company),
             labels: {
               action: t("reactivate.action"),
               confirmTitle: t("reactivate.confirmTitle", { name: department.name }),
@@ -195,9 +197,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
       editHref,
       reactivate,
       deactivatedLine: department.isActive ? null : tCommon("recordStatus.deactivatedAt", { date: at ? formatDeactivatedAt(at, locale) : "–" }),
-      links: [
-        { key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> },
-      ],
+      links: canEdit ? [{ key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }] : [],
       deactivate:
         canDeactivate && department.isActive
           ? {
@@ -222,10 +222,12 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
         title={t("title")}
         meta={t("subtitle")}
         actions={
-          <Link href={appendMasterDataReturnTo(`/${locale}/master-data/departments/new`, departmentReturnHref)} className={buttonVariants({ size: "md" })}>
-            <Plus aria-hidden="true" />
-            {t("createTitle")}
-          </Link>
+          canCreate ? (
+            <Link href={appendMasterDataReturnTo(`/${locale}/master-data/departments/new`, departmentReturnHref)} className={buttonVariants({ size: "md" })}>
+              <Plus aria-hidden="true" />
+              {t("createTitle")}
+            </Link>
+          ) : undefined
         }
       />
 
@@ -264,7 +266,10 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
       <FilterPanel>
         {/* Search, three filters, the sort and its order: every sort stays reachable here (code, company and date added
             too), on phones as well. */}
-        <form role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
+        {/* Keyed on the list's query: a header sort, a card, a chip or the segmented control changes the URL without this
+            form, and the uncontrolled selects would otherwise send the old sort and filters with the next search (final
+            review). */}
+        <form key={departmentReturnHref} role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
           {listState.pageSize !== 25 ? <input type="hidden" name="pageSize" value={listState.pageSize} /> : null}
           {/* The record status is the segmented control below (spec §3); a search keeps it. */}
           {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
@@ -369,8 +374,9 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
           <tr>
             <DataTableHead sort={sortBy("name")}>{t("name")}</DataTableHead>
             <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
-            <DataTableHead align="right" sort={sortBy("employees")}>{t("employees")}</DataTableHead>
-            <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
+            {/* No count sorts here: Prisma _count counts inactive rows, the columns show active ones (final review). */}
+            <DataTableHead align="right">{t("employees")}</DataTableHead>
+            <DataTableHead align="right">{t("assets")}</DataTableHead>
             {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
             <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
@@ -383,12 +389,9 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
               <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
             )
           ) : (
-            rows.map(({ department, drilldown, editHref, reactivate, deactivatedLine, links, deactivate }) => (
-              <ClickableTableRow
-                key={department.id}
-                href={editHref}
-                label={`${tCommon("edit")}: ${department.code}`}
-              >
+            rows.map(({ department, drilldown, editHref, reactivate, deactivatedLine, links, deactivate }) => {
+              const cells = (
+                <>
                 <DataTableCell className="min-w-56">
                   <div className={cn("font-semibold", department.isActive ? "text-foreground" : "text-muted-foreground")}>{department.name}</div>
                   <div className="text-xs text-muted-foreground">
@@ -414,12 +417,16 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                 <DataTableCell numeric className="text-muted-foreground">
                   {department._count.assets > 0 ? (
                     <div className="flex flex-col items-end gap-1">
-                      <Link
-                        href={drilldown.assets}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
-                      >
-                        {formatCount(department._count.assets)}
-                      </Link>
+                      {canViewAssets ? (
+                        <Link
+                          href={drilldown.assets}
+                          className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                        >
+                          {formatCount(department._count.assets)}
+                        </Link>
+                      ) : (
+                        formatCount(department._count.assets)
+                      )}
                       {/* Board: a row that still holds assets says they move first (the guard refuses until then). */}
                       {department.isActive ? <span className="text-xs text-warning">{t("list.moveBeforeDeactivate")}</span> : null}
                     </div>
@@ -443,8 +450,17 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                     reactivate={reactivate}
                   />
                 </DataTableCell>
-              </ClickableTableRow>
-            ))
+                </>
+              )
+              // Without department:edit the row is plain: it opens nothing (⋯ has no แก้ไข either).
+              return canEdit ? (
+                <ClickableTableRow key={department.id} href={editHref} label={`${tCommon("edit")}: ${department.code}`}>
+                  {cells}
+                </ClickableTableRow>
+              ) : (
+                <DataTableRow key={department.id}>{cells}</DataTableRow>
+              )
+            })
           )}
         </DataTableBody>
       </DataTable>

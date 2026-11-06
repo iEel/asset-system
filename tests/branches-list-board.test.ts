@@ -66,16 +66,18 @@ test("branches: an inactive row reads ปิดใช้งานเมื่อ
 
 test("branches ⋯: แก้ไข, เพิ่มที่ตั้งในสาขานี้, ดูพนักงานในสาขานี้ ({n}), ปิดใช้งาน with branch:delete and the reason, เปิดใช้งาน with branch:edit (spec §3, §5)", () => {
   assert.match(page, /const canDeactivate = hasPermission\(user, "branch", "delete"\)/)
-  assert.match(page, /const canReactivate = hasPermission\(user, "branch", "edit"\)/)
+  assert.match(page, /const canEdit = hasPermission\(user, "branch", "edit"\)/)
   assert.match(page, /\{ key: "add-location", label: t\("list\.addLocation"\), href: addLocationHref, icon: <Plus aria-hidden="true" \/> \}/)
   assert.match(page, /\{ key: "employees", label: t\("list\.viewEmployees", \{ count: branch\._count\.employees \}\), href: drilldown\.employees, icon: <Users aria-hidden="true" \/> \}/)
   assert.match(page, /blocked: getBranchDeleteBlockReason\(branch\._count\)/)
   // The counts are the DELETE route's: every relation active, audit rounds with isActive true.
   assert.match(page, /auditRounds: \{ where: \{ isActive: true \} \},\n\s+\},\n\s+\},\n\s+\},\n\s+orderBy: buildBranchOrderBy/)
   assert.match(page, /deactivate:\n\s+canDeactivate && branch\.isActive\n\s+\? \{/)
-  assert.match(page, /canReactivate && !branch\.isActive\n\s+\? \{/)
+  // Final review: PATCH { isActive: true } (no snapshot), unavailable with the reason while the company is inactive.
+  assert.match(page, /canEdit && !branch\.isActive\n\s+\? \{\n\s+endpoint,\n\s+blocked: getReactivateBlockedByCompanyReason\("branch", branch\.company\),\n\s+labels: \{/)
+  assert.match(page, /code: true,\n\s+nameTh: true,\n(?:\s+\/\/.*\n)?\s+isActive: true,\n\s+\},/, "the row's company reads isActive")
   assert.match(page, /\{reactivate \? <MasterDataReactivateButton reactivate=\{reactivate\} \/> : null\}/)
-  assert.match(page, /record: \{\n\s+code: branch\.code,\n\s+name: branch\.name,\n\s+companyId: branch\.companyId,\n\s+address: branch\.address,\n\s+contactPerson: branch\.contactPerson,\n\s+\}/)
+  assert.doesNotMatch(page, /record: \{/, "no snapshot of the record (final review)")
   assert.equal(branchTh.list.addLocation, "เพิ่มที่ตั้งในสาขานี้")
   assert.equal(branchTh.list.viewEmployees, "ดูพนักงานในสาขานี้ ({count, number})")
   assert.equal(branchTh.deactivate.action, "ปิดใช้งาน")
@@ -105,4 +107,25 @@ test("branch form: ?companyId= presets an active company the picker offers; the 
   // เพิ่มสาขาให้บริษัทนี้ comes from the companies list: its returnTo is honoured.
   assert.match(newPage, /normalizeMasterDataReturnTo\(locale, "branches", rawSearchParams\.returnTo, \["companies"\]\)/)
   assert.match(locationNewPage, /normalizeMasterDataReturnTo\(locale, "locations", rawSearchParams\.returnTo, \["branches"\]\)/)
+})
+
+// Group 8 plan 1 final review: what the page offers follows the user's permissions, and the form follows the URL.
+test("branches: without branch:edit no แก้ไข and a plain row; counts link only with location:view / employee:view / asset:view; เพิ่มสาขา only with branch:create (final review)", () => {
+  assert.match(page, /const canCreate = hasPermission\(user, "branch", "create"\)/)
+  assert.match(page, /const canViewLocations = hasPermission\(user, "location", "view"\)/)
+  assert.match(page, /const canViewAssets = hasPermission\(user, "asset", "view"\)/)
+  assert.match(page, /\.\.\.\(canEdit \? \[\{ key: "edit", label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\] : \[\]\),/)
+  assert.match(page, /return canEdit \? \(\n\s+<ClickableTableRow key=\{branch\.id\} href=\{editHref\} label=\{`\$\{tCommon\("edit"\)\}: \$\{branch\.code\}`\}>\n\s+\{cells\}\n\s+<\/ClickableTableRow>\n\s+\) : \(\n\s+<DataTableRow key=\{branch\.id\}>\{cells\}<\/DataTableRow>\n\s+\)/)
+  assert.match(page, /actions=\{\n\s+canCreate \? \(\n\s+<Link href=\{appendMasterDataReturnTo\(`\/\$\{locale\}\/master-data\/branches\/new`/)
+  assert.match(page, /\{canViewLocations && branch\._count\.locations > 0 \? \(/)
+  assert.match(page, /\) : branch\._count\.locations === 0 && branch\.isActive \? \(/)
+  assert.match(page, /formatCount\(branch\._count\.locations\)\n\s+\)\}/)
+  assert.match(page, /\{canViewEmployees && branch\._count\.employees > 0 \? \(/)
+  assert.match(page, /\{canViewAssets && branch\._count\.assets > 0 \? \(/)
+  assert.match(page, /formatCount\(branch\._count\.assets\)\n\s+\)\}/)
+})
+
+test("branches: the filter form is keyed on the list's query, so a header sort is what the next search sends (final review)", () => {
+  assert.match(page, /<form key=\{branchReturnHref\} role="search" action=\{basePath\}/)
+  assert.match(page, /const branchReturnHref = `\$\{basePath\}\?\$\{buildBranchQueryString\(listState, \{\}\)\}`/)
 })

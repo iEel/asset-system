@@ -214,6 +214,8 @@ test("the org lists spec reads the app's own words, and the department guard's r
   assert.equal(ORG_LIST_WORDS.departmentNameSort, th.department.name)
   assert.equal(ORG_LIST_WORDS.departmentChip, th.asset.department)
   assert.equal(ORG_LIST_WORDS.branchCreateTitle, th.branch.createTitle)
+  assert.equal(ORG_LIST_WORDS.companyCreateTitle, th.company.createTitle)
+  assert.equal(ORG_LIST_WORDS.departmentCreateTitle, th.department.createTitle)
   assert.equal(ORG_LIST_WORDS.locationCreateTitle, th.location.createTitle)
   // The 409's reason is a server string (not a message): the spec's constant is what the guard gives for one employee
   // and one asset.
@@ -255,8 +257,16 @@ test("the org lists spec: run-marked organisation by the seed admin, the three b
   assert.ok(spec.includes("await expectBackTo(page, companiesPath, company.code)") && spec.includes("await expectBackTo(page, branchesPath, branch.code)"))
   assert.ok(spec.includes(`url.searchParams.get("departmentId") === department.id`))
   assert.ok(spec.includes("`${W.departmentChip}: ${department.code} - ${department.name}`"))
-  // ปิดใช้งาน absent on all three lists (no delete permission).
-  assert.equal((spec.match(/await expect\(menuItem\(\w+Menu, W\.deactivate\)\)\.toHaveCount\(0\)/g) ?? []).length, 3)
+  // ปิดใช้งาน absent on the companies and branches ⋯ (no delete permission); the departments row has no ⋯ at all.
+  assert.equal((spec.match(/await expect\(menuItem\(\w+Menu, W\.deactivate\)\)\.toHaveCount\(0\)/g) ?? []).length, 2)
+  // Final review: no แก้ไข and plain rows without <module>:edit, the header's เพิ่ม… only with <module>:create.
+  assert.equal((spec.match(/await expect\(menuItem\(\w+Menu, W\.edit\)\)\.toHaveCount\(0\)/g) ?? []).length, 2)
+  assert.equal((spec.match(/await expectPlainRow\(\w+Row\)/g) ?? []).length, 3)
+  assert.ok(spec.includes("await expect(headerCreateLink(page, W.companyCreateTitle)).toHaveCount(0)"))
+  assert.ok(spec.includes("await expect(headerCreateLink(page, W.branchCreateTitle)).toHaveCount(1)"))
+  assert.ok(spec.includes("await expect(headerCreateLink(page, W.departmentCreateTitle)).toHaveCount(0)"))
+  assert.ok(spec.includes("await expect(departmentRow.getByRole(\"button\", { name: fillTemplate(W.moreActionsFor, { code: department.code }), exact: true })).toHaveCount(0)"))
+  assert.doesNotMatch(spec, /\{ label: W\.edit, reason: null, available: true \}/)
   // The guard through PUT isActive false on the spec's own department, refused with 409; never a DELETE.
   assert.equal((spec.match(/isActive: false/g) ?? []).length, 1)
   assert.ok(spec.includes("admin.put(`/api/departments/${department.id}`"))

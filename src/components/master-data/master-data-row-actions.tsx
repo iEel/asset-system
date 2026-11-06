@@ -42,9 +42,12 @@ export type MasterDataReactivateLabels = {
 }
 
 export type MasterDataReactivate = {
+  // PATCH { isActive: true } to it: nothing else of the record goes back, so a list rendered before someone else's edit
+  // cannot overwrite it (group 8 plan 1 final review).
   endpoint: string
-  // The stored fields the PUT route's schema needs; sent with isActive = true.
-  record: Record<string, unknown>
+  // The reason the server would refuse it (a branch or department whose company is inactive): ⋯ shows เปิดใช้งาน
+  // unavailable with it and the button beside the badge is not drawn.
+  blocked?: string | null
   labels: MasterDataReactivateLabels
 }
 
@@ -65,7 +68,7 @@ async function sendOrThrow(endpoint: string, init: RequestInit, fallback: string
   }
 }
 
-// PUT the stored record with isActive = true after a confirm (the location reactivate pattern).
+// PATCH { isActive: true } after a confirm (the location reactivate pattern, without the record's snapshot).
 function useReactivate(reactivate: MasterDataReactivate | null, returnFocusRef: RefObject<HTMLElement | null>) {
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -74,7 +77,7 @@ function useReactivate(reactivate: MasterDataReactivate | null, returnFocusRef: 
   const [busy, setBusy] = useState(false)
 
   async function run() {
-    if (!reactivate || busy) return
+    if (!reactivate || reactivate.blocked || busy) return
     const confirmed = await confirm({
       title: reactivate.labels.confirmTitle,
       description: reactivate.labels.confirmBody,
@@ -86,7 +89,7 @@ function useReactivate(reactivate: MasterDataReactivate | null, returnFocusRef: 
     try {
       await sendOrThrow(
         reactivate.endpoint,
-        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...reactivate.record, isActive: true }) },
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: true }) },
         tCommon("error")
       )
       toast.success(reactivate.labels.success)
@@ -102,10 +105,12 @@ function useReactivate(reactivate: MasterDataReactivate | null, returnFocusRef: 
 }
 
 // A master-data list row's ⋯ (spec §3, boards MD-Companies / MD-Branches / MD-Departments): no next button (the row
-// opens the edit page), ⋯ holds the links (แก้ไข first, then the board's), then ปิดใช้งาน or เปิดใช้งาน.
+// opens the edit page, and no empty next slot is drawn either), ⋯ holds the links (แก้ไข first, then the board's), then
+// ปิดใช้งาน or เปิดใช้งาน.
 // deactivate: null hides it (an inactive row, or no <module>:delete); blocked is the reason the server would give, shown
 // on the unavailable item (deactivateMenuItem); otherwise the item opens a confirm with the checklist and sends DELETE.
-// reactivate: null hides it (an active row, or no <module>:edit). The server checks again either way (409 with its reason).
+// reactivate: null hides it (an active row, or no <module>:edit); blocked shows it unavailable with the reason. The server
+// checks again either way (409 with its reason).
 export function MasterDataRowActions({
   code,
   name,
@@ -163,7 +168,9 @@ export function MasterDataRowActions({
   } else if (deactivateItem) {
     statusItems.push(deactivateItem)
   }
-  if (reactivate) {
+  if (reactivate?.blocked) {
+    statusItems.push({ kind: "unavailable", key: "reactivate", label: reactivate.labels.action, reason: reactivate.blocked, icon: <RotateCcw aria-hidden="true" /> })
+  } else if (reactivate) {
     statusItems.push({
       kind: "action",
       key: "reactivate",
@@ -179,7 +186,6 @@ export function MasterDataRowActions({
         code={code}
         name={name}
         menuLabel={menuLabel}
-        next={null}
         openerRef={openerRef}
         className={className}
         groups={[
@@ -236,10 +242,12 @@ export function MasterDataRowActions({
   )
 }
 
-// "เปิดใช้งาน" beside the ไม่ใช้งาน badge (board MD-Companies), the same PUT as ⋯ เปิดใช้งาน.
+// "เปิดใช้งาน" beside the ไม่ใช้งาน badge (board MD-Companies), the same PATCH as ⋯ เปิดใช้งาน. Not drawn when the server
+// would refuse it (⋯ says why).
 export function MasterDataReactivateButton({ reactivate }: { reactivate: MasterDataReactivate }) {
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const reactivation = useReactivate(reactivate, buttonRef)
+  if (reactivate.blocked) return null
   return (
     <Button ref={buttonRef} type="button" variant="ghost" size="sm" busy={reactivation.busy} className="text-primary" onClick={() => void reactivation.run()}>
       {reactivate.labels.action}

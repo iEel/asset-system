@@ -224,8 +224,10 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   // Rendered twice: in the phone disclosure and in the desktop panel (the suppliers list's pattern). Field gives each
   // copy its own ids (useId), and the copy that is display: none leaves the accessibility tree, so the page keeps one
   // search landmark (spec 2B §6.2 6-ช).
+  // Keyed on the list's query: a header sort, a card or the segmented control changes the URL without this form, and the
+  // uncontrolled selects would otherwise send the old sort and filters with the next search (group 8 plan 1 final review).
   const filterForm = (className: string) => (
-    <form role="search" action={basePath} className={className}>
+    <form key={employeeReturnHref} role="search" action={basePath} className={className}>
       <input type="hidden" name="page" value="1" />
       <input type="hidden" name="pageSize" value={listState.pageSize} />
       {formerList ? <input type="hidden" name="former" value="withAssets" /> : null}

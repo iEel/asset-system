@@ -36,7 +36,11 @@ test("parse: name A→Z by default; the old date-added order and every other sor
     employeeUsage: "all",
     assetUsage: "all",
   })
-  assert.deepEqual([...departmentSorts], ["createdAt", "code", "name", "company", "employees", "assets"])
+  assert.deepEqual([...departmentSorts], ["createdAt", "code", "name", "company"])
+  // The count sorts are gone (Prisma _count counts inactive rows; the columns show active ones): they fall back to name.
+  for (const sort of ["employees", "assets"]) {
+    assert.equal(parseDepartmentListParams({ sort }).sort, "name", sort)
+  }
   const old = parseDepartmentListParams({ sort: "createdAt" })
   assert.deepEqual([old.sort, old.direction], ["createdAt", "desc"], "the old order: newest first")
   const parsed = parseDepartmentListParams({
@@ -44,7 +48,7 @@ test("parse: name A→Z by default; the old date-added order and every other sor
     status: "all",
     page: "3",
     pageSize: "50",
-    sort: "assets",
+    sort: "company",
     direction: "asc",
     companyId: "c-1",
     employeeUsage: "withoutEmployees",
@@ -55,7 +59,7 @@ test("parse: name A→Z by default; the old date-added order and every other sor
     status: "all",
     page: 3,
     pageSize: 50,
-    sort: "assets",
+    sort: "company",
     direction: "asc",
     companyId: "c-1",
     employeeUsage: "withoutEmployees",
@@ -92,8 +96,6 @@ test("order: each sort, with the id breaking ties so no row shows on two pages",
   assert.deepEqual(buildDepartmentOrderBy({ sort: "createdAt", direction: "desc" }), [{ createdAt: "desc" }, { id: "asc" }])
   assert.deepEqual(buildDepartmentOrderBy({ sort: "code", direction: "asc" }), [{ code: "asc" }, { id: "asc" }])
   assert.deepEqual(buildDepartmentOrderBy({ sort: "company", direction: "desc" }), [{ company: { nameTh: "desc" } }, { id: "asc" }])
-  assert.deepEqual(buildDepartmentOrderBy({ sort: "employees", direction: "desc" }), [{ employees: { _count: "desc" } }, { id: "asc" }])
-  assert.deepEqual(buildDepartmentOrderBy({ sort: "assets", direction: "asc" }), [{ assets: { _count: "asc" } }, { id: "asc" }])
 })
 
 test("query string: the defaults stay out of the URL; every set value is kept", () => {

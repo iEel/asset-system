@@ -5,7 +5,8 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse } from "@/lib/field-error-response"
 import { branchSchema } from "@/lib/validations/branch"
-import { getBranchDeleteBlockReason } from "@/lib/organization-master-query"
+import { masterDataReactivateSchema } from "@/lib/validations/master-data-reactivate"
+import { getBranchDeleteBlockReason, getReactivateBlockedByCompanyReason } from "@/lib/organization-master-query"
 import { isDeactivation } from "@/lib/master-data-query"
 
 type BranchRouteContext = {
@@ -78,6 +79,15 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
       }
     }
 
+    // Ticking "ใช้งาน" again is refused while the chosen company is inactive, as the PATCH (group 8 plan 1 final review).
+    if (!existing.isActive && input.isActive) {
+      const company = await prisma.company.findFirst({ where: { id: input.companyId }, select: { nameTh: true, isActive: true } })
+      const reactivateBlocked = getReactivateBlockedByCompanyReason("branch", company)
+      if (reactivateBlocked) {
+        return NextResponse.json({ error: reactivateBlocked }, { status: 409 })
+      }
+    }
+
     // Every other branch of the company counts, inactive ones too: the unique index on (companyId, code) covers them all (V track spec §6.2).
     const existingCode = await prisma.branch.findFirst({
       where: {
@@ -124,6 +134,56 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
         newValue: branch,
       })
     }
+
+    return NextResponse.json(branch)
+  } catch (error) {
+    return errorResponse(error, 400)
+  }
+}
+
+// เปิดใช้งาน from the list (group 8 plan 1 final review): the body is only { isActive: true }, so nothing else of the
+// record is written (no stale snapshot of the list goes back); the update entry logs the isActive change only.
+// Refused (409) while the branch's company is inactive, as the PUT that ticks ใช้งาน again.
+export async function PATCH(request: NextRequest, context: BranchRouteContext) {
+  try {
+    const user = await requireAuth()
+    requirePermission(user, "branch", "edit")
+
+    const { id } = await context.params
+    masterDataReactivateSchema.parse(await request.json())
+    const existing = await prisma.branch.findFirst({
+      where: { id },
+      include: { company: { select: { nameTh: true, isActive: true } } },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Branch not found" }, { status: 404 })
+    }
+    if (existing.isActive) {
+      return NextResponse.json(existing)
+    }
+
+    const blockReason = getReactivateBlockedByCompanyReason("branch", existing.company)
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
+    }
+
+    const branch = await prisma.branch.update({
+      where: { id },
+      data: {
+        isActive: true,
+        updatedBy: user.id,
+      },
+    })
+
+    await logAudit({
+      userId: user.id,
+      action: "update",
+      module: "branch",
+      recordId: id,
+      oldValue: { isActive: false },
+      newValue: { isActive: true },
+    })
 
     return NextResponse.json(branch)
   } catch (error) {

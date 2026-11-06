@@ -28,6 +28,7 @@ import {
   getCompanyDeleteBlockReason,
   getDepartmentDeleteBlockReason,
   getEmployeeDeleteBlockReason,
+  getReactivateBlockedByCompanyReason,
   getSupplierDeleteBlockReason,
   parseBranchListParams,
   parseCompanyListParams,
@@ -95,9 +96,9 @@ test("builds company where clauses from search and health filters", () => {
 })
 
 test("builds company count order and drilldown links", () => {
-  assert.deepEqual(buildCompanyOrderBy({ sort: "branches", direction: "desc" }), { branches: { _count: "desc" } })
-  assert.deepEqual(buildCompanyOrderBy({ sort: "employees", direction: "asc" }), { employees: { _count: "asc" } })
-  assert.deepEqual(buildCompanyOrderBy({ sort: "code", direction: "asc" }), { code: "asc" })
+  assert.deepEqual(buildCompanyOrderBy({ sort: "branches", direction: "desc" }), [{ branches: { _count: "desc" } }, { id: "asc" }])
+  assert.deepEqual(buildCompanyOrderBy({ sort: "employees", direction: "asc" }), [{ employees: { _count: "asc" } }, { id: "asc" }])
+  assert.deepEqual(buildCompanyOrderBy({ sort: "code", direction: "asc" }), [{ code: "asc" }, { id: "asc" }])
   assert.deepEqual(buildCompanyDrilldownHrefs({ locale: "th", companyId: "company-1" }), {
     assets: "/th/assets?companyId=company-1&page=1",
     branches: "/th/master-data/branches?companyId=company-1&page=1",
@@ -124,7 +125,7 @@ test("summarizes company health and blocks deleting referenced companies", () =>
   assert.equal(getCompanyDeleteBlockReason({ branches: 0, departments: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
     getCompanyDeleteBlockReason({ branches: 2, departments: 1, employees: 3, assets: 4, auditRounds: 1 }),
-    "ปิดใช้งานบริษัทนี้ไม่ได้ เพราะยังมีสาขา 2 รายการ, แผนก 1 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานบริษัทนี้ไม่ได้ เพราะยังมีสาขา 2 รายการ, แผนก 1 รายการ, พนักงาน 3 คน, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 
@@ -175,8 +176,8 @@ test("builds branch where clauses from search, company, and usage filters", () =
 })
 
 test("builds branch count order, summary, drilldown, and delete guards", () => {
-  assert.deepEqual(buildBranchOrderBy({ sort: "locations", direction: "desc" }), { locations: { _count: "desc" } })
-  assert.deepEqual(buildBranchOrderBy({ sort: "company", direction: "asc" }), { company: { code: "asc" } })
+  assert.deepEqual(buildBranchOrderBy({ sort: "locations", direction: "desc" }), [{ locations: { _count: "desc" } }, { id: "asc" }])
+  assert.deepEqual(buildBranchOrderBy({ sort: "company", direction: "asc" }), [{ company: { code: "asc" } }, { id: "asc" }])
 
   // Board MD-Branches: the total card's foot is the per-company breakdown of the active branches, most first, then by name.
   assert.deepEqual(
@@ -207,7 +208,20 @@ test("builds branch count order, summary, drilldown, and delete guards", () => {
   assert.equal(getBranchDeleteBlockReason({ locations: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
     getBranchDeleteBlockReason({ locations: 2, employees: 3, assets: 4, auditRounds: 1 }),
-    "ปิดใช้งานสาขานี้ไม่ได้ เพราะยังมีที่ตั้ง 2 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานสาขานี้ไม่ได้ เพราะยังมีที่ตั้ง 2 รายการ, พนักงาน 3 คน, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+  )
+})
+
+test("เปิดใช้งาน a branch or a department is refused while its company is inactive; a department with no company is never (group 8 plan 1 final review)", () => {
+  assert.equal(getReactivateBlockedByCompanyReason("branch", { nameTh: "บริษัท ก", isActive: true }), null)
+  assert.equal(getReactivateBlockedByCompanyReason("department", null), null, "แผนกกลาง")
+  assert.equal(
+    getReactivateBlockedByCompanyReason("branch", { nameTh: "บริษัท ก", isActive: false }),
+    "เปิดใช้งานสาขานี้ไม่ได้ เพราะบริษัท บริษัท ก ปิดใช้งานอยู่ · เปิดใช้งานบริษัทก่อน"
+  )
+  assert.equal(
+    getReactivateBlockedByCompanyReason("department", { nameTh: "บริษัท ก", isActive: false }),
+    "เปิดใช้งานแผนกนี้ไม่ได้ เพราะบริษัท บริษัท ก ปิดใช้งานอยู่ · เปิดใช้งานบริษัทก่อน"
   )
 })
 
@@ -352,7 +366,7 @@ test("builds employee where, summary, drilldown, query string, and delete guard"
   assert.equal(getEmployeeDeleteBlockReason({ custodianAssets: 0, subordinates: 0, userAccounts: 0, openCheckouts: 0, auditRounds: 0 }), null)
   assert.equal(
     getEmployeeDeleteBlockReason({ custodianAssets: 2, subordinates: 1, userAccounts: 1, openCheckouts: 3, auditRounds: 1 }),
-    "ปิดใช้งานพนักงานนี้ไม่ได้ เพราะยังมีทรัพย์สินที่ถือครอง 2 รายการ, ผู้ใต้บังคับบัญชา 1 รายการ, บัญชีผู้ใช้ 1 รายการ, รายการส่งมอบค้างคืน 3 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานพนักงานนี้ไม่ได้ เพราะยังมีทรัพย์สินที่ถือครอง 2 รายการ, ผู้ใต้บังคับบัญชา 1 คน, บัญชีผู้ใช้ 1 รายการ, รายการส่งมอบค้างคืน 3 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 
@@ -506,7 +520,7 @@ test("the department reason names its active employees, assets and open audit ro
   assert.equal(getDepartmentDeleteBlockReason({ employees: 0, assets: 0, openAuditRounds: 0 }), null)
   assert.equal(
     getDepartmentDeleteBlockReason({ employees: 3, assets: 12, openAuditRounds: 1 }),
-    "ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมีพนักงาน 3 รายการ, ทรัพย์สิน 12 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมีพนักงาน 3 คน, ทรัพย์สิน 12 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
   assert.equal(
     getDepartmentDeleteBlockReason({ employees: 0, assets: 0, openAuditRounds: 2 }),

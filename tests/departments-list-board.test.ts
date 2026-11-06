@@ -72,16 +72,18 @@ test("departments: an inactive row reads ปิดใช้งานเมื่
 
 test("departments ⋯: แก้ไข, ปิดใช้งาน with department:delete and the reason from the row's counts, เปิดใช้งาน with department:edit (spec §3, §5)", () => {
   assert.match(page, /const canDeactivate = hasPermission\(user, "department", "delete"\)/)
-  assert.match(page, /const canReactivate = hasPermission\(user, "department", "edit"\)/)
+  assert.match(page, /const canEdit = hasPermission\(user, "department", "edit"\)/)
   // The route's counts: active employees and assets on the row, open scoped rounds in one grouped read.
   assert.match(page, /_count: \{\n\s+select: \{\n\s+employees: \{ where: \{ isActive: true \} \},\n\s+assets: \{ where: \{ isActive: true \} \},\n\s+\},\n\s+\},/)
   assert.match(page, /readDepartmentOpenAuditRoundCounts\(prisma, pageIds\)/)
   assert.match(page, /openAuditRounds: openAuditRounds\.get\(department\.id\) \?\? 0,/)
   assert.match(page, /blocked: getDepartmentDeleteBlockReason\(counts\)/)
   assert.match(page, /deactivate:\n\s+canDeactivate && department\.isActive\n\s+\? \{/)
-  assert.match(page, /canReactivate && !department\.isActive\n\s+\? \{/)
+  // Final review: PATCH { isActive: true } (no snapshot), unavailable with the reason while the company is inactive.
+  assert.match(page, /canEdit && !department\.isActive\n\s+\? \{\n\s+endpoint,\n\s+blocked: getReactivateBlockedByCompanyReason\("department", department\.company\),\n\s+labels: \{/)
+  assert.match(page, /company: \{ select: \{ id: true, nameTh: true, isActive: true \} \},/, "the row's company reads isActive")
   assert.match(page, /\{reactivate \? <MasterDataReactivateButton reactivate=\{reactivate\} \/> : null\}/)
-  assert.match(page, /record: \{\n\s+code: department\.code,\n\s+name: department\.name,\n\s+companyId: department\.companyId \?\? "",\n\s+\}/)
+  assert.doesNotMatch(page, /record: \{/, "no snapshot of the record (final review)")
   assert.match(page, /\(\["employees", "assets", "auditRounds"\] as const\)\.map\(\(key\) => t\(`deactivate\.clear\.\$\{key\}`\)\)/)
   assert.deepEqual(departmentTh.deactivate.clear, { employees: "ไม่มีพนักงาน", assets: "ไม่มีทรัพย์สินผูกอยู่", auditRounds: "ไม่อยู่ในขอบเขตรอบตรวจนับที่เปิดอยู่" })
   assert.equal(departmentTh.deactivate.action, "ปิดใช้งาน")
@@ -92,9 +94,13 @@ test("departments ⋯: แก้ไข, ปิดใช้งาน with departm
 test("departments keep every sort, paging, returnTo, the search fields and the clear link (spec §8); name A→Z is the default", () => {
   assert.match(page, /options=\{departmentSorts\.map\(\(sort\) => \(\{ value: sort, label: sortLabel\(sort\) \}\)\)\}/, "every sort in the sort select")
   assert.match(page, /name="direction"/)
-  for (const sort of ["name", "company", "employees", "assets"]) {
+  for (const sort of ["name", "company"]) {
     assert.match(page, new RegExp(`sort=\\{sortBy\\("${sort}"\\)\\}`), sort)
   }
+  // Final review: no count sort on the employee and asset headers (Prisma _count counts inactive rows).
+  assert.doesNotMatch(page, /sortBy\("(employees|assets)"\)/)
+  assert.match(page, /<DataTableHead align="right">\{t\("employees"\)\}<\/DataTableHead>/)
+  assert.match(page, /<DataTableHead align="right">\{t\("assets"\)\}<\/DataTableHead>/)
   assert.match(page, /const \{ skip, take \} = listPageWindow\(listState\)/)
   assert.match(page, /orderBy: buildDepartmentOrderBy\(listState\),\n\s+skip,\n\s+take,\n\s+\}\),\n\s+prisma\.department\.count\(\{ where \}\),/)
   assert.match(page, /previousHref=\{listHref\(\{ page: listState\.page - 1 \}\)\}/)
@@ -211,4 +217,27 @@ test("G8P1-R3: the PUT that unticks ใช้งาน is refused the same way; 
   assert.equal((await PUT(request("PUT", { ...body, isActive: true }), params)).status, 200, "a reactivation")
   assert.equal(back.updates.length, 1)
   assert.match(route, /if \(isDeactivation\(existing\.isActive, input\.isActive\)\) \{\n\s+const usage = await prisma\.department\.findFirst\(\{\n\s+where: \{ id \},\n\s+select: \{ _count: \{ select: departmentDeactivateCountSelect \} \},/)
+})
+
+// Group 8 plan 1 final review: what the page offers follows the user's permissions, and the form follows the URL.
+test("departments: without department:edit no แก้ไข and a plain row; counts link only with employee:view / asset:view; เพิ่มแผนก only with department:create (final review)", () => {
+  assert.match(page, /const canCreate = hasPermission\(user, "department", "create"\)/)
+  assert.match(page, /const canViewAssets = hasPermission\(user, "asset", "view"\)/)
+  assert.match(page, /links: canEdit \? \[\{ key: "edit", label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\] : \[\],/)
+  assert.match(page, /return canEdit \? \(\n\s+<ClickableTableRow key=\{department\.id\} href=\{editHref\} label=\{`\$\{tCommon\("edit"\)\}: \$\{department\.code\}`\}>\n\s+\{cells\}\n\s+<\/ClickableTableRow>\n\s+\) : \(\n\s+<DataTableRow key=\{department\.id\}>\{cells\}<\/DataTableRow>\n\s+\)/)
+  assert.match(page, /actions=\{\n\s+canCreate \? \(\n\s+<Link href=\{appendMasterDataReturnTo\(`\/\$\{locale\}\/master-data\/departments\/new`/)
+  assert.match(page, /\{canViewEmployees && department\._count\.employees > 0 \? \(/)
+  assert.match(page, /\{canViewAssets \? \(\n\s+<Link\n\s+href=\{drilldown\.assets\}/)
+  assert.match(page, /\) : \(\n\s+formatCount\(department\._count\.assets\)\n\s+\)\}/)
+})
+
+test("departments: the filter form is keyed on the list's query, so a header sort, a card or a chip is what the next search sends (final review)", () => {
+  assert.match(page, /<form key=\{departmentReturnHref\} role="search" action=\{basePath\}/)
+  assert.match(page, /const departmentReturnHref = listHref\(\{\}\)/)
+})
+
+test("the employee list's filter form is keyed on the list's query too (its เรียงตาม / ลำดับ selects, final review)", () => {
+  const employees = read("src/app/[locale]/(dashboard)/master-data/employees/page.tsx")
+  assert.match(employees, /<form key=\{employeeReturnHref\} role="search" action=\{basePath\} className=\{className\}>/)
+  assert.match(employees, /const employeeReturnHref = `\$\{basePath\}\?\$\{buildEmployeeQueryString\(listState, \{\}\)\}`/)
 })

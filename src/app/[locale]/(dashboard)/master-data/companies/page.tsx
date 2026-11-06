@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
@@ -50,9 +50,14 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
   const { locale } = await params
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "company", "view")
-  // Spec §3: ปิดใช้งาน needs company:delete (DELETE only deactivates), เปิดใช้งาน company:edit (PUT isActive true).
+  // Spec §3: ปิดใช้งาน needs company:delete (DELETE only deactivates), เปิดใช้งาน company:edit (PATCH isActive true).
   const canDeactivate = hasPermission(user, "company", "delete")
-  const canReactivate = hasPermission(user, "company", "edit")
+  // Final review: without company:edit no แก้ไข in ⋯ and the row is a plain row (it opens nothing); no เพิ่มบริษัท
+  // without company:create; a count links to its list only with that module's view permission, else a plain number.
+  const canEdit = hasPermission(user, "company", "edit")
+  const canCreate = hasPermission(user, "company", "create")
+  const canViewBranches = hasPermission(user, "branch", "view")
+  const canViewAssets = hasPermission(user, "asset", "view")
   // เพิ่มสาขาให้บริษัทนี้ opens the branch form, which needs branch:create.
   const canCreateBranch = hasPermission(user, "branch", "create")
 
@@ -135,19 +140,11 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
     const editHref = appendMasterDataReturnTo(`/${locale}/master-data/companies/${company.id}/edit`, companyReturnHref)
     const endpoint = `/api/companies/${company.id}`
     const at = company.isActive ? null : deactivatedAt.get(company.id)
-    // PUT /api/companies/[id] takes the whole record: the stored fields go back with isActive = true.
+    // PATCH /api/companies/[id] with { isActive: true } only (final review: no snapshot of the record goes back).
     const reactivate: MasterDataReactivate | null =
-      canReactivate && !company.isActive
+      canEdit && !company.isActive
         ? {
             endpoint,
-            record: {
-              code: company.code,
-              assetTagCode: company.assetTagCode,
-              nameTh: company.nameTh,
-              nameEn: company.nameEn,
-              taxId: company.taxId,
-              address: company.address,
-            },
             labels: {
               action: t("reactivate.action"),
               confirmTitle: t("reactivate.confirmTitle", { name: company.nameTh }),
@@ -163,7 +160,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
       reactivate,
       deactivatedLine: company.isActive ? null : tCommon("recordStatus.deactivatedAt", { date: at ? formatDeactivatedAt(at, locale) : "–" }),
       links: [
-        { key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> },
+        ...(canEdit ? [{ key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }] : []),
         ...(canCreateBranch && company.isActive
           ? [
               {
@@ -199,10 +196,12 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         title={t("title")}
         meta={t("subtitle")}
         actions={
-          <Link href={appendMasterDataReturnTo(`/${locale}/master-data/companies/new`, companyReturnHref)} className={buttonVariants({ size: "md" })}>
-            <Plus aria-hidden="true" />
-            {t("createTitle")}
-          </Link>
+          canCreate ? (
+            <Link href={appendMasterDataReturnTo(`/${locale}/master-data/companies/new`, companyReturnHref)} className={buttonVariants({ size: "md" })}>
+              <Plus aria-hidden="true" />
+              {t("createTitle")}
+            </Link>
+          ) : undefined
         }
       />
 
@@ -251,7 +250,9 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
       <FilterPanel>
         {/* Search, two filters, the sort and its order: every sort stays reachable here (code and date added too, which
             no header carries any more), on phones as well. */}
-        <form role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
+        {/* Keyed on the list's query: a header sort, a card or the segmented control changes the URL without this form, and
+            the uncontrolled selects would otherwise send the old sort and filters with the next search (final review). */}
+        <form key={companyReturnHref} role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           {/* The record status is the segmented control below (spec §3); a search keeps it. */}
@@ -348,12 +349,9 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
               <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
             )
           ) : (
-            rows.map(({ company, drilldown, editHref, reactivate, deactivatedLine, links, deactivate }) => (
-              <ClickableTableRow
-                key={company.id}
-                href={editHref}
-                label={`${tCommon("edit")}: ${company.code}`}
-              >
+            rows.map(({ company, drilldown, editHref, reactivate, deactivatedLine, links, deactivate }) => {
+              const cells = (
+                <>
                 <DataTableCell className="min-w-56">
                   <div className={cn("font-semibold", company.isActive ? "text-foreground" : "text-muted-foreground")}>{company.nameTh}</div>
                   <div className="text-xs text-muted-foreground">
@@ -370,22 +368,22 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                   {company.taxId ? <span className="tag">{company.taxId}</span> : <span className="text-faint-foreground">{t("list.taxIdMissing")}</span>}
                 </DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">
-                  {company._count.branches > 0 ? (
+                  {canViewBranches && company._count.branches > 0 ? (
                     <Link
                       href={drilldown.branches}
                       className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
                     >
                       {formatCount(company._count.branches)}
                     </Link>
-                  ) : company.isActive ? (
+                  ) : company._count.branches === 0 && company.isActive ? (
                     <StatusBadge label={t("withoutBranches")} tone="warning" />
                   ) : (
-                    formatCount(0)
+                    formatCount(company._count.branches)
                   )}
                 </DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">{formatCount(company._count.employees)}</DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">
-                  {company._count.assets > 0 ? (
+                  {canViewAssets && company._count.assets > 0 ? (
                     <Link
                       href={drilldown.assets}
                       className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
@@ -393,7 +391,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                       {formatCount(company._count.assets)}
                     </Link>
                   ) : (
-                    formatCount(0)
+                    formatCount(company._count.assets)
                   )}
                 </DataTableCell>
                 {showRecordStatus ? (
@@ -412,8 +410,17 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                     reactivate={reactivate}
                   />
                 </DataTableCell>
-              </ClickableTableRow>
-            ))
+                </>
+              )
+              // Without company:edit the row is plain: it opens nothing (⋯ has no แก้ไข either).
+              return canEdit ? (
+                <ClickableTableRow key={company.id} href={editHref} label={`${tCommon("edit")}: ${company.code}`}>
+                  {cells}
+                </ClickableTableRow>
+              ) : (
+                <DataTableRow key={company.id}>{cells}</DataTableRow>
+              )
+            })
           )}
         </DataTableBody>
       </DataTable>

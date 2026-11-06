@@ -6,8 +6,9 @@ import { isDeactivation } from "@/lib/master-data-query"
 import { errorResponse } from "@/lib/api-response"
 import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { departmentSchema } from "@/lib/validations/department"
+import { masterDataReactivateSchema } from "@/lib/validations/master-data-reactivate"
 import { departmentDeactivateCountSelect, departmentDeactivateCounts } from "@/lib/department-list-query"
-import { getDepartmentDeleteBlockReason } from "@/lib/organization-master-query"
+import { getDepartmentDeleteBlockReason, getReactivateBlockedByCompanyReason } from "@/lib/organization-master-query"
 
 type DepartmentRouteContext = {
   params: Promise<{ id: string }>
@@ -71,6 +72,16 @@ export async function PUT(request: NextRequest, context: DepartmentRouteContext)
       }
     }
 
+    // Ticking "ใช้งาน" again is refused while the chosen company is inactive, as the PATCH; a department with no company
+    // (แผนกกลาง) comes back freely (group 8 plan 1 final review).
+    if (!existing.isActive && input.isActive && input.companyId) {
+      const company = await prisma.company.findFirst({ where: { id: input.companyId }, select: { nameTh: true, isActive: true } })
+      const reactivateBlocked = getReactivateBlockedByCompanyReason("department", company)
+      if (reactivateBlocked) {
+        return NextResponse.json({ error: reactivateBlocked }, { status: 409 })
+      }
+    }
+
     const department = await prisma.department.update({
       where: { id },
       data: {
@@ -103,6 +114,56 @@ export async function PUT(request: NextRequest, context: DepartmentRouteContext)
     return NextResponse.json(department)
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Department code already exists")
+    return errorResponse(error, 400)
+  }
+}
+
+// เปิดใช้งาน from the list (group 8 plan 1 final review): the body is only { isActive: true }, so nothing else of the
+// record is written (no stale snapshot of the list goes back); the update entry logs the isActive change only.
+// Refused (409) while the department's company is inactive, as the PUT that ticks ใช้งาน again.
+export async function PATCH(request: NextRequest, context: DepartmentRouteContext) {
+  try {
+    const user = await requireAuth()
+    requirePermission(user, "department", "edit")
+
+    const { id } = await context.params
+    masterDataReactivateSchema.parse(await request.json())
+    const existing = await prisma.department.findFirst({
+      where: { id },
+      include: { company: { select: { nameTh: true, isActive: true } } },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Department not found" }, { status: 404 })
+    }
+    if (existing.isActive) {
+      return NextResponse.json(existing)
+    }
+
+    const blockReason = getReactivateBlockedByCompanyReason("department", existing.company)
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
+    }
+
+    const department = await prisma.department.update({
+      where: { id },
+      data: {
+        isActive: true,
+        updatedBy: user.id,
+      },
+    })
+
+    await logAudit({
+      userId: user.id,
+      action: "update",
+      module: "department",
+      recordId: id,
+      oldValue: { isActive: false },
+      newValue: { isActive: true },
+    })
+
+    return NextResponse.json(department)
+  } catch (error) {
     return errorResponse(error, 400)
   }
 }
