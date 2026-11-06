@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { Pencil, Plus } from "lucide-react"
+import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
@@ -10,17 +11,18 @@ import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader
 import { Field } from "@/components/ui/field"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
-import { Nil, orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions } from "@/components/ui/row-actions"
+import { RecordStatusSegmented } from "@/components/ui/record-status-segmented"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { MasterDataReactivateButton, MasterDataRowActions, type MasterDataReactivate } from "@/components/master-data/master-data-row-actions"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
+import { formatDeactivatedAt, readDeactivatedAt, readRecordStatusCounts, recordStatusCountWheres } from "@/lib/master-data-list-ui"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildCompanyDrilldownHrefs,
@@ -28,6 +30,8 @@ import {
   buildCompanyQueryString,
   buildCompanySummary,
   buildCompanyWhere,
+  companySorts,
+  getCompanyDeleteBlockReason,
   parseCompanyListParams,
   type CompanyListParams,
   type CompanyListState,
@@ -39,20 +43,29 @@ type CompaniesPageProps = {
   searchParams: Promise<CompanyListParams>
 }
 
+// Board MD-Companies (group 8 plan 1 Task 2, spec §3–§4): the shared list pattern. Name first with the code and English
+// name under it, the record-status segmented control with counts, the status column only under ทั้งหมด, the row opens
+// the edit page and ⋯ holds แก้ไข, เพิ่มสาขาให้บริษัทนี้ and ปิดใช้งาน / เปิดใช้งาน.
 export default async function CompaniesPage({ params, searchParams }: CompaniesPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "company", "view")
+  const user = await requirePagePermission(locale, "company", "view")
+  // Spec §3: ปิดใช้งาน needs company:delete (DELETE only deactivates), เปิดใช้งาน company:edit (PUT isActive true).
+  const canDeactivate = hasPermission(user, "company", "delete")
+  const canReactivate = hasPermission(user, "company", "edit")
+  // เพิ่มสาขาให้บริษัทนี้ opens the branch form, which needs branch:create.
+  const canCreateBranch = hasPermission(user, "branch", "create")
 
   const t = await getTranslations("company")
   const tCommon = await getTranslations("common")
   const listState = parseCompanyListParams(rawSearchParams)
   const where = buildCompanyWhere(listState)
 
-  const [companies, total, summaryCompanies] = await Promise.all([
+  const [companies, total, summaryCompanies, recordStatusCounts] = await Promise.all([
     prisma.company.findMany({
       where,
       include: {
+        // The counts the DELETE route reads, for the ปิดใช้งาน reason (getCompanyDeleteBlockReason).
         _count: {
           select: {
             branches: { where: { isActive: true } },
@@ -74,12 +87,21 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         _count: {
           select: {
             branches: { where: { isActive: true } },
+            employees: { where: { isActive: true } },
             assets: { where: { isActive: true } },
           },
         },
       },
     }),
+    // ใช้งาน {n} / ไม่ใช้งาน {n} / ทั้งหมด {n}, the list's other filters kept.
+    readRecordStatusCounts(prisma.company, recordStatusCountWheres(listState, buildCompanyWhere)),
   ])
+  // "· ปิดใช้งานเมื่อ {date}" on the inactive rows (G8P1-R2).
+  const deactivatedAt = await readDeactivatedAt(
+    prisma,
+    "company",
+    companies.filter((company) => !company.isActive).map((company) => company.id)
+  )
   const basePath = `/${locale}/master-data/companies`
   const companyReturnHref = `${basePath}?${buildCompanyQueryString(listState, {})}`
   const summary = buildCompanySummary(summaryCompanies)
@@ -90,10 +112,85 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
+  // The record status is the segmented control now, not a form field; the clear link still resets it. The sort is not a
+  // filter (as on the employee list).
   const hasActiveFilters = listState.status !== "active" || Boolean(listState.search || listState.assetUsage !== "all" || listState.branchUsage !== "all")
+  // Spec §3: the status column shows only under ทั้งหมด.
+  const showRecordStatus = listState.status === "all"
+  const columnCount = showRecordStatus ? 8 : 7
   const sortBy = (field: CompanySort): DataTableSort => ({
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
+  })
+  const sortLabel = (sort: CompanySort) => {
+    if (sort === "createdAt") return t("list.sortCreatedAt")
+    if (sort === "nameTh") return t("list.name")
+    if (sort === "assetTagCode") return t("list.assetTagCode")
+    return t(sort)
+  }
+  const deactivateClearItems = (["branches", "departments", "employees", "assets", "auditRounds"] as const).map((key) => t(`deactivate.clear.${key}`))
+
+  const rows = companies.map((company) => {
+    const drilldown = buildCompanyDrilldownHrefs({ locale, companyId: company.id })
+    const editHref = appendMasterDataReturnTo(`/${locale}/master-data/companies/${company.id}/edit`, companyReturnHref)
+    const endpoint = `/api/companies/${company.id}`
+    const at = company.isActive ? null : deactivatedAt.get(company.id)
+    // PUT /api/companies/[id] takes the whole record: the stored fields go back with isActive = true.
+    const reactivate: MasterDataReactivate | null =
+      canReactivate && !company.isActive
+        ? {
+            endpoint,
+            record: {
+              code: company.code,
+              assetTagCode: company.assetTagCode,
+              nameTh: company.nameTh,
+              nameEn: company.nameEn,
+              taxId: company.taxId,
+              address: company.address,
+            },
+            labels: {
+              action: t("reactivate.action"),
+              confirmTitle: t("reactivate.confirmTitle", { name: company.nameTh }),
+              confirmBody: t("reactivate.confirmBody"),
+              success: t("reactivate.success"),
+            },
+          }
+        : null
+    return {
+      company,
+      drilldown,
+      editHref,
+      reactivate,
+      deactivatedLine: company.isActive ? null : tCommon("recordStatus.deactivatedAt", { date: at ? formatDeactivatedAt(at, locale) : "–" }),
+      links: [
+        { key: "edit", label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> },
+        ...(canCreateBranch && company.isActive
+          ? [
+              {
+                key: "add-branch",
+                label: t("list.addBranch"),
+                href: appendMasterDataReturnTo(`/${locale}/master-data/branches/new?companyId=${encodeURIComponent(company.id)}`, companyReturnHref),
+                icon: <Plus aria-hidden="true" />,
+              },
+            ]
+          : []),
+      ],
+      deactivate:
+        canDeactivate && company.isActive
+          ? {
+              endpoint,
+              blocked: getCompanyDeleteBlockReason(company._count),
+              labels: {
+                action: t("deactivate.action"),
+                hint: t("deactivate.hint"),
+                confirmTitle: t("deactivate.confirmTitle", { name: company.nameTh }),
+                confirmBody: t("deactivate.confirmBody"),
+                clearItems: deactivateClearItems,
+                success: t("deactivate.success"),
+              },
+            }
+          : null,
+    }
   })
 
   return (
@@ -104,7 +201,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         actions={
           <Link href={appendMasterDataReturnTo(`/${locale}/master-data/companies/new`, companyReturnHref)} className={buttonVariants({ size: "md" })}>
             <Plus aria-hidden="true" />
-            {tCommon("create")}
+            {t("createTitle")}
           </Link>
         }
       />
@@ -115,8 +212,8 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
             key: "total",
             label: t("summaryTotal"),
             value: formatCount(summary.total),
-            foot: t("summaryWithBranches", { count: summary.withBranches }),
-            footTitle: t("summaryWithBranches", { count: summary.withBranches }),
+            foot: t("summaryTotalFoot", { branches: summary.branchTotal, employees: summary.employeeTotal, assets: summary.assetTotal }),
+            footTitle: t("summaryTotalFoot", { branches: summary.branchTotal, employees: summary.employeeTotal, assets: summary.assetTotal }),
             href: basePath,
           },
           {
@@ -132,8 +229,8 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
             key: "withoutAssets",
             label: t("summaryWithoutAssets"),
             value: formatCount(summary.withoutAssets),
-            foot: t("summaryWithoutAssetsHelp"),
-            footTitle: t("summaryWithoutAssetsHelp"),
+            foot: t("summaryWithoutAssetsFoot", { withAssets: summary.withAssets, withoutAssets: summary.withoutAssets, total: summary.total }),
+            footTitle: t("summaryWithoutAssetsFoot", { withAssets: summary.withAssets, withoutAssets: summary.withoutAssets, total: summary.total }),
             href: listHref({ assetUsage: "withoutAssets", page: 1 }),
             current: listState.assetUsage === "withoutAssets",
             attention: summary.withoutAssets > 0,
@@ -152,11 +249,13 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
       />
 
       <FilterPanel>
-        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(3,minmax(160px,1fr))_auto]">
+        {/* Search, two filters, the sort and its order: every sort stays reachable here (code and date added too, which
+            no header carries any more), on phones as well. */}
+        <form role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
-          <input type="hidden" name="sort" value={listState.sort} />
-          <input type="hidden" name="direction" value={listState.direction} />
+          {/* The record status is the segmented control below (spec §3); a search keeps it. */}
+          {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
           <Field label={tCommon("search")}>
             <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
           </Field>
@@ -181,127 +280,140 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
             ]}
           />
           <FilterSelect
-            label={tCommon("status")}
-            name="status"
-            defaultValue={listState.status}
+            label={t("list.sortLabel")}
+            name="sort"
+            defaultValue={listState.sort}
+            options={companySorts.map((sort) => ({ value: sort, label: sortLabel(sort) }))}
+          />
+          <FilterSelect
+            label={t("list.sortDirection")}
+            name="direction"
+            defaultValue={listState.direction}
             options={[
-              { value: "active", label: tCommon("active") },
-              { value: "inactive", label: tCommon("inactive") },
-              { value: "all", label: tCommon("all") },
+              { value: "asc", label: t("list.sortAsc") },
+              { value: "desc", label: t("list.sortDesc") },
             ]}
           />
           <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
         </form>
       </FilterPanel>
 
+      <RecordStatusSegmented value={listState.status} counts={recordStatusCounts} hrefFor={(status) => listHref({ status, page: 1 })} />
+
       <DataTable
         caption={t("title")}
         scrollHint={tCommon("tableScrollHint")}
         footer={
           total > 0 ? (
-            <Pagination
-              page={listState.page}
-              totalPages={totalPages}
-              previousHref={listHref({ page: listState.page - 1 })}
-              nextHref={listHref({ page: listState.page + 1 })}
-              pageSize={listState.pageSize}
-              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
-              labels={{
-                navigation: tCommon("pagination"),
-                previous: tCommon("previous"),
-                next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
-                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
-                pageSizeGroup: tCommon("pageSizeLabel"),
-                rowsPerPage: tCommon("rowsPerPage"),
-              }}
-            />
+            <div className="space-y-2">
+              <p>{t("list.countsNote")}</p>
+              <Pagination
+                page={listState.page}
+                totalPages={totalPages}
+                previousHref={listHref({ page: listState.page - 1 })}
+                nextHref={listHref({ page: listState.page + 1 })}
+                pageSize={listState.pageSize}
+                pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+                labels={{
+                  navigation: tCommon("pagination"),
+                  previous: tCommon("previous"),
+                  next: tCommon("next"),
+                  pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+                  range: `${tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) })} · ${tCommon("recordStatus.footerCounts", { active: recordStatusCounts.active, inactive: recordStatusCounts.inactive })}`,
+                  pageSizeGroup: tCommon("pageSizeLabel"),
+                  rowsPerPage: tCommon("rowsPerPage"),
+                }}
+              />
+            </div>
           ) : undefined
         }
       >
         <DataTableHeader>
           <tr>
-            <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
-            <DataTableHead sort={sortBy("assetTagCode")}>{t("assetTagCode")}</DataTableHead>
-            <DataTableHead sort={sortBy("nameTh")}>{t("nameTh")}</DataTableHead>
-            <DataTableHead>{t("nameEn")}</DataTableHead>
+            <DataTableHead sort={sortBy("nameTh")}>{t("list.name")}</DataTableHead>
+            <DataTableHead sort={sortBy("assetTagCode")}>{t("list.assetTagCode")}</DataTableHead>
             <DataTableHead>{t("taxId")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("branches")}>{t("branches")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("employees")}>{t("employees")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
-            <DataTableHead>{tCommon("status")}</DataTableHead>
+            {showRecordStatus ? <DataTableHead>{tCommon("status")}</DataTableHead> : null}
             <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
-          {companies.length === 0 ? (
+          {rows.length === 0 ? (
             hasActiveFilters ? (
-              <TableEmptyRow colSpan={10} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+              <TableEmptyRow colSpan={columnCount} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
             ) : (
-              <TableEmptyRow colSpan={10}>{tCommon("noData")}</TableEmptyRow>
+              <TableEmptyRow colSpan={columnCount}>{tCommon("noData")}</TableEmptyRow>
             )
           ) : (
-            companies.map((company) => {
-              const drilldown = buildCompanyDrilldownHrefs({ locale, companyId: company.id })
-              const editHref = appendMasterDataReturnTo(`/${locale}/master-data/companies/${company.id}/edit`, companyReturnHref)
-              return (
-                <ClickableTableRow
-                  key={company.id}
-                  href={editHref}
-                  label={`${tCommon("edit")}: ${company.code}`}
-                >
-                  <DataTableCell className="whitespace-nowrap">
-                    <span className="tag font-medium text-foreground">{company.code}</span>
-                  </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                    <span className="tag">{company.assetTagCode || company.code}</span>
-                  </DataTableCell>
-                  <DataTableCell className="min-w-48 text-foreground">{company.nameTh}</DataTableCell>
-                  <DataTableCell className="min-w-48 text-muted-foreground">{orNil(company.nameEn)}</DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                    {company.taxId ? <span className="tag">{company.taxId}</span> : <Nil />}
-                  </DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">
-                    {company._count.branches > 0 ? (
-                      <Link
-                        href={drilldown.branches}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
-                      >
-                        {formatCount(company._count.branches)}
-                      </Link>
-                    ) : (
-                      formatCount(0)
-                    )}
-                  </DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">{formatCount(company._count.employees)}</DataTableCell>
-                  <DataTableCell numeric className="text-muted-foreground">
-                    {company._count.assets > 0 ? (
-                      <Link
-                        href={drilldown.assets}
-                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
-                      >
-                        {formatCount(company._count.assets)}
-                      </Link>
-                    ) : (
-                      formatCount(0)
-                    )}
-                  </DataTableCell>
+            rows.map(({ company, drilldown, editHref, reactivate, deactivatedLine, links, deactivate }) => (
+              <ClickableTableRow
+                key={company.id}
+                href={editHref}
+                label={`${tCommon("edit")}: ${company.code}`}
+              >
+                <DataTableCell className="min-w-56">
+                  <div className={cn("font-semibold", company.isActive ? "text-foreground" : "text-muted-foreground")}>{company.nameTh}</div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="tag">{company.code}</span>
+                    {" · "}
+                    {deactivatedLine ?? company.nameEn ?? t("list.noNameEn")}
+                  </div>
+                </DataTableCell>
+                <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                  <span className="tag">{company.assetTagCode || company.code}</span>
+                  {company.assetTagCode ? null : <span className="block text-xs">{t("list.assetTagCodeFallback")}</span>}
+                </DataTableCell>
+                <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                  {company.taxId ? <span className="tag">{company.taxId}</span> : <span className="text-faint-foreground">{t("list.taxIdMissing")}</span>}
+                </DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">
+                  {company._count.branches > 0 ? (
+                    <Link
+                      href={drilldown.branches}
+                      className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                    >
+                      {formatCount(company._count.branches)}
+                    </Link>
+                  ) : company.isActive ? (
+                    <StatusBadge label={t("withoutBranches")} tone="warning" />
+                  ) : (
+                    formatCount(0)
+                  )}
+                </DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">{formatCount(company._count.employees)}</DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">
+                  {company._count.assets > 0 ? (
+                    <Link
+                      href={drilldown.assets}
+                      className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
+                    >
+                      {formatCount(company._count.assets)}
+                    </Link>
+                  ) : (
+                    formatCount(0)
+                  )}
+                </DataTableCell>
+                {showRecordStatus ? (
                   <DataTableCell className="whitespace-nowrap">
                     <StatusBadge label={company.isActive ? tCommon("active") : tCommon("inactive")} tone={company.isActive ? "success" : "muted"} />
+                    {reactivate ? <MasterDataReactivateButton reactivate={reactivate} /> : null}
                   </DataTableCell>
-                  <DataTableCell align="right" sticky="right">
-                    <RowActions
-                      code={company.code}
-                      name={company.nameTh}
-                      menuLabel={tCommon("moreActionsFor", { code: company.code })}
-                      next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
-                      groups={[]}
-                      deleteAction={company.isActive ? { endpoint: `/api/companies/${company.id}` } : undefined}
-                    />
-                  </DataTableCell>
-                </ClickableTableRow>
-              )
-            })
+                ) : null}
+                <DataTableCell align="right" sticky="right">
+                  <MasterDataRowActions
+                    code={company.code}
+                    name={company.nameTh}
+                    menuLabel={tCommon("moreActionsFor", { code: company.code })}
+                    links={links}
+                    deactivate={deactivate}
+                    reactivate={reactivate}
+                  />
+                </DataTableCell>
+              </ClickableTableRow>
+            ))
           )}
         </DataTableBody>
       </DataTable>

@@ -118,6 +118,18 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
       oldValue: existing,
       newValue: input,
     })
+    // A deactivation saved from the edit form is logged like the DELETE route's, so the list's "ปิดใช้งานเมื่อ {date}"
+    // (readDeactivatedAt, G8P1-R2) finds it too (group 8 plan 1 Task 2).
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      await logAudit({
+        userId: user.id,
+        action: "delete",
+        module: "category",
+        recordId: category.id,
+        oldValue: existing,
+        newValue: category,
+      })
+    }
 
     return NextResponse.json(category)
   } catch (error) {

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
-import { recordStatusCountWheres } from "./master-data-list-ui.ts"
+import { parseNameDefaultSort, recordStatusCountWheres } from "./master-data-list-ui.ts"
 
 export const companySorts = ["createdAt", "code", "assetTagCode", "nameTh", "branches", "employees", "assets"] as const
 export const branchSorts = ["createdAt", "code", "name", "company", "locations", "employees", "assets"] as const
@@ -128,6 +128,7 @@ export type SupplierListState = {
 export type CompanySummaryItem = {
   _count: {
     branches: number
+    employees: number
     assets: number
   }
 }
@@ -155,17 +156,14 @@ export type SupplierSummaryItem = {
   }
 }
 
+// Board MD-Companies sorts by name A→Z by default; the other sorts stay reachable (spec §3, group 8 plan 1 Task 2).
 export function parseCompanyListParams(input: CompanyListParams): CompanyListState {
-  const sortValue = firstValue(input.sort)
-  const directionValue = firstValue(input.direction)
-
   return {
     search: firstValue(input.search).trim(),
     status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
-    sort: companySorts.includes(sortValue as CompanySort) ? (sortValue as CompanySort) : "createdAt",
-    direction: directionValue === "asc" ? "asc" : "desc",
+    ...parseNameDefaultSort(input, companySorts, "nameTh"),
     assetUsage: parseFilter(input.assetUsage, assetUsageFilters, "all"),
     branchUsage: parseFilter(input.branchUsage, branchUsageFilters, "all"),
   }
@@ -526,6 +524,10 @@ export function buildCompanySummary(companies: CompanySummaryItem[]) {
     withoutBranches: companies.filter((company) => company._count.branches === 0).length,
     withAssets: companies.filter((company) => company._count.assets > 0).length,
     withoutAssets: companies.filter((company) => company._count.assets === 0).length,
+    // The total card's foot (board MD-Companies): active branches, employees and assets of the active companies.
+    branchTotal: companies.reduce((sum, company) => sum + company._count.branches, 0),
+    employeeTotal: companies.reduce((sum, company) => sum + company._count.employees, 0),
+    assetTotal: companies.reduce((sum, company) => sum + company._count.assets, 0),
   }
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
+import { isDeactivation } from "@/lib/master-data-query"
 import { errorResponse } from "@/lib/api-response"
 import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { departmentSchema } from "@/lib/validations/department"
@@ -71,6 +72,18 @@ export async function PUT(request: NextRequest, context: DepartmentRouteContext)
       oldValue: existing,
       newValue: input,
     })
+    // A deactivation saved from the edit form is logged like the DELETE route's, so the list's "ปิดใช้งานเมื่อ {date}"
+    // (readDeactivatedAt, G8P1-R2) finds it too (group 8 plan 1 Task 2).
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      await logAudit({
+        userId: user.id,
+        action: "delete",
+        module: "department",
+        recordId: department.id,
+        oldValue: existing,
+        newValue: department,
+      })
+    }
 
     return NextResponse.json(department)
   } catch (error) {

@@ -19,6 +19,8 @@ type MasterDataList = {
   stats: boolean
   // The tag that renders RowActions on this page, when a client wrapper does it.
   rowActions?: string
+  // Spec group 8 §3: no next button (the row opens the edit page); แก้ไข is the first link in ⋯.
+  editInMenu?: boolean
 }
 
 // The master-data lists of plan 2B-1. The commit that moves a page adds its line.
@@ -27,7 +29,8 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   // Group 7 plan 1 Task 4: brands and models say "ปิดใช้งาน" through BrandModelDeactivateButton (it renders RowActions).
   { path: `${D}master-data/brands/page.tsx`, deleteEndpoints: [], rowActions: "<BrandModelDeactivateButton", removedWrappers: [`${C}master-data/brand-delete-button.tsx`, `${C}master-data/asset-model-delete-button.tsx`], stats: true },
   { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: ["/api/categories/${category.id}"], removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },
-  { path: `${D}master-data/companies/page.tsx`, deleteEndpoints: ["/api/companies/${company.id}"], removedWrappers: [`${C}master-data/company-delete-button.tsx`], stats: true },
+  // Group 8 plan 1 Task 2: companies say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions (it renders RowActions).
+  { path: `${D}master-data/companies/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/company-delete-button.tsx`], stats: true },
   { path: `${D}master-data/departments/page.tsx`, deleteEndpoints: ["/api/departments/${department.id}"], removedWrappers: [`${C}master-data/department-delete-button.tsx`], stats: false },
   // Group 7 follow-ups Task 2: employees say "ปิดใช้งาน" through EmployeeRowActions (it renders RowActions, G7F-R2).
   { path: `${D}master-data/employees/page.tsx`, deleteEndpoints: [], rowActions: "<EmployeeRowActions", removedWrappers: [`${C}master-data/employee-delete-button.tsx`], stats: true },
@@ -37,7 +40,7 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
 ]
 
 test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowActions and the shared Pagination (spec 2B §5.3, B5, B6)", () => {
-  for (const { path, deleteEndpoints, removedWrappers, stats, rowActions = "<RowActions" } of MASTER_DATA_LISTS) {
+  for (const { path, deleteEndpoints, removedWrappers, stats, rowActions = "<RowActions", editInMenu = false } of MASTER_DATA_LISTS) {
     const source = read(path)
     for (const part of ["<PageHeader", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", rowActions, "<Pagination"]) {
       assert.ok(source.includes(part), `${path}: no ${part}`)
@@ -47,7 +50,12 @@ test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowAction
     assert.match(source, /scrollHint=\{tCommon\("tableScrollHint"\)\}/, `${path}: a table with no phone list scrolls sideways with the hint (B6)`)
     assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/, `${path}: 25, 50 or 100 rows per page (R-k)`)
     assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: [\w.]+ \}\)\}/, `${path}: ⋯ is named after its row (I33)`)
-    assert.match(source, /next=\{\{ label: (?:tCommon\("edit"\)|t\("\w+"\)), href: \w+, icon: <Pencil aria-hidden="true" \/> \}\}/, `${path}: the next step is the edit link (B5)`)
+    if (editInMenu) {
+      assert.match(source, /links: \[\n\s+\{ key: "edit", label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \},/, `${path}: แก้ไข is the first link in ⋯`)
+      assert.doesNotMatch(source, /next=\{\{/, `${path}: no next button`)
+    } else {
+      assert.match(source, /next=\{\{ label: (?:tCommon\("edit"\)|t\("\w+"\)), href: \w+, icon: <Pencil aria-hidden="true" \/> \}\}/, `${path}: the next step is the edit link (B5)`)
+    }
     for (const endpoint of deleteEndpoints) {
       // "ลบ" shows on active rows only: an inactive row comes back by ticking "ใช้งาน" (critique 2026-10-20 E1).
       assert.ok(/deleteAction=\{\w+\.isActive \? \{ endpoint: /.test(source) && source.includes(`{ endpoint: \`${endpoint}\` } : undefined}`), `${path}: "ลบ" in ⋯ calls ${endpoint}`)
@@ -158,7 +166,7 @@ test("wide lists pin the actions column to the right, so edit and ⋯ stay visib
     const source = read(file)
     assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>/, `${file}: the actions header is pinned`)
     // The brands page renders its row actions through modelActions (BrandModelDeactivateButton, group 7 plan 1 Task 4).
-    assert.match(source, /<DataTableCell align="right" sticky="right">\s*(?:<RowActions|<LocationDeactivateButton|<EmployeeRowActions|\{modelActions\(model, editModelHref\)\})/, `${file}: the actions cell is pinned`)
+    assert.match(source, /<DataTableCell align="right" sticky="right">\s*(?:<RowActions|<LocationDeactivateButton|<EmployeeRowActions|<MasterDataRowActions|\{modelActions\(model, editModelHref\)\})/, `${file}: the actions cell is pinned`)
     assert.doesNotMatch(source, /<DataTableCell align="right">\s*<RowActions/, `${file}: no unpinned actions cell is left`)
   }
 })

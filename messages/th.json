@@ -92,7 +92,9 @@
       "label": "สถานะข้อมูล",
       "active": "ใช้งาน",
       "inactive": "ไม่ใช้งาน",
-      "all": "ทั้งหมด"
+      "all": "ทั้งหมด",
+      "deactivatedAt": "ปิดใช้งานเมื่อ {date}",
+      "footerCounts": "ใช้งาน {active, number} · ไม่ใช้งาน {inactive, number}"
     }
   },
   "globalSearch": {
@@ -1672,14 +1674,48 @@
     "withBranches": "มีสาขา",
     "withoutBranches": "ยังไม่มีสาขา",
     "clearFilters": "ล้างตัวกรอง",
-    "summaryTotal": "บริษัททั้งหมด",
-    "summaryWithBranches": "มีสาขา {count} บริษัท",
+    "summaryTotal": "บริษัททั้งหมด (ใช้งาน)",
     "summaryWithAssets": "มีทรัพย์สิน",
     "summaryWithAssetsHelp": "บริษัทที่มีทรัพย์สินใช้งานอยู่",
     "summaryWithoutAssets": "ยังไม่มีทรัพย์สิน",
-    "summaryWithoutAssetsHelp": "ควรตรวจว่าเป็นบริษัทใหม่หรือข้อมูลเก่า",
     "summaryWithoutBranches": "ยังไม่มีสาขา",
-    "summaryWithoutBranchesHelp": "ควรเพิ่มสาขาก่อนสร้างทะเบียนทรัพย์สินจริง"
+    "summaryWithoutBranchesHelp": "ควรเพิ่มสาขาก่อนสร้างทะเบียนทรัพย์สินจริง",
+    "summaryTotalFoot": "รวมสาขา {branches, number} · พนักงาน {employees, number} · ทรัพย์สิน {assets, number}",
+    "summaryWithoutAssetsFoot": "{withAssets, number} + {withoutAssets, number} = {total, number} · ควรตรวจว่าเป็นบริษัทใหม่หรือข้อมูลเก่า",
+    "list": {
+      "name": "ชื่อบริษัท",
+      "assetTagCode": "รหัสในรหัสทรัพย์สิน",
+      "noNameEn": "ยังไม่มีชื่อภาษาอังกฤษ",
+      "assetTagCodeFallback": "เว้นว่าง ใช้รหัสบริษัทแทน",
+      "taxIdMissing": "ยังไม่ระบุ",
+      "countsNote": "ตัวเลขสาขา พนักงาน และทรัพย์สิน นับเฉพาะที่ใช้งาน",
+      "addBranch": "เพิ่มสาขาให้บริษัทนี้",
+      "sortLabel": "เรียงตาม",
+      "sortDirection": "ลำดับ",
+      "sortAsc": "น้อยไปมาก (ก → ฮ)",
+      "sortDesc": "มากไปน้อย (ฮ → ก)",
+      "sortCreatedAt": "วันที่เพิ่ม"
+    },
+    "deactivate": {
+      "action": "ปิดใช้งาน",
+      "hint": "ไม่มีสาขา แผนก พนักงาน ทรัพย์สิน หรือรอบตรวจนับผูกอยู่ จึงปิดได้ ระบบจะถามยืนยันอีกครั้ง",
+      "confirmTitle": "ปิดใช้งาน {name}?",
+      "confirmBody": "บริษัทนี้จะไม่แสดงในรายการเลือกบริษัทของหน้าอื่น เช่น เพิ่มสาขา เพิ่มพนักงาน และเพิ่มทรัพย์สิน ประวัติเดิมยังอยู่ หาเจอได้จาก \"ไม่ใช้งาน\" และเปิดใช้งานอีกครั้งได้จากรายการนี้",
+      "clear": {
+        "branches": "ไม่มีสาขา",
+        "departments": "ไม่มีแผนก",
+        "employees": "ไม่มีพนักงาน",
+        "assets": "ไม่มีทรัพย์สิน",
+        "auditRounds": "ไม่อยู่ในรอบตรวจนับ"
+      },
+      "success": "ปิดใช้งานแล้ว"
+    },
+    "reactivate": {
+      "action": "เปิดใช้งาน",
+      "confirmTitle": "เปิดใช้งาน {name}?",
+      "confirmBody": "บริษัทนี้จะกลับมาให้เลือกในหน้าอื่นอีกครั้ง เช่น เพิ่มสาขา เพิ่มพนักงาน และเพิ่มทรัพย์สิน",
+      "success": "เปิดใช้งานแล้ว"
+    }
   },
   "branch": {
     "title": "สาขา",

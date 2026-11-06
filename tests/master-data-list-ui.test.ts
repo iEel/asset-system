@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import {
   chunkListIds,
   deactivatedAtLogModules,
+  formatDeactivatedAt,
   masterDataListIdChunkSize,
   parseNameDefaultSort,
   readDeactivatedAt,
@@ -151,4 +152,11 @@ test("no master-data block reason says ไม่สามารถลบ any mor
     const source = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
     assert.doesNotMatch(source, /ไม่สามารถลบ(บริษัท|สาขา|แผนก|พนักงาน|ผู้ขาย|หมวดหมู่)/, path)
   }
+})
+
+test("ปิดใช้งานเมื่อ {date}: the Bangkok day, the Buddhist year in Thai (board MD-Companies \"2 พ.ค. 2569\")", () => {
+  // 1 May 2026 18:30 UTC is already 2 May in Bangkok.
+  const at = new Date("2026-05-01T18:30:00Z")
+  assert.equal(formatDeactivatedAt(at, "th"), "2 พ.ค. 2569")
+  assert.equal(formatDeactivatedAt(at, "en"), "2 May 2026")
 })

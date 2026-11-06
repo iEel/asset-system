@@ -92,7 +92,9 @@
       "label": "Record status",
       "active": "Active",
       "inactive": "Inactive",
-      "all": "All"
+      "all": "All",
+      "deactivatedAt": "Deactivated {date}",
+      "footerCounts": "{active, number} active · {inactive, number} inactive"
     }
   },
   "globalSearch": {
@@ -1672,14 +1674,48 @@
     "withBranches": "Has branches",
     "withoutBranches": "No branches yet",
     "clearFilters": "Clear filters",
-    "summaryTotal": "Total Companies",
-    "summaryWithBranches": "{count} companies with branches",
+    "summaryTotal": "Companies (active)",
     "summaryWithAssets": "Has Assets",
     "summaryWithAssetsHelp": "Companies currently holding active assets.",
     "summaryWithoutAssets": "No Assets",
-    "summaryWithoutAssetsHelp": "Review whether these are new companies or old data.",
     "summaryWithoutBranches": "No Branches",
-    "summaryWithoutBranchesHelp": "Add branches before creating real asset records."
+    "summaryWithoutBranchesHelp": "Add branches before creating real asset records.",
+    "summaryTotalFoot": "{branches, plural, one {# branch} other {# branches}} · {employees, plural, one {# employee} other {# employees}} · {assets, plural, one {# asset} other {# assets}}",
+    "summaryWithoutAssetsFoot": "{withAssets, number} + {withoutAssets, number} = {total, number} · Check whether these are new companies or old data",
+    "list": {
+      "name": "Company name",
+      "assetTagCode": "Code in asset tags",
+      "noNameEn": "No English name yet",
+      "assetTagCodeFallback": "Blank, uses the company code",
+      "taxIdMissing": "Not set",
+      "countsNote": "Branch, employee and asset numbers count active records only",
+      "addBranch": "Add a branch to this company",
+      "sortLabel": "Sort by",
+      "sortDirection": "Order",
+      "sortAsc": "Ascending (A → Z)",
+      "sortDesc": "Descending (Z → A)",
+      "sortCreatedAt": "Date added"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "hint": "No branches, departments, employees, assets or audit rounds use it, so it can be deactivated. You will be asked to confirm",
+      "confirmTitle": "Deactivate {name}?",
+      "confirmBody": "This company will no longer be offered on other pages such as new branches, employees and assets. Its history stays, it can be found under \"Inactive\", and it can be reactivated from this list",
+      "clear": {
+        "branches": "No branches",
+        "departments": "No departments",
+        "employees": "No employees",
+        "assets": "No assets",
+        "auditRounds": "Not in an audit round"
+      },
+      "success": "Deactivated"
+    },
+    "reactivate": {
+      "action": "Reactivate",
+      "confirmTitle": "Reactivate {name}?",
+      "confirmBody": "This company will be offered again on other pages such as new branches, employees and assets",
+      "success": "Reactivated"
+    }
   },
   "branch": {
     "title": "Branches",

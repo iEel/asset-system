@@ -37,6 +37,14 @@ test("each status is a real link in the order ใช้งาน, ไม่ใ�
 test("the messages live under common.recordStatus in both locales", () => {
   const th = JSON.parse(read("messages/th.json")).common.recordStatus
   const en = JSON.parse(read("messages/en.json")).common.recordStatus
-  assert.deepEqual(th, { label: "สถานะข้อมูล", active: "ใช้งาน", inactive: "ไม่ใช้งาน", all: "ทั้งหมด" })
-  assert.deepEqual(Object.keys(en).sort(), ["active", "all", "inactive", "label"])
+  // Group 8 plan 1 Task 2 added the five lists' "ปิดใช้งานเมื่อ {date}" line and the footer's status counts.
+  assert.deepEqual(th, {
+    label: "สถานะข้อมูล",
+    active: "ใช้งาน",
+    inactive: "ไม่ใช้งาน",
+    all: "ทั้งหมด",
+    deactivatedAt: "ปิดใช้งานเมื่อ {date}",
+    footerCounts: "ใช้งาน {active, number} · ไม่ใช้งาน {inactive, number}",
+  })
+  assert.deepEqual(Object.keys(en).sort(), ["active", "all", "deactivatedAt", "footerCounts", "inactive", "label"])
 })

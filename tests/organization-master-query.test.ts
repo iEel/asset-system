@@ -57,6 +57,19 @@ test("parses company list params with safe defaults and filters", () => {
   assert.equal(state.branchUsage, "withoutBranches")
 })
 
+test("the company list sorts by name A→Z by default; every other sort stays reachable, newest or largest first (board MD-Companies, spec §3)", () => {
+  assert.deepEqual(pick(parseCompanyListParams({})), { sort: "nameTh", direction: "asc" })
+  assert.deepEqual(pick(parseCompanyListParams({ sort: "bogus" })), { sort: "nameTh", direction: "asc" })
+  assert.deepEqual(pick(parseCompanyListParams({ sort: "nameTh", direction: "desc" })), { sort: "nameTh", direction: "desc" })
+  for (const sort of ["createdAt", "code", "assetTagCode", "branches", "employees", "assets"] as const) {
+    assert.deepEqual(pick(parseCompanyListParams({ sort })), { sort, direction: "desc" }, sort)
+    assert.deepEqual(pick(parseCompanyListParams({ sort, direction: "asc" })), { sort, direction: "asc" }, sort)
+  }
+  function pick(state: { sort: string; direction: string }) {
+    return { sort: state.sort, direction: state.direction }
+  }
+})
+
 test("builds company where clauses from search and health filters", () => {
   const state = parseCompanyListParams({
     search: "sni",
@@ -91,16 +104,20 @@ test("builds company count order and drilldown links", () => {
 
 test("summarizes company health and blocks deleting referenced companies", () => {
   const summary = buildCompanySummary([
-    { _count: { branches: 2, assets: 4 } },
-    { _count: { branches: 0, assets: 0 } },
+    { _count: { branches: 2, employees: 30, assets: 4 } },
+    { _count: { branches: 0, employees: 5, assets: 0 } },
   ])
 
+  // Board MD-Companies: the total card's foot "รวมสาขา {b} · พนักงาน {e} · ทรัพย์สิน {a}" sums the active companies' counts.
   assert.deepEqual(summary, {
     total: 2,
     withBranches: 1,
     withoutBranches: 1,
     withAssets: 1,
     withoutAssets: 1,
+    branchTotal: 2,
+    employeeTotal: 35,
+    assetTotal: 4,
   })
   assert.equal(getCompanyDeleteBlockReason({ branches: 0, departments: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
@@ -189,7 +206,7 @@ test("builds organization query strings while preserving active filters", () => 
 
   assert.equal(
     buildCompanyQueryString(company, { branchUsage: "withoutBranches", page: 1 }),
-    "search=sni&page=1&pageSize=25&sort=createdAt&direction=desc&assetUsage=withAssets&branchUsage=withoutBranches"
+    "search=sni&page=1&pageSize=25&sort=nameTh&direction=asc&assetUsage=withAssets&branchUsage=withoutBranches"
   )
   assert.equal(
     buildBranchQueryString(branch, { assetUsage: "withoutAssets", page: 1 }),

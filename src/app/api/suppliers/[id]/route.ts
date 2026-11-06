@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
+import { isDeactivation } from "@/lib/master-data-query"
 import { errorResponse } from "@/lib/api-response"
 import { supplierSchema } from "@/lib/validations/supplier"
 import { getSupplierDeleteBlockReason } from "@/lib/organization-master-query"
@@ -98,6 +99,18 @@ export async function PUT(request: NextRequest, context: SupplierRouteContext) {
       oldValue: existing,
       newValue: input,
     })
+    // A deactivation saved from the edit form is logged like the DELETE route's, so the list's "ปิดใช้งานเมื่อ {date}"
+    // (readDeactivatedAt, G8P1-R2) finds it too (group 8 plan 1 Task 2).
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      await logAudit({
+        userId: user.id,
+        action: "delete",
+        module: "supplier",
+        recordId: supplier.id,
+        oldValue: existing,
+        newValue: supplier,
+      })
+    }
 
     return NextResponse.json(supplier)
   } catch (error) {

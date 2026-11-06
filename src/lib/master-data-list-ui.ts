@@ -48,7 +48,7 @@ export type DeactivatedAtReader = { systemLog: { groupBy(args: object): PromiseL
 
 // G8P1-R2: "ปิดใช้งานเมื่อ {date}" is the newest "delete" (deactivate) system-log entry of each record; a record without
 // one is left out of the map (the page shows "–"). One grouped query per 2,000 ids. A deactivation saved through the edit
-// form (PUT isActive false) logs "update" and is not read (spec §9: no exact date without a migration).
+// form (PUT isActive false) logs "delete" beside its "update" too (group 8 plan 1 Task 2), so it is read the same way.
 export async function readDeactivatedAt(
   db: DeactivatedAtReader,
   module: DeactivatedAtLogModule,
@@ -72,6 +72,17 @@ export async function readDeactivatedAt(
     if (!existing || existing < at) result.set(row.recordId, at)
   }
   return result
+}
+
+// The date of "· ปิดใช้งานเมื่อ {date}" on an inactive row: the Bangkok day, short month, Buddhist year in Thai
+// ("2 พ.ค. 2569"), as the asset detail page writes its dates.
+export function formatDeactivatedAt(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale === "th" ? "th-TH-u-ca-buddhist" : "en-GB", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date)
 }
 
 type QueryValue = string | string[] | number | null | undefined
