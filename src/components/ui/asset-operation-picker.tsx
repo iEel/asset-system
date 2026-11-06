@@ -366,7 +366,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
               {sections.map((section) => {
                 const action = section.group ? props.groupAction?.(section.group) : null
                 return action ? (
-                  <p key={`action:${section.group?.key}`} data-asset-option-group-action={section.group?.key} className="border-t border-border-soft px-3 py-2 text-meta">
+                  <p key={`action:${section.group?.key}`} data-asset-option-group-action={section.group?.key} className="min-w-0 break-words border-t border-border-soft px-3 py-2 text-meta">
                     {action}
                   </p>
                 ) : null

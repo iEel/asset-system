@@ -63,6 +63,15 @@ export function batchCheckinRowLock(row: BatchCheckinRowFacts): string | null {
   return null
 }
 
+/**
+ * A locked row offers "รับคืนทีละรายการ" only when the single return form takes it: an outstanding component (its late
+ * return) or an open repair (the return joins it). A return block (licence, fitted component, pending disposal, a
+ * status that cannot be returned) is refused by the single form as well, so that row shows its reason only.
+ */
+export function batchCheckinRowOffersSingle(row: BatchCheckinRowFacts): boolean {
+  return !row.returnBlock && (row.outstandingComponent || row.openRepair)
+}
+
 /** Every row that is not locked, in row order, up to MAX_BATCH_CHECKIN_ITEMS (G7P4-R3). */
 export function initialBatchCheckinTicks(rows: readonly BatchCheckinRowFacts[]): Set<string> {
   const ticks = new Set<string>()

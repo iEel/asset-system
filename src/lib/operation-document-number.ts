@@ -61,10 +61,18 @@ async function generateOperationDocumentNo(tx: Prisma.TransactionClient, kind: O
   const settings = await getOperationDocumentSettings(tx, kind)
   const renderedPrefix = renderDateTokens(settings.template, date).split("{running}")[0] ?? ""
 
+  // A multi-asset return writes one row per machine under one RT- number, so returns count distinct numbers, not rows;
+  // the probe below still steps past any number already taken.
   const count =
     kind === "checkout"
       ? await tx.assetCheckout.count({ where: { documentNo: { startsWith: renderedPrefix } } })
-      : await tx.assetCheckin.count({ where: { documentNo: { startsWith: renderedPrefix } } })
+      : (
+          await tx.assetCheckin.findMany({
+            where: { documentNo: { startsWith: renderedPrefix } },
+            distinct: ["documentNo"],
+            select: { documentNo: true },
+          })
+        ).length
 
   for (let index = count + 1; index < count + 1000; index += 1) {
     const documentNo = renderOperationDocumentTemplate(settings.template, date, index, settings.runningDigits)

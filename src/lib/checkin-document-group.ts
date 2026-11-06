@@ -55,6 +55,8 @@ export type CheckinDocumentMachineInput = {
   conditionAfter: string
   nextStatus: string
   nextLocationId: string
+  damageNote: string | null
+  remark: string | null
   asset: { id: string; assetTag: string; name: string }
   checkout: { id: string; documentNo: string | null }
 }
@@ -68,11 +70,14 @@ export type CheckinDocumentMachineRow = {
   nextStatus: string | null
   nextLocation: string | null
   handoverNo: string
+  /** The machine's own damage note and remark (the batch form's per-row note), null when blank. */
+  damageNote: string | null
+  remark: string | null
   voided: boolean
 }
 
-// One line of the multi-machine RT-: the machine, how it came back, where it went and the HO- it closed. A label that
-// cannot be read is null (the page shows Nil).
+// One line of the multi-machine RT-: the machine, how it came back, where it went, the HO- it closed and its own damage
+// note and remark. A label that cannot be read is null (the page shows Nil).
 export function buildCheckinDocumentMachineRows(
   records: readonly CheckinDocumentMachineInput[],
   labels: ReadonlyMap<string, string>,
@@ -86,6 +91,8 @@ export function buildCheckinDocumentMachineRows(
     nextStatus: labels.get(record.nextStatus) ?? null,
     nextLocation: labels.get(record.nextLocationId) ?? null,
     handoverNo: record.checkout.documentNo ?? record.checkout.id,
+    damageNote: record.damageNote?.trim() || null,
+    remark: record.remark?.trim() || null,
     voided: record.transactionStatus === "void",
   }))
 }

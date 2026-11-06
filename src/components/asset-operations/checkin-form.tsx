@@ -683,7 +683,9 @@ export function CheckinForm({
   function renderHolderGroupLink(group: AssetOperationSearchGroup) {
     const href = batchCheckinHolderHref(locale, group, returnTo ?? `/${locale}/asset-management/checkin`)
     if (!href || !group.label) return null
-    return <a href={href} className={linkVariants({ size: "meta" })}>{tAll("batchCheckin.holderGroupLink", { holder: group.label })}</a>
+    // The panel clips (overflow-hidden), so the link wraps instead of the meta size's nowrap: a long holder name stays
+    // whole and the link's name is its full text.
+    return <a href={href} className={cn(linkVariants({ size: "inherit" }), "break-words")}>{tAll("batchCheckin.holderGroupLink", { holder: group.label })}</a>
   }
 
   // อ่านข้อมูลสรุปไม่สำเร็จ, with ลองอีกครั้ง, in the summary card.

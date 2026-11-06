@@ -10,6 +10,7 @@ import {
   batchCheckinHolderHref,
   batchCheckinPageHref,
   batchCheckinRowLock,
+  batchCheckinRowOffersSingle,
   batchCheckinSingleHref,
   batchCheckinStatusOptions,
   batchCheckinStatusTally,
@@ -64,6 +65,18 @@ test("G7P4-R2: a return block, an outstanding component or an open repair locks 
   assert.equal(batchCheckinRowLock(row("3", { returnBlock: { code: "pendingDisposal", reasonKey: "asset.transactionReasonStatusNotReturnable" } })), "asset.transactionReasonStatusNotReturnable")
   assert.equal(batchCheckinRowLock(row("4", { outstandingComponent: true })), "asset.transactionReasonComponentOutstanding")
   assert.equal(batchCheckinRowLock(row("5", { openRepair: true })), "asset.transactionReasonActiveMaintenance")
+})
+
+test("a locked row offers รับคืนทีละรายการ only when the single form takes it: an outstanding component or an open repair, never a return block", () => {
+  const block = { code: "pendingDisposal", reasonKey: "asset.transactionReasonStatusNotReturnable" } as const
+  assert.equal(batchCheckinRowOffersSingle(row("1")), false)
+  assert.equal(batchCheckinRowOffersSingle(row("2", { outstandingComponent: true })), true)
+  assert.equal(batchCheckinRowOffersSingle(row("3", { openRepair: true })), true)
+  assert.equal(batchCheckinRowOffersSingle(row("4", { returnBlock: block })), false)
+  assert.equal(batchCheckinRowOffersSingle(row("5", { returnBlock: block, openRepair: true })), false)
+  // The form draws the link only behind this rule (CRLF-safe source pin).
+  const form = readFileSync("src/components/asset-operations/batch-checkin-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(form, /\{batchCheckinRowOffersSingle\(row\) \? \(\n\s*<a href=\{singleHref\}[^\n]*\{t\("needsSingle"\)\}<\/a>\n\s*\) : null\}/)
 })
 
 test("default ticks: every row that is not locked, in order, at most MAX_BATCH_CHECKIN_ITEMS", () => {
@@ -267,8 +280,15 @@ test("the entry points: the employee page's รับคืนหลายรา
   const checkin = read("src/components/asset-operations/checkin-form.tsx")
   assert.match(checkin, /groupAction=\{renderHolderGroupLink\}/)
   assert.match(checkin, /batchCheckinHolderHref\(locale, group, returnTo \?\? `\/\$\{locale\}\/asset-management\/checkin`\)/)
+  // The holder link wraps inside the clipped panel: no meta size (whitespace-nowrap), a full-text name (final review).
+  const holderLink = /<a href=\{href\} className=\{([^}]*\}?[^}]*)\}>\{tAll\("batchCheckin\.holderGroupLink", \{ holder: group\.label \}\)\}<\/a>/.exec(checkin)
+  assert.ok(holderLink, "the holder group link")
+  assert.match(holderLink[1], /linkVariants\(\{ size: "inherit" \}\)/)
+  assert.match(holderLink[1], /break-words/)
+  assert.doesNotMatch(holderLink[1], /size: "meta"/)
   const picker = read("src/components/ui/asset-operation-picker.tsx")
   assert.match(picker, /groupAction\?\.\(section\.group\)/)
+  assert.match(picker, /data-asset-option-group-action=\{section\.group\?\.key\} className="min-w-0 break-words /)
   // A listbox holds options only (axe aria-required-children, task 5 E2E): the group's link stands after the list closes.
   const listboxEnd = picker.indexOf("</ul>", picker.indexOf('<ul role="listbox"'))
   const listboxClose = picker.indexOf("\n              </ul>\n", picker.indexOf('<ul role="listbox"'))

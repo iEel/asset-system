@@ -36,6 +36,7 @@ import {
   batchCheckinPhotoField,
   batchCheckinRowKey,
   batchCheckinRowLock,
+  batchCheckinRowOffersSingle,
   batchCheckinSingleHref,
   batchCheckinStatusOptions,
   batchCheckinStatusTally,
@@ -85,7 +86,8 @@ function fieldIdFor(key: string): string {
 // รับคืนหลายรายการ (group 7 plan 4 Task 4, spec §5.3): one holder's machines, each ticked (default on) with its own
 // condition (default ดี), next status, optional photos and damage note; one returner, one receiver, one date, one room for
 // all (changeable per row) and two signatures; the review, then one save that is all or nothing. A machine the
-// multi-return does not take (G7P4-R2) is listed unticked and locked with "รับคืนทีละรายการ" and the single form's link.
+// multi-return does not take (G7P4-R2) is listed unticked and locked with its reason; "รับคืนทีละรายการ" and the single
+// form's link only where the single form takes it (an outstanding component or an open repair, not a return block).
 export function BatchCheckinForm({
   holder,
   rows,
@@ -557,7 +559,7 @@ type BatchCheckinRowProps = {
 
 // One machine as a card (the phone's layout, and the desktop's row): the tick, the photo, the tag and name with its
 // HO- or ข้อมูลเก่า, then its own condition, next status, room override, photos and damage note while ticked. A locked
-// row reads its reason and "รับคืนทีละรายการ" with the single form's link (G7P4-R2).
+// row reads its reason, and "รับคืนทีละรายการ" with the single form's link when the single form takes it (G7P4-R2).
 function BatchCheckinRow(props: BatchCheckinRowProps) {
   const { row, ticked, draft, overridden, photos, blockedReason, singleHref, conditions, statusOptions, locations, disabled, errors } = props
   const t = useTranslations("batchCheckin")
@@ -601,7 +603,9 @@ function BatchCheckinRow(props: BatchCheckinRowProps) {
           {lock ? (
             <span id={reasonId} className="grid justify-items-start gap-1 text-meta text-muted-foreground">
               <span>{tAll(lock)}</span>
-              <a href={singleHref} className={linkVariants({ size: "meta" })}>{t("needsSingle")}</a>
+              {batchCheckinRowOffersSingle(row) ? (
+                <a href={singleHref} className={linkVariants({ size: "meta" })}>{t("needsSingle")}</a>
+              ) : null}
             </span>
           ) : blockedReason ? (
             <FieldError id={reasonId}>{blockedReason}</FieldError>

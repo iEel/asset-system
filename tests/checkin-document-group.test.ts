@@ -75,15 +75,15 @@ test("a record with no number, or one the query misses, is still its own documen
   assert.deepEqual((await readCheckinDocumentGroup(lone, async () => [])).map((record) => record.id), ["c-3"])
 })
 
-test("a machine row names the machine, its condition, next status and room, its HO- and whether it is voided", () => {
+test("a machine row names the machine, its condition, next status and room, its HO-, its own damage note and remark (blank = null) and whether it is voided", () => {
   const labels = new Map([["cond-good", "ปกติ"], ["status-ready", "พร้อมใช้งาน"], ["loc-store", "IT-STORE - คลัง IT"]])
-  const base = { conditionAfter: "cond-good", nextStatus: "status-ready", nextLocationId: "loc-store" }
+  const base = { conditionAfter: "cond-good", nextStatus: "status-ready", nextLocationId: "loc-store", damageNote: null, remark: null }
   assert.deepEqual(buildCheckinDocumentMachineRows([
-    { id: "c-1", transactionStatus: "active", ...base, asset: { id: "a-1", assetTag: "NB-0001", name: "Notebook" }, checkout: { id: "co-1", documentNo: "HO-2610-0001" } },
+    { id: "c-1", transactionStatus: "active", ...base, damageNote: "  จอมีรอยขีดข่วน  ", remark: "   ", asset: { id: "a-1", assetTag: "NB-0001", name: "Notebook" }, checkout: { id: "co-1", documentNo: "HO-2610-0001" } },
     { id: "c-2", transactionStatus: "void", ...base, nextLocationId: "loc-gone", asset: { id: "a-2", assetTag: "MN-0002", name: "Monitor" }, checkout: { id: "co-2", documentNo: null } },
   ], labels), [
-    { checkinId: "c-1", assetId: "a-1", assetTag: "NB-0001", assetName: "Notebook", condition: "ปกติ", nextStatus: "พร้อมใช้งาน", nextLocation: "IT-STORE - คลัง IT", handoverNo: "HO-2610-0001", voided: false },
-    { checkinId: "c-2", assetId: "a-2", assetTag: "MN-0002", assetName: "Monitor", condition: "ปกติ", nextStatus: "พร้อมใช้งาน", nextLocation: null, handoverNo: "co-2", voided: true },
+    { checkinId: "c-1", assetId: "a-1", assetTag: "NB-0001", assetName: "Notebook", condition: "ปกติ", nextStatus: "พร้อมใช้งาน", nextLocation: "IT-STORE - คลัง IT", handoverNo: "HO-2610-0001", damageNote: "จอมีรอยขีดข่วน", remark: null, voided: false },
+    { checkinId: "c-2", assetId: "a-2", assetTag: "MN-0002", assetName: "Monitor", condition: "ปกติ", nextStatus: "พร้อมใช้งาน", nextLocation: null, handoverNo: "co-2", damageNote: null, remark: null, voided: true },
   ])
 })
 
@@ -113,6 +113,9 @@ test("the multi-machine RT- lists one row per machine, strikes a voided row, sig
   assert.match(multi, /data-voided=\{row\.voided \? "true" : undefined\}/)
   assert.match(multi, /row\.voided \? "line-through" : undefined/)
   assert.match(multi, /t\("documentMachineVoided"\)/)
+  // Each machine's own damage note and remark stand under its row, so a note typed in the batch form is on the paper.
+  assert.match(multi, /\{row\.damageNote \? \(\n\s+<div data-document-machine-note="damage"[^\n]*>\n\s+<span className="font-semibold">\{t\("damageNote"\)\}:<\/span> \{row\.damageNote\}/)
+  assert.match(multi, /\{row\.remark \? \(\n\s+<div data-document-machine-note="remark"[^\n]*>\n\s+<span className="font-semibold">\{t\("remark"\)\}:<\/span> \{row\.remark\}/)
   // The two signature images are the anchor's (the same files are attached to every record, G7P4-R5).
   assert.match(multi, /module: "checkin_return_signature", referenceId: anchor\.id/)
   assert.match(multi, /module: "checkin_receive_signature", referenceId: anchor\.id/)

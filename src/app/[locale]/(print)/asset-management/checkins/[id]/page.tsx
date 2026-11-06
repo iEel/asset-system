@@ -327,6 +327,16 @@ async function renderMultiMachineDocument({
                           <span className="font-semibold">{row.assetTag}</span> {row.assetName}
                         </div>
                         {row.voided ? <div className="mt-1 text-xs font-semibold text-danger">{t("documentMachineVoided")}</div> : null}
+                        {row.damageNote ? (
+                          <div data-document-machine-note="damage" className="mt-1 whitespace-pre-line break-words text-xs">
+                            <span className="font-semibold">{t("damageNote")}:</span> {row.damageNote}
+                          </div>
+                        ) : null}
+                        {row.remark ? (
+                          <div data-document-machine-note="remark" className="mt-1 whitespace-pre-line break-words text-xs">
+                            <span className="font-semibold">{t("remark")}:</span> {row.remark}
+                          </div>
+                        ) : null}
                       </td>
                       <td className={row.voided ? "px-3 py-2 line-through" : "px-3 py-2"}>{orNil(row.condition)}</td>
                       <td className={row.voided ? "px-3 py-2 line-through" : "px-3 py-2"}>{orNil(row.nextStatus)}</td>
