@@ -15,9 +15,11 @@ import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { CategoryEditSummary } from "@/components/master-data/category-form/edit-summary"
 import { CategoryPrefixBox } from "@/components/master-data/category-form/prefix-box"
 import { CategoryFormSection } from "@/components/master-data/category-form/section-card"
 import {
@@ -25,6 +27,14 @@ import {
   CustomFieldTemplateTable,
   createCustomFieldDefinition,
 } from "@/components/master-data/category-form/template-table"
+import {
+  categoryChangeParts,
+  categoryFormTotals,
+  categoryStatusLocked,
+  diffCategoryForm,
+  type CategoryChangePart,
+} from "@/lib/category-form-summary"
+import { cn } from "@/lib/utils"
 import { maxLength, required } from "@/lib/validation-rules"
 
 type CustomFieldDefinitionValue = CategoryCustomFieldDraft
@@ -97,10 +107,25 @@ function validate(values: CategoryFormValues): Partial<Record<string, string>> {
   return errors
 }
 
-// Board MD-Category-Edit (group 8 plan 2): one client form state over numbered section cards in the main column, with
-// the side column beside it from lg (Task 3 adds the side panel ผลของการแก้ไข and the sticky footer, and rebuilds sections
-// 3 and 4). The edit page passes the saved category and context (usage counts, the prefix box, G8P2-R1's values per field
-// name); the create page passes context only, so no counts and nothing to mark ใหม่ or renamed against.
+// The footer's change summary keys (category-form-summary.ts) to their messages.
+const CHANGE_MESSAGES = {
+  fieldsAdded: "form.changeFieldsAdded",
+  fieldsEdited: "form.changeFieldsEdited",
+  fieldsRemoved: "form.changeFieldsRemoved",
+  fieldsReordered: "form.changeFieldsReordered",
+  photosAdded: "form.changePhotosAdded",
+  photosRemoved: "form.changePhotosRemoved",
+  photosReordered: "form.changePhotosReordered",
+  info: "form.changeInfo",
+  description: "form.changeDescription",
+  activated: "form.changeActivated",
+  deactivated: "form.changeDeactivated",
+} as const satisfies Record<CategoryChangePart["key"], string>
+
+// Board MD-Category-Edit (group 8 plan 2): one client form state over numbered section cards in the main column, the
+// side panel ผลของการแก้ไข beside it from lg (under it on phones) and the sticky footer with the change summary. The edit
+// page passes the saved category and context (usage counts, the prefix box, G8P2-R1's values per field name, the
+// status guard); the create page passes context only, so no counts and nothing to mark ใหม่ or compare against.
 export function CategoryForm({
   category,
   backHref: providedBackHref,
@@ -124,6 +149,8 @@ export function CategoryForm({
   // The saved definition: ใหม่ (G8P2-R2) and the rename warning (G8P2-R1) compare the rows against it.
   const savedFields = category?.customFieldDefs ?? emptySavedFields
   const requiredCount = values.customFieldDefs.filter((field) => field.isRequired).length
+  const photoCount = values.photoChecklist.length
+  const statusLocked = categoryStatusLocked({ savedIsActive: category?.isActive, isActive: values.isActive, blockReason: context.deactivationBlockReason })
 
   const focusFirstError = () => fieldErrors.focusFirst(fieldOrder(values), { idFor: fieldId })
 
@@ -204,6 +231,26 @@ export function CategoryForm({
       t("subtitle")
     )
 
+  // The sticky footer: "แก้ไข {name} · เพิ่มช่องข้อมูล 1 ช่อง · …" against the saved category; create counts what it holds.
+  const changeParts = category ? categoryChangeParts(diffCategoryForm(category, values)) : []
+  const bold = (chunks: React.ReactNode) => <b className="font-semibold text-foreground">{chunks}</b>
+  const createTotals = categoryFormTotals(values)
+  const footerLine = isEdit ? (
+    <>
+      {t.rich("form.footerEdit", { name: category?.name ?? "", b: bold })}
+      {" · "}
+      {changeParts.length > 0
+        ? changeParts.map((part) => t(CHANGE_MESSAGES[part.key], "count" in part ? { count: part.count } : {})).join(" · ")
+        : t("form.noChanges")}
+    </>
+  ) : (
+    <>
+      {values.name.trim() ? t.rich("form.footerCreate", { name: values.name.trim(), b: bold }) : t("form.footerCreateEmpty")}
+      {" · "}
+      {t("form.footerCreateCounts", { fields: createTotals.fields, photos: createTotals.photos })}
+    </>
+  )
+
   return (
     <form onSubmit={handleSubmit} noValidate className="mx-auto max-w-6xl">
       <PageHeader
@@ -278,11 +325,11 @@ export function CategoryForm({
             />
           </CategoryFormSection>
 
-          {/* Task 3 rebuilds sections 3 and 4 to the board (numbered photo items; the status rule). */}
           <CategoryFormSection
             number={3}
             title={t("photoChecklistTemplate")}
             titleId="category-section-photos"
+            meta={photoCount > 0 ? t("list.photoCount", { count: photoCount }) : null}
             description={t("photoChecklistTemplateHelp")}
             action={
               <Button variant="outline" size="sm" onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}>
@@ -294,7 +341,8 @@ export function CategoryForm({
             <PhotoChecklistEditor
               items={values.photoChecklist}
               labels={{
-                item: t("photoChecklistItem"),
+                item: (row: number) => t("form.photoItemLabel", { row }),
+                placeholder: t("photoChecklistItem"),
                 empty: t("photoChecklistEmpty"),
                 remove: t("removePhotoChecklist"),
                 duplicate: t("duplicateItem"),
@@ -308,22 +356,33 @@ export function CategoryForm({
             />
           </CategoryFormSection>
 
+          {/* ใช้งาน: disabled only while a category saved active still has models or assets (the PUT guard, which counts every
+              one of them, active or not); an inactive category can always be ticked back on (spec §6). */}
           <CategoryFormSection number={4} title={t("form.sectionStatus")} titleId="category-section-status">
-            <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+            <label className={cn("flex items-start gap-3 rounded-md border border-border px-3 py-2.5 text-sm", statusLocked ? "bg-muted" : "bg-background")}>
               <input
                 type="checkbox"
                 checked={values.isActive}
+                disabled={statusLocked}
+                aria-describedby={statusLocked ? "category-status-help category-status-locked" : "category-status-help"}
                 onChange={(event) => setField("isActive", event.target.checked)}
-                className={checkboxVariants()}
+                className={cn(checkboxVariants(), "mt-0.5")}
               />
-              {tCommon("active")}
+              <span className="min-w-0">
+                <span className="block font-medium text-foreground">{tCommon("active")}</span>
+                <span id="category-status-help" className="block text-meta text-muted-foreground">{t("form.statusHelp")}</span>
+                {statusLocked ? <span id="category-status-locked" className="block text-meta text-muted-foreground">{context.deactivationBlockReason}</span> : null}
+              </span>
             </label>
           </CategoryFormSection>
         </div>
 
-        {/* The side column from lg: Task 3 puts the side panel ผลของการแก้ไข here (G8P2-R3). */}
+        <CategoryEditSummary saved={category} values={values} context={context} />
 
-        <div className="flex justify-end gap-3 border-t border-border pt-5 lg:col-span-2">
+        <StickyFormFooter
+          className="lg:col-span-2"
+          status={<span data-category-footer className="break-words">{footerLine}</span>}
+        >
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
@@ -331,7 +390,7 @@ export function CategoryForm({
             <Save aria-hidden="true" />
             {tCommon("save")}
           </Button>
-        </div>
+        </StickyFormFooter>
       </div>
     </form>
   )
@@ -347,7 +406,8 @@ function PhotoChecklistEditor({
 }: {
   items: string[]
   labels: {
-    item: string
+    item: (row: number) => string
+    placeholder: string
     empty: string
     remove: string
     duplicate: string
@@ -385,62 +445,62 @@ function PhotoChecklistEditor({
     return <EmptyNote>{labels.empty}</EmptyNote>
   }
 
+  // Numbered as the board: an ordered list whose hidden labels carry the number ("รายการรูปที่ต้องการ 2").
   return (
-    <div className="space-y-2">
+    <ol className="grid gap-2">
       {items.map((item, index) => (
-        <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(4,auto)]">
-          <Field label={labels.item} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>
+        <li key={index} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto]">
+          <span aria-hidden="true" className="pt-2.5 text-sm text-muted-foreground num">{index + 1}.</span>
+          <Field label={labels.item(index + 1)} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>
             <Input
               value={item}
               onChange={(event) => updateItem(index, event.target.value)}
               maxLength={100}
-              placeholder={labels.item}
+              placeholder={labels.placeholder}
             />
           </Field>
-          <Button
-            variant="outline"
-            size="icon-lg"
-            onClick={() => moveItem(index, -1)}
-            disabled={index === 0}
-            aria-label={labels.moveUp}
-            title={labels.moveUp}
-            className="justify-self-start"
-          >
-            <ArrowUp aria-hidden="true" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-lg"
-            onClick={() => moveItem(index, 1)}
-            disabled={index === items.length - 1}
-            aria-label={labels.moveDown}
-            title={labels.moveDown}
-            className="justify-self-start"
-          >
-            <ArrowDown aria-hidden="true" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-lg"
-            onClick={() => duplicateItem(index)}
-            aria-label={labels.duplicate}
-            title={labels.duplicate}
-            className="justify-self-start"
-          >
-            <Copy aria-hidden="true" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-lg"
-            onClick={() => removeItem(index)}
-            aria-label={labels.remove}
-            title={labels.remove}
-            className="justify-self-start"
-          >
-            <Trash2 aria-hidden="true" />
-          </Button>
-        </div>
+          <div className="col-start-2 flex items-start gap-2 sm:col-start-auto">
+            <Button
+              variant="outline"
+              size="icon-lg"
+              onClick={() => moveItem(index, -1)}
+              disabled={index === 0}
+              aria-label={labels.moveUp}
+              title={labels.moveUp}
+            >
+              <ArrowUp aria-hidden="true" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-lg"
+              onClick={() => moveItem(index, 1)}
+              disabled={index === items.length - 1}
+              aria-label={labels.moveDown}
+              title={labels.moveDown}
+            >
+              <ArrowDown aria-hidden="true" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-lg"
+              onClick={() => duplicateItem(index)}
+              aria-label={labels.duplicate}
+              title={labels.duplicate}
+            >
+              <Copy aria-hidden="true" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-lg"
+              onClick={() => removeItem(index)}
+              aria-label={labels.remove}
+              title={labels.remove}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </div>
+        </li>
       ))}
-    </div>
+    </ol>
   )
 }

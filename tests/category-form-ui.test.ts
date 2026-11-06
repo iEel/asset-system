@@ -9,6 +9,7 @@ const prefixBox = read("src/components/master-data/category-form/prefix-box.tsx"
 const editPage = read("src/app/[locale]/(dashboard)/master-data/categories/[id]/edit/page.tsx")
 const newPage = read("src/app/[locale]/(dashboard)/master-data/categories/new/page.tsx")
 const context = read("src/lib/category-form-context.ts")
+const summary = read("src/components/master-data/category-form/edit-summary.tsx")
 const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
 const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
@@ -19,10 +20,10 @@ test("the category form uses the shared fields, buttons and a busy save button (
   }
   assert.equal(source.match(/<input\b/g)?.length, 1, "only the status checkbox stays a raw input in the form")
   assert.equal(table.match(/<input\b/g)?.length, 1, "and the จำเป็น checkbox in the table")
-  for (const text of [source, table]) {
-    assert.equal(text.match(/<input\n\s+type="checkbox"/g)?.length, 1)
-    assert.equal(text.match(/className=\{checkboxVariants\(\)\}/g)?.length, 1)
-  }
+  for (const text of [source, table]) assert.equal(text.match(/<input\n\s+type="checkbox"/g)?.length, 1)
+  // The status checkbox sits beside its two-line text (Task 3), top-aligned as the admin forms' checkboxes.
+  assert.equal(source.match(/className=\{cn\(checkboxVariants\(\), "mt-0\.5"\)\}/g)?.length, 1)
+  assert.equal(table.match(/className=\{checkboxVariants\(\)\}/g)?.length, 1)
   assert.equal(source.match(/<Field label=/g)?.length, 4, "code, name, description, photo item")
   assert.equal(table.match(/<Field label=/g)?.length, 5, "field name, label, Thai label, type, options")
   assert.equal(source.match(/^\s+required$/gm)?.length, 2, "code and name keep the browser's own required check")
@@ -95,13 +96,53 @@ test("the save sends the form values as before: the API and its payload are unch
   assert.match(source, /const method = isEdit \? "PUT" : "POST"/)
 })
 
-test("the photo checklist editor keeps its move limits and the shared button looks (2C batch 2; Task 3 rebuilds it)", () => {
+test("section 3: numbered photo items keep the editor's move limits and the shared button looks (board MD-Category-Edit, Task 3)", () => {
   assert.equal(source.match(/<Button variant="outline" size="sm"/g)?.length, 1, "add photo item")
   assert.match(source, /<Button\n\s+variant="outline"\n\s+size="sm"\n\s+onClick=\{\(\) => setCustomFields/, "add custom field in the section head")
-  assert.match(source, /sm:grid-cols-\[minmax\(0,1fr\)_repeat\(4,auto\)\]/, "the icon columns size to the 44px phone button")
-  assert.match(source, /<Field label=\{labels\.item\} hideLabel id=\{`category-photo-\$\{index\}`\} error=\{errorFor\(index\)\}>\n\s+<Input\n\s+value=\{item\}[\s\S]*?maxLength=\{100\}/)
+  assert.match(source, /meta=\{photoCount > 0 \? t\("list\.photoCount", \{ count: photoCount \}\) : null\}/)
+  // An ordered list: the visible "1." is decoration, the hidden label carries the number.
+  assert.match(source, /<ol className="grid gap-2">/)
+  assert.match(source, /<span aria-hidden="true" className="pt-2\.5 text-sm text-muted-foreground num">\{index \+ 1\}\.<\/span>/)
+  assert.match(source, /<Field label=\{labels\.item\(index \+ 1\)\} hideLabel id=\{`category-photo-\$\{index\}`\} error=\{errorFor\(index\)\}>\n\s+<Input\n\s+value=\{item\}[\s\S]*?maxLength=\{100\}/)
+  assert.match(source, /item: \(row: number\) => t\("form\.photoItemLabel", \{ row \}\)/)
+  assert.equal(th.category.form.photoItemLabel, "รายการรูปที่ต้องการ {row, number}")
   assert.equal(source.match(/variant="outline"\n\s+size="icon-lg"/g)?.length, 4, "the photo item icons are 40px beside the 40px field (2D D5); remove is neutral (K22)")
-  assert.equal(source.match(/className="justify-self-start"/g)?.length, 4)
   assert.match(source, /onClick=\{\(\) => moveItem\(index, -1\)\}\n\s+disabled=\{index === 0\}/)
   assert.match(source, /onClick=\{\(\) => moveItem\(index, 1\)\}\n\s+disabled=\{index === items\.length - 1\}/)
+})
+
+test("section 4: ใช้งาน is disabled only while an active saved category still has models or assets, counted as the PUT guard counts", () => {
+  // Every model and asset, active or not (the guard reads _count), with the guard's own reason.
+  assert.match(context, /prisma\.assetCategory\.findUnique\(\{ where: \{ id: categoryId \}, select: \{ _count: \{ select: \{ assets: true, models: true \} \} \} \}\)/)
+  assert.match(context, /deactivationBlockReason: guardCounts \? getCategoryDeleteBlockReason\(guardCounts\._count\) : null/)
+  assert.match(source, /const statusLocked = categoryStatusLocked\(\{ savedIsActive: category\?\.isActive, isActive: values\.isActive, blockReason: context\.deactivationBlockReason \}\)/)
+  assert.match(source, /checked=\{values\.isActive\}\n\s+disabled=\{statusLocked\}/)
+  assert.match(source, /aria-describedby=\{statusLocked \? "category-status-help category-status-locked" : "category-status-help"\}/)
+  assert.match(source, /\{statusLocked \? <span id="category-status-locked" className="block text-meta text-muted-foreground">\{context\.deactivationBlockReason\}<\/span> : null\}/)
+  assert.equal(th.category.form.statusHelp, "ถ้าไม่ใช้งาน หมวดหมู่นี้จะไม่แสดงในรายการเลือกของหน้าอื่น")
+})
+
+test("the side panel ผลของการแก้ไข: ตอนนี้ against หลังบันทึก from the live form state (G8P2-R3), sticky from lg, under the form on phones", () => {
+  assert.match(source, /<\/div>\n\n\s+<CategoryEditSummary saved=\{category\} values=\{values\} context=\{context\} \/>/, "after the main column in the DOM")
+  assert.match(summary, /<aside\n\s+data-category-edit-summary\n\s+aria-labelledby="category-summary-title"\n\s+className=\{cn\(getPanelClasses\(\), "grid min-w-0 content-start gap-4 p-4 sm:p-5 lg:sticky lg:top-4 lg:self-start"\)\}/)
+  assert.match(summary, /const after = categoryFormTotals\(values\)/)
+  assert.match(summary, /const now = saved \? categoryFormTotals\(saved\) : null/)
+  // Create has no saved column: only หลังบันทึก.
+  assert.match(summary, /\{now \? <th scope="col"[^>]*>\{t\("form\.summaryNow"\)\}<\/th> : null\}/)
+  for (const key of ["summaryFields", "summaryRequired", "summaryPhotos", "summaryStatus"]) assert.ok(summary.includes(`t("form.${key}")`), key)
+  assert.equal(th.category.form.summaryTitle, "ผลของการแก้ไข")
+  assert.equal(th.category.form.summaryNow, "ตอนนี้")
+  assert.equal(th.category.form.summaryAfter, "หลังบันทึก")
+  assert.equal(th.category.form.summaryModels, "รุ่นในหมวดหมู่")
+  assert.equal(th.category.form.summaryAssets, "ทรัพย์สินที่ได้รับผล")
+  assert.match(en.category.form.summaryFieldCount, /\{count, plural, one \{# field\} other \{# fields\}\}/)
+})
+
+test("the sticky footer: the change summary from saved against current, cancel before save", () => {
+  assert.match(source, /<StickyFormFooter\n\s+className="lg:col-span-2"\n\s+status=\{<span data-category-footer className="break-words">\{footerLine\}<\/span>\}\n\s+>/)
+  assert.match(source, /const changeParts = category \? categoryChangeParts\(diffCategoryForm\(category, values\)\) : \[\]/)
+  assert.equal(th.category.form.changeFieldsAdded, "เพิ่มช่องข้อมูล {count, number} ช่อง")
+  assert.equal(th.category.form.footerEdit, "แก้ไข <b>{name}</b>")
+  assert.equal(th.category.form.noChanges, "ยังไม่ได้แก้ไข")
+  assert.match(en.category.form.changeFieldsAdded, /\{count, plural, one \{# field\} other \{# fields\}\}/)
 })

@@ -61,7 +61,12 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // too) on the total card and the footer, and the cells "{n} ช่อง" and "{n} รายการ".
   // Group 8 plan 2 Task 2 added 5: the category form's usage line (keyed on models; assets is a plural too), the template
   // head "{n} ช่อง · จำเป็น {r}", the table's caption, the rename warning "ทรัพย์สิน {n} รายการ" and the saved-values note.
-  assert.equal(pluralKeys.size, 103,[...pluralKeys.keys()].join(", "))
+  // Group 8 plan 2 Task 3 added 10: the side panel's "{n} ช่อง" and "{n} รายการ", its two notes on the existing assets,
+  // the create footer "ช่องข้อมูล {f} ช่อง · รายการรูป {p} รายการ" (keyed on fields; photos is a plural too) and the
+  // footer's five counted changes (เพิ่ม/แก้/ลบช่องข้อมูล, เพิ่ม/ลบรายการรูป).
+  assert.equal(pluralKeys.size, 113,[...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
+  assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
   assert.equal(pluralKeys.get("category.form.usageLine"), "models")
   assert.match(en.get("category.form.usageLine") ?? "", /\{assets, plural, one \{# asset\} other \{# assets\}\}/)
   for (const key of ["templateCount", "templateCaption", "renameWarning", "savedValuesNote"]) assert.equal(pluralKeys.get(`category.form.${key}`), "count", key)

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
+import { getCategoryDeleteBlockReason } from "@/lib/category-delete-guard"
 import { buildCategoryDrilldownHrefs, buildCategoryPrefixSettingsHref } from "@/lib/category-list-query"
 import { readCategoryCustomFieldValueCounts } from "@/lib/category-custom-field-value-counts"
 import { categoryPrefixFor, parsePrefixRows, type AssetTagExampleParts } from "@/lib/category-prefix-groups"
@@ -18,6 +19,9 @@ export type CategoryFormContext = {
   // permission; and G8P2-R1's per-field-name count of active assets holding a value.
   usage: { models: number; assets: number; modelsHref: string | null; assetsHref: string | null } | null
   fieldValueCounts: Record<string, number>
+  // Edit only: the PUT guard's refusal to untick ใช้งาน (getCategoryDeleteBlockReason over every model and asset, active
+  // or not), null when nothing is left in the category; section 4 disables the checkbox with it (group 8 plan 2 Task 3).
+  deactivationBlockReason: string | null
 }
 
 type SessionUser = Parameters<typeof hasPermission>[0]
@@ -33,7 +37,7 @@ export async function readCategoryFormContext({
   user: SessionUser
   categoryId?: string
 }): Promise<CategoryFormContext> {
-  const [settings, company, usage, fieldValueCounts] = await Promise.all([
+  const [settings, company, usage, fieldValueCounts, guardCounts] = await Promise.all([
     prisma.systemSetting.findMany({ where: { key: { in: TAG_SETTING_KEYS } }, select: { key: true, value: true } }),
     // The example tag needs one company and branch code: the first active company by code and its first active branch.
     prisma.company.findFirst({
@@ -48,6 +52,9 @@ export async function readCategoryFormContext({
         ])
       : Promise.resolve(null),
     categoryId ? readCategoryCustomFieldValueCounts(categoryId, (args) => prisma.asset.findMany(args)) : Promise.resolve({}),
+    categoryId
+      ? prisma.assetCategory.findUnique({ where: { id: categoryId }, select: { _count: { select: { assets: true, models: true } } } })
+      : Promise.resolve(null),
   ])
   const setting = (key: string) => settings.find((row) => row.key === key)?.value ?? ""
   const { prefix, sharedWithIds } = categoryPrefixFor(parsePrefixRows(setting(assetTagCategoryPrefixesKey)), categoryId)
@@ -85,5 +92,6 @@ export async function readCategoryFormContext({
           }
         : null,
     fieldValueCounts,
+    deactivationBlockReason: guardCounts ? getCategoryDeleteBlockReason(guardCounts._count) : null,
   }
 }

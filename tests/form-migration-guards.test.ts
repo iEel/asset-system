@@ -78,6 +78,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
   // Group 7 plan 3 Task 2: the location form's save bar (board MD-Location-New).
   [`${C}master-data/location-form.tsx`]: ["/th/master-data/locations/new", "/th/master-data/locations/sample-1/edit"],
+  // Group 8 plan 2 Task 3: the category form's save bar with the change summary (board MD-Category-Edit).
+  [`${C}master-data/category-form.tsx`]: ["/th/master-data/categories/new", "/th/master-data/categories/sample-1/edit"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling

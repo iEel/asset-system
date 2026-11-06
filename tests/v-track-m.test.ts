@@ -244,7 +244,7 @@ test("category: errors under the field, also on each custom field and photo chec
     '<Field label={cell(t("fieldLabel"), row)} hideLabel id={`category-field-${index}-label`} required error={errorFor(index, "fieldLabel")}>',
     '<Field label={cell(t("fieldLabelTh"), row)} hideLabel id={`category-field-${index}-label-th`} error={errorFor(index, "fieldLabelTh")}>',
   ]) assert.ok(table.includes(field), field)
-  assert.ok(source.includes("<Field label={labels.item} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>"))
+  assert.ok(source.includes("<Field label={labels.item(index + 1)} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>"))
   // A row's error clears when that row's field changes; removing, copying or moving a row clears that template's errors.
   assert.match(table, /if \(field in CUSTOM_FIELD_ID_SUFFIX\) onFieldEdit\(index, field as CustomFieldErrorField\)/)
   assert.equal(source.match(/\n    onRowsShift\(\)\n/g)?.length, 3, "remove, duplicate and move of the photo items")
