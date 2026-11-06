@@ -8,8 +8,9 @@ export type E2eUserKey = "itStaff" | "itHead" | "viewer" | "employee"
 
 // Spec §7, the users table. IT staff: no approve; the IT head: the IT staff set plus audit and disposal approve and the
 // audit, maintenance and disposal exports (decision DX6 (ก)), the work center (user decision 2026-10-25), the brands
-// page's view, create and edit (group 7 plan 1 Task 5), the employee pages' view (group 7 plan 2 Task 5) and the
-// locations page's view, create and edit (group 7 plan 3 Task 5); the
+// page's view, create and edit (group 7 plan 1 Task 5), the employee pages' view (group 7 plan 2 Task 5), the
+// locations page's view, create and edit (group 7 plan 3 Task 5) and the companies, branches and departments lists'
+// view with branch:create (group 8 plan 1 Task 5); the
 // viewer: view only, on the modules the IT staff work in; the employee: no permission (lands on My Assets).
 const IT_STAFF_PERMISSIONS = [
   "asset:view", "asset:create", "asset:edit",
@@ -35,6 +36,11 @@ export const E2E_ROLE_PERMISSIONS: Record<E2eUserKey, readonly string[]> = {
     // picker. The run's own role; the seed admin still creates the spec's rooms. No location:delete, so ⋯ ปิดใช้งาน is
     // checked up to its confirm only. IT staff stay without them.
     "location:view", "location:create", "location:edit",
+    // and the companies, branches and departments lists (group 8 plan 1 Task 5): view, and branch:create for ⋯
+    // เพิ่มสาขาให้บริษัทนี้ (the branch form opens; the spec saves nothing there). The run's own role; the seed admin creates
+    // the spec's company, branch and department. No company:, branch: or department:delete or edit, so ⋯ ปิดใช้งาน is
+    // checked absent. IT staff stay without them.
+    "company:view", "branch:view", "branch:create", "department:view",
   ],
   viewer: ["asset:view", "audit:view", "maintenance:view", "disposal:view", "report:view"],
   employee: [],

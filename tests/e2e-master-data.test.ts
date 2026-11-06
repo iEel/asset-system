@@ -190,3 +190,81 @@ test("the group 7 follow-ups words and the employees spec's limits (group 7 foll
   assert.ok(spec.includes("await expect(menuItem(rowMenu, W.deactivate)).toHaveCount(0)"), "no ปิดใช้งาน without employee:delete")
   assert.doesNotMatch(spec, /deactivateTitle|confirmTitle/)
 })
+
+// The companies, branches and departments E2E spec of page group 8 plan 1 (plan
+// docs/superpowers/plans/2026-11-07-group8-org-lists.md, Task 5).
+test("the org lists spec reads the app's own words, and the department guard's reason is the server's (group 8 plan 1 task 5)", async () => {
+  const { ORG_LIST_WORDS } = await import("../e2e/master-data/org-lists-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(ORG_LIST_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  assert.equal(ORG_LIST_WORDS.recordStatusLabel, th.common.recordStatus.label)
+  assert.equal(ORG_LIST_WORDS.footerCounts, th.common.recordStatus.footerCounts)
+  assert.equal(ORG_LIST_WORDS.moreActionsFor, th.common.moreActionsFor)
+  assert.equal(ORG_LIST_WORDS.tableScrollHint, th.common.tableScrollHint)
+  assert.equal(ORG_LIST_WORDS.noNameEn, th.company.list.noNameEn)
+  assert.equal(ORG_LIST_WORDS.assetTagCodeFallback, th.company.list.assetTagCodeFallback)
+  assert.equal(ORG_LIST_WORDS.taxIdMissing, th.company.list.taxIdMissing)
+  assert.equal(ORG_LIST_WORDS.addBranch, th.company.list.addBranch)
+  assert.equal(ORG_LIST_WORDS.addLocation, th.branch.list.addLocation)
+  assert.equal(ORG_LIST_WORDS.viewEmployees, th.branch.list.viewEmployees)
+  assert.equal(ORG_LIST_WORDS.branchFooterTotals, th.branch.list.footerTotals)
+  assert.equal(ORG_LIST_WORDS.moveBeforeDeactivate, th.department.list.moveBeforeDeactivate)
+  assert.equal(ORG_LIST_WORDS.departmentSummaryLine, th.department.list.summaryLine)
+  assert.equal(ORG_LIST_WORDS.departmentNameSort, th.department.name)
+  assert.equal(ORG_LIST_WORDS.departmentChip, th.asset.department)
+  assert.equal(ORG_LIST_WORDS.branchCreateTitle, th.branch.createTitle)
+  assert.equal(ORG_LIST_WORDS.locationCreateTitle, th.location.createTitle)
+  // The 409's reason is a server string (not a message): the spec's constant is what the guard gives for one employee
+  // and one asset.
+  const { getDepartmentDeleteBlockReason } = await import("../src/lib/organization-master-query.ts")
+  const spec = read("e2e/master-data/org-lists.spec.ts")
+  const reason = getDepartmentDeleteBlockReason({ employees: 1, assets: 1, openAuditRounds: 0 })
+  assert.ok(spec.includes(`const DEPARTMENT_BLOCKED = "${reason}"`), reason ?? "a reason")
+})
+
+test("the IT head's run role views the companies, branches and departments lists and adds a branch, deletes and edits none of them, IT staff hold none (group 8 plan 1 task 5)", async () => {
+  const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
+  for (const permission of ["company:view", "branch:view", "branch:create", "department:view"]) assert.ok(E2E_ROLE_PERMISSIONS.itHead.includes(permission), permission)
+  for (const moduleName of ["company", "branch", "department"]) {
+    for (const action of ["edit", "delete"]) assert.ok(!E2E_ROLE_PERMISSIONS.itHead.includes(`${moduleName}:${action}`), `the IT head holds no ${moduleName}:${action}`)
+  }
+  assert.ok(!E2E_ROLE_PERMISSIONS.itHead.includes("company:create") && !E2E_ROLE_PERMISSIONS.itHead.includes("department:create"))
+  for (const key of ["itStaff", "viewer", "employee"] as const) {
+    assert.ok(!E2E_ROLE_PERMISSIONS[key].some((permission) => /^(?:company|branch|department):/.test(permission)), `${key} holds no company, branch or department permission`)
+  }
+})
+
+test("the org lists spec: run-marked organisation by the seed admin, the three boards, the presets with กลับ, no ปิดใช้งาน without delete, the guard's 409 through PUT, the phone's table (group 8 plan 1 task 5)", () => {
+  const spec = read("e2e/master-data/org-lists.spec.ts")
+  assert.ok(spec.includes(`import { asUser, expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!/import \{[^}]*\b(?:test|expect)\b[^}]*\} from "@playwright\/test"/.test(spec), "test and expect from the fixtures")
+  assert.ok(spec.includes(`asUser("itHead")`))
+  // Run-marked: every code starts with the run and the project; the seed admin creates them through the setup's APIs.
+  assert.ok(spec.includes("const prefix = `${runId}-${projectCode(projectName)}-OG`"))
+  for (const code of ["`${prefix}C`", "`${prefix}B`", "`${prefix}D`", "`${prefix}R`", "`${prefix}E`"]) assert.ok(spec.includes(code), code)
+  for (const route of ["/api/companies", "/api/branches", "/api/departments", "/api/locations", "/api/employees"]) assert.ok(spec.includes(`admin.post("${route}"`), route)
+  // The company has no asset-tag code, so the run setup (the first company with one) never picks it.
+  assert.ok(spec.includes("assetTagCode: null"))
+  // The segmented counts, the presets with returnTo and กลับ, the department filter's chip.
+  assert.ok(spec.includes(`await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })`))
+  assert.ok(spec.includes(`url.pathname === "/th/master-data/branches/new" && url.searchParams.get("companyId") === company.id`))
+  assert.ok(spec.includes(`await expect(page.locator("#branch-company")).toHaveValue(company.id)`))
+  assert.ok(spec.includes(`url.pathname === "/th/master-data/locations/new" && url.searchParams.get("branchId") === branch.id`))
+  assert.ok(spec.includes(`await expect(page.locator("#location-branch")).toHaveValue(branch.id)`))
+  assert.ok(spec.includes("await expectBackTo(page, companiesPath, company.code)") && spec.includes("await expectBackTo(page, branchesPath, branch.code)"))
+  assert.ok(spec.includes(`url.searchParams.get("departmentId") === department.id`))
+  assert.ok(spec.includes("`${W.departmentChip}: ${department.code} - ${department.name}`"))
+  // ปิดใช้งาน absent on all three lists (no delete permission).
+  assert.equal((spec.match(/await expect\(menuItem\(\w+Menu, W\.deactivate\)\)\.toHaveCount\(0\)/g) ?? []).length, 3)
+  // The guard through PUT isActive false on the spec's own department, refused with 409; never a DELETE.
+  assert.equal((spec.match(/isActive: false/g) ?? []).length, 1)
+  assert.ok(spec.includes("admin.put(`/api/departments/${department.id}`"))
+  assert.ok(spec.includes(".toBe(409)") && spec.includes(".error).toBe(DEPARTMENT_BLOCKED)"))
+  assert.doesNotMatch(spec, /method: "DELETE"|\.delete\(/)
+  assert.doesNotMatch(spec, /\/api\/admin|signInOnce\(/)
+  // The phone's table and sheet, axe through recordSettled.
+  assert.equal((spec.match(/if \(phone\) await expectPhoneTable\(page, W\.\w+Title\)/g) ?? []).length, 3)
+  assert.ok(spec.includes(`page.getByRole("dialog")`))
+  assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 10)
+})
