@@ -76,7 +76,8 @@ test("employee and supplier detail pages preserve returnTo for back and edit act
   for (const item of detailSections) {
     const source = readFileSync(`src/app/[locale]/(dashboard)/master-data/${item.section}/[id]/page.tsx`, "utf8")
 
-    assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+    // The employee page also reads ?heldPage= (group 7 plan 2).
+    assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\](?:; heldPage\?: string \| string\[\])? \}>/)
     assert.match(source, new RegExp(`normalizeMasterDataReturnTo\\(locale, "${item.section}", rawSearchParams\\.returnTo\\)`))
     assert.match(source, /href=\{returnToHref\}/)
     assert.match(source, new RegExp(`appendMasterDataReturnTo\\(hrefs\\.edit, returnToHref\\)`))

@@ -24,6 +24,18 @@ export function buildEmployeeDetailHrefs({ locale, employeeId }: { locale: strin
   }
 }
 
+/**
+ * The employee page's own address (group 7 plan 2): the way back from the return and handover forms, and the held
+ * table's paging. The list it came from rides along only when it is not the plain list; a held page only past the first.
+ */
+export function buildEmployeePageHref(locale: string, employeeId: string, { returnTo, heldPage = 1 }: { returnTo?: string; heldPage?: number } = {}) {
+  const params = new URLSearchParams()
+  if (returnTo && returnTo !== `/${locale}/master-data/employees`) params.set("returnTo", returnTo)
+  if (heldPage > 1) params.set("heldPage", String(heldPage))
+  const query = params.toString()
+  return `/${locale}/master-data/employees/${employeeId}${query ? `?${query}` : ""}`
+}
+
 export function buildEmployeeDetailSummary(input: EmployeeDetailSummaryInput) {
   const attentionCount =
     input.openCheckoutCount +
@@ -37,9 +49,14 @@ export function buildEmployeeDetailSummary(input: EmployeeDetailSummaryInput) {
   }
 }
 
-export function buildEmployeeFollowUpItems(input: EmployeeDetailSummaryInput & { employmentStatus: string }) {
+/** G7P2-R1: not active by employment status or by record (AD deactivated). */
+export function isFormerEmployee(employee: { employmentStatus: string; isActive: boolean }): boolean {
+  return employee.employmentStatus !== "active" || !employee.isActive
+}
+
+export function buildEmployeeFollowUpItems(input: EmployeeDetailSummaryInput & { employmentStatus: string; isActive: boolean }) {
   const items: EmployeeFollowUpKey[] = []
-  if (input.employmentStatus !== "active" && input.currentAssetCount > 0) items.push("former_employee_with_assets")
+  if (isFormerEmployee(input) && input.currentAssetCount > 0) items.push("former_employee_with_assets")
   if (input.openCheckoutCount > 0) items.push("open_checkout_returns")
   if (input.openMaintenanceCount > 0) items.push("open_maintenance")
   if (input.pendingAuditFindingCount > 0) items.push("pending_audit_findings")

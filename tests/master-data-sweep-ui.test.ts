@@ -95,10 +95,11 @@ test("supplier page: sections are ContentPanels, follow-ups a warning Notice or 
 
 test("employee page: sections are ContentPanels, follow-ups warning Notices, empties EmptyNote, codes tag, table links text links and quiet row links (spec 2D D7, D9, M21, M33)", () => {
   const source = read(`${D}master-data/employees/[id]/page.tsx`)
+  // Held, history, repairs; follow-up, audit, disposal, subordinates, the user account (group 7 plan 2 Task 3).
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 8)
   assert.match(source, /<Notice key=\{item\} tone="warning" title=\{t\(`followUp\.\$\{item\}\.title`\)\}>/)
-  assert.equal(source.match(/<EmptyNote>/g)?.length, 2, "no subordinates, and an empty mini list")
-  assert.equal(source.match(/className=\{linkVariants\(\{ size: "inherit" \}\)\}/g)?.length, 4, "the four table links")
+  assert.equal(source.match(/<EmptyNote>/g)?.length, 3, "no subordinates, an empty mini list, no user account")
+  assert.equal(source.match(/className=\{linkVariants\(\{ size: "inherit" \}\)\}/g)?.length, 5, "the manager, the audit round, the history asset and the two repair links")
   assert.equal(source.match(/className=\{quietRowLinkClasses\}/g)?.length, 2, "the subordinate and mini list rows, on the shared row hover")
   assert.match(source, /<span className="tag">\{subordinate\.code\}<\/span>/)
   assert.doesNotMatch(source, /function SectionHeading\b|rounded-lg border|border-dashed|bg-warning-soft|hover:bg-primary-soft|hover:border-primary-border|hover:underline|\btext-xs\b|\btext-lg\b/)

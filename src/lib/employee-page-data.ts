@@ -6,7 +6,7 @@ import { openCheckoutWhere } from "./asset-operation-search-rules.ts"
 import { normalizeAssetOwnershipType } from "./asset-ownership.ts"
 import { readAssetPhotoPreviews, type AssetPhotoPreview } from "./asset-photo-preview.ts"
 import { auditRoundCoverageWhere } from "./audit-round-status.ts"
-import { buildEmployeeFollowUpItems, type EmployeeDetailSummaryInput, type EmployeeFollowUpKey } from "./employee-detail.ts"
+import { buildEmployeeFollowUpItems, isFormerEmployee, type EmployeeDetailSummaryInput, type EmployeeFollowUpKey } from "./employee-detail.ts"
 import { getHeldAssetReturnBlock, type HeldAssetReturnBlock } from "./held-asset-return-block.ts"
 import { startOfBangkokDay } from "./preventive-maintenance.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
@@ -66,10 +66,8 @@ export function isEmployeeLoanOverdue(dueDate: Date | null, now: Date): boolean 
   return dueDate !== null && dueDate.getTime() < startOfBangkokDay(now).getTime()
 }
 
-/** G7P2-R1: not active by employment status or by record (AD deactivated). */
-export function isFormerEmployee(employee: { employmentStatus: string; isActive: boolean }): boolean {
-  return employee.employmentStatus !== "active" || !employee.isActive
-}
+// G7P2-R1 lives with the follow-up items (employee-detail.ts), which read it too.
+export { isFormerEmployee }
 
 const employeeSelect = {
   id: true,
@@ -450,7 +448,7 @@ export async function readEmployeePage(
     openHandovers: { regular: openCheckoutCount - loanCount, loans: loanCount, overdueLoans: overdueLoanCount },
     account: account ? { username: account.username, isActive: account.isActive } : null,
     counts,
-    followUpItems: buildEmployeeFollowUpItems({ employmentStatus: employee.employmentStatus, ...counts }),
+    followUpItems: buildEmployeeFollowUpItems({ employmentStatus: employee.employmentStatus, isActive: employee.isActive, ...counts }),
     handoverHistory,
     repairs,
     auditFindings,
