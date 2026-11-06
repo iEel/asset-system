@@ -9,7 +9,7 @@ export function getCategoryDeleteBlockReason({
   if (assets > 0) reasons.push(`ทรัพย์สิน ${assets.toLocaleString("th-TH")} รายการ`)
   if (models > 0) reasons.push(`รุ่น ${models.toLocaleString("th-TH")} รายการ`)
   if (reasons.length === 0) return null
-  return `ไม่สามารถลบหมวดหมู่นี้ได้ เพราะยังมี${joinThaiReasons(reasons)}ใช้งานอยู่`
+  return `ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังมี${joinThaiReasons(reasons)}ใช้งานอยู่`
 }
 
 function joinThaiReasons(reasons: string[]) {

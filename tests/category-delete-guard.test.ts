@@ -11,7 +11,7 @@ test("allows deleting unused categories", () => {
 test("blocks deleting categories that still have assets or models", () => {
   assert.equal(
     getCategoryDeleteBlockReason({ assets: 2, models: 1 }),
-    "ไม่สามารถลบหมวดหมู่นี้ได้ เพราะยังมีทรัพย์สิน 2 รายการ และรุ่น 1 รายการใช้งานอยู่"
+    "ปิดใช้งานหมวดหมู่นี้ไม่ได้ เพราะยังมีทรัพย์สิน 2 รายการ และรุ่น 1 รายการใช้งานอยู่"
   )
 })
 

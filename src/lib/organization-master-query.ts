@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
+import { recordStatusCountWheres } from "./master-data-list-ui.ts"
 
 export const companySorts = ["createdAt", "code", "assetTagCode", "nameTh", "branches", "employees", "assets"] as const
 export const branchSorts = ["createdAt", "code", "name", "company", "locations", "employees", "assets"] as const
@@ -328,12 +329,9 @@ export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhe
 }
 
 // G7F-R1: the counts on the employee list's record-status segmented control. Each is the list's own where (every other
-// filter kept) with that record status; ทั้งหมด is their sum, as isActive is never null.
+// filter kept) with that record status; ทั้งหมด is their sum, as isActive is never null. The shared helper (group 8).
 export function employeeRecordStatusCountWheres(state: EmployeeListState) {
-  return {
-    active: buildEmployeeWhere({ ...state, status: "active" }),
-    inactive: buildEmployeeWhere({ ...state, status: "inactive" }),
-  } satisfies Record<string, Prisma.EmployeeWhereInput>
+  return recordStatusCountWheres(state, buildEmployeeWhere)
 }
 
 // "{n} คน · ถือครองรวม {a} รายการ" (board MD-Employees): the active assets held by the people the list finds, over the
@@ -590,7 +588,20 @@ export function getCompanyDeleteBlockReason(counts: {
   ].filter((reason): reason is string => Boolean(reason))
 
   if (reasons.length === 0) return null
-  return `ไม่สามารถลบบริษัทนี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+  return `ปิดใช้งานบริษัทนี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+}
+
+// G8P1-R3: what keeps a department in use — its active employees, its active assets (the asset's department) and the
+// audit rounds scoped to it that are still open. The route (group 8 plan 1 Task 4) reads the counts.
+export function getDepartmentDeleteBlockReason(counts: { employees: number; assets: number; openAuditRounds: number }) {
+  const reasons = [
+    counts.employees > 0 ? `พนักงาน ${counts.employees} รายการ` : null,
+    counts.assets > 0 ? `ทรัพย์สิน ${counts.assets} รายการ` : null,
+    counts.openAuditRounds > 0 ? `รอบตรวจนับ ${counts.openAuditRounds} รายการ` : null,
+  ].filter((reason): reason is string => Boolean(reason))
+
+  if (reasons.length === 0) return null
+  return `ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
 }
 
 export function getBranchDeleteBlockReason(counts: {
@@ -607,7 +618,7 @@ export function getBranchDeleteBlockReason(counts: {
   ].filter((reason): reason is string => Boolean(reason))
 
   if (reasons.length === 0) return null
-  return `ไม่สามารถลบสาขานี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+  return `ปิดใช้งานสาขานี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
 }
 
 export function getEmployeeDeleteBlockReason(counts: {
@@ -626,7 +637,7 @@ export function getEmployeeDeleteBlockReason(counts: {
   ].filter((reason): reason is string => Boolean(reason))
 
   if (reasons.length === 0) return null
-  return `ไม่สามารถลบพนักงานนี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+  return `ปิดใช้งานพนักงานนี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
 }
 
 export function getSupplierDeleteBlockReason(counts: {
@@ -643,7 +654,7 @@ export function getSupplierDeleteBlockReason(counts: {
   ].filter((reason): reason is string => Boolean(reason))
 
   if (reasons.length === 0) return null
-  return `ไม่สามารถลบผู้ขายนี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+  return `ปิดใช้งานผู้ขายนี้ไม่ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
 }
 
 export function buildCompanyDrilldownHrefs({

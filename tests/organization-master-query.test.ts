@@ -24,6 +24,7 @@ import {
   buildSupplierWhere,
   getBranchDeleteBlockReason,
   getCompanyDeleteBlockReason,
+  getDepartmentDeleteBlockReason,
   getEmployeeDeleteBlockReason,
   getSupplierDeleteBlockReason,
   parseBranchListParams,
@@ -104,7 +105,7 @@ test("summarizes company health and blocks deleting referenced companies", () =>
   assert.equal(getCompanyDeleteBlockReason({ branches: 0, departments: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
     getCompanyDeleteBlockReason({ branches: 2, departments: 1, employees: 3, assets: 4, auditRounds: 1 }),
-    "ไม่สามารถลบบริษัทนี้ได้ เพราะยังมีสาขา 2 รายการ, แผนก 1 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานบริษัทนี้ไม่ได้ เพราะยังมีสาขา 2 รายการ, แผนก 1 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 
@@ -178,7 +179,7 @@ test("builds branch count order, summary, drilldown, and delete guards", () => {
   assert.equal(getBranchDeleteBlockReason({ locations: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
     getBranchDeleteBlockReason({ locations: 2, employees: 3, assets: 4, auditRounds: 1 }),
-    "ไม่สามารถลบสาขานี้ได้ เพราะยังมีที่ตั้ง 2 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานสาขานี้ไม่ได้ เพราะยังมีที่ตั้ง 2 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 
@@ -293,7 +294,7 @@ test("builds employee where, summary, drilldown, query string, and delete guard"
   assert.equal(getEmployeeDeleteBlockReason({ custodianAssets: 0, subordinates: 0, userAccounts: 0, openCheckouts: 0, auditRounds: 0 }), null)
   assert.equal(
     getEmployeeDeleteBlockReason({ custodianAssets: 2, subordinates: 1, userAccounts: 1, openCheckouts: 3, auditRounds: 1 }),
-    "ไม่สามารถลบพนักงานนี้ได้ เพราะยังมีทรัพย์สินที่ถือครอง 2 รายการ, ผู้ใต้บังคับบัญชา 1 รายการ, บัญชีผู้ใช้ 1 รายการ, รายการส่งมอบค้างคืน 3 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ปิดใช้งานพนักงานนี้ไม่ได้ เพราะยังมีทรัพย์สินที่ถือครอง 2 รายการ, ผู้ใต้บังคับบัญชา 1 รายการ, บัญชีผู้ใช้ 1 รายการ, รายการส่งมอบค้างคืน 3 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 
@@ -343,11 +344,11 @@ test("builds supplier filters, summary, drilldown, query string, and delete guar
   assert.equal(getSupplierDeleteBlockReason({ assets: 0, maintenanceTickets: 0, purchaseDocuments: 0 }), null)
   assert.equal(
     getSupplierDeleteBlockReason({ assets: 2, maintenanceTickets: 1, purchaseDocuments: 3 }),
-    "ไม่สามารถลบผู้ขายนี้ได้ เพราะยังมีทรัพย์สิน 2 รายการ, งานซ่อม 1 รายการ และเอกสารจัดซื้อ 3 รายการใช้งานอยู่"
+    "ปิดใช้งานผู้ขายนี้ไม่ได้ เพราะยังมีทรัพย์สิน 2 รายการ, งานซ่อม 1 รายการ และเอกสารจัดซื้อ 3 รายการใช้งานอยู่"
   )
   assert.equal(
     getSupplierDeleteBlockReason({ assets: 0, maintenanceTickets: 0, maintenancePlans: 2, purchaseDocuments: 0 }),
-    "ไม่สามารถลบผู้ขายนี้ได้ เพราะยังมีแผน PM 2 รายการใช้งานอยู่"
+    "ปิดใช้งานผู้ขายนี้ไม่ได้ เพราะยังมีแผน PM 2 รายการใช้งานอยู่"
   )
 })
 
@@ -441,4 +442,16 @@ test("the employee list's phone filters open only when a form field is set, not 
   ]) {
     assert.equal(employeeListHasFieldFilters(parseEmployeeListParams(params)), true, JSON.stringify(params))
   }
+})
+
+test("the department reason names its active employees, assets and open audit rounds in the ปิดใช้งาน wording (G8P1-R1, G8P1-R3)", () => {
+  assert.equal(getDepartmentDeleteBlockReason({ employees: 0, assets: 0, openAuditRounds: 0 }), null)
+  assert.equal(
+    getDepartmentDeleteBlockReason({ employees: 3, assets: 12, openAuditRounds: 1 }),
+    "ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมีพนักงาน 3 รายการ, ทรัพย์สิน 12 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+  )
+  assert.equal(
+    getDepartmentDeleteBlockReason({ employees: 0, assets: 0, openAuditRounds: 2 }),
+    "ปิดใช้งานแผนกนี้ไม่ได้ เพราะยังมีรอบตรวจนับ 2 รายการใช้งานอยู่"
+  )
 })
