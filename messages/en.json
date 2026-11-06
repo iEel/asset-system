@@ -1954,8 +1954,9 @@
     },
     "view": {
       "label": "View",
-      "tree": "Tree",
-      "list": "List"
+      "tree": "Structure",
+      "list": "List with paths",
+      "hint": "Searching switches to the list with paths, e.g. Head office › Building A › Floor 3 › Room 301 · Select a row to edit the location"
     },
     "tree": {
       "label": "Location tree by branch",
@@ -1969,12 +1970,8 @@
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
       "assetsAt": "Current assets at {name}: {n}",
-      "match": "Matches the search",
-      "noMatch": "No active location matches \"{search}\"",
-      "empty": "No active locations yet",
-      "footer": "{branches} branches · {locations} active locations",
-      "countNote": "Asset counts cover the location itself only; select one to open the register · \"Subtree total\" adds every level below, for reading",
-      "activeOnly": "The tree shows active locations only. Inactive locations and the other filters are in the list view"
+      "footer": "{branches} branches · {locations} locations",
+      "countNote": "Asset counts cover the location itself only; select one to open the register · \"Subtree total\" adds every level below, for reading"
     },
     "deactivate": {
       "action": "Deactivate",
@@ -1993,6 +1990,12 @@
         "auditRounds": "Not in an audit round"
       },
       "success": "Deactivated"
+    },
+    "reactivate": {
+      "action": "Reactivate",
+      "confirmTitle": "Reactivate {name}?",
+      "confirmBody": "This location will be offered again on other pages such as handover, transfer and new asset",
+      "success": "Reactivated"
     }
   },
   "category": {

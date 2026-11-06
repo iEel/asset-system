@@ -16,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { useApiError } from "@/components/ui/use-api-error"
 import { formatCount } from "@/lib/display-format"
 import { locationDeactivateBlockers, type LocationDeactivateCounts } from "@/lib/location-tree-view"
@@ -159,5 +161,55 @@ export function LocationDeactivateButton({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  )
+}
+
+export type LocationReactivateRecord = { code: string; name: string; branchId: string; parentId: string | null; locationType: string }
+
+// "เปิดใช้งาน" beside the ไม่ใช้งาน badge (board MD-Locations). PUT /api/locations/[id] takes the whole record, so this
+// sends the stored code, name, branch, parent and type with isActive = true; the description is left out and kept. The
+// parent and branch do not change, so the parent rule does not run. Same confirm as the other master-data records.
+export function LocationReactivateButton({ endpoint, name, record }: { endpoint: string; name: string; record: LocationReactivateRecord }) {
+  const t = useTranslations("location")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+  const confirm = useConfirm()
+  const apiError = useApiError()
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function reactivate() {
+    const confirmed = await confirm({
+      title: t("reactivate.confirmTitle", { name }),
+      description: t("reactivate.confirmBody"),
+      confirmLabel: t("reactivate.action"),
+      returnFocusRef: buttonRef,
+    })
+    if (!confirmed) return
+
+    setBusy(true)
+    try {
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...record, isActive: true }),
+      })
+      if (!response.ok) {
+        const result = await response.json().catch(() => null)
+        throw new Error(result?.error ?? tCommon("error"))
+      }
+      toast.success(t("reactivate.success"))
+      router.refresh()
+    } catch (error) {
+      apiError.toast(error)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Button ref={buttonRef} type="button" variant="ghost" size="sm" busy={busy} className="text-primary" onClick={() => void reactivate()}>
+      {t("reactivate.action")}
+    </Button>
   )
 }

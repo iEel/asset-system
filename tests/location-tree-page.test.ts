@@ -8,7 +8,7 @@ import {
   buildLocationQueryString,
   parseLocationListParams,
 } from "../src/lib/location-list-query.ts"
-import { locationDeactivateBlockers, locationTreeOpenState } from "../src/lib/location-tree-view.ts"
+import { locationDeactivateBlockers } from "../src/lib/location-tree-view.ts"
 
 // Page group 7 plan 3 Task 3 (spec §6.1): the locations page as a tree beside the list. Sources are read CRLF-safe.
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -63,49 +63,34 @@ test("Review Focus 4: the confirm names each blocker with its count, in the serv
   assert.deepEqual(locationDeactivateBlockers({ currentAssets: 0, homeAssets: 5, activeChildren: 0, auditRounds: 0 }), [{ key: "homeAssets", count: 5 }])
 })
 
-test("G7P3-R1: the tree opens one level; a search opens the ancestors of every match and marks the matches", () => {
-  const tree = buildLocationTree([
-    row("a", "อาคาร A", null, { locationType: "Building" }),
-    row("f3", "ชั้น 3", "a", { locationType: "Floor" }),
-    row("it", "ห้อง IT", "f3"),
-    row("b", "อาคาร B", null, { locationType: "Building" }),
-    row("rack", "ตู้ 1", "b", { locationType: "Rack" }),
-  ])
-  const roots = tree.get("hq") ?? []
-  const label = (type: string) => ({ Building: "อาคาร", Floor: "ชั้น", Room: "ห้อง", Rack: "แร็ก" })[type] ?? type
-
-  assert.deepEqual(locationTreeOpenState(roots, "", label), { expanded: [], matches: [] })
-  assert.deepEqual(locationTreeOpenState(roots, "  ", label), { expanded: [], matches: [] })
-
-  const byName = locationTreeOpenState(roots, "ห้อง it", label)
-  assert.deepEqual(byName.matches, ["it"])
-  assert.deepEqual([...byName.expanded].sort(), ["a", "f3"])
-
-  const byCode = locationTreeOpenState(roots, "rack", label)
-  assert.deepEqual(byCode.matches, ["rack"])
-  assert.deepEqual(byCode.expanded, ["b"])
-
-  const byType = locationTreeOpenState(roots, "แร็ก", label)
-  assert.deepEqual(byType.matches, ["rack"])
-
-  const root = locationTreeOpenState(roots, "อาคาร a", label)
-  assert.deepEqual(root.matches, ["a"])
-  assert.deepEqual(root.expanded, [], "a matching root needs nothing opened")
+test("the tree under ทั้งหมด: a row given to the builder as active hangs under its stored parent, inactive or not (board MD-Locations)", () => {
+  // The page passes isActive: true for every row it shows, so an inactive floor keeps its rooms and paths run through it.
+  const tree = buildLocationTree([row("a", "อาคาร A", null), row("f3", "ชั้น 3", "a"), row("arc", "ห้องเก็บเอกสารเก่า", "f3")])
+  const [root] = tree.get("hq") ?? []
+  assert.deepEqual(root.children[0].children[0].path, ["อาคาร A", "ชั้น 3", "ห้องเก็บเอกสารเก่า"])
 })
 
-test("the page: tree by default, the view links, the list with name paths and the exact register link", () => {
+test("the page: tree by default, a search shows the list with its hint, the list with name paths and the exact register link", () => {
   const source = read(PAGE)
-  assert.match(source, /const showList = listState\.view === "list"/)
-  assert.match(source, /<TabNav\n\s+aria-label=\{t\("view\.label"\)\}/)
-  assert.match(source, /<LocationTreeView\n/)
+  assert.match(source, /const showList = listState\.view === "list" \|\| listState\.search !== ""/)
+  assert.match(source, /<TabNav\n\s+aria-label=\{t\("view\.label"\)\}\n\s+current=\{showList \? "list" : "tree"\}/)
+  assert.match(source, /\{t\("view\.hint"\)\}/)
+  assert.match(source, /view === "tree" \? \{ view, search: "", page: 1 \}/, "โครงสร้าง clears the search")
+  assert.match(source, /<LocationTreeView key=/)
   assert.match(source, /buildLocationDrilldownHrefs\(\{ locale, locationId: location\.id \}\)/)
   assert.doesNotMatch(source, /locationCode:/, "the register is no longer searched by code")
   assert.match(source, /\.join\(" › "\)/, "the list writes the path with names")
   assert.match(source, /<LocationDeactivateButton\n/)
   assert.doesNotMatch(source, /deleteAction=/, "⋯ says ปิดใช้งาน through LocationDeactivateButton, not ลบ")
-  // Phone: the tree only (spec §6.1). The list is a desktop view; the view links are too.
-  assert.match(source, /\{showList \? \(\n\s+<div className="hidden md:block">\n\s+<DataTable/)
-  assert.match(source, /className=\{showList \? "md:hidden" : undefined\}/)
+  // The tree follows the status filter; every shown row hangs under its stored parent.
+  assert.match(source, /isActive: true,\n\s+ownAssetCount: location\._count\.currentAssets,/)
+  assert.match(source, /listState\.status === "all"\n\s+\? fullTree/)
+  // ?view=list shows the list at every width: the table from md, compact cards below.
+  assert.match(source, /<DataTable framed=\{false\} className="hidden md:block" caption=\{t\("title"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/)
+  assert.match(source, /<div data-location-mobile-list className="md:hidden">/)
+  assert.match(source, /\{total > 0 \? \(\n\s+<DataTableFoot>\n\s+<Pagination/, "one pagination under both layouts")
+  // เปิดใช้งาน beside the ไม่ใช้งาน badge, in the table and on the cards.
+  assert.equal(source.match(/<LocationReactivateButton endpoint=\{`\/api\/locations\/\$\{location\.id\}`\}/g)?.length, 2)
 })
 
 test("the tree: a client component with real disclosure buttons (aria-expanded, aria-controls) reachable by Tab", () => {
@@ -117,6 +102,10 @@ test("the tree: a client component with real disclosure buttons (aria-expanded, 
   assert.match(source, /t\("tree\.parentOtherBranch"\)/)
   assert.match(source, /<LocationDeactivateButton\n/)
   assert.match(source, /href=\{node\.assetsHref\}/)
+  // Board MD-Locations: a child-count column and a status column with เปิดใช้งาน on an inactive row.
+  assert.match(source, /\{formatCount\(node\.children\.length\)\}<\/div>/)
+  assert.match(source, /\{node\.isActive \? null : <LocationReactivateButton endpoint=\{`\/api\/locations\/\$\{node\.id\}`\} name=\{node\.name\} record=\{node\.record\} \/>\}/)
+  assert.doesNotMatch(source, /initialExpanded|matches/, "a search shows the list, the tree has no search state")
 })
 
 test("ปิดใช้งาน: the confirm lists the blockers and offers no deactivate button while any remains", () => {
@@ -128,10 +117,20 @@ test("ปิดใช้งาน: the confirm lists the blockers and offers no 
   assert.match(source, /fetch\(endpoint, \{ method: "DELETE" \}\)/)
 })
 
-test("the Thai copy of the tree and the confirm (task 3 brief)", () => {
+test("เปิดใช้งาน: the same confirm as other master data, then PUT with the stored record and isActive true (no new API)", () => {
+  const source = read(DEACTIVATE)
+  assert.match(source, /export function LocationReactivateButton\(/)
+  assert.match(source, /title: t\("reactivate\.confirmTitle", \{ name \}\)/)
+  assert.match(source, /method: "PUT",[\s\S]*?body: JSON\.stringify\(\{ \.\.\.record, isActive: true \}\)/)
+  assert.match(read("src/app/api/locations/[id]/route.ts"), /const input = locationSchema\.parse\(await request\.json\(\)\)/)
+})
+
+test("the Thai copy of the tree and the confirm (task 3 brief; board MD-Locations for the views)", () => {
   const expected: Record<string, string> = {
-    "location.view.tree": "แผนผัง",
-    "location.view.list": "รายการ",
+    "location.view.tree": "โครงสร้าง",
+    "location.view.list": "รายการพร้อมเส้นทาง",
+    "location.view.hint": "พิมพ์ค้นหาแล้วจะสลับเป็นรายการพร้อมเส้นทาง เช่น สำนักงานใหญ่ › อาคาร A › ชั้น 3 › ห้อง 301 · กดที่แถวเพื่อเปิดหน้าแก้ไขที่ตั้ง",
+    "location.reactivate.action": "เปิดใช้งาน",
     "location.tree.subtree": "รวมที่ตั้งย่อย {n}",
     "location.tree.parentOtherBranch": "อยู่คนละสาขากับที่ตั้งแม่",
     "location.tree.addChild": "เพิ่มที่ตั้งในนี้",
