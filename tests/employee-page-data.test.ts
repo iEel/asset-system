@@ -7,6 +7,8 @@ import {
   isEmployeeLoanOverdue,
   parseEmployeeHeldPage,
   readEmployeePage,
+  readEmployeeReturnBatch,
+  employeeReturnBatchReadLimit,
   type EmployeePageDb,
 } from "../src/lib/employee-page-data.ts"
 
@@ -391,4 +393,26 @@ test("chunkEmployeePageIds: lists of 2,000 at most", () => {
   const ids = Array.from({ length: 4001 }, (_, index) => `id-${index}`)
   assert.deepEqual(chunkEmployeePageIds(ids).map((chunk) => chunk.length), [2000, 2000, 1])
   assert.deepEqual(chunkEmployeePageIds([]), [])
+})
+
+test("group 7 plan 4: the multi-return reads every held asset (not paged) with the outstanding-component and open-repair facts", async () => {
+  const assets = Array.from({ length: 27 }, (_, index) => asset(`a-${index}`, `T-${String(index).padStart(2, "0")}`))
+  const { db } = fakeDb({
+    employees: [employee({ employmentStatus: "resigned", isActive: false })],
+    assets,
+    repairs: [{ id: "mt-1", assetId: "a-1", isActive: true, repairStatus: "in_progress" }],
+    components: [{ id: "link-1", componentAssetId: "a-2", referenceId: "ci-1", status: "outstanding", removedAt: null, updatedAt: now }],
+  })
+  const batch = await readEmployeeReturnBatch(db, "emp-1")
+  assert.ok(batch)
+  assert.equal(batch.total, 27)
+  assert.equal(batch.rows.length, 27)
+  assert.deepEqual({ id: batch.employee.id, isActive: batch.employee.isActive }, { id: "emp-1", isActive: false })
+  const byId = new Map(batch.rows.map((row) => [row.assetId, row]))
+  assert.equal(byId.get("a-1")?.openRepair, true)
+  assert.equal(byId.get("a-2")?.outstandingComponent, true)
+  assert.equal(byId.get("a-3")?.openRepair, false)
+  assert.equal(byId.get("a-3")?.outstandingComponent, false)
+  assert.equal(employeeReturnBatchReadLimit, 200)
+  assert.equal(await readEmployeeReturnBatch(db, "nobody"), null)
 })

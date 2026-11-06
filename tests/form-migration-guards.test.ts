@@ -107,6 +107,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}maintenance/repair-record-actions.tsx`]: [3, 6, 0],
   // Group 3 plan 2 Task 8: the three local Selects go (the room is a SearchableSelect, the condition the chips); the return date's Input and the next status's NativeSelect keep theirs.
   [`${C}asset-operations/checkin-form.tsx`]: [2, 0, 0],
+  // Group 7 plan 4 Task 4: รับคืนหลายรายการ's return date Input and each row's next status NativeSelect.
+  [`${C}asset-operations/batch-checkin-form.tsx`]: [2, 0, 0],
   [`${C}asset-operations/checkout-form.tsx`]: [3, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
   // Group 3 plan 4 Task 6: the reason Input (required, maxLength 500) and the list search (maxLength 100).

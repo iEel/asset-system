@@ -30,6 +30,7 @@ import {
   assetOperationSearchMaxChars,
   splitAssetOperationSearchWords,
   type AssetOperationSearchAnswer,
+  type AssetOperationSearchGroup,
   type AssetOperationSearchRow,
 } from "@/lib/asset-operation-search-rules"
 import { formatCount } from "@/lib/display-format"
@@ -54,6 +55,8 @@ export type AssetOperationPickerProps = {
   onChange: (row: AssetOperationSearchRow | null) => void
   /** A refused row this accepts can still be picked, so its reason reads under the field (group 3 spec §19.3, A1-R1). */
   pickBlocked?: (row: AssetOperationSearchRow) => boolean
+  /** รับคืน's holder group: an action after the group's count (รับคืนทั้งหมดของ {holder}, group 7 plan 4); null for none. */
+  groupAction?: (group: AssetOperationSearchGroup) => React.ReactNode
 }
 
 const noRows: AssetOperationSearchRow[] = []
@@ -348,6 +351,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
                             {t("groupCount", { count: section.group.count })}
                           </>
                         )}
+                        {props.groupAction?.(section.group)}
                       </div>
                       <ul role="group" aria-labelledby={`${id}-group-${sectionIndex}`}>
                         {section.rows.map(renderRow)}

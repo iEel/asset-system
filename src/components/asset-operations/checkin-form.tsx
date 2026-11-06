@@ -11,6 +11,7 @@ import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
 import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
 import { ChoiceCard, ChoiceChip } from "@/components/ui/choice-card"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field } from "@/components/ui/field"
@@ -34,9 +35,11 @@ import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import {
   buildAssetOperationSearchHref,
   type AssetOperationSearchAnswer,
+  type AssetOperationSearchGroup,
   type AssetOperationSearchRow,
 } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo, getOperationCancelHref } from "@/lib/asset-return-navigation"
+import { batchCheckinHolderHref } from "@/lib/batch-checkin-form-rules"
 import { getCheckinChoice } from "@/lib/checkin-choice"
 import { checkinPeopleOpen, checkinPhoneFooterCounts, checkinPhonePartClass } from "@/lib/checkin-phone"
 import {
@@ -675,6 +678,19 @@ export function CheckinForm({
     setReviewOpen(true)
   }
 
+  // A holder group of 2+ employees' machines in the search: รับคืนทั้งหมดของ {holder} opens the multi-return (group 7 plan 4,
+  // spec §5.3), back to this page (or to where this page came from). A plain link: this client file imports no next/link.
+  function renderHolderGroupLink(group: AssetOperationSearchGroup) {
+    const href = batchCheckinHolderHref(locale, group, returnTo ?? `/${locale}/asset-management/checkin`)
+    if (!href || !group.label) return null
+    return (
+      <>
+        {" · "}
+        <a href={href} className={linkVariants({ size: "meta" })}>{tAll("batchCheckin.holderGroupLink", { holder: group.label })}</a>
+      </>
+    )
+  }
+
   // อ่านข้อมูลสรุปไม่สำเร็จ, with ลองอีกครั้ง, in the summary card.
   const detailFailedNotice = chosen && rowDetail === "failed" ? (
     <span role="status" className="grid justify-items-start gap-2">
@@ -838,6 +854,7 @@ export function CheckinForm({
                 initialQuery={initialQuery}
                 error={blockedReason ?? fieldErrors.message("checkoutId")}
                 onChange={chooseRow}
+                groupAction={renderHolderGroupLink}
                 pickedBody={(row) => <CheckinAssetCard row={row} />}
               />
               {selectedCheckout && chosen ? (

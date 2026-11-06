@@ -226,6 +226,10 @@ export type EmployeeHeldAssetRow = {
   /** No open handover and not an outstanding component: ข้อมูลเก่า ("สร้างใบส่งมอบย้อนหลัง"; รับคืน by assetId). */
   legacy: boolean
   returnBlock: HeldAssetReturnBlock | null
+  /** Held as an outstanding component (ส่วนควบค้างคืน): returned through the single form's late return (G7P4-R2). */
+  outstandingComponent: boolean
+  /** An open repair record on the asset (G7P4-R2). */
+  openRepair: boolean
   lastAudit: EmployeeHeldLastAudit | null
 }
 
@@ -337,6 +341,8 @@ async function readHeldRows(db: EmployeePageDb, assets: HeldAssetRecord[]): Prom
       },
       legacy: !checkout && !link,
       returnBlock,
+      outstandingComponent: link !== null,
+      openRepair: repairAssetIds.has(asset.id),
       lastAudit: audit && {
         roundId: audit.auditRound.id,
         roundNo: audit.auditRound.auditNo,
@@ -461,4 +467,31 @@ export async function readEmployeePage(
     auditRounds,
     disposalRequests,
   }
+}
+
+// รับคืนหลายรายการ (group 7 plan 4 Task 4, spec §5.3): every asset the person holds, by asset tag, read as the employee
+// page reads its held rows (the same return block, handover and photo), not paged. Bounded at employeeReturnBatchReadLimit
+// rows; `total` says how many the person holds, so the form can say when some are not listed.
+export const employeeReturnBatchReadLimit = 200
+
+export type EmployeeReturnBatchEmployee = { id: string; code: string; fullNameTh: string; isActive: boolean; employmentStatus: string }
+export type EmployeeReturnBatchData = { employee: EmployeeReturnBatchEmployee; rows: EmployeeHeldAssetRow[]; total: number }
+
+export async function readEmployeeReturnBatch(db: EmployeePageDb, employeeId: string): Promise<EmployeeReturnBatchData | null> {
+  const employee = (await db.employee.findFirst({
+    where: { id: employeeId },
+    select: { id: true, code: true, fullNameTh: true, isActive: true, employmentStatus: true },
+  })) as EmployeeReturnBatchEmployee | null
+  if (!employee) return null
+  const where = { custodianId: employeeId, isActive: true }
+  const [total, assets] = await Promise.all([
+    db.asset.count({ where }),
+    db.asset.findMany({
+      where,
+      select: heldAssetSelect,
+      orderBy: [{ assetTag: "asc" }, { id: "asc" }],
+      take: employeeReturnBatchReadLimit,
+    }) as Promise<HeldAssetRecord[]>,
+  ])
+  return { employee, rows: await readHeldRows(db, assets), total }
 }

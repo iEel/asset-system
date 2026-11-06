@@ -1856,7 +1856,8 @@
       "accountTitle": "บัญชีผู้ใช้ในระบบ",
       "noAccount": "ไม่มีบัญชีผู้ใช้",
       "accountActive": "ใช้งาน",
-      "accountInactive": "ปิดใช้งาน"
+      "accountInactive": "ปิดใช้งาน",
+      "returnMany": "รับคืนหลายรายการ"
     },
     "summaryTotalBreakdown": "ทำงานอยู่ {active} · ลาออก {resigned} · พักงาน {suspended}",
     "formerHolderNote": "ยังถือครองอยู่ ควรรับคืน",
@@ -5824,7 +5825,9 @@
     "batchCheckinNeedsSingle": "รายการนี้ต้องรับคืนทีละรายการ",
     "batchCheckinNotHeld": "ทรัพย์สินนี้ไม่ได้อยู่กับผู้ถือครองคนนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง",
     "batchCheckinSignatureRequired": "ต้องมีลายเซ็นก่อนบันทึก",
-    "batchCheckinDuplicateAsset": "มีทรัพย์สินนี้ซ้ำในรายการ"
+    "batchCheckinDuplicateAsset": "มีทรัพย์สินนี้ซ้ำในรายการ",
+    "handoverModeMissing": "ไม่พบลักษณะการถือครองในรายการส่งมอบ กรุณาให้ผู้ดูแลตรวจสอบข้อมูล",
+    "handoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",
@@ -5908,5 +5911,40 @@
     "badgeHandover": "มีใบส่งมอบ {documentNo}",
     "badgeLegacy": "ข้อมูลเก่า ไม่มีใบส่งมอบ",
     "badgeOutstanding": "ส่วนควบค้างคืน"
+  },
+  "batchCheckin": {
+    "title": "รับคืนหลายรายการ",
+    "description": "รับคืนทรัพย์สินของคนเดียวกันในใบรับคืนใบเดียว แต่ละรายการบันทึกสภาพของตัวเอง",
+    "holderLine": "{holder} · ถือครอง {count} รายการ",
+    "notAllListed": "แสดง {shown} จาก {count} รายการ รายการที่เหลือรับคืนในรอบถัดไป",
+    "sectionAssets": "รายการที่รับคืน",
+    "sectionReturn": "รายละเอียดการคืน",
+    "sectionSignatures": "ลายเซ็น",
+    "selectRow": "รับคืน {tag}",
+    "needsSingle": "รับคืนทีละรายการ",
+    "nextLocationAll": "ที่ตั้งหลังรับคืน (ทุกรายการ)",
+    "overrideLocation": "เปลี่ยนเฉพาะรายการนี้",
+    "rowLocation": "ที่ตั้งหลังรับคืนของรายการนี้",
+    "useLocationAll": "ใช้ที่ตั้งเดียวกับทุกรายการ",
+    "rowPhotos": "รูปหลังรับคืน (ไม่บังคับ)",
+    "rowPhotosAdd": "เพิ่มรูป",
+    "rowDetails": "รูปและรายละเอียดความเสียหาย",
+    "repairHint": "ถ้าต้องส่งซ่อม ให้รับคืนรายการนี้ทีละรายการ",
+    "footer": "รับคืน {count} รายการ",
+    "footerNone": "ยังไม่ได้เลือกรายการ",
+    "reviewTitle": "ตรวจสอบก่อนรับคืน {count} รายการ",
+    "reviewDescription": "ทุกรายการอยู่ในใบรับคืนใบเดียวกัน ถ้ามีรายการใดรับคืนไม่ได้ จะไม่บันทึกเลย",
+    "reviewAssets": "รายการ",
+    "reviewEvidenceCount": "ลายเซ็น 2 รายการ · รูป {count} รูป",
+    "blockedTitle": "รับคืนไม่ได้ {count} รายการ",
+    "removeBlocked": "นำรายการที่รับคืนไม่ได้ออก",
+    "nothingSelected": "เลือกอย่างน้อย 1 รายการ",
+    "capReached": "รับคืนได้ครั้งละไม่เกิน {max} รายการ",
+    "summaryCount": "{count} รายการ",
+    "summaryAfter": "หลังรับคืน",
+    "success": "รับคืน {count} รายการแล้ว",
+    "emptyTitle": "ไม่มีทรัพย์สินที่ถือครองอยู่",
+    "emptyHelp": "คนนี้ไม่ได้ถือครองทรัพย์สินที่รับคืนได้",
+    "holderGroupLink": "รับคืนทั้งหมดของ {holder}"
   }
 }

@@ -27,6 +27,8 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}assets/asset-register-saved-views.tsx`]: 1,
   [`${C}asset-operations/checkout-form.tsx`]: 1,
   [`${C}asset-operations/checkin-form.tsx`]: 1,
+  // Group 7 plan 4 Task 4: รับคืนหลายรายการ.
+  [`${C}asset-operations/batch-checkin-form.tsx`]: 1,
   [`${C}asset-operations/transfer-form.tsx`]: 1,
   [`${C}asset-operations/bulk-move-form.tsx`]: 1,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
@@ -83,6 +85,7 @@ const V_FORMS: readonly string[] = [
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}asset-operations/transfer-form.tsx`,
   `${C}asset-operations/checkin-form.tsx`,
+  `${C}asset-operations/batch-checkin-form.tsx`,
   `${C}asset-operations/checkout-form.tsx`,
   `${C}master-data/brand-form.tsx`,
   `${C}master-data/company-form.tsx`,
@@ -173,7 +176,8 @@ test("the V readers skip comments and see a catch block, a .catch() handler and 
 })
 
 // Group 6 plan 4 (P4-R1) retired the two execution dialogs' forms: 52 became 50.
-test("V1 the scope list names every form a person submits, 51 in all (spec §5)", () => {
+// Group 7 plan 4 Task 4 added รับคืนหลายรายการ: 51 became 52.
+test("V1 the scope list names every form a person submits, 52 in all (spec §5)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
   for (const path of [...Object.keys(V_SCOPE), ...Object.keys(NOT_IN_SCOPE), ...V_FORMS, ...Object.keys(SELECT_STAR_ONLY)]) if (!exists(path)) problems.push(`${path} not found`)
@@ -189,7 +193,7 @@ test("V1 the scope list names every form a person submits, 51 in all (spec §5)"
     else if (forms > V_SCOPE[file.path]) problems.push(`${file.path}: ${forms} <form>, V_SCOPE counts ${V_SCOPE[file.path]}`)
   }
   assert.deepEqual(problems, [])
-  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 51)
+  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 52)
 })
 
 // Group 4 plan 6 Task 5: the labels page's note and print actions are no form. Print opens the print route, whose one

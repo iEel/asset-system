@@ -1856,7 +1856,8 @@
       "accountTitle": "User account",
       "noAccount": "No user account",
       "accountActive": "Active",
-      "accountInactive": "Inactive"
+      "accountInactive": "Inactive",
+      "returnMany": "Return several assets"
     },
     "summaryTotalBreakdown": "{active} active · {resigned} resigned · {suspended} suspended",
     "formerHolderNote": "Still holds assets; take them back",
@@ -5824,7 +5825,9 @@
     "batchCheckinNeedsSingle": "This asset must be returned on its own.",
     "batchCheckinNotHeld": "This asset is no longer held by this person. Reload the page and try again.",
     "batchCheckinSignatureRequired": "A signature is required before saving.",
-    "batchCheckinDuplicateAsset": "This asset is listed more than once."
+    "batchCheckinDuplicateAsset": "This asset is listed more than once.",
+    "handoverModeMissing": "The handover has no custody type. Ask an administrator to check the data.",
+    "handoverStatusMismatch": "The asset status does not match the custody type. Ask an administrator to check before returning."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",
@@ -5908,5 +5911,40 @@
     "badgeHandover": "Handover {documentNo}",
     "badgeLegacy": "Legacy record, no handover",
     "badgeOutstanding": "Outstanding component"
+  },
+  "batchCheckin": {
+    "title": "Return several assets",
+    "description": "Return one person's assets on one return document; each asset records its own condition",
+    "holderLine": "{holder} · holds {count}",
+    "notAllListed": "Showing {shown} of {count}; return the rest in another round",
+    "sectionAssets": "Assets returned",
+    "sectionReturn": "Return details",
+    "sectionSignatures": "Signatures",
+    "selectRow": "Return {tag}",
+    "needsSingle": "Return on its own",
+    "nextLocationAll": "Location after return (all assets)",
+    "overrideLocation": "Change for this asset only",
+    "rowLocation": "Location after return for this asset",
+    "useLocationAll": "Use the location for all",
+    "rowPhotos": "Photos after return (optional)",
+    "rowPhotosAdd": "Add photo",
+    "rowDetails": "Photos and damage details",
+    "repairHint": "If it needs a repair, return this asset on its own",
+    "footer": "Return {count}",
+    "footerNone": "No asset selected",
+    "reviewTitle": "Review before returning {count}",
+    "reviewDescription": "Every asset is on one return document. If any asset cannot be returned, nothing is saved.",
+    "reviewAssets": "Assets",
+    "reviewEvidenceCount": "2 signatures · {count} photos",
+    "blockedTitle": "{count} cannot be returned",
+    "removeBlocked": "Remove the assets that cannot be returned",
+    "nothingSelected": "Select at least one asset",
+    "capReached": "At most {max} assets per return",
+    "summaryCount": "{count} assets",
+    "summaryAfter": "After return",
+    "success": "{count} assets returned",
+    "emptyTitle": "No assets held",
+    "emptyHelp": "This person holds no asset that can be returned",
+    "holderGroupLink": "Return everything of {holder}"
   }
 }

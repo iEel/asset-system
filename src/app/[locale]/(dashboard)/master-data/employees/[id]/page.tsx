@@ -14,6 +14,7 @@ import {
   type EmployeePageDb,
 } from "@/lib/employee-page-data"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { batchCheckinPageHref, showBatchCheckinEntry } from "@/lib/batch-checkin-form-rules"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { getAssetStateTone } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
@@ -89,6 +90,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
   const heldPageHref = (heldPage: number) => `${buildEmployeePageHref(locale, employee.id, { returnTo: returnToHref, heldPage })}#held`
   const canHandOver = canEditAssets && !isFormerEmployee(employee)
   const handOverHref = appendReturnTo(`/${locale}/asset-management/checkout?custodianId=${employee.id}`, pageHref)
+  // รับคืนหลายรายการ (group 7 plan 4, spec §5.3): asset:edit, and at least two machines the multi-return takes.
+  const canReturnMany = canEditAssets && showBatchCheckinEntry({ rows: data.held.rows, total: data.held.total })
+  const returnManyHref = batchCheckinPageHref(locale, employee.id, pageHref)
   const heldTotalPages = Math.max(1, Math.ceil(data.held.total / data.held.pageSize))
   const openHandoverCount = data.openHandovers.regular + data.openHandovers.loans
 
@@ -132,7 +136,13 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
               <Edit aria-hidden="true" />
               {tCommon("edit")}
             </Link>
-            {/* Plan 4 (spec §5.3) puts "รับคืนหลายรายการ" here, before the primary action, for a viewer with asset:edit. */}
+            {/* "รับคืนหลายรายการ" (plan 4, spec §5.3), before the primary action, for a viewer with asset:edit. */}
+            {canReturnMany ? (
+              <Link href={returnManyHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                <LogIn aria-hidden="true" />
+                {tDetail("returnMany")}
+              </Link>
+            ) : null}
             {canHandOver ? (
               <Link href={handOverHref} className={buttonVariants({ size: "md" })}>
                 <LogOut aria-hidden="true" />

@@ -14,6 +14,10 @@ export function normalizeAssetReturnTo(locale: string, value: ReturnToParam) {
   const safeTargets = new Set([
     fallback,
     `/${locale}/asset-management/scan`,
+    // รับคืนหลายรายการ (group 7 plan 4): the return page's holder link comes back to it, and a row's รับคืนทีละรายการ
+    // comes back to the multi-return.
+    `/${locale}/asset-management/checkin`,
+    `/${locale}/asset-management/checkin/batch`,
   ])
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) return fallback
