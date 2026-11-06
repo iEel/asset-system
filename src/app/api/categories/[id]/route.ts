@@ -9,6 +9,7 @@ import { categorySchema } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { getCategoryDeleteBlockReason } from "@/lib/category-delete-guard"
 import { isDeactivation } from "@/lib/master-data-query"
+import { masterDataReactivateSchema } from "@/lib/validations/master-data-reactivate"
 
 type CategoryRouteContext = {
   params: Promise<{ id: string }>
@@ -146,6 +147,48 @@ function normalizeFieldOptions(options?: string | null) {
     .filter(Boolean)
 
   return parts.length > 0 ? JSON.stringify(parts) : null
+}
+
+// เปิดใช้งาน from the list (group 8 plan 2 Task 1, as the companies PATCH): the body is only { isActive: true }, so
+// nothing else of the category is written (no stale snapshot of the list goes back, no template or checklist touched);
+// the update entry logs the isActive change only. A category has no parent record to check.
+export async function PATCH(request: NextRequest, context: CategoryRouteContext) {
+  try {
+    const user = await requireAuth()
+    requirePermission(user, "category", "edit")
+
+    const { id } = await context.params
+    masterDataReactivateSchema.parse(await request.json())
+    const existing = await prisma.assetCategory.findFirst({ where: { id } })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    }
+    if (existing.isActive) {
+      return NextResponse.json(existing)
+    }
+
+    const category = await prisma.assetCategory.update({
+      where: { id },
+      data: {
+        isActive: true,
+        updatedBy: user.id,
+      },
+    })
+
+    await logAudit({
+      userId: user.id,
+      action: "update",
+      module: "category",
+      recordId: id,
+      oldValue: { isActive: false },
+      newValue: { isActive: true },
+    })
+
+    return NextResponse.json(category)
+  } catch (error) {
+    return errorResponse(error, 400)
+  }
 }
 
 export async function DELETE(_request: NextRequest, context: CategoryRouteContext) {

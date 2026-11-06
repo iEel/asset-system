@@ -99,6 +99,11 @@ test("inactive master data is reachable: a status filter, the real badge, inacti
       assert.match(source, /deactivate:\n\s+canDeactivate && department\.isActive\n\s+\? \{/, `${page}: ปิดใช้งาน follows isActive`)
       assert.match(source, /canEdit && !department\.isActive\n\s+\? \{/, `${page}: เปิดใช้งาน on inactive rows`)
       assert.match(source, /<RecordStatusSegmented /, `${page}: no status filter`)
+    } else if (page === "categories") {
+      // Group 8 plan 2 Task 1 (spec §3, §6): as companies, with category:delete and category:edit.
+      assert.match(source, /deactivate:\n\s+canDeactivate && category\.isActive\n\s+\? \{/, `${page}: ปิดใช้งาน follows isActive`)
+      assert.match(source, /canEdit && !category\.isActive\n\s+\? \{/, `${page}: เปิดใช้งาน on inactive rows`)
+      assert.match(source, /<RecordStatusSegmented /, `${page}: no status filter`)
     } else if (page === "companies") {
       // Group 8 plan 1 Task 2 (spec §3): MasterDataRowActions offers "ปิดใช้งาน" on active rows only, with company:delete,
       // and "เปิดใช้งาน" on inactive ones; the status filter is RecordStatusSegmented, kept in the form by a hidden input.

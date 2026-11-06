@@ -57,7 +57,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // employees and assets are plurals too).
   // Group 8 plan 1 Task 4 added 2: the departments card foot "รวมพนักงาน {e} คน" and the summary line
   // "{n} แผนก · ยังมีทรัพย์สินผูกอยู่ {d} แผนก รวม {a} รายการ" (keyed on departments; withAssets and assets are plurals too).
-  assert.equal(pluralKeys.size, 95,[...pluralKeys.keys()].join(", "))
+  // Group 8 plan 2 Task 1 added 3: the categories' "รุ่นรวม {m} · ทรัพย์สินรวม {a}" (keyed on models; assets is a plural
+  // too) on the total card and the footer, and the cells "{n} ช่อง" and "{n} รายการ".
+  assert.equal(pluralKeys.size, 98,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("department.summaryWithEmployeesFoot"), "employees")
   assert.equal(pluralKeys.get("department.list.summaryLine"), "departments")
   assert.equal(pluralKeys.get("branch.list.footerTotals"), "locations")

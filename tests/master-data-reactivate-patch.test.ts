@@ -64,6 +64,8 @@ const cases = [
   { dir: "companies", model: "company", module: "company", record: "company" as const },
   { dir: "branches", model: "branch", module: "branch", record: "branch" as const },
   { dir: "departments", model: "department", module: "department", record: "department" as const },
+  // Group 8 plan 2 Task 1: เปิดใช้งาน on the categories list, as the others (a category has no company to check).
+  { dir: "categories", model: "assetCategory", module: "category", record: "category" as const },
 ]
 
 // The stored record (inactive unless said), its company, and what the route writes.
@@ -138,7 +140,7 @@ test("a branch or a department whose company is inactive cannot come back, by PA
     branch: { code: "BKK", name: "Bangkok", companyId: "c1", address: "", contactPerson: "", isActive: true },
     department: { code: "D1", name: "IT", companyId: "c1", isActive: true },
   }
-  for (const item of cases.filter((entry) => entry.record !== "company")) {
+  for (const item of cases.filter((entry) => entry.record === "branch" || entry.record === "department")) {
     const record = item.record as "branch" | "department"
     const reason = getReactivateBlockedByCompanyReason(record, inactiveCompany)
     assert.ok(reason)
@@ -164,13 +166,20 @@ test("a branch or a department whose company is inactive cannot come back, by PA
   assert.equal(updates.length, 1)
 })
 
+test("the categories PATCH reads no company: an inactive category comes back with category:edit (group 8 plan 2 Task 1)", () => {
+  const source = read("src/app/api/categories/[id]/route.ts")
+  const patch = source.slice(source.indexOf("export async function PATCH"), source.indexOf("export async function DELETE"))
+  assert.match(patch, /requirePermission\(user, "category", "edit"\)/)
+  assert.doesNotMatch(patch, /company/)
+})
+
 test("the PATCH handlers read the shared schema and the reason helper (final review)", () => {
   assert.match(read("src/lib/validations/master-data-reactivate.ts"), /export const masterDataReactivateSchema = z\.object\(\{ isActive: z\.literal\(true\) \}\)\.strict\(\)/)
   for (const item of cases) {
     const source = read(`src/app/api/${item.dir}/[id]/route.ts`)
     assert.match(source, /export async function PATCH\(request: NextRequest, context: \w+RouteContext\)/, item.dir)
     assert.match(source, /masterDataReactivateSchema\.parse\(await request\.json\(\)\)/, item.dir)
-    if (item.record !== "company") {
+    if (item.record === "branch" || item.record === "department") {
       assert.match(source, new RegExp(`getReactivateBlockedByCompanyReason\\("${item.record}", existing\\.company\\)`), item.dir)
       assert.match(source, new RegExp(`getReactivateBlockedByCompanyReason\\("${item.record}", company\\)`), `${item.dir}: the PUT`)
     }

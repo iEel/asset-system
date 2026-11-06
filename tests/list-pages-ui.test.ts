@@ -29,7 +29,8 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   { path: `${D}master-data/branches/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/branch-delete-button.tsx`], stats: true },
   // Group 7 plan 1 Task 4: brands and models say "ปิดใช้งาน" through BrandModelDeactivateButton (it renders RowActions).
   { path: `${D}master-data/brands/page.tsx`, deleteEndpoints: [], rowActions: "<BrandModelDeactivateButton", removedWrappers: [`${C}master-data/brand-delete-button.tsx`, `${C}master-data/asset-model-delete-button.tsx`], stats: true },
-  { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: ["/api/categories/${category.id}"], removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },
+  // Group 8 plan 2 Task 1: categories say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions, as companies.
+  { path: `${D}master-data/categories/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/category-delete-button.tsx`], stats: true },
   // Group 8 plan 1 Task 2: companies say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions (it renders RowActions).
   { path: `${D}master-data/companies/page.tsx`, deleteEndpoints: [], rowActions: "<MasterDataRowActions", editInMenu: true, removedWrappers: [`${C}master-data/company-delete-button.tsx`], stats: true },
   // Group 8 plan 1 Task 4: departments say "ปิดใช้งาน" / "เปิดใช้งาน" through MasterDataRowActions, as companies and branches.

@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
+import { parseNameDefaultSort } from "./master-data-list-ui.ts"
+import { buildCategoryPrefixGroups, parsePrefixRows } from "./category-prefix-groups.ts"
 
 export const categorySorts = ["code", "name", "models", "assets", "customFields", "createdAt"] as const
 export const categoryAssetUsageFilters = ["all", "withAssets", "withoutAssets"] as const
@@ -53,16 +55,16 @@ export type CategoryHealthSummaryItem = {
 }
 
 export function parseCategoryListParams(input: CategoryListParams): CategoryListState {
-  const sortValue = firstValue(input.sort)
-  const directionValue = firstValue(input.direction)
+  // Board MD-Categories (group 8 plan 2 Task 1, spec §3): name A→Z by default; every other sort stays reachable.
+  const { sort, direction } = parseNameDefaultSort(input, categorySorts, "name")
 
   return {
     search: firstValue(input.search).trim(),
     status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
-    sort: categorySorts.includes(sortValue as CategorySort) ? (sortValue as CategorySort) : "code",
-    direction: directionValue === "desc" ? "desc" : "asc",
+    sort,
+    direction,
     assetUsage: parseFilter(input.assetUsage, categoryAssetUsageFilters, "all"),
     modelStatus: parseFilter(input.modelStatus, categoryModelStatusFilters, "all"),
     customFieldStatus: parseFilter(input.customFieldStatus, categoryCustomFieldStatusFilters, "all"),
@@ -151,6 +153,9 @@ export function buildCategoryHealthSummary(
   return {
     total: categories.length,
     used: categories.filter((category) => category._count.assets > 0).length,
+    // The total card's "รุ่นรวม {m} · ทรัพย์สินรวม {a}" (board MD-Categories): the page counts active models and assets.
+    modelTotal: categories.reduce((sum, category) => sum + category._count.models, 0),
+    assetTotal: categories.reduce((sum, category) => sum + category._count.assets, 0),
     missingModels: categories.filter((category) => category._count.models === 0).length,
     missingCustomFields: categories.filter((category) => category._count.customFieldDefs === 0).length,
     missingChecklist: categories.filter((category) => !checklistIds.has(category.id)).length,
@@ -173,14 +178,66 @@ export function buildCategoryDrilldownHrefs({
   }
 }
 
+// The id is the tie-breaker, so rows with one name or one count keep their order from page to page (group 8 plan 2 Task 1).
 export function buildCategoryOrderBy({
   sort,
   direction,
-}: Pick<CategoryListState, "sort" | "direction">): Prisma.AssetCategoryOrderByWithRelationInput {
-  if (sort === "models") return { models: { _count: direction } }
-  if (sort === "assets") return { assets: { _count: direction } }
-  if (sort === "customFields") return { customFieldDefs: { _count: direction } }
-  return { [sort]: direction }
+}: Pick<CategoryListState, "sort" | "direction">): Prisma.AssetCategoryOrderByWithRelationInput[] {
+  const primary: Prisma.AssetCategoryOrderByWithRelationInput =
+    sort === "models"
+      ? { models: { _count: direction } }
+      : sort === "assets"
+        ? { assets: { _count: direction } }
+        : sort === "customFields"
+          ? { customFieldDefs: { _count: direction } }
+          : { [sort]: direction }
+  return [primary, { id: "asc" }]
+}
+
+// The footer's "รุ่นรวม {m} · ทรัพย์สินรวม {a}" (board MD-Categories): active models and assets of the filtered categories.
+export function categoryFooterTotalWheres(where: Prisma.AssetCategoryWhereInput) {
+  return {
+    models: { isActive: true, category: { is: where } } satisfies Prisma.AssetModelWhereInput,
+    assets: { isActive: true, category: { is: where } } satisfies Prisma.AssetWhereInput,
+  }
+}
+
+// The categories that share their prefix with another one (a prefix group of two or more in the settings): the page
+// reads their names for "{prefix} · ใช้ร่วมกับ {other}".
+export function sharedPrefixCategoryIds(value?: string | null): string[] {
+  return buildCategoryPrefixGroups(parsePrefixRows(value)).flatMap((group) => (group.categoryIds.length > 1 ? group.categoryIds : []))
+}
+
+export type CategoryPrefixCell = { prefix: string | null; sharedWith: string[] }
+
+// The คำนำหน้ารหัส column (board MD-Categories): the category's prefix from the settings, or null when none is set (the
+// asset tag then uses the category code, asset-tag.ts), and the names of the other categories in its prefix group. names
+// holds the categories that count (the page reads the active ones), so a category no longer active is not named.
+export function buildCategoryPrefixCells(
+  value: string | null | undefined,
+  categoryIds: readonly string[],
+  names: ReadonlyMap<string, string>
+): Map<string, CategoryPrefixCell> {
+  const groupOf = new Map<string, { prefix: string; categoryIds: string[] }>()
+  for (const group of buildCategoryPrefixGroups(parsePrefixRows(value))) {
+    for (const categoryId of group.categoryIds) groupOf.set(categoryId, group)
+  }
+  return new Map<string, CategoryPrefixCell>(
+    categoryIds.map((categoryId) => {
+      const group = groupOf.get(categoryId)
+      if (!group) return [categoryId, { prefix: null, sharedWith: [] }]
+      const sharedWith = group.categoryIds
+        .filter((otherId) => otherId !== categoryId && names.has(otherId))
+        .map((otherId) => names.get(otherId) as string)
+        .sort((a, b) => a.localeCompare(b, "th"))
+      return [categoryId, { prefix: group.prefix, sharedWith }]
+    })
+  )
+}
+
+// "คำนำหน้ารหัส … ในการตั้งค่า": the settings page's asset-numbering tab, at the prefix groups.
+export function buildCategoryPrefixSettingsHref(locale: string) {
+  return `/${locale}/admin/settings?tab=asset-numbering#category-prefix-groups`
 }
 
 export function parseCategoryPrefixMap(value?: string | null) {
