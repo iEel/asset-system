@@ -18,6 +18,10 @@
 //   Focus 4); nothing is deactivated through it (the suite sends no DELETE).
 // - เปิดใช้งาน: the new location is set inactive by a PUT on run-marked data (isActive false; it has no blockers), then
 //   the inactive filter shows it with ไม่ใช้งาน and the IT head brings it back through the page's own button.
+// - The parent picker's rows (group 7 follow-ups Task 4, MD-Location-New; plan
+//   docs/superpowers/plans/2026-11-07-group7-followups.md Task 5), on the เพิ่มที่ตั้งในนี้ form: each row is named by
+//   "name · code", reads the path from the branch on its second line, the type as a chip and "ย่อย {n}" (active children);
+//   typing the building's name finds the floor and the room, whose labels do not hold it, through the path (keywords).
 // Every location and asset made here carries the run id and the project's code; no shared master data is changed.
 import type { Locator, Page } from "../asset-detail/detail-steps.ts"
 import { asUser, expect, test } from "../support/fixtures.ts"
@@ -220,6 +224,30 @@ test.describe("the IT head reads and arranges a building's locations", () => {
     await expect(page.locator("#location-parent")).toContainText(`${floor.name} · ${floor.code}`)
     await expect(page.locator("[data-location-preview-path]")).toContainText(`${runBranch.name}${PATH}${building.name}${PATH}${floor.name}`)
     await recordSettled(page, measure, "location form, เพิ่มที่ตั้งในนี้ on the floor")
+
+    // The picker's rows (group 7 follow-ups Task 4): the building's name typed finds the building by its label and the
+    // floor and the room by their paths (keywords: neither label holds the building's name). Each row is named by
+    // "name · code" (aria-labelledby) and shows the path, the type chip and "ย่อย {n}" (the new location is not saved yet).
+    await page.locator("#location-parent").click()
+    const parentSearch = page.getByRole("dialog").last().getByRole("combobox")
+    await parentSearch.fill(building.name)
+    const parentRows = [
+      { location: building, path: [building], type: W.typeBuilding, children: 1 },
+      { location: floor, path: [building, floor], type: W.typeFloor, children: 1 },
+      { location: room, path: [building, floor, room], type: W.typeRoom, children: 0 },
+    ]
+    for (const { location, path, type, children } of parentRows) {
+      const row = page.getByRole("option", { name: `${location.name} · ${location.code}`, exact: true })
+      await expect(row).toHaveCount(1)
+      await expect(row).toContainText([runBranch.name, ...path.map((step) => step.name)].join(PATH))
+      await expect(row.locator('[data-slot="chip"]')).toHaveText(type)
+      await expect(row).toContainText(fillTemplate(W.parentChildCount, { count: children }))
+      await expect(row).toHaveAccessibleDescription(new RegExp(`${escapeRegExp(type)}.*${escapeRegExp(fillTemplate(W.parentChildCount, { count: children }))}`))
+    }
+    expect(`${floor.name} · ${floor.code}`).not.toContain(building.name)
+    await recordSettled(page, measure, "location form, the parent picker's rows")
+    await page.keyboard.press("Escape")
+    await expect(page.locator("#location-parent")).toContainText(`${floor.name} · ${floor.code}`)
     const added: RunLocation = { id: "", code: `${prefix}N`, name: txAssetName(runId, project, "ห้องใหม่ทดสอบที่ตั้ง"), locationType: "Room", branchId: runBranch.id, parentId: floor.id }
     await page.locator("#location-name").fill(added.name)
     await page.locator("#location-code").fill(added.code)

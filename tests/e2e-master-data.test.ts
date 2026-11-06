@@ -169,3 +169,24 @@ test("the locations spec: a run-marked chain by the seed admin, the tree's count
   // axe through recordSettled.
   assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 8)
 })
+
+// Group 7 follow-ups Task 5 (plan docs/superpowers/plans/2026-11-07-group7-followups.md): the new words the two specs
+// read are the app's own keys, and the employees spec still sends no DELETE and opens no ปิดใช้งาน confirm.
+test("the group 7 follow-ups words and the employees spec's limits (group 7 follow-ups task 5)", async () => {
+  const { EMPLOYEE_WORDS } = await import("../e2e/master-data/employees-words.ts")
+  const { LOCATION_WORDS } = await import("../e2e/master-data/locations-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  assert.equal(EMPLOYEE_WORDS.recordStatusLabel, th.common.recordStatus.label)
+  assert.equal(EMPLOYEE_WORDS.recordAll, th.common.recordStatus.all)
+  assert.equal(EMPLOYEE_WORDS.listTotals, th.employee.listTotals)
+  assert.equal(EMPLOYEE_WORDS.viewHeldAssets, th.employee.viewHeldAssets)
+  assert.equal(EMPLOYEE_WORDS.heldStatFootSplit, th.employee.detail.heldStatFootSplit)
+  assert.equal(EMPLOYEE_WORDS.currentAuditEmpty, th.employee.detail.currentAuditEmpty)
+  assert.equal(EMPLOYEE_WORDS.openRepair, th.employee.detail.openRepair)
+  assert.equal(EMPLOYEE_WORDS.reasonOpenCheckout, th.asset.transactionReasonOpenCheckout)
+  assert.equal(LOCATION_WORDS.parentChildCount, th.location.form.parentChildCount)
+  const spec = read("e2e/master-data/employees.spec.ts")
+  assert.ok(spec.includes("code: `${runId}-${projectCode(projectName)}-FN`"), "the idle employee is run-marked")
+  assert.ok(spec.includes("await expect(menuItem(rowMenu, W.deactivate)).toHaveCount(0)"), "no ปิดใช้งาน without employee:delete")
+  assert.doesNotMatch(spec, /deactivateTitle|confirmTitle/)
+})

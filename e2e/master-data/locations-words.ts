@@ -18,4 +18,6 @@ export const LOCATION_WORDS = {
   createTitle: "เพิ่มที่ตั้ง", editTitle: "แก้ไขที่ตั้ง", parentEmpty: "ไม่พบที่ตั้งในสาขานี้", save: "บันทึก", saved: "บันทึกสำเร็จ",
   // The register (§7): the chip group and the location chip's label.
   activeFilters: "ตัวกรองที่ใช้อยู่", locationChip: "ที่ตั้ง",
+  // The parent picker's rows (group 7 follow-ups Task 4, MD-Location-New): the type chip and the active children.
+  parentChildCount: "ย่อย {count}", typeBuilding: "อาคาร", typeFloor: "ชั้น", typeRoom: "ห้อง",
 } as const

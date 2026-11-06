@@ -17,4 +17,15 @@ export const EMPLOYEE_WORDS = {
   checkinTitle: "รับคืนทรัพย์สิน", checkoutTitle: "ส่งมอบทรัพย์สิน",
   legacyConfirmTitle: "สร้างใบส่งมอบย้อนหลังแล้วรับคืน", legacyConfirm: "สร้างและรับคืน",
   returnDocumentTitle: "ใบรับคืนทรัพย์สิน", back: "กลับ",
+  // Group 7 follow-ups (plan docs/superpowers/plans/2026-11-07-group7-followups.md, Task 5). The list (Task 2): the
+  // record-status segmented control (G7F-R1, common.recordStatus) and the status column under ทั้งหมด, the totals line,
+  // the sort select, and row ⋯ with ดูทรัพย์สินที่ถือครอง and ปิดใช้งาน (G7F-R2: hidden without employee:delete).
+  recordStatusLabel: "สถานะข้อมูล", recordActive: "ใช้งาน", recordInactive: "ไม่ใช้งาน", recordAll: "ทั้งหมด", statusColumn: "สถานะ",
+  listTotals: "{people} คน · ถือครองรวม {assets} รายการ", sortLabel: "เรียงตาม", moreActionsFor: "การดำเนินการของ {code}",
+  viewHeldAssets: "ดูทรัพย์สินที่ถือครอง ({n})", deactivate: "ปิดใช้งาน",
+  // The employee page (Task 3, G7F-R4): the held stat's foot, ตรวจนับรอบปัจจุบัน, a held row's open repair and its ⋯ with
+  // โอนย้าย (unavailable with the transfer form's reason while a handover is open) and พิมพ์ใบส่งมอบ.
+  heldStatFootSplit: "มีใบส่งมอบ {withHandover} · ไม่มีใบส่งมอบ {withoutHandover}", currentAuditTitle: "ตรวจนับรอบปัจจุบัน",
+  currentAuditEmpty: "ไม่มีทรัพย์สินที่ถือครองอยู่ในรอบตรวจนับที่เปิดอยู่", openRepair: "งานซ่อม {repairNo}", transfer: "โอนย้าย",
+  printHandover: "พิมพ์ใบส่งมอบ", reasonOpenCheckout: "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้",
 } as const
