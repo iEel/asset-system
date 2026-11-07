@@ -181,8 +181,9 @@ test("รับคืนหลายรายการ from the employee page: t
   await expect(tick(page, inRepair)).not.toBeChecked()
   await expect(tick(page, inRepair)).toBeDisabled()
   await expect(formRow(page, inRepair)).toContainText(W.reasonOpenRepair)
-  const single = formRow(page, inRepair).getByRole("link", { name: TX_WORDS.multiReturnNeedsSingle, exact: true })
-  await expect(single).toHaveAttribute("href", new RegExp(`^/th/asset-management/checkin\\?assetId=${inRepair.id}&returnTo=`))
+  // A ข้อมูลเก่า machine with an open repair is refused by the single return form too (getCheckinVerdict's legacy path),
+  // so its row shows the reason only, without รับคืนทีละรายการ (final review e6e20895).
+  await expect(formRow(page, inRepair).getByRole("link", { name: TX_WORDS.multiReturnNeedsSingle, exact: true })).toHaveCount(0)
   await expect(formRow(page, damaged)).toContainText(damagedHandover.documentNo)
   await expect(formRow(page, legacy)).toContainText(TX_WORDS.multiReturnLegacy)
   await expect(page.locator(`#batch-checkin-receive-by`)).toContainText(`${head.code} - ${head.fullNameTh}`)

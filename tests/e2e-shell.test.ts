@@ -31,12 +31,12 @@ test("the shell specs use the suite's fixtures and users, run the phone on Chrom
   }
 })
 
-test("the run's saved sessions outlive the run: the app under test idles after more than the run's 90 minutes, the ceiling keeps its default (menu B shell task 13A)", () => {
+test("the run's saved sessions outlive the run: the app under test idles after more than the run's 170 minutes, the ceiling keeps its default (menu B shell task 13A)", () => {
   const config = read("playwright.config.ts")
   const idle = Number(config.match(/SESSION_IDLE_SECONDS: "(\d+)"/)?.[1])
   assert.equal(idle, 10800)
-  assert.match(config, /globalTimeout: 90 \* 60 \* 1000,/)
-  assert.ok(idle * 1000 > 90 * 60 * 1000)
+  assert.match(config, /globalTimeout: 170 \* 60 \* 1000,/)
+  assert.ok(idle * 1000 > 170 * 60 * 1000)
   assert.doesNotMatch(config, /SESSION_CEILING_SECONDS/, "the 12-hour ceiling is the app's default")
   assert.match(read("e2e/shell/session.spec.ts"), /10_800_000/)
 })

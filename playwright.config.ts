@@ -23,7 +23,8 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
   forbidOnly: true,
   timeout: 120_000,
   // Stops a run whose database dropped mid-run instead of letting it hang for an hour (the dry run's open issue 1).
-  globalTimeout: 90 * 60 * 1000,
+  // 622 tests took 1.4 h on a good VPN; 674 need more than 90 minutes. The stop stays under the sessions' 3-hour idle.
+  globalTimeout: 170 * 60 * 1000,
   expect: { timeout: 10_000 },
   reporter: [["list"], ["html", { outputFolder: REPORT_DIR, open: "never" }], ["./e2e/support/summary-reporter.ts"]],
   use: {
