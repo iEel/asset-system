@@ -23,7 +23,7 @@ test("the template table: ชื่อ field, ป้ายชื่อ and ป�
   }
   assert.equal(cols[3], '<col className="w-36" />', "ชนิดข้อมูล keeps room for รายการเลือก")
   assert.equal(cols[4], '<col className="w-14" />', "จำเป็น is a checkbox")
-  assert.equal(cols[5], '<col className="w-32" />', "ขึ้น, ลง and ⋯ (3 × 32px + gaps)")
+  assert.equal(cols[5], '<col className="w-40" />', "ขึ้น, ลง and ⋯ on one line (3 × 36px + gaps + the cell's padding; w-32 wrapped ⋯, look step 2026-11-07)")
   assert.doesNotMatch(colgroup, /w-\[\d+%\]/, "no percentage width on a text column")
   // 1440 beside ผลของการแก้ไข: the card is ~794px; (794 − 144 − 56 − 128) / 3 ≈ 155px a text column, an input of ~143px.
   const fixed = 144 + 56 + 128

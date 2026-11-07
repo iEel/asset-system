@@ -156,7 +156,7 @@ export function CustomFieldTemplateTable({
           <col data-template-col="label-th" />
           <col className="w-36" />
           <col className="w-14" />
-          <col className="w-32" />
+          <col className="w-40" />
         </colgroup>
         <DataTableHeader>
           <tr>
