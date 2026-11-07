@@ -1,5 +1,6 @@
 import type { AssetDataQualityFilter } from "./asset-data-quality-filter.ts"
 import type { WorkCenterMetricKey } from "./work-center-metrics.ts"
+import { parseWorkShow, WORK_SHOW_STEP } from "./work-center-rows.ts"
 
 export const workCenterViews = ["all", "mine"] as const
 export const workCenterPanels = ["overview", "approvals", "assets", "maintenance", "audit", "disposal"] as const
@@ -10,6 +11,8 @@ export type WorkCenterPanel = (typeof workCenterPanels)[number]
 export type WorkCenterParams = {
   view: WorkCenterView
   panel: WorkCenterPanel
+  /** The table's rows on screen (`show=`): a multiple of 8 from 8 to 200. */
+  show: number
 }
 
 export type WorkCenterUserScope = {
@@ -20,9 +23,10 @@ export type WorkCenterUserScope = {
 
 type WorkCenterDataQualityFixKey = Extract<AssetDataQualityFilter, "responsibility" | "serial" | "photo">
 
-type WorkCenterParamInput = {
+export type WorkCenterParamInput = {
   view?: string | string[]
   panel?: string | string[]
+  show?: string | string[]
 }
 
 export function parseWorkCenterParams(input: WorkCenterParamInput): WorkCenterParams {
@@ -31,6 +35,7 @@ export function parseWorkCenterParams(input: WorkCenterParamInput): WorkCenterPa
   return {
     view: workCenterViews.includes(rawView as WorkCenterView) ? (rawView as WorkCenterView) : "all",
     panel: workCenterPanels.includes(rawPanel as WorkCenterPanel) ? (rawPanel as WorkCenterPanel) : "overview",
+    show: parseWorkShow(input.show),
   }
 }
 
@@ -43,6 +48,7 @@ export function buildWorkCenterHref(
   const params = new URLSearchParams()
   if (next.view !== "all") params.set("view", next.view)
   if (next.panel !== "overview") params.set("panel", next.panel)
+  if (next.show !== WORK_SHOW_STEP) params.set("show", String(next.show))
   const query = params.toString()
   return `/${locale}/work-center${query ? `?${query}` : ""}`
 }
