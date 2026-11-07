@@ -269,7 +269,8 @@ test.describe("the viewer", () => {
         await expect(switcher.locator(`a[href$="companyId=${companyId}"]`)).toHaveAttribute("aria-current", "page")
       } else {
         const scopeSelect = page.getByRole("main").getByRole("combobox", { name: DASHBOARD_WORDS.scopeNavigation, exact: true })
-        const scopeForm = page.getByRole("main").getByRole("search").filter({ has: scopeSelect })
+        // `has` is matched inside each search form, so its locator is not rooted at main.
+        const scopeForm = page.getByRole("main").getByRole("search").filter({ has: page.getByRole("combobox", { name: DASHBOARD_WORDS.scopeNavigation, exact: true }) })
         await scopeSelect.selectOption(companyId)
         await scopeForm.getByRole("button", { name: DASHBOARD_WORDS.showScope, exact: true }).click()
         await page.waitForURL((url) => url.searchParams.get("companyId") === companyId)
