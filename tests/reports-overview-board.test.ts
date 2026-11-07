@@ -28,7 +28,17 @@ test("the header keeps both exports with their permissions and says what they ex
 })
 
 test("the filter bar is a details open on a first visit or a field filter, with more filters nested and ใช้ตัวกรอง", () => {
-  assert.match(filterBar, /open=\{!hasActiveFilters \|\| fieldFilterSet\}/)
+  // Look step: two copies with their own ids (Field's useId keeps the field ids apart). Below md the bar starts closed
+  // and hidden while closed, so the "ตัวกรอง (n)" button is the way in; it opens by itself only for a field filter.
+  // From md it opens on a first visit too.
+  assert.match(filterBar, /<ReportFilterBar\n\s+\{\.\.\.barProps\}\n\s+id=\{REPORT_FILTER_BAR_PHONE_ID\}\n\s+copy="phone"\n\s+open=\{fieldFilterSet\}\n\s+className="md:hidden \[&:not\(\[open\]\)\]:hidden"/)
+  assert.match(filterBar, /<ReportFilterBar\n\s+\{\.\.\.barProps\}\n\s+id=\{REPORT_FILTER_BAR_ID\}\n\s+copy="wide"\n\s+open=\{!hasActiveFilters \|\| fieldFilterSet\}\n\s+className="max-md:hidden"/)
+  assert.match(filterBar, /export const REPORT_FILTER_BAR_ID = "report-filters"/)
+  assert.match(filterBar, /export const REPORT_FILTER_BAR_PHONE_ID = "report-filters-phone"/)
+  assert.equal(filterBar.match(/<ReportFilterBar\n/g)?.length, 2)
+  // No hand-written id inside the bar but the details' own: the fields take theirs from Field.
+  const bar = filterBar.slice(filterBar.indexOf("function ReportFilterBar("))
+  assert.deepEqual(bar.match(/\bid=\{?[^\s>]+/g), ["id={id}"])
   assert.match(filterBar, /const moreFilterSet = Boolean\(filters\.categoryId \|\| filters\.conditionId \|\| filters\.ownershipType\)/)
   assert.match(filterBar, /<details data-report-more-filters open=\{moreFilterSet\}/)
   // ค้นหา, บริษัท, สาขา, สถานะ before the nested details; หมวดหมู่, สภาพ, ประเภทการถือครอง inside it.
@@ -85,7 +95,15 @@ test("the strip adds up: total = นอกขั้นตัดจำหน่�
 
 test("six group tables: sorted rows that link to the register, others, unassigned, the total and ดูทั้งหมด", () => {
   assert.match(overview, /\{reportBreakdownDimensions\.map\(\(dimension\) => \(\n\s+<BreakdownPanel/)
-  assert.match(overview, /className="hidden gap-4 md:grid md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"/)
+  // Look step: two columns from lg so company names do not wrap to three lines at 1440; three only from 2xl.
+  assert.match(overview, /className="hidden gap-4 md:grid md:grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3"/)
+  assert.doesNotMatch(overview, /xl:grid-cols-3/)
+  // Every share cell prints through breakdownPercentLabel (count + percent), so a small group reads "<0.1%".
+  assert.match(overview, /\{breakdownPercentLabel\(count, percent\)\}/)
+  for (const call of ["count={row.count} percent={row.percent}", "count={table.others.count} percent={table.others.percent}", "count={table.unassigned.count} percent={table.unassigned.percent}", "count={group.count} percent={breakdownPercent(group.count, total)}"]) {
+    assert.ok(overview.includes(`<ShareCell ${call} />`), call)
+  }
+  assert.doesNotMatch(overview, /formatPercent/)
   assert.match(overview, /<Link href=\{breakdownRowHref\(locale, dimension, row\.key, base\)\} className=\{rowLinkClasses\}>/)
   assert.match(overview, /t\("breakdownOthers", \{ count: table\.others\.groups, dimension \}\)/)
   assert.match(overview, /dimension === "department" \? \(\n\s+<Link href=\{breakdownRowHref\(locale, dimension, null, base\)\} className=\{rowLinkClasses\}>/)
@@ -139,7 +157,7 @@ test("phones: the export card, group buttons with one table, three preview cards
   assert.match(overview, /<ul className="flex flex-wrap gap-2">/)
   assert.match(overview, /table=\{data\.tables\[phoneGroup\]\}/)
   assert.match(overview, /const PREVIEW_PHONE_ROWS = 3/)
-  assert.match(page, /<ReportFilterToggle\n\s+targetId=\{REPORT_FILTER_BAR_ID\}/)
+  assert.match(page, /<ReportFilterToggle\n\s+targetId=\{REPORT_FILTER_BAR_PHONE_ID\}/)
   assert.match(page, /t\("filterButton", \{ count: activeFilters\.length \}\)/)
   assert.equal(tr.filterButton, "ตัวกรอง ({count, number})")
 })

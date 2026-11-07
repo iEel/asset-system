@@ -20,7 +20,7 @@ import { buttonVariants } from "@/components/ui/button-variants"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { REPORT_FILTER_BAR_ID, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
+import { REPORT_FILTER_BAR_PHONE_ID, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
 import { ReportFilterToggle } from "@/components/reports/report-filter-toggle"
 import { ReportViewTabs } from "@/components/reports/report-view-tabs"
 import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
@@ -765,10 +765,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           }}
         />
       </div>
-      {/* Phones: "ตัวกรอง (n)" opens the filter bar (board RP-Phone). */}
+      {/* Phones: "ตัวกรอง (n)" opens the phone copy of the filter bar, which starts closed (board RP-Phone). */}
       <div className="md:hidden">
         <ReportFilterToggle
-          targetId={REPORT_FILTER_BAR_ID}
+          targetId={REPORT_FILTER_BAR_PHONE_ID}
           label={hasActiveFilters ? t("filterButton", { count: activeFilters.length }) : t("filterTitle")}
           className="w-full"
         />

@@ -122,7 +122,7 @@ test("the maintenance filter keeps the page size, and its asset chip clears only
 // panel into a <details> bar and moves หมวดหมู่, สภาพ and ประเภทการถือครอง into "ตัวกรองเพิ่มเติม"; the six fields stay.
 test("the report filters are Field + SearchField, six FilterSelect and FilterFormActions (2B §6.5 row 12)", () => {
   const panel = read("src/components/reports/report-filter-panel.tsx")
-  assert.match(panel, /<details\n\s+id=\{REPORT_FILTER_BAR_ID\}\n\s+data-report-filter-bar\n\s+open=\{!hasActiveFilters \|\| fieldFilterSet\}/)
+  assert.match(panel, /<details\n\s+id=\{id\}\n\s+data-report-filter-bar=\{copy\}\n\s+open=\{open\}/)
   assert.match(panel, /<form role="search" action=\{`\/\$\{locale\}\/reports`\} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">/)
   assert.match(panel, /<Field label=\{labels\.search\}>\n\s+<SearchField name="search" defaultValue=\{filters\.search\} placeholder=\{labels\.searchPlaceholder\} \/>/)
   for (const [name, options] of [["companyId", "companies"], ["branchId", "branches"], ["categoryId", "categories"], ["statusId", "statuses"], ["conditionId", "conditions"], ["ownershipType", "ownershipTypes"]]) {

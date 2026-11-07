@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  breakdownPercent,
+  breakdownPercentLabel,
   breakdownRowHref,
   buildBreakdownTable,
   filterBreakdownGroups,
@@ -126,4 +128,16 @@ test("filterBreakdownGroups matches name or code", () => {
   assert.deepEqual(filterBreakdownGroups(list, "เงิน").map((group) => group.key), ["2"])
   assert.equal(filterBreakdownGroups(list, "  ").length, 3)
   assert.equal(filterBreakdownGroups(list, "zzz").length, 0)
+})
+
+// Look step (group 10 plan 1): a group with assets whose share rounds to 0.0 reads "<0.1%", never "0%"; 0% stays for
+// a count of 0 (and an empty total).
+test("the percent label shows <0.1% for a group that rounds to zero and 0% only for a count of zero", () => {
+  assert.equal(breakdownPercentLabel(1, breakdownPercent(1, 21638)), "<0.1%")
+  assert.equal(breakdownPercentLabel(4, breakdownPercent(4, 21638)), "<0.1%")
+  assert.equal(breakdownPercentLabel(0, breakdownPercent(0, 21638)), "0%")
+  assert.equal(breakdownPercentLabel(0, breakdownPercent(0, 0)), "0%")
+  assert.equal(breakdownPercentLabel(11, breakdownPercent(11, 21638)), "0.1%")
+  assert.equal(breakdownPercentLabel(12077, breakdownPercent(12077, 21638)), "55.8%")
+  assert.equal(breakdownPercentLabel(3, 100), "100%")
 })

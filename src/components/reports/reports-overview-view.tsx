@@ -12,8 +12,8 @@ import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
-import { formatCount, formatMoney, formatPercent } from "@/lib/display-format"
-import { breakdownPercent, breakdownRowHref, type BreakdownDimension, type BreakdownGroup, type BreakdownTable } from "@/lib/report-breakdown"
+import { formatCount, formatMoney } from "@/lib/display-format"
+import { breakdownPercent, breakdownPercentLabel, breakdownRowHref, type BreakdownDimension, type BreakdownGroup, type BreakdownTable } from "@/lib/report-breakdown"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 import { reportBreakdownDimensions, type ReportsOverviewData, type ReportsOverviewPreviewRow } from "@/lib/reports-overview-data"
 import { cn } from "@/lib/utils"
@@ -225,7 +225,7 @@ export async function ReportsOverviewView({
           <h2 id="report-breakdown-title" className="sr-only">{t("breakdownGroupsLabel")}</h2>
           <p className="text-meta text-muted-foreground max-md:hidden">{t("breakdownHelp")}</p>
           <p className="text-meta text-muted-foreground md:hidden">{t("breakdownHelpShort")}</p>
-          <div className="hidden gap-4 md:grid md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="hidden gap-4 md:grid md:grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3">
             {reportBreakdownDimensions.map((dimension) => (
               <BreakdownPanel
                 key={dimension}
@@ -360,13 +360,13 @@ function GroupName({ name, code }: { name: string; code: string | null }) {
   )
 }
 
-function ShareCell({ percent }: { percent: number }) {
+function ShareCell({ count, percent }: { count: number; percent: number }) {
   return (
     <span className="flex items-center justify-end gap-2">
       <span aria-hidden="true" className="h-1.5 w-12 overflow-hidden rounded-xs bg-border-soft max-sm:hidden">
         <span className="block h-full bg-primary" style={{ width: `${Math.min(100, percent)}%` }} />
       </span>
-      <span className="w-14 text-right num">{formatPercent(percent / 100, 1)}</span>
+      <span className="w-14 text-right num">{breakdownPercentLabel(count, percent)}</span>
     </span>
   )
 }
@@ -427,7 +427,7 @@ function BreakdownPanel({
                     </Link>
                   </DataTableCell>
                   <DataTableCell numeric>{formatCount(row.count)}</DataTableCell>
-                  <DataTableCell><ShareCell percent={row.percent} /></DataTableCell>
+                  <DataTableCell><ShareCell count={row.count} percent={row.percent} /></DataTableCell>
                 </DataTableRow>
               ))}
               {table.others ? (
@@ -437,7 +437,7 @@ function BreakdownPanel({
                     {dimension === "status" && table.others.names.length > 0 ? ` (${table.others.names.join(" · ")})` : null}
                   </DataTableCell>
                   <DataTableCell numeric className="text-muted-foreground">{formatCount(table.others.count)}</DataTableCell>
-                  <DataTableCell className="text-muted-foreground"><ShareCell percent={table.others.percent} /></DataTableCell>
+                  <DataTableCell className="text-muted-foreground"><ShareCell count={table.others.count} percent={table.others.percent} /></DataTableCell>
                 </DataTableRow>
               ) : null}
               {table.unassigned ? (
@@ -453,7 +453,7 @@ function BreakdownPanel({
                     )}
                   </DataTableCell>
                   <DataTableCell numeric>{formatCount(table.unassigned.count)}</DataTableCell>
-                  <DataTableCell><ShareCell percent={table.unassigned.percent} /></DataTableCell>
+                  <DataTableCell><ShareCell count={table.unassigned.count} percent={table.unassigned.percent} /></DataTableCell>
                 </DataTableRow>
               ) : null}
               <DataTableRow data-report-breakdown-total>
@@ -554,7 +554,7 @@ function BreakdownFullList({
                       )}
                     </DataTableCell>
                     <DataTableCell numeric>{formatCount(group.count)}</DataTableCell>
-                    <DataTableCell><ShareCell percent={breakdownPercent(group.count, total)} /></DataTableCell>
+                    <DataTableCell><ShareCell count={group.count} percent={breakdownPercent(group.count, total)} /></DataTableCell>
                   </DataTableRow>
                 )
               })}

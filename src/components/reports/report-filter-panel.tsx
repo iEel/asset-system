@@ -56,22 +56,57 @@ export type ReportFilterPanelProps = {
 }
 
 export const REPORT_FILTER_BAR_ID = "report-filters"
+export const REPORT_FILTER_BAR_PHONE_ID = "report-filters-phone"
 
-// The report filter bar (group 10 spec §3, board RP-Overview): a <details> "ตัวกรองรายงาน" open on the first visit (no
-// filter at all) and while any field filter is set; "ซ่อนตัวกรอง" folds it for this page view only (ruling G10P1-R1,
-// no memory). ค้นหา, บริษัท, สาขา and สถานะ show; หมวดหมู่, สภาพ and ประเภทการถือครอง sit in the nested "ตัวกรองเพิ่มเติม",
-// open while one of them is set. A GET form: the view and the URL-only scopes ride along as hidden inputs, as before.
-// Fields in a closed <details> still submit, so a folded value is never lost. Server-safe: no script.
+// The report filter bar (group 10 spec §3, boards RP-Overview and RP-Phone): a <details> "ตัวกรองรายงาน", in two copies
+// as the other rebuilt lists do. From md it is open on the first visit (no filter at all) and while any field filter is
+// set; below md it starts closed, hidden while closed, so the page's "ตัวกรอง (n)" button (ReportFilterToggle) is the
+// way in, and opens by itself only while a field filter is set (look step). "ซ่อนตัวกรอง" folds it for this page view
+// only (ruling G10P1-R1, no memory). ค้นหา, บริษัท, สาขา and สถานะ show; หมวดหมู่, สภาพ and ประเภทการถือครอง sit in the
+// nested "ตัวกรองเพิ่มเติม", open while one of them is set. A GET form: the view and the URL-only scopes ride along as
+// hidden inputs, as before. Fields in a closed <details> still submit, so a folded value is never lost. Each copy is its
+// own form; the field ids come from Field's useId, so the two copies never share one. Server-safe: no script.
 export function ReportFilterPanel({ locale, activeView, filters, options, labels, hasActiveFilters, viewParams = [] }: ReportFilterPanelProps) {
   const moreFilterSet = Boolean(filters.categoryId || filters.conditionId || filters.ownershipType)
   const fieldFilterSet = Boolean(filters.search || filters.companyId || filters.branchId || filters.statusId || moreFilterSet)
+  const barProps = { locale, activeView, filters, options, labels, hasActiveFilters, viewParams, moreFilterSet }
 
   return (
+    <>
+      <ReportFilterBar
+        {...barProps}
+        id={REPORT_FILTER_BAR_PHONE_ID}
+        copy="phone"
+        open={fieldFilterSet}
+        className="md:hidden [&:not([open])]:hidden"
+      />
+      <ReportFilterBar
+        {...barProps}
+        id={REPORT_FILTER_BAR_ID}
+        copy="wide"
+        open={!hasActiveFilters || fieldFilterSet}
+        className="max-md:hidden"
+      />
+    </>
+  )
+}
+
+type ReportFilterBarProps = Omit<ReportFilterPanelProps, "viewParams"> & {
+  viewParams: ReadonlyArray<readonly [string, string]>
+  moreFilterSet: boolean
+  id: string
+  copy: "phone" | "wide"
+  open: boolean
+  className: string
+}
+
+function ReportFilterBar({ locale, activeView, filters, options, labels, hasActiveFilters, viewParams, moreFilterSet, id, copy, open, className }: ReportFilterBarProps) {
+  return (
     <details
-      id={REPORT_FILTER_BAR_ID}
-      data-report-filter-bar
-      open={!hasActiveFilters || fieldFilterSet}
-      className={cn(getPanelClasses(), "group/filters scroll-mt-4")}
+      id={id}
+      data-report-filter-bar={copy}
+      open={open}
+      className={cn(getPanelClasses(), "group/filters scroll-mt-4", className)}
     >
       <summary className="flex min-h-11 cursor-pointer list-none items-start justify-between gap-3 p-4 md:px-5 [&::-webkit-details-marker]:hidden">
         <span className="min-w-0">

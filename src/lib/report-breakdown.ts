@@ -2,6 +2,7 @@
 // unassigned row apart, percents of the total and links to the register with the same filters.
 // Client-safe and pure: relative imports only, no database, so node --test imports it.
 import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
+import { formatPercent } from "./display-format.ts"
 
 export type BreakdownDimension = "status" | "category" | "company" | "branch" | "department" | "ownership"
 
@@ -35,6 +36,15 @@ const dimensionParam: Record<BreakdownDimension, string> = {
 export function breakdownPercent(count: number, total: number): number {
   if (total <= 0) return 0
   return Math.round((count / total) * 1000) / 10
+}
+
+// The share as the tables print it: one decimal ("55.8%"), and "<0.1%" for a group with assets whose share rounds to 0.0,
+// so it never reads as empty. "0%" only for a count of 0.
+export const BREAKDOWN_PERCENT_BELOW_LABEL = "<0.1%"
+
+export function breakdownPercentLabel(count: number, percent: number): string {
+  if (count > 0 && percent === 0) return BREAKDOWN_PERCENT_BELOW_LABEL
+  return formatPercent(percent / 100, 1)
 }
 
 export function sortBreakdownGroups<T extends BreakdownGroup>(groups: readonly T[]): T[] {
