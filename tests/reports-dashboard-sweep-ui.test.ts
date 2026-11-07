@@ -55,9 +55,10 @@ test("report operations: ContentPanels, the cross-scope export as a plain <a>, t
   const source = read(`${C}reports/reports-operations-view.tsx`)
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 4)
   assert.match(source, /<a href=\{crossScope\.exportHref\} download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.match(source, /<Link key=\{issue\.key\} href=\{issue\.href\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  // Group 10 plan 2 Task 1 (board RP-Ops): a queue row's issues are badges, and one fix button opens the first issue's place.
+  assert.match(source, /<StatusBadge key=\{issue\} label=\{labels\[issue\]\} tone=\{issue === "warranty" \? "info" : "warning"\} \/>/)
   assert.match(source, /<StatusBadge key=\{label\} label=\{label\} tone="warning" \/>/)
-  assert.match(source, /<Link href=\{asset\.primaryFixHref\} className=\{buttonVariants\(\{ size: "sm" \}\)\}>/)
+  assert.match(source, /<Link href=\{asset\.fix\.href\} className=\{cn\(buttonVariants\(\{ size: "sm" \}\), fullWidth && "w-full"\)\}>/)
   assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{title\}<\/h3>/)
   assert.doesNotMatch(source, /border-dashed|rounded-full|bg-warning-soft|text-white|sm:h-|hover:underline|<Link\s+href=\{crossScope\.exportHref\}|rounded-lg border/)
 })

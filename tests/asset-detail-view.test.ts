@@ -66,11 +66,12 @@ test("a section link stays in place on its tab and otherwise opens the tab that 
   assert.equal(buildAssetDetailSectionHref("th", "a1", null, "purchase"), "/th/assets/a1?view=overview#purchase")
 })
 
+// Group 10 plan 2 Task 1: the reports' operations queue builds its fixes in src/lib/reports-operations-data.ts now.
 test("the reports' photo and warranty issues open the files tab and the purchase rows (spec §7.3)", () => {
-  const reports = read("src/app/[locale]/(dashboard)/reports/page.tsx")
-  assert.match(reports, /^import \{ buildAssetDetailSectionHref \} from "@\/lib\/asset-detail-view"$/m)
-  assert.match(reports, /issues\.push\(\{ label: t\("missingPhoto"\), href: buildAssetDetailSectionHref\(locale, asset\.id, null, "photos"\) \}\)/)
-  assert.match(reports, /issues\.push\(\{ label: t\("warrantyExpiring"\), href: buildAssetDetailSectionHref\(locale, asset\.id, null, "purchase"\) \}\)/)
+  const reports = read("src/lib/reports-operations-data.ts")
+  assert.match(reports, /^import \{ buildAssetDetailSectionHref \} from "\.\/asset-detail-view\.ts"$/m)
+  assert.match(reports, /if \(issue === "photo"\) return \{ href: buildAssetDetailSectionHref\(locale, assetId, null, "photos"\), fieldKey: "photos", place: "detail" \}/)
+  assert.match(reports, /if \(issue === "warranty"\) return \{ href: buildAssetDetailSectionHref\(locale, assetId, null, "purchase"\), fieldKey: "warranty", place: "detail" \}/)
   assert.doesNotMatch(reports, /\bdetailHref\b|"#photos"|"#purchase"/)
 })
 

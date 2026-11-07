@@ -41,7 +41,9 @@ test("adaptive report rows use stable database identifiers", () => {
 })
 
 test("frequent repair rows retain stable keys and exact asset drilldowns", () => {
-  assert.match(reportsPage, /key: item\.assetId,[\s\S]*href: `\/\$\{locale\}\/assets\/\$\{item\.assetId\}`/)
+  // Group 10 plan 2 Task 1: the top lists are read in src/lib/reports-operations-data.ts.
+  const operationsData = readFileSync("src/lib/reports-operations-data.ts", "utf8")
+  assert.match(operationsData, /key: item\.assetId,[\s\S]*href: `\/\$\{input\.locale\}\/assets\/\$\{item\.assetId\}`/)
   assert.match(operationsView, /row\.href/)
   assert.match(operationsView, /min-h-11/)
 })

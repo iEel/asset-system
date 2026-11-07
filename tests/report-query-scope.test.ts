@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 const source = readFileSync("src/app/[locale]/(dashboard)/reports/page.tsx", "utf8")
+const operationsData = readFileSync("src/lib/reports-operations-data.ts", "utf8")
 
 test("reports instruments shared data and each exclusive view", () => {
   for (const label of ["reports.shared-data", "reports.overview-data", "reports.accounting-data", "reports.operations-data", "reports.catalog-data"]) {
@@ -23,10 +24,12 @@ test("the unbounded accounting asset query is inside the accounting branch", () 
 test("frequent repair grouping respects the filtered asset relation", () => {
   const start = source.indexOf('case "operations"')
   const end = source.indexOf('case "catalog"')
-  assert.match(source.slice(start, end), /maintenanceTicket\.groupBy[\s\S]*asset: assetWhere/)
+  // Group 10 plan 2 Task 1: the reads live in src/lib/reports-operations-data.ts; the page hands it the full where.
+  assert.match(source.slice(start, end), /topsWhere: assetWhere,/)
+  assert.match(operationsData, /maintenanceTicket\.groupBy\(\{[\s\S]*asset: topsWhere/)
 })
 
 test("idle count uses the shared activity predicate", () => {
-  assert.match(source, /getAssetActivityWhere\("idle_180d"/)
-  assert.doesNotMatch(source, /function daysAgo/)
+  assert.match(operationsData, /getAssetActivityWhere\("idle_180d"/)
+  assert.doesNotMatch(source + operationsData, /function daysAgo/)
 })

@@ -128,15 +128,16 @@ test("operations cross-scope mobile asset links keep a 44px touch target", () =>
   )
 })
 
-test("operations data-quality asset tags keep a 44px mobile touch target", () => {
-  const dataQualityPreview = operationsView.slice(
-    operationsView.indexOf("dataQuality.rows.map"),
-    operationsView.indexOf("function CrossScopePreviewTable"),
+// Group 10 plan 2 Task 1: the queue's asset name (names first) is the link to the asset page now.
+test("operations data-quality asset links keep a 44px mobile touch target", () => {
+  const queueName = operationsView.slice(
+    operationsView.indexOf("function QueueAssetName"),
+    operationsView.indexOf("function QueueIssueBadges"),
   )
 
   assert.match(
-    dataQualityPreview,
-    /<Link href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/,
+    queueName,
+    /<Link href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center font-medium md:min-h-0"\)\}>/,
   )
 })
 
@@ -151,7 +152,10 @@ test("operations exposes exact actionable drilldowns from the same compatible fi
   assert.match(page, /const operationsQualityFilters = parseAssetListParams\(\{ \.\.\.filters, dataQuality: "", activity: "", page: 1 \}\)/)
   assert.match(page, /const operationsQualityWhere = await applyAssetCrossScopeFilter\(buildAssetWhere\(operationsQualityFilters\), operationsQualityFilters\.crossScope\)/)
   assert.match(page, /filters=\{operationsQualityFilters\}/)
-  assert.ok((page.match(/operationsQualityWhere/g)?.length ?? 0) >= 6)
+  // Group 10 plan 2 Task 1: the page hands the scope to the operations reader, which ANDs it into every queue count.
+  assert.match(page, /getReportsOperationsData\(\n\s+operationsQualityWhere,/)
+  const operationsData = readFileSync("src/lib/reports-operations-data.ts", "utf8")
+  assert.ok((operationsData.match(/\{ AND: \[where, /g)?.length ?? 0) >= 8)
 })
 
 test("cross-scope cards and preview share the drilldown filter overrides", () => {
@@ -196,11 +200,13 @@ test("the report catalog shows its item count on StatStrip (spec 2B §5.6, R-d)"
 // linked StatStrip cells (each still opens the register with its filter), the idle count is a metric number, the codes
 // are tags and the counts go through formatCount. The idle box stays a link (tests/report-idle-activity.test.ts).
 test("report operations put the data-quality and cross-scope counts on linked StatStrips (spec 2B §5.6, R-d)", () => {
-  assert.match(operationsView, /<StatStrip items=\{dataQualityCards\.map\(\(card\) => \(\{ key: card\.key, label: card\.label, value: formatCount\(card\.value\), href: card\.href \}\)\)\} \/>/)
+  // Group 10 plan 2 Task 1 (board RP-Ops): the queue's five cells are linked StatStrip cells filtering the queue (issue=).
+  assert.match(operationsView, /value: formatCount\(cell\.value\),\n\s+unit: t\("opsUnit"\),\n\s+foot: cell\.foot,\n\s+href: queue\.links\.cells\[cell\.key\],\n\s+current: queue\.issue === cell\.key,/)
   assert.match(operationsView, /<StatStrip items=\{crossScope\.cards\.map\(\(card\) => \(\{ key: card\.key, label: card\.label, value: formatCount\(card\.value\), href: card\.href \}\)\)\} \/>/)
   assert.match(operationsView, /caption=\{labels\.crossScopePreviewTitle\}/)
-  assert.equal(operationsView.match(/<span className="tag font-medium">\{asset\.assetTag\}<\/span>/g)?.length, 2)
-  assert.match(operationsView, /<div className="mt-2 text-metric num text-foreground">\{formatCount\(insights\.idleAssetsCount\)\}<\/div>/)
+  assert.equal(operationsView.match(/<span className="tag font-medium">\{asset\.assetTag\}<\/span>/g)?.length, 1)
+  assert.match(operationsView, /<span className="tag">\{asset\.assetTag\}<\/span>/)
+  assert.match(operationsView, /<span className="text-metric num text-foreground">\{formatCount\(insights\.idleAssetsCount\)\}<\/span>/)
   assert.doesNotMatch(operationsView, /MetricCard|toLocaleString|text-2xl font-bold/)
 })
 

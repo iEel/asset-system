@@ -7,32 +7,30 @@ import { hasPermission } from "@/lib/auth-utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
-import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
 import { ASSET_EXPORT_MAX_ROWS, assetExportCapped } from "@/lib/asset-export-limits"
 import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
-import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
+import { startOfBangkokDay } from "@/lib/waiting-work-rules"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
-import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility } from "@/lib/asset-ownership"
-import { buildAssetDetailSectionHref } from "@/lib/asset-detail-view"
+import { assetOwnershipTypes } from "@/lib/asset-ownership"
 import { buildCostInsights } from "@/lib/cost-insights"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { REPORT_FILTER_BAR_PHONE_ID, REPORT_FILTER_TOGGLE_ID, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
+import { REPORT_FILTER_BAR_PHONE_ID, REPORT_FILTER_TOGGLE_ID, ReportChipsLine, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
 import { ReportFilterToggle } from "@/components/reports/report-filter-toggle"
 import { ReportViewTabs } from "@/components/reports/report-view-tabs"
 import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
 import { ReportsCatalogView, type ReportCatalogCategory } from "@/components/reports/reports-catalog-view"
-import { ReportsOperationsView, type ReportDataQualityRow } from "@/components/reports/reports-operations-view"
+import { ReportsOperationsView } from "@/components/reports/reports-operations-view"
 import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
 import { buildReportActiveFilters } from "@/lib/report-active-filters"
-import { buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
+import { buildReportHref, buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { cn } from "@/lib/utils"
-import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
+import { getReportsOperationsData, parseOperationsParams, type ReportsOperationsDb } from "@/lib/reports-operations-data"
 import {
   getReportsOverviewData,
   parseReportBreakdownDimension,
@@ -43,7 +41,7 @@ import {
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<AssetListParams & { view?: string | string[]; breakdown?: string | string[]; bq?: string | string[]; group?: string | string[] }>
+  searchParams: Promise<AssetListParams & { view?: string | string[]; breakdown?: string | string[]; bq?: string | string[]; group?: string | string[]; issue?: string | string[]; qpage?: string | string[]; others?: string | string[] }>
 }
 
 type ReportFilterOptions = {
@@ -73,16 +71,22 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const canAuditExport = hasPermission(user, "audit", "export")
   const canDisposalExport = hasPermission(user, "disposal", "export")
   const canRoleExport = hasPermission(user, "role", "export")
+  const canAssetEdit = hasPermission(user, "asset", "edit")
   const activeView = parseReportView(rawSearchParams.view)
   const assetSearchParams = { ...rawSearchParams }
   delete assetSearchParams.view
   delete assetSearchParams.breakdown
   delete assetSearchParams.bq
   delete assetSearchParams.group
+  delete assetSearchParams.issue
+  delete assetSearchParams.qpage
+  delete assetSearchParams.others
   // The overview's own params (group 10 spec §4.2, §7): the full list of one dimension, its search and the phone's group.
   const breakdown = parseReportBreakdownDimension(rawSearchParams.breakdown)
   const breakdownQuery = breakdown ? parseReportBreakdownQuery(rawSearchParams.bq) : ""
   const phoneGroup = parseReportPhoneGroup(rawSearchParams.group)
+  // The operations queue's own params (group 10 spec §5): the chosen issue, its page and the "other issues" toggle.
+  const operationsParams = parseOperationsParams(rawSearchParams)
   const filters = parseAssetListParams(assetSearchParams)
   const baseAssetWhere = buildAssetWhere(filters, await getAssetWhereOptions(filters))
   const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
@@ -100,6 +104,18 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ]
     : []
   const overviewViewQuery = overviewViewParams.length > 0 ? new URLSearchParams(overviewViewParams).toString() : ""
+  // The operations tab's links (cells, toggle, paging) keep the report's filters; its chips keep the chosen issue.
+  const operationsBaseQuery = new URLSearchParams(buildReportQueryString("operations", filters))
+  operationsBaseQuery.delete("page")
+  operationsBaseQuery.delete("pageSize")
+  const operationsViewQuery = activeView === "operations"
+    ? new URLSearchParams([
+        ...(operationsParams.issue !== "all" ? [["issue", operationsParams.issue]] : []),
+        ...(operationsParams.others ? [["others", "1"]] : []),
+      ]).toString()
+    : ""
+  // Operations shows the chips line instead of the filter bar (spec §3, board RP-Ops); the overview and accounting keep it.
+  const showsFilterBar = activeView !== "operations"
   const timingContext = {
     route: "/reports",
     locale,
@@ -227,7 +243,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       crossScope: crossScopeFilterLabels[filters.crossScope],
       activity: filters.activity === "idle_180d" ? tAsset("activityIdle180d") : undefined,
     },
-  }).map((chip) => (overviewViewQuery ? { ...chip, href: `${chip.href}&${overviewViewQuery}` } : chip))
+  })
+    .map((chip) => (overviewViewQuery ? { ...chip, href: `${chip.href}&${overviewViewQuery}` } : chip))
+    .map((chip) => (operationsViewQuery ? { ...chip, href: `${chip.href}&${operationsViewQuery}` } : chip))
   const hasActiveFilters = activeFilters.length > 0
   // "ส่งออก {n} รายการ · ตัวกรอง: …" under the header's exports (group 10 spec §3): the chips as text, as the files use them.
   const filterSummary = hasActiveFilters ? activeFilters.map((chip) => chip.label).join(" · ") : t("noFilters")
@@ -405,90 +423,27 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     }
     case "operations": {
       async function loadOperationsView(): Promise<React.ReactNode> {
-        const warrantyWhere = warrantyExpiringSoonWhere(startOfBangkokDay(new Date()), await getWaitingWorkRules())
-        const warrantyWindow = warrantyWhere.warrantyEndDate as { gte: Date; lte: Date }
+        // The register's windows with the notification days: the queue's four cells read the register's own
+        // dataQuality wheres (group 10 plan 2 Task 1, spec §5), so each count is the length of its register list.
+        const whereOptions = { today: startOfBangkokDay(new Date()), rules: await getWaitingWorkRules() }
         const operationsQualityFilters = parseAssetListParams({ ...filters, dataQuality: "", activity: "", page: 1 })
         const operationsQualityWhere = await applyAssetCrossScopeFilter(buildAssetWhere(operationsQualityFilters), operationsQualityFilters.crossScope)
         const crossScopeFilters = parseAssetListParams({ ...filters, dataQuality: "", statusId: "", page: 1 })
-        const idleAssetWhere = getAssetActivityWhere("idle_180d")
-        const [
-          missingCustodian,
-          missingSerial,
-          missingPhoto,
-          warrantyExpiring,
-          dataQualityAssets,
-          byCustodian,
-          byLocation,
-          repairGroups,
-          idleAssetsCount,
-          crossScopeSummary,
-        ] = await Promise.all([
-          prisma.asset.count({ where: { AND: [operationsQualityWhere, assetMissingResponsibilityWhere] } }),
-          prisma.asset.count({ where: { AND: [operationsQualityWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
-          prisma.asset.count({
-            where: {
-              AND: [
-                operationsQualityWhere,
-                { ownershipType: { not: "software_license" } },
-                { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
-              ],
-            },
-          }),
-          prisma.asset.count({ where: { AND: [operationsQualityWhere, warrantyWhere] } }),
-          prisma.asset.findMany({
-            where: {
-              AND: [
-                operationsQualityWhere,
-                {
-                  OR: [
-                    assetMissingResponsibilityWhere,
-                    { serialNumber: null },
-                    { serialNumber: "" },
-                    {
-                      AND: [
-                        { ownershipType: { not: "software_license" } },
-                        { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
-                      ],
-                    },
-                    warrantyWhere,
-                  ],
-                },
-              ],
-            },
-            take: 8,
-            orderBy: { updatedAt: "desc" },
-            include: {
-              category: { select: { code: true, name: true } },
-              branch: { select: { code: true, name: true } },
-              department: { select: { code: true, name: true } },
-              custodian: { select: { code: true, fullNameTh: true } },
-              installedInLinks: { where: installedOrOutstandingLinkWhere, select: { id: true }, take: 1 },
-              attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
-            },
-          }),
-          prisma.asset.groupBy({ by: ["custodianId"], where: { ...assetWhere, custodianId: { not: null } }, _count: { _all: true }, orderBy: { _count: { custodianId: "desc" } }, take: 5 }),
-          prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
-          prisma.maintenanceTicket.groupBy({
-            by: ["assetId"],
-            where: { isActive: true, asset: assetWhere },
-            _count: { _all: true },
-            _sum: { repairCost: true },
-            orderBy: { _count: { assetId: "desc" } },
-            take: 5,
-          }),
-          prisma.asset.count({
-            where: { AND: [operationsQualityWhere, ...(idleAssetWhere ? [idleAssetWhere] : [])] },
-          }),
-          buildAssetCrossScopeSummary(buildAssetWhere(crossScopeFilters), 8),
-        ])
-        const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
-          prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
-          prisma.location.findMany({ where: { id: { in: byLocation.map((item) => item.currentLocationId) } }, select: { id: true, code: true, name: true } }),
-          prisma.asset.findMany({ where: { id: { in: repairGroups.map((item) => item.assetId) } }, select: { id: true, assetTag: true, name: true } }),
-        ])
-        const custodianMap = new Map(custodianOptions.map((employee) => [employee.id, `${employee.code} - ${employee.fullNameTh}`]))
-        const locationMap = new Map(locationOptions.map((location) => [location.id, `${location.code} - ${location.name}`]))
-        const repairAssetMap = new Map(repairAssets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
+        const data = await getReportsOperationsData(
+          operationsQualityWhere,
+          {
+            locale,
+            ...operationsParams,
+            baseQuery: operationsBaseQuery,
+            canEdit: canAssetEdit,
+            whereOptions,
+            topsWhere: assetWhere,
+            loadCrossScope: () => buildAssetCrossScopeSummary(buildAssetWhere(crossScopeFilters), 8),
+            labels: { unassigned: t("unassigned") },
+          },
+          prisma as unknown as ReportsOperationsDb,
+        )
+        const crossScopeSummary = data.crossScope
         const crossScopeCards = [
           {
             key: "all",
@@ -515,17 +470,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             href: `/${locale}/assets?${buildAssetQueryString(crossScopeFilters, { crossScope: "location_branch", page: 1 })}`,
           },
         ]
-        const dataQualityRows: ReportDataQualityRow[] = dataQualityAssets.map((asset) => {
-          const issues = getDataQualityIssues(asset, warrantyWindow, t, locale)
-          return {
-            id: asset.id,
-            assetTag: asset.assetTag,
-            name: asset.name,
-            context: asset.category.code + " - " + asset.category.name + " · " + asset.branch.code + " - " + asset.branch.name,
-            issues: issues.map((issue, index) => ({ ...issue, key: String(index) + ":" + issue.label })),
-            primaryFixHref: issues[0]?.href ?? "/" + locale + "/assets/" + asset.id + "/edit",
-          }
-        })
 
         return (
           <ReportsOperationsView
@@ -534,7 +478,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             hasActiveFilters={hasActiveFilters}
             hasMatchingAssets={totalAssets > 0}
             filteredEmptyCopy={t("previewEmpty")}
-            dataQuality={{ missingCustodian, missingSerial, missingPhoto, warrantyExpiring, rows: dataQualityRows }}
+            queue={data.queue}
+            warrantyDays={data.warrantyDays}
+            canAssetExport={canAssetExport}
+            canEdit={canAssetEdit}
             crossScope={{
               cards: crossScopeCards,
               rows: crossScopeSummary.rows,
@@ -543,26 +490,12 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                 : undefined,
             }}
             insights={{
-              custodians: byCustodian.map((item) => ({
-                key: item.custodianId ?? "unassigned",
-                label: custodianMap.get(item.custodianId ?? "") ?? t("unassigned"),
-                count: item._count._all,
-              })),
-              locations: byLocation.map((item) => ({
-                key: item.currentLocationId,
-                label: locationMap.get(item.currentLocationId) ?? item.currentLocationId,
-                count: item._count._all,
-              })),
-              repairs: repairGroups.map((item) => ({
-                key: item.assetId,
-                label: repairAssetMap.get(item.assetId) ?? item.assetId,
-                count: item._count._all,
-                href: `/${locale}/assets/${item.assetId}`,
-              })),
-              idleAssetsCount,
+              custodians: data.tops.custodians,
+              locations: data.tops.locations,
+              repairs: data.tops.repairs,
+              idleAssetsCount: data.idle.count,
             }}
             labels={{
-              dataQuality: t("dataQuality"),
               missingCustodian: t("missingCustodian"),
               missingSerial: t("missingSerial"),
               missingPhoto: t("missingPhoto"),
@@ -580,11 +513,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               custodianCompanyDifference: t("crossScopeCustodianCompany"),
               custodianBranchDifference: t("crossScopeCustodianBranch"),
               locationBranchDifference: t("crossScopeLocationBranch"),
-              dataQualityActionTitle: t("dataQualityActionTitle"),
-              dataQualityActionHelp: t("dataQualityActionHelp"),
               openDataQualityRules: t("openDataQualityRules"),
               dataQualityEmpty: t("dataQualityEmpty"),
-              openAsset: t("openAsset"),
               fixData: t("fixData"),
               operationInsightsTitle: t("operationInsightsTitle"),
               operationInsightsHelp: t("operationInsightsHelp"),
@@ -743,51 +673,73 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           currentViewQuery={overviewViewQuery || undefined}
         />
       </div>
-      <div data-report-filters>
-        <ReportFilterPanel
-          locale={locale}
-          activeView={activeView}
-          filters={filters}
-          options={filterOptions}
-          hasActiveFilters={hasActiveFilters}
-          viewParams={overviewViewParams}
-          labels={{
-            title: t("filterTitle"),
-            help: t("filterHelp"),
-            search: t("search"),
-            searchPlaceholder: t("searchPlaceholder"),
-            company: t("company"),
-            branch: t("branch"),
-            category: t("category"),
-            status: t("status"),
-            condition: t("condition"),
-            ownershipType: tAsset("ownershipType"),
-            all: t("all"),
-            apply: t("applyFilters"),
-            clear: t("clearFilters"),
-            hide: t("hideFilters"),
-            show: t("showFilters"),
-            more: t("moreFilters"),
-            moreLine: t("moreFiltersLine", { fields: [t("category"), t("condition"), tAsset("ownershipType")].join(" · ") }),
-          }}
-        />
-      </div>
+      {showsFilterBar ? (
+        <div data-report-filters>
+          <ReportFilterPanel
+            locale={locale}
+            activeView={activeView}
+            filters={filters}
+            options={filterOptions}
+            hasActiveFilters={hasActiveFilters}
+            viewParams={overviewViewParams}
+            labels={{
+              title: t("filterTitle"),
+              help: t("filterHelp"),
+              search: t("search"),
+              searchPlaceholder: t("searchPlaceholder"),
+              company: t("company"),
+              branch: t("branch"),
+              category: t("category"),
+              status: t("status"),
+              condition: t("condition"),
+              ownershipType: tAsset("ownershipType"),
+              all: t("all"),
+              apply: t("applyFilters"),
+              clear: t("clearFilters"),
+              hide: t("hideFilters"),
+              show: t("showFilters"),
+              more: t("moreFilters"),
+              moreLine: t("moreFiltersLine", { fields: [t("category"), t("condition"), tAsset("ownershipType")].join(" · ") }),
+            }}
+          />
+        </div>
+      ) : null}
       {/* Phones: "ตัวกรอง (n)" opens the phone copy of the filter bar, which starts closed (board RP-Phone). */}
-      <div className="md:hidden">
-        <ReportFilterToggle
-          id={REPORT_FILTER_TOGGLE_ID}
-          targetId={REPORT_FILTER_BAR_PHONE_ID}
-          label={hasActiveFilters ? t("filterButton", { count: activeFilters.length }) : t("filterTitle")}
-          className="w-full"
-        />
-      </div>
-      {activeFilters.length > 0 ? (
+      {showsFilterBar ? (
+        <div className="md:hidden">
+          <ReportFilterToggle
+            id={REPORT_FILTER_TOGGLE_ID}
+            targetId={REPORT_FILTER_BAR_PHONE_ID}
+            label={hasActiveFilters ? t("filterButton", { count: activeFilters.length }) : t("filterTitle")}
+            className="w-full"
+          />
+        </div>
+      ) : null}
+      {showsFilterBar && activeFilters.length > 0 ? (
         <div data-report-active-filters>
           <FilterChipList chips={activeFilters} label={t("activeFilters")} removeLabel={t("clearActiveFilter")} />
         </div>
       ) : null}
-      {/* The overview has its own strip that adds up (group 10 spec §4.1); the other views keep the two shared numbers. */}
-      {activeView !== "overview" ? (
+      {/* Operations: the chips line with what every number counts, ล้างตัวกรอง and the way to the filter bar (spec §3, §5). */}
+      {!showsFilterBar ? (
+        <div data-report-chips-line>
+          <ReportChipsLine
+            chips={activeFilters}
+            scopeLine={hasActiveFilters ? t("opsScopeLine", { count: totalAssets }) : t("opsScopeLineNoFilters", { count: totalAssets })}
+            clearHref={hasActiveFilters ? buildReportHref(locale, activeView, parseAssetListParams({})) : undefined}
+            editHref={buildReportHref(locale, "overview", filters)}
+            labels={{
+              activeFilters: t("activeFilters"),
+              clearActiveFilter: t("clearActiveFilter"),
+              clear: t("clearFilters"),
+              editFilters: t("opsEditFilters"),
+            }}
+          />
+        </div>
+      ) : null}
+      {/* The overview has its own strip that adds up (group 10 spec §4.1) and operations counts in its chips line (board
+          RP-Ops); accounting and the catalog keep the two shared numbers. */}
+      {activeView !== "overview" && activeView !== "operations" ? (
         <div data-report-shared-metrics>
           {/* A total in the 28px metric size needs about 230px: one tile a row below sm. */}
           <StatStrip
@@ -802,32 +754,4 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       <div data-report-view-content>{viewContent}</div>
     </div>
   )
-}
-
-function getDataQualityIssues(
-  asset: {
-    id: string
-    ownershipType?: string | null
-    custodian: { code: string; fullNameTh: string } | null
-    department?: { code: string; name: string } | null
-    installedInLinks?: Array<{ id: string }>
-    serialNumber: string | null
-    warrantyEndDate: Date | null
-    attachments: Array<{ id: string }>
-  },
-  warrantyWindow: { gte: Date; lte: Date },
-  t: (key: string) => string,
-  locale: string
-) {
-  const editHref = "/" + locale + "/assets/" + asset.id + "/edit"
-  const issues: Array<{ label: string; href: string }> = []
-  if (!hasAssetResponsibility(asset)) issues.push({ label: t("missingCustodian"), href: editHref })
-  if (!asset.serialNumber) issues.push({ label: t("missingSerial"), href: editHref })
-  if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) {
-    issues.push({ label: t("missingPhoto"), href: buildAssetDetailSectionHref(locale, asset.id, null, "photos") })
-  }
-  if (asset.ownershipType !== "software_license" && asset.warrantyEndDate && asset.warrantyEndDate >= warrantyWindow.gte && asset.warrantyEndDate <= warrantyWindow.lte) {
-    issues.push({ label: t("warrantyExpiring"), href: buildAssetDetailSectionHref(locale, asset.id, null, "purchase") })
-  }
-  return issues
 }

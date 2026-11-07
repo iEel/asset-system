@@ -1,5 +1,8 @@
+import Link from "next/link"
 import { ChevronDown } from "lucide-react"
+import { linkVariants } from "@/components/ui/button-variants"
 import { Field } from "@/components/ui/field"
+import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
 import { FilterFormActions } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { SearchField } from "@/components/ui/search-field"
@@ -158,5 +161,36 @@ function ReportFilterBar({ locale, activeView, filters, options, labels, hasActi
         <p data-report-filter-note className="mt-3 text-meta text-muted-foreground">{labels.moreLine}</p>
       </div>
     </details>
+  )
+}
+
+export type ReportChipsLineProps = {
+  chips: readonly FilterChipItem[]
+  // "ทุกตัวเลขในแท็บนี้นับตามตัวกรองนี้ · ทรัพย์สิน n รายการ" (or the no-filter line).
+  scopeLine: string
+  // ล้างตัวกรอง: shown while any filter is on.
+  clearHref?: string
+  // "แก้ตัวกรองที่แท็บภาพรวม": the overview with the same filters, where the filter bar is.
+  editHref: string
+  labels: { activeFilters: string; clearActiveFilter: string; clear: string; editFilters: string }
+}
+
+// The chips line (group 10 spec §3, board RP-Ops): the tabs without a filter bar show the filters in use as chips (each
+// a remove link, ล้างตัวกรอง after them), say what every number on the tab counts with, and link to the overview's
+// filter bar to change them. Server-safe.
+export function ReportChipsLine({ chips, scopeLine, clearHref, editHref, labels }: ReportChipsLineProps) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
+      <FilterChipList
+        chips={chips}
+        label={labels.activeFilters}
+        removeLabel={labels.clearActiveFilter}
+        clearAll={clearHref ? { href: clearHref, label: labels.clear } : undefined}
+      />
+      <p data-report-scope-line className="text-meta text-muted-foreground text-pretty">{scopeLine}</p>
+      <Link href={editHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+        {labels.editFilters}
+      </Link>
+    </div>
   )
 }
