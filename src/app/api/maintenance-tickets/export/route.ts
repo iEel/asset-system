@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
 import { chunkAuditIds } from "@/lib/audit-round-counts-rules"
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
     worksheet.getColumn("repairCost").numFmt = "#,##0.00"
 
     const buffer = await workbook.xlsx.writeBuffer()
+    await logReportExport(user.id, reportExportKeyFor("maintenance", request.nextUrl.searchParams))
     return workbookResponse(buffer, `repair-records-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)

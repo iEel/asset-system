@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { auditFindingColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { auditExportActionStatusKey, auditExportActionTaken, auditExportFindingTypeKey, auditExportReviewStatusKey, auditExportWord, resolveAuditExportLocale } from "@/lib/audit-export-labels"
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
     finalizeAuditWorksheet(worksheet)
 
     const buffer = await workbook.xlsx.writeBuffer()
+    await logReportExport(user.id, reportExportKeyFor("audit-findings", request.nextUrl.searchParams))
     return workbookResponse(buffer, `audit-findings-${status}-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)

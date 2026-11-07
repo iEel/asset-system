@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport } from "@/lib/report-export-log"
 
 const highRiskActions = new Set(["delete", "approve", "export"])
 
@@ -78,6 +79,7 @@ export async function GET() {
     styleWorksheetHeader(matrixSheet)
 
     const buffer = await workbook.xlsx.writeBuffer()
+    await logReportExport(user.id, "role-audit")
     return workbookResponse(buffer, `role-permission-audit-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)

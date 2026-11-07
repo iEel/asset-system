@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { getTranslations } from "next-intl/server"
 import { createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { buildDisposalExportColumns } from "@/lib/disposal-export"
@@ -81,6 +82,7 @@ export async function GET(request: NextRequest) {
     worksheet.getColumn("actualSalvageValue").numFmt = "#,##0.00"
 
     const buffer = await workbook.xlsx.writeBuffer()
+    await logReportExport(user.id, reportExportKeyFor("disposal", request.nextUrl.searchParams))
     return workbookResponse(buffer, `disposal-requests-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { applyAssetCrossScopeFilter, formatAssetCrossScopeFlags } from "@/lib/asset-cross-scope"
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
     worksheet.getColumn("purchasePrice").numFmt = "#,##0.00"
 
     const buffer = await workbook.xlsx.writeBuffer()
+    await logReportExport(user.id, reportExportKeyFor("assets", request.nextUrl.searchParams))
     return workbookResponse(buffer, `assets-export-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)

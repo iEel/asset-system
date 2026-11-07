@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { auditExportActionStatusKey, auditExportActionTaken, auditExportFindingTypeKey, auditExportReviewStatusKey, auditExportWord, buildAuditFindingExportFilterWords, resolveAuditExportLocale } from "@/lib/audit-export-labels"
 import { auditFindingFilterLabelKeys, auditFindingsListOrderBy, buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
       })),
     })
 
+    await logReportExport(user.id, reportExportKeyFor("audit-findings-pdf", request.nextUrl.searchParams))
     return pdfResponse(buffer, `audit-findings-${status}-${new Date().toISOString().slice(0, 10)}.pdf`)
   } catch (error) {
     return errorResponse(error)

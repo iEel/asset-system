@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
+import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
@@ -117,6 +118,7 @@ export async function GET(request: NextRequest) {
     addDepreciationSheet(workbook, depreciationSummary.depreciableAssets)
 
     const buffer = await workbook.xlsx.writeBuffer()
+    await logReportExport(user.id, reportExportKeyFor("assets-overview", request.nextUrl.searchParams))
     return workbookResponse(buffer, `asset-overview-report-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)
