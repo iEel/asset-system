@@ -230,6 +230,49 @@ export async function getApprovalInboxOldest(user: SessionUser): Promise<{ oldes
   }
 }
 
+/**
+ * The inbox's items as light records for the work center's rows (group 9 plan 1 task 4): the same gates and wheres as
+ * the loader and the count, with each item's age date (the request, the report, the round's last change).
+ */
+export async function getApprovalInboxLightRecords(user: SessionUser): Promise<{
+  disposal: { id: string; requestDate: Date; disposalNo: string }[]
+  findings: { id: string; reportedAt: Date; auditNo: string }[]
+  rounds: { id: string; updatedAt: Date; auditNo: string }[]
+}> {
+  const access = getApprovalInboxAccess(user)
+  if (!access.canAnyApproval) return { disposal: [], findings: [], rounds: [] }
+
+  const policy = await getWorkflowApprovalPolicy()
+  const [disposal, findings, rounds] = await Promise.all([
+    access.canApproveDisposal
+      ? prisma.disposalRequest.findMany({
+          where: pendingDisposalApprovalWhere,
+          select: { id: true, requestDate: true, disposalNo: true },
+        })
+      : Promise.resolve([]),
+    access.canApproveAudit
+      ? prisma.auditFinding.findMany({
+          where: pendingFindingApprovalWhere(user.id),
+          select: { id: true, reportedAt: true, auditRound: { select: { auditNo: true } } },
+        })
+      : Promise.resolve([]),
+    access.canApproveAudit && policy.auditCloseRequired
+      ? getAuditRoundsReadyToClose(user.id)
+      : Promise.resolve([]),
+  ])
+
+  return {
+    disposal,
+    findings: findings.map((finding) => ({ id: finding.id, reportedAt: finding.reportedAt, auditNo: finding.auditRound.auditNo })),
+    rounds: rounds.map((round) => ({ id: round.id, updatedAt: round.updatedAt, auditNo: round.auditNo })),
+  }
+}
+
+/** The approval SLA in days (`workflow_approval_sla_days`, default 3): the approval rows' deadline is since + this. */
+export async function getApprovalInboxSlaDays(): Promise<number> {
+  return (await getWorkflowApprovalPolicy()).slaDays
+}
+
 // The real database counts, the same queues as the read model's strip total (the viewer's own disposal requests in).
 async function countApprovalInbox(user: SessionUser, access: ApprovalInboxAccess, policy: WorkflowApprovalPolicy): Promise<ApprovalInboxCounts> {
   const [disposal, auditFindings, auditRoundsReady] = await Promise.all([

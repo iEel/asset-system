@@ -651,6 +651,17 @@
       "updateAction": "อัปเดตแผนแก้ไข",
       "openFinding": "เปิดรายการ",
       "openRequest": "เปิดคำขอ"
+    },
+    "rowContext": {
+      "requestedBy": "ขอโดย {name} {department}",
+      "locationChange": "ที่ตั้ง {from} → {to}",
+      "holderChange": "ผู้ถือครอง {from} → {to}",
+      "reportedBy": "ตรวจโดย {name}",
+      "approvedBy": "อนุมัติโดย {name} {date}",
+      "planTitle": "แผน PM {title} · {location}",
+      "actionPlan": "แผนแก้ไข: {plan} · ผู้รับผิดชอบ {owner}",
+      "repairProblem": "{problem} · ผู้บันทึก {name}",
+      "roundProgress": "ตรวจครบ {done} / {total}"
     }
   },
   "asset": {

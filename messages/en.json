@@ -651,6 +651,17 @@
       "updateAction": "Update action plan",
       "openFinding": "Open finding",
       "openRequest": "Open request"
+    },
+    "rowContext": {
+      "requestedBy": "Requested by {name} {department}",
+      "locationChange": "Location {from} → {to}",
+      "holderChange": "Holder {from} → {to}",
+      "reportedBy": "Checked by {name}",
+      "approvedBy": "Approved by {name} {date}",
+      "planTitle": "PM plan {title} · {location}",
+      "actionPlan": "Action plan: {plan} · Owner {owner}",
+      "repairProblem": "{problem} · Recorded by {name}",
+      "roundProgress": "Checked {done} / {total}"
     }
   },
   "asset": {

@@ -1,6 +1,5 @@
 import Link from "next/link"
 import type React from "react"
-import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
 import { ArrowRight } from "lucide-react"
 import { statusMarkerVariants } from "@/components/ui/badge-variants"
@@ -49,11 +48,18 @@ import {
   parseWorkCenterParams,
   type WorkCenterPanel,
   type WorkCenterParams,
-  type WorkCenterUserScope,
 } from "@/lib/work-center-view"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
+import {
+  applyAssetWorkCenterScope,
+  applyAuditFindingWorkCenterScope,
+  applyAuditItemWorkCenterScope,
+  applyDisposalWorkCenterScope,
+  applyMaintenanceWorkCenterScope,
+  applyPlanWorkCenterScope,
+} from "@/lib/work-center-scope"
 
 type WorkCenterPageProps = {
   params: Promise<{ locale: string }>
@@ -673,104 +679,4 @@ function FollowUpItem({ href, title, meta, tone }: { href: string; title: string
       </div>
     </Link>
   )
-}
-
-function applyAssetWorkCenterScope(
-  where: Prisma.AssetWhereInput,
-  active: boolean,
-  scope: WorkCenterUserScope,
-): Prisma.AssetWhereInput {
-  return applyWorkCenterScope(where, active, buildAssetScopeWhere(scope))
-}
-
-function applyMaintenanceWorkCenterScope(
-  where: Prisma.MaintenanceTicketWhereInput,
-  active: boolean,
-  scope: WorkCenterUserScope,
-): Prisma.MaintenanceTicketWhereInput {
-  const scopeWhere = getScopedWhere<Prisma.MaintenanceTicketWhereInput>(scope, ({ employeeId, departmentId }) => ({
-    OR: [
-      ...(employeeId ? [{ reportedById: employeeId }, { assignedToId: employeeId }, { inspectedById: employeeId }, { asset: { custodianId: employeeId } }] : []),
-      ...(departmentId ? [{ asset: { departmentId } }] : []),
-    ],
-  }))
-  return applyWorkCenterScope(where, active, scopeWhere)
-}
-
-function applyPlanWorkCenterScope(
-  where: Prisma.MaintenancePlanWhereInput,
-  active: boolean,
-  scope: WorkCenterUserScope,
-): Prisma.MaintenancePlanWhereInput {
-  const scopeWhere = getScopedWhere<Prisma.MaintenancePlanWhereInput>(scope, ({ employeeId, departmentId }) => ({
-    OR: [
-      ...(employeeId ? [{ asset: { custodianId: employeeId } }] : []),
-      ...(departmentId ? [{ asset: { departmentId } }] : []),
-    ],
-  }))
-  return applyWorkCenterScope(where, active, scopeWhere)
-}
-
-function applyAuditFindingWorkCenterScope(
-  where: Prisma.AuditFindingWhereInput,
-  active: boolean,
-  scope: WorkCenterUserScope,
-): Prisma.AuditFindingWhereInput {
-  const scopeWhere = getScopedWhere<Prisma.AuditFindingWhereInput>(scope, ({ employeeId, departmentId }) => ({
-    OR: [
-      ...(employeeId ? [{ actionOwnerId: employeeId }, { asset: { custodianId: employeeId } }] : []),
-      ...(departmentId ? [{ asset: { departmentId } }] : []),
-    ],
-  }))
-  return applyWorkCenterScope(where, active, scopeWhere)
-}
-
-function applyAuditItemWorkCenterScope(
-  where: Prisma.AuditItemWhereInput,
-  active: boolean,
-  scope: WorkCenterUserScope,
-): Prisma.AuditItemWhereInput {
-  const scopeWhere = getScopedWhere<Prisma.AuditItemWhereInput>(scope, ({ employeeId, departmentId }) => ({
-    OR: [
-      ...(employeeId ? [{ asset: { custodianId: employeeId } }] : []),
-      ...(departmentId ? [{ asset: { departmentId } }] : []),
-    ],
-  }))
-  return applyWorkCenterScope(where, active, scopeWhere)
-}
-
-function applyDisposalWorkCenterScope(
-  where: Prisma.DisposalRequestWhereInput,
-  active: boolean,
-  scope: WorkCenterUserScope,
-): Prisma.DisposalRequestWhereInput {
-  const scopeWhere = getScopedWhere<Prisma.DisposalRequestWhereInput>(scope, ({ employeeId, departmentId }) => ({
-    OR: [
-      ...(employeeId ? [{ requestedById: employeeId }, { approverId: employeeId }, { executedById: employeeId }, { asset: { custodianId: employeeId } }] : []),
-      ...(departmentId ? [{ asset: { departmentId } }] : []),
-    ],
-  }))
-  return applyWorkCenterScope(where, active, scopeWhere)
-}
-
-function buildAssetScopeWhere(scope: WorkCenterUserScope): Prisma.AssetWhereInput {
-  return getScopedWhere<Prisma.AssetWhereInput>(scope, ({ employeeId, departmentId }) => ({
-    OR: [
-      ...(employeeId ? [{ custodianId: employeeId }] : []),
-      ...(departmentId ? [{ departmentId }] : []),
-    ],
-  }))
-}
-
-function getScopedWhere<T extends { OR?: unknown; id?: unknown }>(
-  scope: WorkCenterUserScope,
-  build: (scope: { employeeId: string | null; departmentId: string | null }) => T,
-): T {
-  if (!scope.enabled) return { id: "__work_center_no_user_scope__" } as T
-  return build(scope)
-}
-
-function applyWorkCenterScope<T>(where: T, active: boolean, scopeWhere: T): T {
-  if (!active) return where
-  return { AND: [where, scopeWhere] } as T
 }

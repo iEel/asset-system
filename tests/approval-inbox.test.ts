@@ -142,12 +142,13 @@ test("the snapshot's summary and the counts share one database count (critique C
 test("the inbox's oldest request reads the same queues, gates and wheres as its count (group 1 dashboard task 2)", () => {
   const src = readFileSync("src/lib/approval-inbox-query.ts", "utf8").replace(/\r/g, "")
   assert.match(src, /export async function getApprovalInboxOldest\(user: SessionUser\): Promise<\{ oldest: Date \| null; slaDays: number \}>/)
-  assert.equal(src.match(/where: pendingDisposalApprovalWhere\b/g)?.length, 3, "the pending loader, the count and the oldest")
-  assert.equal(src.match(/where: pendingFindingApprovalWhere\(user\.id\)/g)?.length, 3, "the pending loader, the count and the oldest")
+  // The work center's light records (group 9 plan 1 task 4) read the same queues as the fourth reader.
+  assert.equal(src.match(/where: pendingDisposalApprovalWhere\b/g)?.length, 4, "the pending loader, the count, the oldest and the light records")
+  assert.equal(src.match(/where: pendingFindingApprovalWhere\(user\.id\)/g)?.length, 4, "the pending loader, the count, the oldest and the light records")
   assert.equal(src.match(/getReadyAuditRoundsForClose\(user\.id\)/g)?.length, 2, "the count and the oldest")
   assert.doesNotMatch(src, /disposalRequired/)
-  assert.equal(src.match(/access\.canApproveDisposal\s*\?/g)?.length, 3, "the pending loader, the count and the oldest")
-  assert.equal(src.match(/access\.canApproveAudit && policy\.auditCloseRequired/g)?.length, 3)
+  assert.equal(src.match(/access\.canApproveDisposal\s*\?/g)?.length, 4, "the pending loader, the count, the oldest and the light records")
+  assert.equal(src.match(/access\.canApproveAudit && policy\.auditCloseRequired/g)?.length, 4)
   assert.match(src, /_min: \{ requestDate: true \}/)
   assert.match(src, /_min: \{ reportedAt: true \}/)
   assert.doesNotMatch(src, /getReadyAuditRoundCloseCount/)
