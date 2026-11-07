@@ -153,7 +153,7 @@ test("operations exposes exact actionable drilldowns from the same compatible fi
   assert.match(page, /const operationsQualityWhere = await applyAssetCrossScopeFilter\(buildAssetWhere\(operationsQualityFilters\), operationsQualityFilters\.crossScope\)/)
   assert.match(page, /filters=\{operationsQualityFilters\}/)
   // Group 10 plan 2 Task 1: the page hands the scope to the operations reader, which ANDs it into every queue count.
-  assert.match(page, /getReportsOperationsData\(\n\s+operationsQualityWhere,/)
+  assert.match(page, /getReportsOperationsData\(\r?\n\s+operationsQualityWhere,/)
   const operationsData = readFileSync("src/lib/reports-operations-data.ts", "utf8")
   assert.ok((operationsData.match(/\{ AND: \[where, /g)?.length ?? 0) >= 8)
 })
@@ -201,7 +201,7 @@ test("the report catalog shows its item count on StatStrip (spec 2B §5.6, R-d)"
 // are tags and the counts go through formatCount. The idle box stays a link (tests/report-idle-activity.test.ts).
 test("report operations put the data-quality and cross-scope counts on linked StatStrips (spec 2B §5.6, R-d)", () => {
   // Group 10 plan 2 Task 1 (board RP-Ops): the queue's five cells are linked StatStrip cells filtering the queue (issue=).
-  assert.match(operationsView, /value: formatCount\(cell\.value\),\n\s+unit: t\("opsUnit"\),\n\s+foot: cell\.foot,\n\s+href: queue\.links\.cells\[cell\.key\],\n\s+current: queue\.issue === cell\.key,/)
+  assert.match(operationsView, /value: formatCount\(cell\.value\),\r?\n\s+unit: t\("opsUnit"\),\r?\n\s+foot: cell\.foot,\r?\n\s+href: queue\.links\.cells\[cell\.key\],\r?\n\s+current: queue\.issue === cell\.key,/)
   assert.match(operationsView, /<StatStrip items=\{crossScope\.cards\.map\(\(card\) => \(\{ key: card\.key, label: card\.label, value: formatCount\(card\.value\), href: card\.href \}\)\)\} \/>/)
   assert.match(operationsView, /caption=\{labels\.crossScopePreviewTitle\}/)
   assert.equal(operationsView.match(/<span className="tag font-medium">\{asset\.assetTag\}<\/span>/g)?.length, 1)
