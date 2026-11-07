@@ -4,6 +4,8 @@ export const DASHBOARD_WORDS = {
   waitingTitle: "งานที่รอคุณ", totalAssets: "ทรัพย์สินทั้งหมด", custodianAssigned: "มีผู้ถือครอง",
   noteCustodian: "มีผู้ถือครอง ไม่รวมตัดจำหน่ายแล้วและปลดระวาง", openWorkCenter: "เปิดศูนย์งานค้าง",
   scopeNavigation: "ขอบเขตข้อมูล", activeFilters: "ตัวกรองที่ใช้อยู่",
+  // The company select form's submit, shown instead of the tabs above four companies (dashboard.showScope).
+  showScope: "แสดง",
   // The register's tab for every status without a tab of its own (asset.quickFilterOther, group 4 plan 1).
   otherStatusTab: "สถานะอื่น",
   auditRoundKpi: "รอบตรวจนับ {code}", auditFoot: "ตรวจแล้ว {processed} / {expected} · ควรถึง {pace}",

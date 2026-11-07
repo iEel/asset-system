@@ -18,6 +18,25 @@ test("the dashboard spec reads the app's own words and the shared orders (group 
   assert.deepEqual(Object.keys(WAITING_TITLES), [...WAITING_WORK_KEYS], "the kinds in the shared order")
   for (const key of WAITING_WORK_KEYS) assert.equal(WAITING_TITLES[key], th.notifications[key], `notifications.${key}`)
   assert.deepEqual(SECTION_ORDER, DASHBOARD_SECTION_ORDER)
+  // The company switcher's words: the tabs' navigation (or the select's hidden label) and the select form's submit.
+  assert.equal(DASHBOARD_WORDS.scopeNavigation, th.dashboard.scopeNavigation)
+  assert.equal(DASHBOARD_WORDS.showScope, th.dashboard.showScope)
+})
+
+test("the dashboard spec takes either company switcher: the tab when there is one, else the select form with แสดง (run E2E-1107E)", () => {
+  const spec = read("e2e/dashboard/dashboard.spec.ts")
+  const page = read("src/app/[locale]/(dashboard)/dashboard/page.tsx")
+  // The page: tabs up to the limit, the select form named companyId with the hidden scope label above it.
+  assert.ok(page.includes("companies.length > DASHBOARD_COMPANY_TAB_LIMIT ?"))
+  assert.match(page, /<FilterSelect\n\s+label=\{t\("scopeNavigation"\)\}\n\s+hideLabel\n[^]*?name="companyId"/)
+  assert.ok(page.includes(`<FilterFormActions submitLabel={t("showScope")} />`))
+  // The spec counts the tab once the h1 shows, clicks it if there, else selects the company and presses แสดง.
+  assert.ok(spec.includes(`await expect(page.getByRole("heading", { level: 1 })).toBeVisible()`))
+  assert.ok(spec.includes("if ((await companyTab.count()) > 0) {"))
+  assert.ok(spec.includes("await scopeSelect.selectOption(companyId)"))
+  assert.ok(spec.includes(`await scopeForm.getByRole("button", { name: DASHBOARD_WORDS.showScope, exact: true }).click()`))
+  assert.ok(spec.includes(`getByRole("combobox", { name: DASHBOARD_WORDS.scopeNavigation, exact: true })).toHaveValue(companyId)`))
+  assert.ok(spec.includes(`toHaveAttribute("aria-current", "page")`), "the tab is still checked when there is one")
 })
 
 test("the dashboard spec runs as three users through the suite's fixtures, compares two surfaces, and cancels its round (group 1 dashboard task 11)", () => {

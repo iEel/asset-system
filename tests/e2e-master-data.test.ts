@@ -202,9 +202,6 @@ test("the org lists spec reads the app's own words, and the department guard's r
   assert.equal(ORG_LIST_WORDS.footerCounts, th.common.recordStatus.footerCounts)
   assert.equal(ORG_LIST_WORDS.moreActionsFor, th.common.moreActionsFor)
   assert.equal(ORG_LIST_WORDS.tableScrollHint, th.common.tableScrollHint)
-  assert.equal(ORG_LIST_WORDS.noNameEn, th.company.list.noNameEn)
-  assert.equal(ORG_LIST_WORDS.assetTagCodeFallback, th.company.list.assetTagCodeFallback)
-  assert.equal(ORG_LIST_WORDS.taxIdMissing, th.company.list.taxIdMissing)
   assert.equal(ORG_LIST_WORDS.addBranch, th.company.list.addBranch)
   assert.equal(ORG_LIST_WORDS.addLocation, th.branch.list.addLocation)
   assert.equal(ORG_LIST_WORDS.viewEmployees, th.branch.list.viewEmployees)
@@ -244,12 +241,22 @@ test("the org lists spec: run-marked organisation by the seed admin, the three b
   assert.ok(spec.includes(`asUser("itHead")`))
   // Run-marked: every code starts with the run and the project; the seed admin creates them through the setup's APIs.
   assert.ok(spec.includes("const prefix = `${runId}-${projectCode(projectName)}-OG`"))
-  for (const code of ["`${prefix}C`", "`${prefix}B`", "`${prefix}D`", "`${prefix}R`", "`${prefix}E`"]) assert.ok(spec.includes(code), code)
-  for (const route of ["/api/companies", "/api/branches", "/api/departments", "/api/locations", "/api/employees"]) assert.ok(spec.includes(`admin.post("${route}"`), route)
-  // The company has no asset-tag code, so the run setup (the first company with one) never picks it.
-  assert.ok(spec.includes("assetTagCode: null"))
-  // The segmented counts, the presets with returnTo and กลับ, the department filter's chip.
-  assert.ok(spec.includes(`await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })`))
+  for (const code of ["`${prefix}B`", "`${prefix}D`", "`${prefix}R`", "`${prefix}E`"]) assert.ok(spec.includes(code), code)
+  for (const route of ["/api/branches", "/api/departments", "/api/locations", "/api/employees"]) assert.ok(spec.includes(`admin.post("${route}"`), route)
+  // No company per run (E2E-1107E: the dashboard's company tabs stop at four companies): the run's company, read through
+  // the API, never a POST to /api/companies and no company code of the spec's own.
+  assert.ok(spec.includes("const companyId = readRunData().companyId"))
+  assert.ok(spec.includes("admin.get(`/api/companies/${companyId}`)"))
+  assert.doesNotMatch(spec, /\.post\(\s*["'`]\/api\/companies/)
+  assert.ok(!spec.includes("`${prefix}C`"), "no company code of the spec's own")
+  // The real company's counts are not the test's: the chosen option and numbers, the branch and asset links at least 1.
+  assert.equal((spec.match(/await expectStatusChosen\(page, "(?:active|all)"\)/g) ?? []).length, 2)
+  assert.equal((spec.match(/await expectCountAtLeastOne\(countLink\(companyRow, `\/th\/(?:master-data\/branches|assets)\?companyId=\$\{company\.id\}&page=1`\)\)/g) ?? []).length, 2)
+  // The branch form opened from the companies list is never saved (no extra branch on the real company).
+  assert.doesNotMatch(spec, /getByRole\("button", \{ name: W\.save/)
+  // The segmented counts on the run's own branch and department, the presets with returnTo and กลับ, the department
+  // filter's chip.
+  assert.equal((spec.match(/await expectStatusCounts\(page, "active", \{ active: 1, inactive: 0, all: 1 \}\)/g) ?? []).length, 2)
   assert.ok(spec.includes(`url.pathname === "/th/master-data/branches/new" && url.searchParams.get("companyId") === company.id`))
   assert.ok(spec.includes(`await expect(page.locator("#branch-company")).toHaveValue(company.id)`))
   assert.ok(spec.includes(`url.pathname === "/th/master-data/locations/new" && url.searchParams.get("branchId") === branch.id`))

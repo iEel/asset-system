@@ -41,8 +41,12 @@ export async function addCondition(page: Page, condition: ScopeCondition, search
 
 // The first count, over the whole register (Task 4), done before any condition changes the scope: the panel and the bar
 // leave "กำลังนับรายการ…". Not a bare getByRole("status"): the shell renders role=status too (shell-banner, shell-notifications).
+// It waits 30 s, not the suite's 10 s expect: dev holds about 20,000 assets (each run adds about 230), and on
+// 2026-11-07 (run E2E-1107E) POST /api/audit-rounds/preview for the unscoped form took 6–8.5 s alone and over 10 s while
+// the suite ran (as the transaction pages' first arrival waits longer, TRANSACTION_PAGE_ARRIVAL_MS).
+const FIRST_COUNT_MS = 30_000
 export async function waitForFirstCount(page: Page) {
-  await expect(page.getByRole("main").getByText(ROUNDS_WORDS.counting, { exact: true })).toHaveCount(0)
+  await expect(page.getByRole("main").getByText(ROUNDS_WORDS.counting, { exact: true })).toHaveCount(0, { timeout: FIRST_COUNT_MS })
 }
 
 // The footer's submit "สร้างรอบ" (spec §7).

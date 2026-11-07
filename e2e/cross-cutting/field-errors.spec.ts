@@ -60,7 +60,9 @@ test("asset register: a warranty that ends before it starts shows its error, and
     await save(page)
     await expect(page).toHaveURL(new RegExp(`/th/assets\\?search=${encodeURIComponent(tag)}`))
   })
-  await expect(page.getByRole("main").getByText(tag, { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  // 30 s, not the suite's 10 s expect: dev holds about 20,000 assets (each run adds about 230), and in run E2E-1107E
+  // (2026-11-07) the register after the save showed the new row just after 10 s while the suite ran.
+  await expect(page.getByRole("main").getByText(tag, { exact: true }).filter({ visible: true }).first()).toBeVisible({ timeout: 30_000 })
   await measure.recordPage("register after the asset save")
 })
 

@@ -16,8 +16,8 @@ export const ORG_LIST_WORDS = {
   tableScrollHint: "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม",
   // A row's ⋯ (MasterDataRowActions): แก้ไข first, the board's links, ปิดใช้งาน only with <module>:delete.
   moreActionsFor: "การดำเนินการของ {code}", edit: "แก้ไข", deactivate: "ปิดใช้งาน",
-  // Board MD-Companies: the second line, the asset-tag code's fallback, the missing tax id, ⋯ เพิ่มสาขาให้บริษัทนี้.
-  noNameEn: "ยังไม่มีชื่อภาษาอังกฤษ", assetTagCodeFallback: "เว้นว่าง ใช้รหัสบริษัทแทน", taxIdMissing: "ยังไม่ระบุ",
+  // Board MD-Companies: ⋯ เพิ่มสาขาให้บริษัทนี้. The spec reads the run's real company, so the words of a company with no
+  // English name, asset-tag code or tax id stay with tests/companies-list-board.test.ts.
   addBranch: "เพิ่มสาขาให้บริษัทนี้",
   // Board MD-Branches: ⋯ เพิ่มที่ตั้งในสาขานี้ and ดูพนักงานในสาขานี้ ({n}), the footer's totals over the filtered set.
   addLocation: "เพิ่มที่ตั้งในสาขานี้", viewEmployees: "ดูพนักงานในสาขานี้ ({count, number})",

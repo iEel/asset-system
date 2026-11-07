@@ -8,17 +8,22 @@
 // tests/departments-list-board.test.ts). No company:, branch: or department:edit (final review): no แก้ไข in ⋯ and the
 // rows are plain rows (no tabindex, they open nothing); the departments row has no ⋯ at all (nothing to offer). Only
 // branch:create, so เพิ่มสาขา is in the branches header and neither เพิ่มบริษัท nor เพิ่มแผนก is.
-// - The run's own organisation, created by the seed admin through the same APIs the setup uses (no helper made a
-//   company, a branch or a department of a spec's own): a company with no English name, no asset-tag code and no tax
-//   id (so the run setup, which picks the first company with an asset-tag code, never picks it), a branch of it, a
-//   department of it, a room in the branch and an employee of the three. The IT head adds one asset there through the
-//   asset API (the room, the department). Every code starts with <run>-<project>-OG and every name with the run and the
-//   project; no shared company, branch, department, location or employee is changed.
-// - Companies: a search for the run company's code: ใช้งาน 1 (aria-current) / ไม่ใช้งาน 0 / ทั้งหมด 1, the row's facts
-//   (name, "code · ยังไม่มีชื่อภาษาอังกฤษ", the code as the asset-tag code with its fallback note, ยังไม่ระบุ, the branch
-//   and asset counts linked to their lists, the employee count), no status column under ใช้งาน and one under ทั้งหมด,
-//   the footer's ใช้งาน/ไม่ใช้งาน counts; ⋯ holds เพิ่มสาขาให้บริษัทนี้ only (no แก้ไข, no ปิดใช้งาน), which opens the branch
-//   form with the company chosen and กลับ back to the companies list with its search.
+// - The run's own organisation under the run's company (readRunData().companyId: the real company the run setup picks,
+//   the first one with an asset-tag code), created by the seed admin through the same APIs the setup uses: a branch of
+//   the company, a department of it, a room in the branch and an employee of the three. The IT head adds one asset
+//   there through the asset API (the room, the department). Every code starts with <run>-<project>-OG and every name
+//   with the run and the project; no shared company, branch, department, location or employee is changed.
+//   No company per run (run E2E-1107E): the spec used to add one company per project per run and leave it active, and
+//   the dashboard shows its company tabs only up to DASHBOARD_COMPANY_TAB_LIMIT (4) companies (src/lib/dashboard-page.ts),
+//   so dev outgrew the tabs. The spec POSTs no /api/companies.
+// - Companies: a search for the run company's code (its code and name read from GET /api/companies/<id>, never written
+//   here): ใช้งาน chosen (aria-current), ไม่ใช้งาน and ทั้งหมด with a count each (a number: a real company's search may
+//   match others), the row's name and code, the branch and asset counts (at least 1: the run's branch and asset are
+//   among them) linked to their lists by the company, no status column under ใช้งาน and one under ทั้งหมด, the footer's
+//   ใช้งาน/ไม่ใช้งาน counts; ⋯ holds เพิ่มสาขาให้บริษัทนี้ only (no แก้ไข, no ปิดใช้งาน), which opens the branch form with the
+//   company chosen (never saved: no branch on the real company beyond the run's OGB) and กลับ back to the companies list
+//   with its search. The words of a company with no English name, asset-tag code or tax id stay with the unit test
+//   tests/companies-list-board.test.ts.
 // - Branches: the run branch's ที่ตั้ง / พนักงาน / ทรัพย์สิน counts link to the lists by the branch (each opened), the
 //   footer's totals over the filtered set; ⋯ holds เพิ่มที่ตั้งในสาขานี้ and ดูพนักงานในสาขานี้ (1) (no แก้ไข, no ปิดใช้งาน);
 //   เพิ่มที่ตั้งในสาขานี้ opens the location form with the branch chosen and กลับ back to the branches list.
@@ -34,10 +39,10 @@
 import type { Locator, Page } from "../asset-detail/detail-steps.ts"
 import { menuItem, readMenuEntries } from "../asset-detail/detail-steps.ts"
 import { asUser, expect, test } from "../support/fixtures.ts"
-import { readRunState } from "../support/state.ts"
+import { readRunData, readRunState } from "../support/state.ts"
 import { recordSettled } from "../audit/settle.ts"
 import { seedAdminApi } from "../disposal/disposal-support.ts"
-import { fillTemplate } from "../shell/shell-words.ts"
+import { fillTemplate, templatePattern } from "../shell/shell-words.ts"
 import { projectCode, txAssetName, txAssetTag } from "../transactions/tx-plan.ts"
 import { readAssetMasters, type AssetMasters } from "../transactions/tx-support.ts"
 import { ORG_LIST_WORDS as W } from "./org-lists-words.ts"
@@ -61,19 +66,20 @@ async function created(response: Awaited<ReturnType<APIRequestContext["post"]>>,
   return ((await response.json()) as { id: string }).id
 }
 
-// The run's organisation of this project (the seed admin, the setup's APIs, every key of each schema): codes
-// <run>-<project>-OGC / OGB / OGD / OGR / OGE, names "<run> <project> …". The company has no English name, asset-tag
-// code or tax id, for the board's words.
+// The run's organisation of this project (the seed admin, the setup's APIs, every key of each schema) under the run's
+// company: codes <run>-<project>-OGB / OGD / OGR / OGE, names "<run> <project> …". The company is the run's (no company
+// per run: the dashboard's company tabs stop at four companies); its code and name are read, never written.
 async function createRunOrg(projectName: string): Promise<RunOrg> {
   const { runId } = readRunState()
   const prefix = `${runId}-${projectCode(projectName)}-OG`
   const name = (label: string) => txAssetName(runId, projectName, label)
   const admin = await seedAdminApi()
   try {
-    const company = { id: "", code: `${prefix}C`, nameTh: name("บริษัททดสอบรายการ") }
-    company.id = await created(await admin.post("/api/companies", {
-      data: { code: company.code, assetTagCode: null, nameTh: company.nameTh, nameEn: null, taxId: null, address: null, isActive: true },
-    }), `/api/companies ${company.code}`)
+    const companyId = readRunData().companyId
+    const companyResponse = await admin.get(`/api/companies/${companyId}`)
+    expect(companyResponse.status(), `GET /api/companies/${companyId}: ${(await companyResponse.text()).slice(0, 300)}`).toBe(200)
+    const { code: companyCode, nameTh: companyName } = (await companyResponse.json()) as { code: string; nameTh: string }
+    const company: RunCompany = { id: companyId, code: companyCode, nameTh: companyName }
     const branch = { id: "", code: `${prefix}B`, name: name("สาขาทดสอบรายการ") }
     branch.id = await created(await admin.post("/api/branches", {
       data: { code: branch.code, name: branch.name, companyId: company.id, address: null, contactPerson: null, isActive: true },
@@ -139,6 +145,26 @@ async function expectStatusCounts(page: Page, chosen: "active" | "all", counts: 
   }
 }
 
+// The segmented control on a list whose counts are not the test's own (the run's real company): each option named by
+// its word and some count, only the chosen one aria-current.
+const anyCount = "[\\d,]+"
+function statusLinkAnyCount(page: Page, label: string): Locator {
+  return page.getByRole("navigation", { name: W.recordStatusLabel, exact: true }).getByRole("link", { name: new RegExp(`^${label}\\s*${anyCount}$`) })
+}
+async function expectStatusChosen(page: Page, chosen: "active" | "all") {
+  const links = { active: statusLinkAnyCount(page, W.recordActive), inactive: statusLinkAnyCount(page, W.recordInactive), all: statusLinkAnyCount(page, W.recordAll) }
+  for (const [key, link] of Object.entries(links)) {
+    if (key === chosen) await expect(link).toHaveAttribute("aria-current", "page")
+    else await expect(link).not.toHaveAttribute("aria-current")
+  }
+}
+
+// A count cell's link that holds a number of at least 1 (a real company's counts change from run to run).
+async function expectCountAtLeastOne(link: Locator) {
+  await expect(link).toHaveText(/^[\d,]+$/)
+  expect(Number(((await link.textContent()) ?? "").replace(/,/g, "")), "the count is at least 1").toBeGreaterThanOrEqual(1)
+}
+
 // A row's ⋯: the menu on the computer, the bottom sheet on the phone. Escape closes either.
 async function openRowMenu(page: Page, row: Locator, code: string, phone: boolean): Promise<Locator> {
   await row.getByRole("button", { name: fillTemplate(W.moreActionsFor, { code }), exact: true }).click()
@@ -181,24 +207,24 @@ test.describe("the IT head reads the companies, branches and departments lists",
     const companiesPath = "/th/master-data/companies"
     await page.goto(`${companiesPath}?search=${encodeURIComponent(company.code)}`, { waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: W.companiesTitle, exact: true })).toBeVisible()
-    await expectStatusCounts(page, "active", { active: 1, inactive: 0, all: 1 })
-    await expect(page.locator("table tbody tr")).toHaveCount(1)
-    const companyRow = listRow(page, company.code)
+    await expectStatusChosen(page, "active")
+    // The run company's row (its code and its name: a real company's code may be part of another's).
+    const companyRowOf = () => listRow(page, company.code).filter({ hasText: company.nameTh })
+    const companyRow = companyRowOf()
+    await expect(companyRow).toHaveCount(1)
     // No company:create, no company:edit: no เพิ่มบริษัท, and the row opens nothing.
     await expect(headerCreateLink(page, W.companyCreateTitle)).toHaveCount(0)
     await expectPlainRow(companyRow)
-    // Name first, "code · ยังไม่มีชื่อภาษาอังกฤษ" under it; the code stands in as the asset-tag code; no tax id yet.
+    // Name first, the code under it.
     await expect(companyRow).toContainText(company.nameTh)
-    await expect(companyRow).toContainText(`${company.code} · ${W.noNameEn}`)
-    await expect(companyRow).toContainText(W.assetTagCodeFallback)
-    await expect(companyRow).toContainText(W.taxIdMissing)
-    // สาขา 1 and ทรัพย์สิน 1 link to their lists by the company; พนักงาน 1 is a plain number (no company filter there).
-    await expect(countLink(companyRow, `/th/master-data/branches?companyId=${company.id}&page=1`)).toHaveText("1")
-    await expect(countLink(companyRow, `/th/assets?companyId=${company.id}&page=1`)).toHaveText("1")
-    // The status column only under ทั้งหมด; the footer's counts.
+    await expect(companyRow).toContainText(company.code)
+    // สาขา and ทรัพย์สิน link to their lists by the company, each at least 1 (the run's OGB and OGA among them).
+    await expectCountAtLeastOne(countLink(companyRow, `/th/master-data/branches?companyId=${company.id}&page=1`))
+    await expectCountAtLeastOne(countLink(companyRow, `/th/assets?companyId=${company.id}&page=1`))
+    // The status column only under ทั้งหมด; the footer's counts (numbers).
     const statusColumn = page.getByRole("columnheader", { name: W.statusColumn, exact: true })
     await expect(statusColumn).toHaveCount(0)
-    await expect(page.locator('[data-slot="data-table-foot"]')).toContainText(fillTemplate(W.footerCounts, { active: 1, inactive: 0 }))
+    await expect(page.locator('[data-slot="data-table-foot"]')).toContainText(templatePattern(W.footerCounts, { active: anyCount, inactive: anyCount }))
     if (phone) await expectPhoneTable(page, W.companiesTitle)
     await recordSettled(page, measure, "companies list, the run company")
 
@@ -214,16 +240,17 @@ test.describe("the IT head reads the companies, branches and departments lists",
     await expect(page.getByRole("heading", { level: 1, name: W.branchCreateTitle, exact: true })).toBeVisible()
     await expect(page.locator("#branch-company")).toHaveValue(company.id)
     await recordSettled(page, measure, "branch form, เพิ่มสาขาให้บริษัทนี้")
-    // Nothing is saved: กลับ goes back to the companies list with its search.
+    // Nothing is saved (no branch on the real company beyond the run's): กลับ goes back to the companies list with its
+    // search.
     await expectBackTo(page, companiesPath, company.code)
-    await expect(listRow(page, company.code)).toHaveCount(1)
+    await expect(companyRowOf()).toHaveCount(1)
 
     // ทั้งหมด: chosen, and the status column shows the row ใช้งาน.
-    await statusLink(page, W.recordAll, 1).click()
+    await statusLinkAnyCount(page, W.recordAll).click()
     await page.waitForURL((url) => url.pathname === companiesPath && url.searchParams.get("status") === "all")
-    await expectStatusCounts(page, "all", { active: 1, inactive: 0, all: 1 })
+    await expectStatusChosen(page, "all")
     await expect(statusColumn).toHaveCount(1)
-    await expect(listRow(page, company.code).getByText(W.recordActive, { exact: true })).toHaveCount(1)
+    await expect(companyRowOf().getByText(W.recordActive, { exact: true })).toHaveCount(1)
     await recordSettled(page, measure, "companies list, ทั้งหมด with the status column")
 
     // ── Branches (board MD-Branches) ──

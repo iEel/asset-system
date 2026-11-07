@@ -257,10 +257,24 @@ test.describe("the viewer", () => {
     if (e2eDevice === "desktop") {
       // The switcher is on the dashboard; the steps above left the page on the register.
       await measure.visit("/th/dashboard", "viewer: dashboard, for one company")
+      // Either switcher: the tabs up to DASHBOARD_COMPANY_TAB_LIMIT (4) companies, the select form ("ขอบเขตข้อมูล",
+      // visually hidden label, name companyId, submit แสดง) above it (src/app/[locale]/(dashboard)/dashboard/page.tsx).
+      // toHaveCount is not a wait: the tab link is counted once the page has settled (its h1 shown).
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
       const switcher = page.getByRole("navigation", { name: DASHBOARD_WORDS.scopeNavigation })
-      await switcher.locator(`a[href$="companyId=${companyId}"]`).click()
-      await page.waitForURL((url) => url.searchParams.get("companyId") === companyId)
-      await expect(switcher.locator(`a[href$="companyId=${companyId}"]`)).toHaveAttribute("aria-current", "page")
+      const companyTab = switcher.locator(`a[href$="companyId=${companyId}"]`)
+      if ((await companyTab.count()) > 0) {
+        await companyTab.click()
+        await page.waitForURL((url) => url.searchParams.get("companyId") === companyId)
+        await expect(switcher.locator(`a[href$="companyId=${companyId}"]`)).toHaveAttribute("aria-current", "page")
+      } else {
+        const scopeSelect = page.getByRole("main").getByRole("combobox", { name: DASHBOARD_WORDS.scopeNavigation, exact: true })
+        const scopeForm = page.getByRole("main").getByRole("search").filter({ has: scopeSelect })
+        await scopeSelect.selectOption(companyId)
+        await scopeForm.getByRole("button", { name: DASHBOARD_WORDS.showScope, exact: true }).click()
+        await page.waitForURL((url) => url.searchParams.get("companyId") === companyId)
+        await expect(page.getByRole("main").getByRole("combobox", { name: DASHBOARD_WORDS.scopeNavigation, exact: true })).toHaveValue(companyId)
+      }
       await measure.recordPage("viewer: the dashboard for one company")
     } else {
       await measure.visit(`/th/dashboard?companyId=${companyId}`, "viewer: the dashboard for one company")
