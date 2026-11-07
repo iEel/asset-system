@@ -16,11 +16,12 @@ const th = (JSON.parse(read("messages/th.json")) as { reportsPage: Record<string
 const en = (JSON.parse(read("messages/en.json")) as { reportsPage: Record<string, string> }).reportsPage
 
 test("operations shows the chips line instead of the filter bar", () => {
-  assert.match(page, /const showsFilterBar = activeView !== "operations"/)
+  // Task 2: the catalog shows the chips line too (board RP-Library).
+  assert.match(page, /const showsFilterBar = activeView !== "operations" && activeView !== "catalog"/)
   assert.match(page, /\{showsFilterBar \? \(\n\s+<div data-report-filters>/)
   assert.match(page, /\{showsFilterBar \? \(\n\s+<div className="md:hidden">\n\s+<ReportFilterToggle/)
   assert.match(page, /\{!showsFilterBar \? \(\n\s+<div data-report-chips-line>\n\s+<ReportChipsLine/)
-  assert.match(page, /scopeLine=\{hasActiveFilters \? t\("opsScopeLine", \{ count: totalAssets \}\) : t\("opsScopeLineNoFilters", \{ count: totalAssets \}\)\}/)
+  assert.match(page, /: hasActiveFilters\n\s+\? t\("opsScopeLine", \{ count: totalAssets \}\)\n\s+: t\("opsScopeLineNoFilters", \{ count: totalAssets \}\)/)
   assert.match(page, /clearHref=\{hasActiveFilters \? buildReportHref\(locale, activeView, parseAssetListParams\(\{\}\)\) : undefined\}/)
   assert.match(page, /editHref=\{buildReportHref\(locale, "overview", filters\)\}/)
   // The chips keep the chosen issue and toggle while on operations.

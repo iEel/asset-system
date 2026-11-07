@@ -39,16 +39,18 @@ test("report presets: lg save beside the 40px field, an outline icon-sm delete, 
   assert.doesNotMatch(source, /<button\b|text-white|sm:h-|sm:w-8|sm:min-h-0|text-danger|hover:bg-danger-soft|rounded-md border border-border bg-background p-4/)
 })
 
-test("report catalog: three ContentPanels, /api downloads as plain <a>, the cadence a Chip and permissions as status badges (spec 2D D9, M29, M31)", () => {
+// Group 10 plan 2 Task 2 (board RP-Library): the catalog's cards are panels, the /api downloads plain <a> (M31), the
+// open link a text link, the cadence and formats Chips, the scope a StatusBadge and the permissions status badges.
+test("report catalog: panels, /api downloads as plain <a>, the cadence a Chip and permissions as status badges (spec 2D D9, M29, M31)", () => {
   const source = read(`${C}reports/reports-catalog-view.tsx`)
-  assert.equal(source.match(/<ContentPanel title=\{labels\.\w+\} description=\{labels\.\w+\}>/g)?.length, 3)
-  assert.match(source, /<a href=\{report\.href\} download className=\{cn\(buttonVariants\(\{ variant: "outline", size: "sm" \}\), "mt-4 w-full sm:w-auto"\)\}>/)
-  assert.match(source, /<a href=\{report\.exportHref\} download className=\{buttonVariants\(\{ size: "sm" \}\)\}>/)
-  assert.match(source, /<Link href=\{report\.viewHref\} className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}>/)
-  assert.match(source, /<Chip>\{report\.cadence\}<\/Chip>/)
+  assert.match(source, /<a\n\s+key=\{entry\.href\}\n\s+href=\{entry\.href\}\n\s+download\n/)
+  assert.match(source, /className=\{buttonVariants\(\{ variant: entry\.format === "pdf" \? "outline" : "default", size: "sm" \}\)\}/)
+  assert.match(source, /<Link href=\{report\.openHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\)/)
+  assert.match(source, /\{report\.cadenceKey \? <Chip>\{t\(report\.cadenceKey\)\}<\/Chip> : null\}/)
+  assert.match(source, /<StatusBadge label=\{scope\} tone=\{report\.scope === "system" \? "muted" : "info"\} wrap \/>/)
   assert.match(source, /<EmptyNote>\{emptyLabel\}<\/EmptyNote>/)
   assert.match(source, /tone=\{permission\.allowed \? "success" : "muted"\}/)
-  assert.doesNotMatch(source, /<Link href=\{report\.(?:href|exportHref)\}|border-dashed|rounded-full|function PermissionPill\b|text-white|sm:h-8|bg-(?:info|primary|success)-soft|rounded-lg border/)
+  assert.doesNotMatch(source, /<Link href=\{entry\.href\}|border-dashed|rounded-full|function PermissionPill\b|text-white|sm:h-8|bg-(?:info|primary|success)-soft|rounded-lg border|#[0-9a-fA-F]{3,6}\b/)
 })
 
 test("report operations: ContentPanels, the cross-scope export as a plain <a>, text links for the fixes and warning badges for the flags (spec 2D D9, M29, M30, M31)", () => {

@@ -167,10 +167,11 @@ test("the links carry the page's language: the round page through its one builde
   for (const [name, endpoint] of [["auditRoundExportHref", "export"], ["auditRoundExportPdfHref", "export-pdf"], ["auditRoundVarianceHref", "variance-export"]]) {
     assert.match(roundPage, new RegExp(`const ${name} = buildAuditRoundExportHref\\(locale, round\\.id, "${endpoint}", filters\\)`), name)
   }
-  const reports = read("src/app/[locale]/(dashboard)/reports/page.tsx")
+  // Group 10 plan 2 Task 2: the reports page's catalog is data in src/lib/report-catalog.ts.
+  const reports = read("src/lib/report-catalog.ts")
   assert.ok(reports.includes("href: `/api/audit-findings/export?status=pending&locale=${locale}`"))
-  assert.ok(reports.includes("exportHref: `/api/audit-findings/export?status=all&locale=${locale}`"))
-  assert.ok(reports.includes("exportHref: `/api/audit-findings/export-pdf?status=all&locale=${locale}`"))
+  assert.ok(reports.includes("href: `/api/audit-findings/export?status=all&locale=${locale}`"))
+  assert.ok(reports.includes("href: `/api/audit-findings/export-pdf?status=all&locale=${locale}`"))
 })
 
 test("the new words, Thai and English; English reads as today's export (glossary: รหัสทรัพย์สิน, รายการไม่ตรง, ตรวจนับ)", () => {

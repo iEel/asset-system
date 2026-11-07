@@ -90,8 +90,9 @@ test("the strip adds up: total = นอกขั้นตัดจำหน่�
   // The operator is a picture in StatStrip; the sum in words is the equation line.
   assert.match(read("src/components/ui/stat-strip.tsx"), /\{item\.operator \? \(\n\s+<span aria-hidden="true"/)
   // The overview has its own strip; the other views keep the two shared numbers.
-  // Group 10 plan 2 Task 1: operations counts in its chips line instead (board RP-Ops).
-  assert.match(page, /\{activeView !== "overview" && activeView !== "operations" \? \(\n\s+<div data-report-shared-metrics>/)
+  // Group 10 plan 2 Task 1: operations counts in its chips line instead (board RP-Ops); Task 2: so does the catalog
+  // (board RP-Library), so only accounting keeps them.
+  assert.match(page, /\{activeView === "accounting" \? \(\n\s+<div data-report-shared-metrics>/)
 })
 
 test("six group tables: sorted rows that link to the register, others, unassigned, the total and ดูทั้งหมด", () => {

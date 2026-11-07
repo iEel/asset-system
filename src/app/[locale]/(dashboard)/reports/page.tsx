@@ -1,5 +1,5 @@
 import type React from "react"
-import { ClipboardCheck, DatabaseZap, Download, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
+import { Download } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -23,10 +23,13 @@ import { REPORT_FILTER_BAR_PHONE_ID, REPORT_FILTER_TOGGLE_ID, ReportChipsLine, R
 import { ReportFilterToggle } from "@/components/reports/report-filter-toggle"
 import { ReportViewTabs } from "@/components/reports/report-view-tabs"
 import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
-import { ReportsCatalogView, type ReportCatalogCategory } from "@/components/reports/reports-catalog-view"
+import { ReportsCatalogView } from "@/components/reports/reports-catalog-view"
 import { ReportsOperationsView } from "@/components/reports/reports-operations-view"
 import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
 import { buildReportActiveFilters } from "@/lib/report-active-filters"
+import { buildReportCatalog, countFilteredReports } from "@/lib/report-catalog"
+import { readLastReportExports } from "@/lib/report-export-log"
+import { buildAuditFindingWhere } from "@/lib/audit-finding-filters"
 import { buildReportHref, buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { cn } from "@/lib/utils"
@@ -114,8 +117,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         ...(operationsParams.others ? [["others", "1"]] : []),
       ]).toString()
     : ""
-  // Operations shows the chips line instead of the filter bar (spec §3, board RP-Ops); the overview and accounting keep it.
-  const showsFilterBar = activeView !== "operations"
+  // Operations and the catalog show the chips line instead of the filter bar (spec §3, boards RP-Ops and RP-Library); the
+  // overview and accounting keep it.
+  const showsFilterBar = activeView !== "operations" && activeView !== "catalog"
   const timingContext = {
     route: "/reports",
     locale,
@@ -284,6 +288,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     ) : undefined
 
   let viewContent: React.ReactNode
+  // The catalog's chips line: "{k} จาก {n} รายงาน" follow the current filters (board RP-Library), set by its loader.
+  const catalogScope = { filtered: 0, count: 0 }
   switch (activeView) {
     case "overview": {
       async function loadOverviewView(): Promise<React.ReactNode> {
@@ -534,89 +540,40 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     }
     case "catalog": {
       async function loadCatalogView(): Promise<React.ReactNode> {
-        const recurringReports = [
-          { key: "asset-overview", name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
-          { key: "maintenance-follow-up", name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
-          { key: "disposal-follow-up", name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover"), allowed: canDisposalExport },
-          { key: "audit-findings", name: t("weeklyAuditFindings"), cadence: t("weekly"), href: `/api/audit-findings/export?status=pending&locale=${locale}`, owner: t("ownerAudit"), allowed: canAuditExport },
-        ]
-        const reportCatalog: ReportCatalogCategory[] = [
-          {
-            key: "assets",
-            title: t("catalogAssetTitle"),
-            description: t("catalogAssetDescription"),
-            audience: t("catalogAssetAudience"),
-            icon: <FileSpreadsheet className="h-5 w-5" />,
-            reports: [
-              { key: "asset-register", label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister"), exportAllowed: canAssetExport },
-              { key: "asset-overview", label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
-              { key: "cross-scope-assets", label: t("crossScopeAssetsExcel"), viewHref: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportHref: `/api/assets/export?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportLabel: t("exportCrossScopeAssets"), exportAllowed: canAssetExport },
-            ],
+        // The catalog as data (group 10 spec §6, board RP-Library): every export of today with its route and permission,
+        // the live counts its descriptions show and the latest export per report (spec §6.1).
+        const crossScopeFilters = parseAssetListParams({ ...filters, crossScope: "all", dataQuality: "", statusId: "", page: 1 })
+        const crossScopeQuery = buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })
+        const [crossScopeCount, findingsPending, findingsApproved, findingsRejected, lastExports] = await Promise.all([
+          applyAssetCrossScopeFilter(buildAssetWhere(crossScopeFilters), crossScopeFilters.crossScope).then((where) => prisma.asset.count({ where })),
+          prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending" }) }),
+          prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "approved" }) }),
+          prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "rejected" }) }),
+          readLastReportExports(),
+        ])
+        const reports = buildReportCatalog({
+          locale,
+          filterQuery: exportQuery,
+          crossScopeQuery,
+          counts: {
+            crossScope: crossScopeCount,
+            findingsByStatus: { pending: findingsPending, approved: findingsApproved, rejected: findingsRejected },
           },
-          {
-            key: "data-quality",
-            title: t("catalogDataQualityTitle"),
-            description: t("catalogDataQualityDescription"),
-            audience: t("catalogDataQualityAudience"),
-            icon: <DatabaseZap className="h-5 w-5" />,
-            reports: [
-              { key: "data-quality", label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
-            ],
-          },
-          {
-            key: "maintenance",
-            title: t("catalogMaintenanceTitle"),
-            description: t("catalogMaintenanceDescription"),
-            audience: t("catalogMaintenanceAudience"),
-            icon: <Wrench className="h-5 w-5" />,
-            reports: [
-              { key: "maintenance", label: t("maintenanceReport"), viewHref: `/${locale}/maintenance`, exportHref: "/api/maintenance-tickets/export", exportLabel: t("exportMaintenance"), exportAllowed: canMaintenanceExport },
-            ],
-          },
-          {
-            key: "audit",
-            title: t("catalogAuditTitle"),
-            description: t("catalogAuditDescription"),
-            audience: t("catalogAuditAudience"),
-            icon: <ClipboardCheck className="h-5 w-5" />,
-            reports: [
-              { key: "audit-findings", label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: `/api/audit-findings/export?status=all&locale=${locale}`, exportLabel: t("exportAuditFindings"), exportAllowed: canAuditExport },
-              { key: "audit-findings-pdf", label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: `/api/audit-findings/export-pdf?status=all&locale=${locale}`, exportLabel: t("exportPdf"), exportAllowed: canAuditExport },
-            ],
-          },
-          {
-            key: "disposal",
-            title: t("catalogDisposalTitle"),
-            description: t("catalogDisposalDescription"),
-            audience: t("catalogDisposalAudience"),
-            icon: <Trash2 className="h-5 w-5" />,
-            reports: [
-              { key: "disposal", label: t("disposalReport"), viewHref: `/${locale}/disposal`, exportHref: "/api/disposal-requests/export", exportLabel: t("exportDisposal"), exportAllowed: canDisposalExport },
-            ],
-          },
-          {
-            key: "system",
-            title: t("catalogSystemTitle"),
-            description: t("catalogSystemDescription"),
-            audience: t("catalogSystemAudience"),
-            icon: <ShieldCheck className="h-5 w-5" />,
-            reports: [
-              { key: "role-permission-audit", label: t("rolePermissionAudit"), viewHref: `/${locale}/admin/roles`, exportHref: "/api/admin/roles/export", exportLabel: t("exportRoleAudit"), exportAllowed: canRoleExport },
-              { key: "system-logs", label: t("systemLogs"), viewHref: `/${locale}/admin/logs` },
-            ],
-          },
-        ]
-        const reportCount = reportCatalog.reduce((sum, category) => sum + category.reports.length, 0)
+        })
+        catalogScope.filtered = countFilteredReports(reports)
+        catalogScope.count = reports.length
 
         return (
           <ReportsCatalogView
             locale={locale}
             currentQuery={buildReportQueryString(activeView, filters)}
             hasActiveFilters={hasActiveFilters}
+            filterSummary={filterSummary}
+            totalAssets={totalAssets}
             emptyCopy={{ filtered: t("previewEmpty"), dataset: t("savedPresetsEmpty") }}
-            reportCount={reportCount}
-            recurringReports={recurringReports}
-            categories={reportCatalog}
+            reports={reports}
+            lastExports={lastExports}
+            canExport={(permission) => hasPermission(user, permission.module, permission.action)}
             permissions={[
               { key: "report", label: t("exportAssetOverview"), allowed: canReportExport },
               { key: "asset", label: t("exportAssetRegister"), allowed: canAssetExport },
@@ -625,28 +582,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               { key: "disposal", label: t("exportDisposal"), allowed: canDisposalExport },
               { key: "role", label: t("exportRoleAudit"), allowed: canRoleExport },
             ]}
-            labels={{
-              catalogItems: t("catalogItems"),
-              assetPresetScopeTitle: t("assetPresetScopeTitle"),
-              assetPresetScopeHelp: t("assetPresetScopeHelp"),
-              moduleExportScopeTitle: t("moduleExportScopeTitle"),
-              moduleExportScopeHelp: t("moduleExportScopeHelp"),
-              presetName: t("presetName"),
-              saveCurrentPreset: t("saveCurrentPreset"),
-              savedPresetsEmpty: t("savedPresetsEmpty"),
-              savedPresetsDeviceOnly: t("savedPresetsDeviceOnly"),
-              deletePreset: t("deletePreset"),
-              presetNameRequired: t("presetNameRequired"),
-              presetStorageFailed: t("presetStorageFailed"),
-              runNow: t("runNow"),
-              notAllowed: t("notAllowed"),
-              reportCatalog: t("reportCatalog"),
-              reportCatalogHelp: t("reportCatalogHelp"),
-              openReport: t("openReport"),
-              permissionTitle: t("permissionTitle"),
-              permissionHelp: t("permissionHelp"),
-              allowed: t("allowed"),
-            }}
           />
         )
       }
@@ -720,12 +655,18 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <FilterChipList chips={activeFilters} label={t("activeFilters")} removeLabel={t("clearActiveFilter")} />
         </div>
       ) : null}
-      {/* Operations: the chips line with what every number counts, ล้างตัวกรอง and the way to the filter bar (spec §3, §5). */}
+      {/* Operations and the catalog: the chips line with what every number (or which report) counts, ล้างตัวกรอง and the way to the filter bar (spec §3, §5). */}
       {!showsFilterBar ? (
         <div data-report-chips-line>
           <ReportChipsLine
             chips={activeFilters}
-            scopeLine={hasActiveFilters ? t("opsScopeLine", { count: totalAssets }) : t("opsScopeLineNoFilters", { count: totalAssets })}
+            scopeLine={
+              activeView === "catalog"
+                ? t("catalogScopeLine", catalogScope)
+                : hasActiveFilters
+                  ? t("opsScopeLine", { count: totalAssets })
+                  : t("opsScopeLineNoFilters", { count: totalAssets })
+            }
             clearHref={hasActiveFilters ? buildReportHref(locale, activeView, parseAssetListParams({})) : undefined}
             editHref={buildReportHref(locale, "overview", filters)}
             labels={{
@@ -737,9 +678,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           />
         </div>
       ) : null}
-      {/* The overview has its own strip that adds up (group 10 spec §4.1) and operations counts in its chips line (board
-          RP-Ops); accounting and the catalog keep the two shared numbers. */}
-      {activeView !== "overview" && activeView !== "operations" ? (
+      {/* The overview has its own strip that adds up (group 10 spec §4.1), operations counts in its chips line (board
+          RP-Ops) and the catalog counts its reports there (board RP-Library); accounting keeps the two shared numbers. */}
+      {activeView === "accounting" ? (
         <div data-report-shared-metrics>
           {/* A total in the 28px metric size needs about 230px: one tile a row below sm. */}
           <StatStrip

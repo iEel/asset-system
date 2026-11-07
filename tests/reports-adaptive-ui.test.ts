@@ -73,11 +73,13 @@ test("view empty states distinguish zero matching assets from empty specialized 
   assert.equal(page.match(/hasMatchingAssets=\{totalAssets > 0\}/g)?.length, 3)
 })
 
+// Group 10 plan 2 Task 2 (board RP-Library): the recurring exports are catalog reports with a cadence; every report keeps
+// a stable non-localized key (src/lib/report-catalog.ts), and the view keys cards and list rows by it.
 test("catalog and recurring exports use stable non-localized row keys", () => {
-  assert.match(catalogView, /ReportRecurringExport = \{\s+key: string/)
-  assert.match(catalogView, /ReportCatalogRow = \{\s+key: string/)
+  const catalogLib = readFileSync("src/lib/report-catalog.ts", "utf8")
+  assert.match(catalogLib, /export type CatalogReport = \{\s+key: string/)
   assert.equal(catalogView.match(/key=\{report\.key\}/g)?.length, 2)
-  assert.doesNotMatch(catalogView, /key=\{report\.(name|label)\}/)
+  assert.doesNotMatch(catalogView, /key=\{(?:report\.(?:name|label)|title)\}/)
 })
 
 test("wide report datasets have mutually exclusive table and mobile list hooks", () => {
@@ -189,11 +191,12 @@ test("the report overview formats its counts and codes and names its preview tab
   assert.doesNotMatch(overviewView, /toLocaleString/)
 })
 
-// Plan 2B-5 Task 12 (spec 2B §5.6, R-d): the catalog's one number is a StatStrip cell, at most 384px wide from sm (the
-// old card took half the row), and its count goes through formatCount.
-test("the report catalog shows its item count on StatStrip (spec 2B §5.6, R-d)", () => {
-  assert.match(catalogView, /<StatStrip className="sm:max-w-sm" items=\{\[\{ key: "catalogItems", label: labels\.catalogItems, value: formatCount\(reportCount\) \}\]\} \/>/)
-  assert.doesNotMatch(catalogView, /MetricCard|toLocaleString/)
+// Plan 2B-5 Task 12 (spec 2B §5.6, R-d) showed the catalog's count on a StatStrip; group 10 plan 2 Task 2 (board
+// RP-Library) moves it into the chips line ("{k} จาก {n} รายงาน") and each group's header ("{n} รายงาน"), as ICU numbers.
+test("the report catalog counts its reports in the chips line and each group (board RP-Library)", () => {
+  assert.match(page, /t\("catalogScopeLine", catalogScope\)/)
+  assert.match(catalogView, /t\("catalogGroupCount", \{ count: section\.reports\.length \}\)/)
+  assert.doesNotMatch(catalogView, /MetricCard|toLocaleString|StatStrip/)
 })
 
 // Plan 2B-5 Task 12 (spec 2B §5.6, §5.1, R-d, R-p): the four data-quality counts and the four cross-scope counts are

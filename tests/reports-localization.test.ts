@@ -19,9 +19,9 @@ test("Thai and English reports pages expose identical complete key sets", () => 
     "viewCatalog",
     "activeFilters",
     "clearActiveFilter",
-    "catalogItems",
     "assetPresetScopeHelp",
-    "moduleExportScopeHelp",
+    "catalogScopeLegendTitle",
+    "catalogScopeLegendSystem",
   ]) {
     assert.ok(key in thai.reportsPage, `missing reportsPage.${key}`)
   }
@@ -43,13 +43,15 @@ test("Thai reports copy replaces the remaining English placeholders", () => {
   }
 })
 
+// Group 10 plan 2 Task 2 (board RP-Library): the scope legend says which files follow the filters and which use each
+// module's own (the old "รายงานประจำแยกตามโมดูล" help), then the device-local presets.
 test("catalog separates device-local asset presets from module-owned exports", () => {
   const source = readFileSync("src/components/reports/reports-catalog-view.tsx", "utf8")
-  const presetHeading = source.indexOf("labels.assetPresetScopeTitle")
-  const presetHelp = source.indexOf("labels.assetPresetScopeHelp")
-  const moduleHeading = source.indexOf("labels.moduleExportScopeTitle")
-  const moduleHelp = source.indexOf("labels.moduleExportScopeHelp")
+  const legendFilters = source.indexOf('t("catalogScopeLegendFilters"')
+  const legendSystem = source.indexOf('t("catalogScopeLegendSystem")')
+  const presetHeading = source.indexOf('t("assetPresetScopeTitle")')
+  const presetHelp = source.indexOf('t("assetPresetScopeHelp")')
 
-  assert.ok([presetHeading, presetHelp, moduleHeading, moduleHelp].every((index) => index >= 0))
-  assert.ok(presetHeading < presetHelp && presetHelp < moduleHeading && moduleHeading < moduleHelp)
+  assert.ok([legendFilters, legendSystem, presetHeading, presetHelp].every((index) => index >= 0))
+  assert.ok(legendFilters < legendSystem && legendSystem < presetHeading && presetHeading < presetHelp)
 })
