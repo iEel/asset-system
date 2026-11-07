@@ -108,7 +108,7 @@ export function WorkRowsTable({
       <DataTable
         className="hidden md:block"
         caption={t("table.caption")}
-        minWidth={880}
+        minWidth={640}
         footer={
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <span>{t("table.shown", { shown, total })}</span>
@@ -135,7 +135,7 @@ export function WorkRowsTable({
         <colgroup>
           <col className="w-10" />
           <col />
-          <col className="w-44" />
+          <col className="hidden w-44 xl:table-column" />
           <col className="w-40" />
           <col className="w-60" />
         </colgroup>
@@ -143,7 +143,7 @@ export function WorkRowsTable({
           <tr>
             <DataTableHead hideLabel>{t("table.urgency")}</DataTableHead>
             <DataTableHead>{t("table.work")}</DataTableHead>
-            <DataTableHead>{t("table.queueKind")}</DataTableHead>
+            <DataTableHead className="hidden xl:table-cell">{t("table.queueKind")}</DataTableHead>
             <DataTableHead>{t("table.age")}</DataTableHead>
             <DataTableHead align="right">{t("table.nextStep")}</DataTableHead>
           </tr>
@@ -165,6 +165,12 @@ export function WorkRowsTable({
                   <DataTableCell>
                     <p className="font-semibold break-words text-foreground">{row.title}</p>
                     <p className="text-meta text-muted-foreground">
+                      {/* Below xl the คิว · ประเภท column is hidden (it would push ขั้นถัดไป past the frame at 1024
+                          with the sidebar open); its two words lead this line instead. */}
+                      <span className="xl:hidden">
+                        {t(`queue.${row.queue}`)} · {t(`kind.${row.kind}`)}
+                        {row.assetTag || row.documentNo || row.context ? " · " : null}
+                      </span>
                       {[row.assetTag, row.documentNo].some(Boolean) ? (
                         <span className="tag">{[row.assetTag, row.documentNo].filter(Boolean).join(" · ")}</span>
                       ) : null}
@@ -176,7 +182,7 @@ export function WorkRowsTable({
                       ) : null}
                     </p>
                   </DataTableCell>
-                  <DataTableCell>
+                  <DataTableCell className="hidden xl:table-cell">
                     <p className="text-foreground">{t(`queue.${row.queue}`)}</p>
                     <p className="text-meta text-muted-foreground">{t(`kind.${row.kind}`)}</p>
                   </DataTableCell>

@@ -76,8 +76,22 @@ test("the table: urgency dot with a word, the work, queue and kind, the age line
   assert.match(table, /next=\{\{ label: tRoot\(row\.nextStep\.labelKey\), href: row\.nextStep\.href \}\}\n\s+nextWidth="auto"\n/, "the next step shows its whole label (look step)")
   assert.match(
     table,
-    /<col \/>\n\s+<col className="w-44" \/>\n\s+<col className="w-40" \/>\n\s+<col className="w-60" \/>\n\s+<\/colgroup>/,
+    /<col \/>\n\s+<col className="hidden w-44 xl:table-column" \/>\n\s+<col className="w-40" \/>\n\s+<col className="w-60" \/>\n\s+<\/colgroup>/,
     "the ขั้นถัดไป column has room for พิจารณารายการไม่ตรง and ⋯; the งาน column wraps",
+  )
+  // Look fix 2: at 1024 (sidebar open) the table fits its frame. Below xl the คิว · ประเภท column is hidden and its two
+  // words lead the งาน cell's context line; from xl the table is as before.
+  assert.match(table, /minWidth=\{640\}/, "four columns fit about 700px with no horizontal scroll")
+  assert.doesNotMatch(table, /minWidth=\{880\}/)
+  assert.match(table, /<DataTableHead className="hidden xl:table-cell">\{t\("table\.queueKind"\)\}<\/DataTableHead>/)
+  assert.match(
+    table,
+    /<DataTableCell className="hidden xl:table-cell">\n\s+<p className="text-foreground">\{t\(`queue\.\$\{row\.queue\}`\)\}<\/p>/,
+  )
+  assert.match(
+    table,
+    /<span className="xl:hidden">\n\s+\{t\(`queue\.\$\{row\.queue\}`\)\} · \{t\(`kind\.\$\{row\.kind\}`\)\}\n\s+\{row\.assetTag \|\| row\.documentNo \|\| row\.context \? " · " : null\}\n\s+<\/span>/,
+    "below xl the queue · kind joins the start of the work cell's context line",
   )
   assert.match(table, /items: row\.menu\.map\(\(item\) => \(\{ kind: "link", key: item\.key, label: menuLabel\(row, item\.key\), href: item\.href \}\)\)/)
   assert.match(table, /t\("deadline\.overSla", \{ days: row\.overdueDays \}\)/)
