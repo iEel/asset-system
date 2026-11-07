@@ -14,7 +14,7 @@ plan `docs/superpowers/plans/2026-11-07-group9-notifications-page.md` · branch 
 - ของเดิมอยู่ครบ (ตรวจทีละข้อตามที่ผู้ใช้ย้ำ) ยกเว้นป้าย "อ่านแล้ว" บนรายการที่ส่งแล้ว ซึ่งระบบไม่เคยบันทึก
 - เปิดหน้าจะบันทึกยอดของวัน · เส้นแบ่งสรุปรายวันแบบเก่าเก็บในการตั้งค่าระบบ `notification_digest_structured_since` (บันทึกครั้งแรกโดยตัวส่งสรุปรายวัน ซ่อนจากหน้า Admin > Settings)
 - E2E ใหม่ `e2e/work-center`, `e2e/notifications` · `E2E-1107K` 58/0 (กับกระดิ่งและแดชบอร์ด) · หลังแก้ `E2E-1107L` 14/0
-- ตรวจทั้งสาขาแก้ใน `fd88e1a4` · ยังไม่ merge · ยังไม่ deploy
+- ตรวจทั้งสาขาแก้ใน `fd88e1a4` · ผู้ใช้สั่ง merge: fast-forward master `f0f5dd5b..84854614` (กลุ่ม 9 ทั้ง 3 แผน) push origin และ company · unit test 4,891/0 · ยังไม่ deploy (migration `2026-11-07-add-notification-daily-counts.sql` ต้องลง Production ก่อน deploy)
 
 
 ### กลุ่มหน้า 9 แผน 2: หน้าศูนย์งานค้าง (บอร์ด WC, WC-Phone)
