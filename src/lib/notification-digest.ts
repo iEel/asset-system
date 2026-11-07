@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/db"
 import type { SessionUser } from "@/lib/auth-utils"
 import { getNotificationCenter } from "@/lib/notification-summary"
+import { getWaitingWork } from "@/lib/waiting-work"
+import {
+  markDigestCounts,
+  pruneDailyCounts,
+  recordDailyCounts,
+  type DailyCountCounts,
+} from "@/lib/notification-daily-counts"
 import {
   buildDailyDigestMessage,
   buildDailyDigestReferenceId,
@@ -88,6 +95,15 @@ export async function deliverDailyNotificationDigest({
     const user = toSessionUser(dbUser)
     const center = await getNotificationCenter(user, locale, { recordCountDrops: !dryRun })
     const activeItems = center.items.filter((item) => !item.isSuppressed)
+    if (!dryRun) {
+      // Group 9 spec §6.1: every user with a visible key gets today's counts, whether or not a digest is sent.
+      const work = await getWaitingWork(user)
+      if (work.visibleKeys.length > 0) {
+        const counts: DailyCountCounts = {}
+        for (const key of work.visibleKeys) counts[key] = work.counts[key]
+        await recordDailyCounts(user.id, counts, referenceDate)
+      }
+    }
     if (activeItems.length === 0) {
       skippedEmpty += 1
       continue
@@ -120,6 +136,10 @@ export async function deliverDailyNotificationDigest({
           referenceId,
         },
       })
+      // The topics this digest sent (unread, not snoozed); a count already set for the day is kept.
+      const sentCounts: DailyCountCounts = {}
+      for (const item of activeItems) sentCounts[item.key as keyof DailyCountCounts] = item.count
+      await markDigestCounts(user.id, sentCounts, referenceDate)
       if (deliveryConfig.enabled && deliveryConfig.webhookUrl) {
         try {
           await deliverNotificationWebhook({
@@ -140,6 +160,10 @@ export async function deliverDailyNotificationDigest({
       }
     }
     delivered += 1
+  }
+
+  if (!dryRun) {
+    await pruneDailyCounts(referenceDate)
   }
 
   return {

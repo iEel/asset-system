@@ -1,9 +1,11 @@
 import type { NotificationSummaryItem } from "./notification-summary-items.ts"
+import { getBangkokDateKey } from "./preventive-maintenance.ts"
 
 export type NotificationDigestLocale = "th" | "en"
 
+// One digest per Bangkok day: a run at 01:30 Bangkok belongs to that Bangkok date, not the UTC one.
 export function buildDailyDigestReferenceId(date = new Date()) {
-  return `notification-digest:${date.toISOString().slice(0, 10)}`
+  return `notification-digest:${getBangkokDateKey(date)}`
 }
 
 export function buildDailyDigestMessage(locale: NotificationDigestLocale, items: NotificationSummaryItem[]) {
