@@ -11,8 +11,14 @@ export function assetExportAllWhere(): Prisma.AssetWhereInput {
   return buildAssetWhere(parseAssetListParams({}))
 }
 
+// Whether an export of `count` rows stops at the cap. The reports page's register line (header caption and phone card)
+// says the file holds the newest ASSET_EXPORT_MAX_ROWS of n only then (group 10 plan 1 final review).
+export function assetExportCapped(count: number): boolean {
+  return count > ASSET_EXPORT_MAX_ROWS
+}
+
 // The export-all count line: above the cap it also says the file holds the newest ASSET_EXPORT_MAX_ROWS (the route's
 // default order is createdAt desc), as the register's export menu does.
 export function exportAllCountKey(count: number): "exportAllCount" | "exportAllCapped" {
-  return count > ASSET_EXPORT_MAX_ROWS ? "exportAllCapped" : "exportAllCount"
+  return assetExportCapped(count) ? "exportAllCapped" : "exportAllCount"
 }

@@ -11,9 +11,19 @@ import { segmentedIdleClasses, segmentedOptionClasses, segmentedPressedClasses }
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { ASSET_EXPORT_MAX_ROWS, assetExportCapped } from "@/lib/asset-export-limits"
 import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { breakdownPercent, breakdownPercentLabel, breakdownRowHref, type BreakdownDimension, type BreakdownGroup, type BreakdownTable } from "@/lib/report-breakdown"
+import {
+  breakdownPercent,
+  breakdownPercentLabel,
+  breakdownRowHref,
+  breakdownUnassignedLinked,
+  stripStatusListHref,
+  type BreakdownDimension,
+  type BreakdownGroup,
+  type BreakdownTable,
+} from "@/lib/report-breakdown"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 import { reportBreakdownDimensions, type ReportsOverviewData, type ReportsOverviewPreviewRow } from "@/lib/reports-overview-data"
 import { cn } from "@/lib/utils"
@@ -102,11 +112,12 @@ export async function ReportsOverviewView({
     }
     return `/${locale}/reports?${params.toString()}`
   }
-  const statusListHref = (statusId: string | null) => (statusId ? breakdownRowHref(locale, "status", statusId, base) : undefined)
-  const viewListLink = (href: string | undefined, label: string) =>
+  // `name` is the cell's label, read only by screen readers, so the two "ดูรายการ" links have names of their own.
+  const viewListLink = (href: string | undefined, label: string, name?: string) =>
     href ? (
       <Link href={href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
         {label}
+        {name ? <span className="sr-only"> {name}</span> : null}
       </Link>
     ) : null
 
@@ -117,7 +128,9 @@ export async function ReportsOverviewView({
     writtenOff: formatCount(strip.writtenOff),
     total,
   })
-  const retiredHref = statusListHref(strip.statusIds.retired)
+  const pendingHref = stripStatusListHref(locale, strip.statusIds.pendingDisposal, strip.pendingDisposal, base)
+  const disposedHref = stripStatusListHref(locale, strip.statusIds.disposed, strip.writtenOff - strip.retired, base)
+  const retiredHref = stripStatusListHref(locale, strip.statusIds.retired, strip.retired, base)
 
   return (
     <div className="space-y-5" data-report-overview>
@@ -140,7 +153,7 @@ export async function ReportsOverviewView({
                 operator: "+",
                 label: t("stripPending"),
                 value: formatCount(strip.pendingDisposal),
-                foot: viewListLink(statusListHref(strip.statusIds.pendingDisposal), t("stripViewList")),
+                foot: viewListLink(pendingHref, t("stripViewList"), t("stripPending")),
               },
               {
                 key: "writtenOff",
@@ -149,10 +162,10 @@ export async function ReportsOverviewView({
                 value: formatCount(strip.writtenOff),
                 foot: (
                   <>
-                    {viewListLink(statusListHref(strip.statusIds.disposed), t("stripViewList"))}
+                    {viewListLink(disposedHref, t("stripViewList"), t("stripWrittenOff"))}
                     {strip.retired > 0 && retiredHref ? (
                       <>
-                        {" · "}
+                        {disposedHref ? " · " : null}
                         {viewListLink(retiredHref, t("stripRetiredFoot", { count: strip.retired }))}
                       </>
                     ) : null}
@@ -200,7 +213,12 @@ export async function ReportsOverviewView({
             {exports.registerHref ? (
               <a href={exports.registerHref} download className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-auto flex-col items-start gap-0 py-2 text-left whitespace-normal")}>
                 <span className="inline-flex items-center gap-1.5"><Download aria-hidden="true" />{t("exportAssetRegister")}</span>
-                <span className="text-meta font-normal text-muted-foreground">{t("exportRegisterDescription", { count: strip.total })}</span>
+                <span className="text-meta font-normal text-muted-foreground">
+                  {/* Above the register export's cap the file holds the newest ASSET_EXPORT_MAX_ROWS (final review). */}
+                  {assetExportCapped(strip.total)
+                    ? t("exportRegisterDescriptionCapped", { count: strip.total, max: ASSET_EXPORT_MAX_ROWS })
+                    : t("exportRegisterDescription", { count: strip.total })}
+                </span>
               </a>
             ) : null}
           </div>
@@ -443,13 +461,14 @@ function BreakdownPanel({
               {table.unassigned ? (
                 <DataTableRow data-report-breakdown-unassigned>
                   <DataTableCell>
-                    {/* Only the department has a register filter for "none" (dataQuality=department); the rest stay plain. */}
-                    {dimension === "department" ? (
+                    {/* Only the department has a register filter for "none" (dataQuality=department), and only while the
+                        report holds no other dataQuality (the register takes one); otherwise the row stays plain. */}
+                    {breakdownUnassignedLinked(dimension, base) ? (
                       <Link href={breakdownRowHref(locale, dimension, null, base)} className={rowLinkClasses}>
                         {t("unassignedDepartment")}
                       </Link>
                     ) : (
-                      <span className="text-muted-foreground">{t("unassigned")}</span>
+                      <span className="text-muted-foreground">{dimension === "department" ? t("unassignedDepartment") : t("unassigned")}</span>
                     )}
                   </DataTableCell>
                   <DataTableCell numeric>{formatCount(table.unassigned.count)}</DataTableCell>
@@ -541,7 +560,7 @@ function BreakdownFullList({
             <BreakdownHead t={t} />
             <DataTableBody>
               {groups.map((group) => {
-                const linked = group.key !== null || dimension === "department"
+                const linked = group.key !== null || breakdownUnassignedLinked(dimension, base)
                 return (
                   <DataTableRow key={group.key ?? "unassigned"}>
                     <DataTableCell>
@@ -550,7 +569,7 @@ function BreakdownFullList({
                           <GroupName name={group.name} code={group.code} />
                         </Link>
                       ) : (
-                        <span className="text-muted-foreground">{t("unassigned")}</span>
+                        <span className="text-muted-foreground">{dimension === "department" ? t("unassignedDepartment") : t("unassigned")}</span>
                       )}
                     </DataTableCell>
                     <DataTableCell numeric>{formatCount(group.count)}</DataTableCell>

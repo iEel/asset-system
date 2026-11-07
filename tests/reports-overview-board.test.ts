@@ -77,8 +77,8 @@ test("the strip adds up: total = นอกขั้นตัดจำหน่�
   const at = order.map((token) => strip.indexOf(token))
   assert.ok(at.every((index) => index >= 0), String(at))
   assert.deepEqual(at, [...at].sort((a, b) => a - b))
-  assert.match(strip, /viewListLink\(statusListHref\(strip\.statusIds\.pendingDisposal\), t\("stripViewList"\)\)/)
-  assert.match(strip, /viewListLink\(statusListHref\(strip\.statusIds\.disposed\), t\("stripViewList"\)\)/)
+  assert.match(strip, /viewListLink\(pendingHref, t\("stripViewList"\), t\("stripPending"\)\)/)
+  assert.match(strip, /viewListLink\(disposedHref, t\("stripViewList"\), t\("stripWrittenOff"\)\)/)
   assert.match(strip, /strip\.retired > 0 && retiredHref \?/)
   assert.match(strip, /t\("stripRetiredFoot", \{ count: strip\.retired \}\)/)
   assert.match(strip, /<p data-report-strip-equation className="[^"]*lg:sr-only">\{equation\}<\/p>/)
@@ -106,7 +106,7 @@ test("six group tables: sorted rows that link to the register, others, unassigne
   assert.doesNotMatch(overview, /formatPercent/)
   assert.match(overview, /<Link href=\{breakdownRowHref\(locale, dimension, row\.key, base\)\} className=\{rowLinkClasses\}>/)
   assert.match(overview, /t\("breakdownOthers", \{ count: table\.others\.groups, dimension \}\)/)
-  assert.match(overview, /dimension === "department" \? \(\n\s+<Link href=\{breakdownRowHref\(locale, dimension, null, base\)\} className=\{rowLinkClasses\}>/)
+  assert.match(overview, /breakdownUnassignedLinked\(dimension, base\) \? \(\n\s+<Link href=\{breakdownRowHref\(locale, dimension, null, base\)\} className=\{rowLinkClasses\}>/)
   assert.match(overview, /<DataTableRow data-report-breakdown-total>/)
   assert.match(overview, /t\("breakdownDepartmentEquation", \{/)
   assert.match(overview, /t\("breakdownViewAll", \{ count: table\.groupCount, dimension \}\)/)
@@ -157,7 +157,7 @@ test("phones: the export card, group buttons with one table, three preview cards
   assert.match(overview, /<ul className="flex flex-wrap gap-2">/)
   assert.match(overview, /table=\{data\.tables\[phoneGroup\]\}/)
   assert.match(overview, /const PREVIEW_PHONE_ROWS = 3/)
-  assert.match(page, /<ReportFilterToggle\n\s+targetId=\{REPORT_FILTER_BAR_PHONE_ID\}/)
+  assert.match(page, /<ReportFilterToggle\n\s+id=\{REPORT_FILTER_TOGGLE_ID\}\n\s+targetId=\{REPORT_FILTER_BAR_PHONE_ID\}/)
   assert.match(page, /t\("filterButton", \{ count: activeFilters\.length \}\)/)
   assert.equal(tr.filterButton, "ตัวกรอง ({count, number})")
 })
@@ -177,4 +177,48 @@ test("what the boards omit stays: the view content hook, the tab label, timing l
   }
   assert.match(page, /emptyCopy=\{\{ filtered: t\("previewEmpty"\), dataset: tAsset\("importBatchStatusEmpty"\) \}\}/)
   assert.match(page, /getReportsOverviewData\(\n\s+assetWhere,/)
+})
+
+// Final whole-branch review (group 10 plan 1): the register's 5,000-row cap, plain unassigned rows under another
+// dataQuality, strip links that match their count, the phone filter's focus, and distinct names for the strip links.
+const toggle = read("src/components/reports/report-filter-toggle.tsx")
+const en = JSON.parse(read("messages/en.json")) as { reportsPage: Record<string, string> }
+
+test("final review: above 5,000 the register line says the file holds the newest 5,000 of n", () => {
+  assert.match(page, /import \{ ASSET_EXPORT_MAX_ROWS, assetExportCapped \} from "@\/lib\/asset-export-limits"/)
+  assert.match(page, /const registerCapped = assetExportCapped\(totalAssets\)/)
+  assert.match(page, /canAssetExport && registerCapped \? \(\n\s+<p data-report-export-register-cap className="[^"]*">\{t\("exportRegisterCappedCaption", \{ count: totalAssets, max: ASSET_EXPORT_MAX_ROWS \}\)\}<\/p>/)
+  assert.match(overview, /assetExportCapped\(strip\.total\)\n\s+\? t\("exportRegisterDescriptionCapped", \{ count: strip\.total, max: ASSET_EXPORT_MAX_ROWS \}\)\n\s+: t\("exportRegisterDescription", \{ count: strip\.total \}\)/)
+  assert.equal(tr.exportRegisterCappedCaption, "ทะเบียนทรัพย์สิน: ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด จาก {count, number} รายการ")
+  assert.equal(tr.exportRegisterDescriptionCapped, "Excel รายการทีละชิ้น · ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด จาก {count, number} รายการ")
+  assert.ok(en.reportsPage.exportRegisterCappedCaption.includes("{max, number}"))
+  assert.ok(en.reportsPage.exportRegisterDescriptionCapped.includes("{max, number}"))
+})
+
+test("final review: the unassigned department row is plain under another dataQuality, in the table and the full list", () => {
+  assert.match(overview, /breakdownUnassignedLinked\(dimension, base\) \? \(\n\s+<Link href=\{breakdownRowHref\(locale, dimension, null, base\)\} className=\{rowLinkClasses\}>\n\s+\{t\("unassignedDepartment"\)\}/)
+  assert.match(overview, /dimension === "department" \? t\("unassignedDepartment"\) : t\("unassigned"\)/)
+  assert.match(overview, /const linked = group\.key !== null \|\| breakdownUnassignedLinked\(dimension, base\)/)
+  assert.equal(overview.match(/dimension === "department" \? t\("unassignedDepartment"\) : t\("unassigned"\)/g)?.length, 2)
+  assert.doesNotMatch(overview, /group\.key !== null \|\| dimension === "department"/)
+})
+
+test("final review: strip list links only where they match the count, each with its own name", () => {
+  assert.match(overview, /stripStatusListHref\(locale, strip\.statusIds\.pendingDisposal, strip\.pendingDisposal, base\)/)
+  assert.match(overview, /stripStatusListHref\(locale, strip\.statusIds\.disposed, strip\.writtenOff - strip\.retired, base\)/)
+  assert.match(overview, /stripStatusListHref\(locale, strip\.statusIds\.retired, strip\.retired, base\)/)
+  assert.doesNotMatch(overview, /statusListHref\(/)
+  assert.match(overview, /viewListLink\(pendingHref, t\("stripViewList"\), t\("stripPending"\)\)/)
+  assert.match(overview, /viewListLink\(disposedHref, t\("stripViewList"\), t\("stripWrittenOff"\)\)/)
+  assert.match(overview, /\{name \? <span className="sr-only"> \{name\}<\/span> : null\}/)
+})
+
+test("final review: the phone filter button follows the details and takes focus back when it closes", () => {
+  assert.match(page, /<ReportFilterToggle\n\s+id=\{REPORT_FILTER_TOGGLE_ID\}\n\s+targetId=\{REPORT_FILTER_BAR_PHONE_ID\}/)
+  assert.match(filterBar, /export const REPORT_FILTER_TOGGLE_ID = "report-filters-phone-toggle"/)
+  assert.match(toggle, /aria-expanded=\{expanded\}/)
+  assert.match(toggle, /aria-controls=\{targetId\}/)
+  assert.match(toggle, /target\.addEventListener\("toggle", onToggle\)/)
+  assert.match(toggle, /target\.removeEventListener\("toggle", onToggle\)/)
+  assert.match(toggle, /if \(!target\.open && \(active === null \|\| active === document\.body \|\| target\.contains\(active\)\)\) \{\n\s+buttonRef\.current\?\.focus\(\)/)
 })

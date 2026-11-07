@@ -81,7 +81,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 10 plan 1 Task 2 added 11: the reports header's export caption with and without filters, the strip's active
   // foot (with and without examples) and purchase foot, the group tables' count, others and view-all lines (keyed on
   // count, the dimension a select inside), the department equation (keyed on limit), and the phone export card's two counts.
-  assert.equal(pluralKeys.size, 156,[...pluralKeys.keys()].join(", "))
+  // The group 10 plan 1 final review added 2: the register's capped line under the header's exports and on the phone
+  // export card ("ไฟล์มี 5,000 รายการที่เพิ่มล่าสุด จาก {n} รายการ", keyed on count).
+  assert.equal(pluralKeys.size, 158,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

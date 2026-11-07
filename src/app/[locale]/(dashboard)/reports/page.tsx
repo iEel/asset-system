@@ -8,6 +8,7 @@ import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
+import { ASSET_EXPORT_MAX_ROWS, assetExportCapped } from "@/lib/asset-export-limits"
 import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
@@ -20,7 +21,7 @@ import { buttonVariants } from "@/components/ui/button-variants"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { REPORT_FILTER_BAR_PHONE_ID, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
+import { REPORT_FILTER_BAR_PHONE_ID, REPORT_FILTER_TOGGLE_ID, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
 import { ReportFilterToggle } from "@/components/reports/report-filter-toggle"
 import { ReportViewTabs } from "@/components/reports/report-view-tabs"
 import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
@@ -233,6 +234,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const exportCaption = hasActiveFilters
     ? t("exportCaption", { count: totalAssets, filters: filterSummary })
     : t("exportCaptionNoFilters", { count: totalAssets })
+  // The register export stops at ASSET_EXPORT_MAX_ROWS (the overview workbook has no cap): above it a line of its own
+  // says the register file holds the newest 5,000 of n (group 10 plan 1 final review).
+  const registerCapped = assetExportCapped(totalAssets)
   // The header's buttons (spec 2B §4.4.6, K8): the register export (outline) first, the overview export (primary)
   // last. Plain <a href download> links to the export routes, like the report cards' (spec 2D M31): a download, not a
   // page to prefetch. Under them the caption of what they export (group 10 spec §3); on the overview below md the
@@ -255,6 +259,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         ) : null}
         </div>
         <p data-report-export-caption className="max-w-md text-meta text-muted-foreground md:text-right">{exportCaption}</p>
+        {canAssetExport && registerCapped ? (
+          <p data-report-export-register-cap className="max-w-md text-meta text-muted-foreground md:text-right">{t("exportRegisterCappedCaption", { count: totalAssets, max: ASSET_EXPORT_MAX_ROWS })}</p>
+        ) : null}
       </div>
     ) : undefined
 
@@ -768,6 +775,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       {/* Phones: "ตัวกรอง (n)" opens the phone copy of the filter bar, which starts closed (board RP-Phone). */}
       <div className="md:hidden">
         <ReportFilterToggle
+          id={REPORT_FILTER_TOGGLE_ID}
           targetId={REPORT_FILTER_BAR_PHONE_ID}
           label={hasActiveFilters ? t("filterButton", { count: activeFilters.length }) : t("filterTitle")}
           className="w-full"

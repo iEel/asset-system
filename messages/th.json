@@ -3937,7 +3937,9 @@
     "exportCardCount": "{count, number} รายการ ตามตัวกรอง",
     "exportOverviewDescription": "Excel สรุปแยกกลุ่ม · ต่างขอบเขต · ค่าเสื่อม",
     "exportRegisterDescription": "Excel รายการทีละชิ้น {count, number} แถว",
-    "noFilters": "ไม่มีตัวกรอง"
+    "noFilters": "ไม่มีตัวกรอง",
+    "exportRegisterCappedCaption": "ทะเบียนทรัพย์สิน: ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด จาก {count, number} รายการ",
+    "exportRegisterDescriptionCapped": "Excel รายการทีละชิ้น · ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด จาก {count, number} รายการ"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",

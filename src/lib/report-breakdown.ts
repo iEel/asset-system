@@ -105,6 +105,30 @@ export function breakdownRowHref(
   return buildExactAssetRegisterHref(locale, params)
 }
 
+// The unassigned department row links to the register's "no department" filter (dataQuality=department), but the
+// register takes one dataQuality value: under another one (serial, …) the link would drop the report's own filter, so
+// the row stays plain text, as the other dimensions' unassigned rows do (group 10 plan 1 final review).
+export function breakdownUnassignedLinked(dimension: BreakdownDimension, baseQuery: URLSearchParams): boolean {
+  if (dimension !== "department") return false
+  const dataQuality = baseQuery.get("dataQuality")?.trim()
+  return !dataQuality || dataQuality === "department"
+}
+
+// The status strip's "ดูรายการ" links (and "รวมปลดระวาง n"): the register with the report's filters and this status,
+// only when the cell counts any asset and the report has no status filter or this same one, so the list never shows
+// rows the cell does not count (group 10 plan 1 final review).
+export function stripStatusListHref(
+  locale: string,
+  statusId: string | null,
+  count: number,
+  baseQuery: URLSearchParams,
+): string | undefined {
+  if (!statusId || count <= 0) return undefined
+  const baseStatus = baseQuery.get("statusId")?.trim()
+  if (baseStatus && baseStatus !== statusId) return undefined
+  return breakdownRowHref(locale, "status", statusId, baseQuery)
+}
+
 export function filterBreakdownGroups<T extends BreakdownGroup>(groups: readonly T[], query: string): T[] {
   const needle = query.trim().toLocaleLowerCase("th")
   if (!needle) return [...groups]

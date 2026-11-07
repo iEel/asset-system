@@ -57,6 +57,8 @@ export type ReportFilterPanelProps = {
 
 export const REPORT_FILTER_BAR_ID = "report-filters"
 export const REPORT_FILTER_BAR_PHONE_ID = "report-filters-phone"
+// The phone's "ตัวกรอง (n)" button (ReportFilterToggle): focus comes back to it when the phone copy closes.
+export const REPORT_FILTER_TOGGLE_ID = "report-filters-phone-toggle"
 
 // The report filter bar (group 10 spec §3, boards RP-Overview and RP-Phone): a <details> "ตัวกรองรายงาน", in two copies
 // as the other rebuilt lists do. From md it is open on the first visit (no filter at all) and while any field filter is

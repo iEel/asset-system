@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { ASSET_EXPORT_MAX_ROWS, assetExportAllWhere, exportAllCountKey } from "../src/lib/asset-export-limits.ts"
+import { ASSET_EXPORT_MAX_ROWS, assetExportAllWhere, assetExportCapped, exportAllCountKey } from "../src/lib/asset-export-limits.ts"
 
 // Group 4 plan 5 Task 5 (P5-R10, recon export.md D2/D3): the import-export page counts what the unfiltered export
 // writes, from the same code the route reads, and names the cap when the count is over it.
@@ -17,4 +17,10 @@ test("the count line names the cap only above it", () => {
   assert.equal(exportAllCountKey(0), "exportAllCount")
   assert.equal(exportAllCountKey(5000), "exportAllCount")
   assert.equal(exportAllCountKey(5001), "exportAllCapped")
+})
+
+test("the reports page's register line names the cap only above 5,000 (group 10 plan 1 final review)", () => {
+  assert.equal(assetExportCapped(5000), false)
+  assert.equal(assetExportCapped(5001), true)
+  assert.equal(assetExportCapped(12345), true)
 })

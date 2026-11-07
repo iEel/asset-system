@@ -5,7 +5,9 @@ import {
   breakdownPercent,
   breakdownPercentLabel,
   breakdownRowHref,
+  breakdownUnassignedLinked,
   buildBreakdownTable,
+  stripStatusListHref,
   filterBreakdownGroups,
   type BreakdownGroup,
 } from "../src/lib/report-breakdown.ts"
@@ -140,4 +142,27 @@ test("the percent label shows <0.1% for a group that rounds to zero and 0% only 
   assert.equal(breakdownPercentLabel(11, breakdownPercent(11, 21638)), "0.1%")
   assert.equal(breakdownPercentLabel(12077, breakdownPercent(12077, 21638)), "55.8%")
   assert.equal(breakdownPercentLabel(3, 100), "100%")
+})
+
+test("the unassigned department row links only when the base has no other dataQuality (final review)", () => {
+  // The register takes one dataQuality value: under dataQuality=serial a link would drop the report's own filter.
+  assert.equal(breakdownUnassignedLinked("department", new URLSearchParams({ branchId: "3" })), true)
+  assert.equal(breakdownUnassignedLinked("department", new URLSearchParams({ dataQuality: "department" })), true)
+  assert.equal(breakdownUnassignedLinked("department", new URLSearchParams({ dataQuality: "serial" })), false)
+  for (const dimension of ["status", "category", "company", "branch", "ownership"] as const) {
+    assert.equal(breakdownUnassignedLinked(dimension, new URLSearchParams()), false, dimension)
+  }
+})
+
+test("a strip list link shows only for a count above 0 and a status filter that is absent or the same (final review)", () => {
+  const none = new URLSearchParams({ branchId: "3" })
+  const href = stripStatusListHref("en", "S-PD", 4, none)
+  assert.ok(href)
+  const query = new URLSearchParams(href.split("?")[1])
+  assert.equal(query.get("statusId"), "S-PD")
+  assert.equal(query.get("branchId"), "3")
+  assert.equal(stripStatusListHref("en", "S-PD", 0, none), undefined, "a 0 cell has no list")
+  assert.equal(stripStatusListHref("en", null, 4, none), undefined, "no such status")
+  assert.equal(stripStatusListHref("en", "S-PD", 4, new URLSearchParams({ statusId: "S-OTHER" })), undefined, "another status filter")
+  assert.ok(stripStatusListHref("en", "S-PD", 4, new URLSearchParams({ statusId: "S-PD" })), "the same status filter")
 })

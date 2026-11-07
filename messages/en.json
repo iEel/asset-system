@@ -3937,7 +3937,9 @@
     "exportCardCount": "{count, plural, one {# row} other {# rows}} matching the filters",
     "exportOverviewDescription": "Excel by group · cross-scope · depreciation",
     "exportRegisterDescription": "Excel, one row per asset, {count, plural, one {# row} other {# rows}}",
-    "noFilters": "No filters"
+    "noFilters": "No filters",
+    "exportRegisterCappedCaption": "Asset register: the file has the {max, number} most recently added of {count, plural, one {# asset} other {# assets}}",
+    "exportRegisterDescriptionCapped": "Excel, one row per asset · the file has the {max, number} most recently added of {count, plural, one {# asset} other {# assets}}"
   },
   "maintenancePage": {
     "title": "Maintenance",
