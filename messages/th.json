@@ -639,7 +639,19 @@
     "findingReview_approved": "อนุมัติ",
     "findingReview_rejected": "ปฏิเสธ",
     "findingReview_exception": "ยกเว้น",
-    "viewNavigation": "มุมมองงาน"
+    "viewNavigation": "มุมมองงาน",
+    "nextStep": {
+      "reviewRequest": "พิจารณาคำขอ",
+      "reviewFinding": "พิจารณารายการไม่ตรง",
+      "approveClose": "อนุมัติปิดรอบ",
+      "recordDisposal": "บันทึกตัดจำหน่าย",
+      "recordPmDone": "บันทึกว่าทำแล้ว",
+      "recordRepairDone": "บันทึกว่าซ่อมเสร็จ",
+      "openRepair": "เปิดงานซ่อม",
+      "updateAction": "อัปเดตแผนแก้ไข",
+      "openFinding": "เปิดรายการ",
+      "openRequest": "เปิดคำขอ"
+    }
   },
   "asset": {
     "title": "ทะเบียนทรัพย์สิน",

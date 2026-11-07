@@ -639,7 +639,19 @@
     "findingReview_approved": "Approved",
     "findingReview_rejected": "Rejected",
     "findingReview_exception": "Exception",
-    "viewNavigation": "Work view"
+    "viewNavigation": "Work view",
+    "nextStep": {
+      "reviewRequest": "Review request",
+      "reviewFinding": "Review finding",
+      "approveClose": "Approve closing",
+      "recordDisposal": "Record disposal",
+      "recordPmDone": "Record PM done",
+      "recordRepairDone": "Record repair done",
+      "openRepair": "Open repair",
+      "updateAction": "Update action plan",
+      "openFinding": "Open finding",
+      "openRequest": "Open request"
+    }
   },
   "asset": {
     "title": "Asset Register",
