@@ -45,6 +45,7 @@ export type RowActionsProps = {
   name?: string
   menuLabel: string
   next?: RowNextAction | null
+  nextWidth?: "fixed" | "auto"
   groups: readonly RowActionGroup[]
   deleteAction?: { endpoint: string; label?: string }
   openerRef?: RefObject<HTMLElement | null>
@@ -57,6 +58,8 @@ export type RowActionsProps = {
 // left. It fills with primary-soft on hover, while its row is hovered or holds focus, and while the row's menu is open.
 const rowNextClasses =
   "inline-flex min-h-11 w-30 shrink-0 items-center justify-start gap-1.5 rounded-control border border-transparent px-2.5 text-meta font-medium whitespace-nowrap text-primary transition-colors hover:bg-primary-soft hover:text-primary-hover hover:duration-0 group-hover/row:bg-primary-soft group-hover/row:text-primary-hover group-focus-within/row:bg-primary-soft group-focus-within/row:text-primary-hover group-has-[[aria-expanded=true]]/row:bg-primary-soft active:border-primary-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-8 md:min-h-0 [&_svg]:size-4 [&_svg]:shrink-0"
+// nextWidth "auto" (the work center, whose labels run past 120px): the same button at its content's width.
+const rowNextAutoClasses = rowNextClasses.replace(" w-30 ", " w-auto ")
 
 // Rows of the phone sheet look like menu rows (44px, primary-soft focus, danger for delete). dropdown-menu.tsx is a
 // client module, so only client files may import these two strings.
@@ -73,6 +76,7 @@ export function RowActions({
   name,
   menuLabel,
   next,
+  nextWidth = "fixed",
   groups,
   deleteAction,
   openerRef,
@@ -93,6 +97,7 @@ export function RowActions({
   const hasMenu = filled.length > 0 || Boolean(deleteAction)
   const deleteLabel = deleteAction?.label ?? tCommon("delete")
   const asSheet = menu === "sheet" || (menu === "auto" && !isDesktop)
+  const nextClasses = nextWidth === "auto" ? rowNextAutoClasses : rowNextClasses
 
   // The caller's dialog takes focus, so the closing menu or sheet must not pull it back to ⋯. When the dialog
   // closes it returns focus to openerRef, which now points at ⋯.
@@ -124,7 +129,7 @@ export function RowActions({
     )
     if ("href" in action) {
       return (
-        <Link href={action.href} onClick={action.onNavigate} className={rowNextClasses}>
+        <Link href={action.href} onClick={action.onNavigate} className={nextClasses}>
           {content}
         </Link>
       )
@@ -133,7 +138,7 @@ export function RowActions({
     return (
       <button
         type="button"
-        className={rowNextClasses}
+        className={nextClasses}
         onClick={(event) => openFromNext(event.currentTarget, onSelect)}
       >
         {content}

@@ -15,8 +15,9 @@ test("RowActions is a client component with one data-only API: no children, no o
   assert.ok(props, "export type RowActionsProps not found")
   assert.deepEqual(
     props.split("\n").map((line) => line.trim().split(":")[0]),
-    ["code", "name?", "menuLabel", "next?", "groups", "deleteAction?", "openerRef?", "menu?", "triggerVariant?", "className?"],
+    ["code", "name?", "menuLabel", "next?", "nextWidth?", "groups", "deleteAction?", "openerRef?", "menu?", "triggerVariant?", "className?"],
   )
+  assert.match(props, /nextWidth\?: "fixed" \| "auto"/)
   assert.match(props, /triggerVariant\?: "ghost" \| "outline"/)
   assert.match(props, /next\?: RowNextAction \| null/)
   assert.match(props, /deleteAction\?: \{ endpoint: string; label\?: string \}/)
@@ -48,11 +49,20 @@ test("the next button sits in a fixed 120px slot and reads its label with the ro
     "inline-flex min-h-11 w-30 shrink-0 items-center justify-start gap-1.5 rounded-control border border-transparent px-2.5 text-meta font-medium whitespace-nowrap text-primary transition-colors hover:bg-primary-soft hover:text-primary-hover hover:duration-0 group-hover/row:bg-primary-soft group-hover/row:text-primary-hover group-focus-within/row:bg-primary-soft group-focus-within/row:text-primary-hover group-has-[[aria-expanded=true]]/row:bg-primary-soft active:border-primary-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-8 md:min-h-0 [&_svg]:size-4 [&_svg]:shrink-0",
   )
   assert.match(source, /<span className="truncate">\{action\.label\}<\/span>\s*<span className="sr-only"> \{code\}<\/span>/)
-  assert.match(source, /<Link href=\{action\.href\} onClick=\{action\.onNavigate\} className=\{rowNextClasses\}>/)
+  assert.match(source, /<Link href=\{action\.href\} onClick=\{action\.onNavigate\} className=\{nextClasses\}>/)
   assert.match(source, /onClick=\{\(event\) => openFromNext\(event\.currentTarget, onSelect\)\}/)
   assert.match(source, /function openFromNext\(button: HTMLElement, select: \(\) => void\) \{\s*if \(openerRef\) openerRef\.current = button\s*select\(\)\s*\}/)
   // undefined = no slot (phone rows) · null = an empty 120px slot, so ⋯ stays in its column.
   assert.match(source, /next === undefined \? null : next === null \? <span aria-hidden="true" className="w-30 shrink-0" \/> : renderNext\(next\)/)
+})
+
+test("nextWidth defaults to the fixed 120px slot; \"auto\" swaps only w-30 for w-auto, keeping height, padding and nowrap (group 9 plan 2 look step)", () => {
+  const source = rowActions()
+  assert.match(source, /\n  nextWidth = "fixed",\n/, "the default is fixed, so every other list is unchanged")
+  assert.match(source, /const rowNextAutoClasses = rowNextClasses\.replace\(" w-30 ", " w-auto "\)/)
+  assert.match(source, /const nextClasses = nextWidth === "auto" \? rowNextAutoClasses : rowNextClasses/)
+  assert.match(source, /type="button"\n\s+className=\{nextClasses\}/)
+  assert.doesNotMatch(source, /className=\{rowNextClasses\}/, "both next elements take nextClasses")
 })
 
 test("⋯ is an icon-sm button (ghost, or outline in an ActionBar), a menu from md and a bottom sheet below, and leaves its place empty when there is nothing to show", () => {

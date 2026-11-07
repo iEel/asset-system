@@ -73,7 +73,12 @@ test("the table: urgency dot with a word, the work, queue and kind, the age line
   assert.match(table, /statusMarkerVariants\(\{ tone: urgencyTones\[row\.urgency\] \}\)/)
   assert.match(table, /<span className="sr-only">\{t\(`urgency\.\$\{row\.urgency\}`\)\}<\/span>/)
   assert.match(table, /<RowActions\n\s+code=\{row\.documentNo \?\? row\.assetTag \?\? row\.number\}/)
-  assert.match(table, /next=\{\{ label: tRoot\(row\.nextStep\.labelKey\), href: row\.nextStep\.href \}\}/)
+  assert.match(table, /next=\{\{ label: tRoot\(row\.nextStep\.labelKey\), href: row\.nextStep\.href \}\}\n\s+nextWidth="auto"\n/, "the next step shows its whole label (look step)")
+  assert.match(
+    table,
+    /<col \/>\n\s+<col className="w-44" \/>\n\s+<col className="w-40" \/>\n\s+<col className="w-60" \/>\n\s+<\/colgroup>/,
+    "the ขั้นถัดไป column has room for พิจารณารายการไม่ตรง and ⋯; the งาน column wraps",
+  )
   assert.match(table, /items: row\.menu\.map\(\(item\) => \(\{ kind: "link", key: item\.key, label: menuLabel\(row, item\.key\), href: item\.href \}\)\)/)
   assert.match(table, /t\("deadline\.overSla", \{ days: row\.overdueDays \}\)/)
   assert.match(table, /t\("deadline\.overdue", \{ days: row\.overdueDays \}\)/)
@@ -165,6 +170,17 @@ test("phone: rows are cards below md and the table from md", () => {
     /<RowActions\n\s+menu="sheet"\n\s+code=\{row\.documentNo \?\? row\.assetTag \?\? row\.number\}\n\s+name=\{row\.title\}\n\s+menuLabel=[^\n]+\n\s+groups=\{menuGroups\(row\)\}/,
     "the card's ⋯ holds only the menu; the next step is its own button",
   )
+})
+
+test("phone: tag and document number are separate spans in a wrapping line, so the number drops below (look step)", () => {
+  assert.match(table, /const codes = \[row\.assetTag, row\.documentNo\]\.filter\(\(code\): code is string => Boolean\(code\)\)/)
+  assert.match(
+    table,
+    /\{codes\.length > 0 \? \(\n\s+<p className="flex flex-wrap items-baseline gap-x-1\.5 text-xs text-muted-foreground">\n\s+\{codes\.map\(\(code, index\) => \(\n\s+<Fragment key=\{code\}>\n\s+\{index > 0 \? <span aria-hidden="true">·<\/span> : null\}\n\s+<span className="tag min-w-0 break-all">\{code\}<\/span>/,
+  )
+  const cards = table.slice(table.indexOf('data-slot="work-center-cards"'))
+  assert.doesNotMatch(cards, /<p className="[^"]*break-all/, "never break-all on a line that may hold Thai text")
+  assert.equal(cards.match(/break-all/g)?.length, 1, "break-all only on a code's own span")
 })
 
 test("phone: ติดตามแยก comes after the list, the round reads ตรวจแล้ว x / y", () => {

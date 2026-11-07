@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowRight } from "lucide-react"
@@ -136,7 +137,7 @@ export function WorkRowsTable({
           <col />
           <col className="w-44" />
           <col className="w-40" />
-          <col className="w-48" />
+          <col className="w-60" />
         </colgroup>
         <DataTableHeader>
           <tr>
@@ -189,6 +190,7 @@ export function WorkRowsTable({
                       name={row.title}
                       menuLabel={t("table.menuLabel", { code: row.documentNo ?? row.assetTag ?? row.number })}
                       next={{ label: tRoot(row.nextStep.labelKey), href: row.nextStep.href }}
+                      nextWidth="auto"
                       groups={menuGroups(row)}
                     />
                   </DataTableCell>
@@ -209,7 +211,7 @@ export function WorkRowsTable({
         ) : (
           rows.map((row) => {
             const age = ageLines(t, row)
-            const codes = [row.assetTag, row.documentNo].filter(Boolean).join(" · ")
+            const codes = [row.assetTag, row.documentNo].filter((code): code is string => Boolean(code))
             return (
               <li key={`${row.kind}:${row.id}`} className="min-w-0 rounded-lg border border-border bg-surface py-3 ps-3.5 pe-2">
                 <div className="flex items-start gap-2">
@@ -219,9 +221,16 @@ export function WorkRowsTable({
                   </span>
                   <div className="min-w-0 flex-1">
                     <h3 className="line-clamp-2 break-words text-base font-semibold text-foreground">{row.title}</h3>
-                    {codes ? (
-                      <p className="break-all text-xs text-muted-foreground">
-                        <span className="tag">{codes}</span>
+                    {/* Tag and document number are their own spans, so a long tag sends the number to the next line;
+                        only a code wider than the card may break inside itself, never the Thai line. */}
+                    {codes.length > 0 ? (
+                      <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-muted-foreground">
+                        {codes.map((code, index) => (
+                          <Fragment key={code}>
+                            {index > 0 ? <span aria-hidden="true">·</span> : null}
+                            <span className="tag min-w-0 break-all">{code}</span>
+                          </Fragment>
+                        ))}
                       </p>
                     ) : null}
                     <p className="mt-0.5 break-words text-meta text-muted-foreground">
