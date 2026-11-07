@@ -66,8 +66,21 @@ type DigestStub = {
   users: string[]
   failRecordFor: string | null
   failMarkFor: string | null
+  /** notification_digest_structured_since as stored; null while missing. */
+  structuredSince: string | null
+  /** The create of that setting fails with this code (P2002 = another run wrote it first). */
+  failSettingCreate: string | null
 }
-const stub: DigestStub = { calls: [], centerItems: [], work: { counts: {}, visibleKeys: [] }, users: ["user-1"], failRecordFor: null, failMarkFor: null }
+const stub: DigestStub = {
+  calls: [],
+  centerItems: [],
+  work: { counts: {}, visibleKeys: [] },
+  users: ["user-1"],
+  failRecordFor: null,
+  failMarkFor: null,
+  structuredSince: null,
+  failSettingCreate: null,
+}
 ;(globalThis as unknown as { __digest: DigestStub }).__digest = stub
 
 const mockedModuleSources = new Map<string, string>([
@@ -78,6 +91,20 @@ const mockedModuleSources = new Map<string, string>([
       notification: {
         async findFirst() { return null },
         async create(args) { log("notification.create", args.data.userId, args.data.referenceId); return {} },
+      },
+      systemSetting: {
+        async findUnique(args) {
+          log("setting.find", args.where.key)
+          const value = globalThis.__digest.structuredSince
+          return value === null ? null : { key: args.where.key, value }
+        },
+        async create(args) {
+          log("setting.create", args.data.key, args.data.value)
+          const code = globalThis.__digest.failSettingCreate
+          if (code) throw Object.assign(new Error("create failed"), { code })
+          globalThis.__digest.structuredSince = args.data.value
+          return args.data
+        },
       },
     }
   `],
@@ -147,6 +174,8 @@ function resetStub() {
   stub.users = ["user-1"]
   stub.failRecordFor = null
   stub.failMarkFor = null
+  stub.structuredSince = null
+  stub.failSettingCreate = null
   stub.centerItems = [centerItem("duePm", 4), centerItem("openRepairs", 2, { isRead: true }), centerItem("approvalInbox", 1, { isSnoozed: true })]
   stub.work = { counts: { duePm: 4, openRepairs: 2, approvalInbox: 1, pendingDisposals: 0 }, visibleKeys: ["duePm", "openRepairs", "approvalInbox", "pendingDisposals"] }
 }
@@ -173,6 +202,8 @@ test("a digest records every visible key, marks the unread topics it sends and p
     ["record", "user-1", { duePm: 4, openRepairs: 2, approvalInbox: 1, pendingDisposals: 0 }, now],
     ["notification.create", "user-1", "notification-digest:2026-11-07"],
     ["mark", "user-1", { duePm: 4 }, now],
+    ["setting.find", "notification_digest_structured_since"],
+    ["setting.create", "notification_digest_structured_since", "2026-11-07"],
     ["prune", now],
   ])
 })
@@ -200,6 +231,7 @@ test("one user's failed daily counts are logged and the digest goes on to the ne
     stub.calls.filter((call) => call[0] !== "center").map((call) => call.slice(0, 2)),
     [
       ["record", "user-1"], ["notification.create", "user-1"], ["mark", "user-1"],
+      ["setting.find", "notification_digest_structured_since"], ["setting.create", "notification_digest_structured_since"],
       ["record", "user-2"], ["notification.create", "user-2"], ["mark", "user-2"],
       ["record", "user-3"], ["notification.create", "user-3"], ["mark", "user-3"],
       ["prune", now],
@@ -209,4 +241,69 @@ test("one user's failed daily counts are logged and the digest goes on to the ne
   assert.match(String(errors[0][0]), /user-1/)
   assert.match(String(errors[1][0]), /user-2/)
   assert.ok(errors.every((args) => args.every((arg) => !String(arg).includes("duePm"))), "the log names the user, not the counts")
+})
+
+// Final review (group 9 plan 3): the legacy digest cutoff is the first day the digest stored its topics, kept in a
+// system setting that pruning cannot move. Written once, Bangkok date, only while missing.
+test("the first digest that marks counts stores the first structured day, Bangkok date, once per run", async () => {
+  resetStub()
+  stub.users = ["user-1", "user-2"]
+  // 2026-11-06 18:30 UTC is 2026-11-07 01:30 in Bangkok.
+  const now = new Date("2026-11-06T18:30:00.000Z")
+  await digest.deliverDailyNotificationDigest({ referenceDate: now })
+  const settingCalls = stub.calls.filter((call) => String(call[0]).startsWith("setting."))
+  assert.deepEqual(settingCalls, [
+    ["setting.find", "notification_digest_structured_since"],
+    ["setting.create", "notification_digest_structured_since", "2026-11-07"],
+  ])
+  assert.equal(stub.structuredSince, "2026-11-07")
+})
+
+test("a stored first structured day is never overwritten", async () => {
+  resetStub()
+  stub.structuredSince = "2026-11-01"
+  await digest.deliverDailyNotificationDigest({ referenceDate: new Date("2026-12-20T00:30:00.000Z") })
+  assert.deepEqual(stub.calls.filter((call) => String(call[0]).startsWith("setting.")), [["setting.find", "notification_digest_structured_since"]])
+  assert.equal(stub.structuredSince, "2026-11-01")
+})
+
+test("a dry run, or a run whose marking fails, stores no first structured day", async (t) => {
+  resetStub()
+  await digest.deliverDailyNotificationDigest({ dryRun: true, referenceDate: new Date("2026-11-07T00:30:00.000Z") })
+  assert.equal(stub.calls.some((call) => String(call[0]).startsWith("setting.")), false)
+
+  resetStub()
+  stub.failMarkFor = "user-1"
+  t.mock.method(console, "error", () => {})
+  await digest.deliverDailyNotificationDigest({ referenceDate: new Date("2026-11-07T00:30:00.000Z") })
+  assert.equal(stub.calls.some((call) => String(call[0]).startsWith("setting.")), false)
+  assert.equal(stub.structuredSince, null)
+})
+
+test("another run writing the first structured day first (P2002) is fine; any other failure is logged and the digest goes on", async (t) => {
+  resetStub()
+  stub.failSettingCreate = "P2002"
+  const errors: unknown[][] = []
+  t.mock.method(console, "error", (...args: unknown[]) => { errors.push(args) })
+  const now = new Date("2026-11-07T00:30:00.000Z")
+  const result = await digest.deliverDailyNotificationDigest({ referenceDate: now })
+  assert.equal(result.delivered, 1)
+  assert.equal(errors.length, 0)
+
+  resetStub()
+  stub.users = ["user-1", "user-2"]
+  stub.failSettingCreate = "P1001"
+  const second = await digest.deliverDailyNotificationDigest({ referenceDate: now })
+  assert.equal(second.delivered, 2)
+  assert.equal(errors.length, 1)
+  assert.match(String(errors[0][0]), /structured/)
+  assert.equal(stub.calls.at(-1)?.[0], "prune")
+})
+
+test("Admin > Settings never lists the first structured digest day", () => {
+  const defaults = readFileSync("src/lib/system-setting-defaults.ts", "utf8")
+  assert.match(defaults, /export const notificationDigestStructuredSinceKey = "notification_digest_structured_since"/)
+  assert.match(defaults, /export const hiddenSystemSettingKeys: ReadonlySet<string> = new Set\(\[notificationDigestStructuredSinceKey\]\)/)
+  const page = readFileSync("src/app/[locale]/(dashboard)/admin/settings/page.tsx", "utf8")
+  assert.match(page, /savedSettings\.filter\(\(setting\) => !defaultKeys\.has\(setting\.key\) && !hiddenSystemSettingKeys\.has\(setting\.key\)\)/)
 })

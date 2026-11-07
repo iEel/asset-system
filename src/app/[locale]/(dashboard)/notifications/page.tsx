@@ -5,7 +5,7 @@ import { ArrowRight, Check } from "lucide-react"
 import { NotificationReadAllButton } from "@/components/notifications/notification-center-actions"
 import { NotificationDigestPanel } from "@/components/notifications/notification-digest-panel"
 import { NotificationTopicRow, type NotificationRowLabels } from "@/components/notifications/notification-topic-row"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
@@ -89,7 +89,8 @@ export default async function NotificationsPage({ params, searchParams }: Notifi
     }
     return parts.join(" · ")
   }
-  const hasRows = data.backlog.rows.length + data.advance.rows.length > 0
+  const shownCount = data.backlog.rows.length + data.advance.rows.length
+  const hasRows = shownCount > 0
 
   return (
     <div className="space-y-4">
@@ -168,8 +169,17 @@ export default async function NotificationsPage({ params, searchParams }: Notifi
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div aria-label={t("topicsLabel", { count: data.counts.all })} role="region" className={cn(getPanelClasses(), "min-w-0 overflow-hidden")}>
-          {hasRows ? null : <EmptyNote padded>{t(`empty.${data.params.status}`)}</EmptyNote>}
+        <div aria-label={t("topicsLabel", { count: shownCount })} role="region" className={cn(getPanelClasses(), "min-w-0 overflow-hidden")}>
+          {hasRows ? null : data.params.assigned ? (
+            <EmptyNote padded>
+              {t("empty.assigned")}{" "}
+              <Link href={buildNotificationsHref(locale, data.params, { assigned: false })} scroll={false} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                {t("clearAssignedFilter")}
+              </Link>
+            </EmptyNote>
+          ) : (
+            <EmptyNote padded>{t(`empty.${data.params.status}`)}</EmptyNote>
+          )}
           {data.backlog.rows.length > 0 ? (
             <TopicSection
               id="backlog"

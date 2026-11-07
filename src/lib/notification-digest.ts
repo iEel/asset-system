@@ -19,6 +19,9 @@ import {
   deliverNotificationWebhook,
   resolveNotificationDeliveryConfig,
 } from "@/lib/notification-delivery"
+import { getBangkokDateKey } from "@/lib/preventive-maintenance"
+import { isPrismaUniqueConstraintError } from "@/lib/prisma-unique-retry"
+import { notificationDigestStructuredSinceKey } from "@/lib/system-setting-defaults"
 
 export { buildDailyDigestMessage, buildDailyDigestReferenceId, resolveDigestTone, type NotificationDigestLocale }
 
@@ -90,6 +93,8 @@ export async function deliverDailyNotificationDigest({
   let skippedEmpty = 0
   let skippedDuplicate = 0
   const deliveryConfig = resolveNotificationDeliveryConfig()
+  // Tried once per run, after the first digest counts are marked.
+  let structuredSinceTried = false
 
   for (const dbUser of users) {
     const user = toSessionUser(dbUser)
@@ -144,10 +149,16 @@ export async function deliverDailyNotificationDigest({
       // The topics this digest sent (unread, not snoozed); a count already set for the day is kept.
       const sentCounts: DailyCountCounts = {}
       for (const item of activeItems) sentCounts[item.key as keyof DailyCountCounts] = item.count
+      let marked = false
       try {
         await markDigestCounts(user.id, sentCounts, referenceDate)
+        marked = true
       } catch {
         console.error(`[notification-digest] marking digest counts failed for user ${user.id}`)
+      }
+      if (marked && !structuredSinceTried) {
+        structuredSinceTried = true
+        await ensureStructuredDigestSince(referenceDate)
       }
       if (deliveryConfig.enabled && deliveryConfig.webhookUrl) {
         try {
@@ -184,6 +195,27 @@ export async function deliverDailyNotificationDigest({
     skippedEmpty,
     skippedDuplicate,
     dryRun,
+  }
+}
+
+// The first day the digest stored its topics (spec §6.2, group 9 plan 3 final review): written only while missing, so
+// the notifications page's legacy cutoff never moves, even after the daily counts are pruned. Another run writing it
+// first (P2002) is fine; any other failure is logged and the digest goes on.
+async function ensureStructuredDigestSince(referenceDate: Date) {
+  try {
+    const existing = await prisma.systemSetting.findUnique({ where: { key: notificationDigestStructuredSinceKey } })
+    if (existing) return
+    await prisma.systemSetting.create({
+      data: {
+        key: notificationDigestStructuredSinceKey,
+        value: getBangkokDateKey(referenceDate),
+        description: "วันแรกที่สรุปรายวันเก็บหัวข้อแยกตามวัน (ก่อนวันนี้แสดงเป็นข้อความเดิม)",
+        updatedBy: "system:scheduler",
+      },
+    })
+  } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return
+    console.error("[notification-digest] storing the first structured digest day failed")
   }
 }
 

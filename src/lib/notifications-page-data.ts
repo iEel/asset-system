@@ -14,6 +14,7 @@ import {
   type DigestDay,
 } from "@/lib/notification-daily-counts"
 import { getNotificationCenter } from "@/lib/notification-summary"
+import { notificationDigestStructuredSinceKey } from "@/lib/system-setting-defaults"
 import { getWaitingWork, getWaitingWorkAges, type WaitingWork } from "@/lib/waiting-work"
 import { startOfBangkokDay, type WaitingWorkAge, type WaitingWorkKey, type WaitingWorkRules } from "@/lib/waiting-work-rules"
 import { buildWorkQueueSummary, isAdvanceWarningKey, type WorkQueueSummary } from "@/lib/work-queues"
@@ -105,8 +106,10 @@ export type NotificationsPageDeps = {
   recordDailyCounts(userId: string, counts: DailyCountCounts, now: Date): Promise<void>
   readPreviousDayCounts(userId: string, now: Date): ReturnType<typeof readPreviousDayCounts>
   readDigestDays(userId: string, options: { limit: number }): Promise<DigestDay[]>
-  /** How many days have digest rows, and the first of them. */
-  readDigestDayStats(userId: string): Promise<{ totalDays: number; firstDay: Date | null }>
+  /** How many days have digest rows. */
+  readDigestDayStats(userId: string): Promise<{ totalDays: number }>
+  /** The stored first structured digest day (Bangkok YYYY-MM-DD), written by the digest; null while missing. */
+  readDigestStructuredSince(): Promise<string | null>
   findLegacyDigests(query: LegacyDigestQuery): Promise<NotificationLegacyDigest[]>
   readAssignees(locale: string): Promise<{ id: string; label: string }[]>
 }
@@ -122,9 +125,12 @@ const defaultDeps: NotificationsPageDeps = {
     const days = await prisma.notificationDailyCount.groupBy({
       by: ["day"],
       where: { userId, digestCount: { not: null } },
-      orderBy: { day: "asc" },
     })
-    return { totalDays: days.length, firstDay: days[0]?.day ?? null }
+    return { totalDays: days.length }
+  },
+  readDigestStructuredSince: async () => {
+    const setting = await prisma.systemSetting.findUnique({ where: { key: notificationDigestStructuredSinceKey }, select: { value: true } })
+    return setting?.value ?? null
   },
   findLegacyDigests: (query) => prisma.notification.findMany(query),
   // Every active user, as the page listed them before.
@@ -226,19 +232,22 @@ export async function getNotificationsPageData(
   const topics = center.items.filter((item) => item.count > 0)
   const ageKeys = AGE_DETAIL_KEYS.filter((key) => topics.some((item) => item.key === key))
 
-  const [ages, previous, , days, stats, assignees] = await Promise.all([
+  const [ages, previous, , days, stats, structuredSince, assignees] = await Promise.all([
     ageKeys.length > 0 ? d.getWaitingWorkAges(user, ageKeys, work.rules, now) : Promise.resolve({}),
     readPreviousSafely(d, user.id, now),
     recordSafely(d, user.id, work, now),
     d.readDigestDays(user.id, { limit: params.digestAll ? DIGEST_DAYS_ALL : DIGEST_DAYS_SHOWN }),
     d.readDigestDayStats(user.id),
+    d.readDigestStructuredSince(),
     d.readAssignees(input.locale),
   ])
 
-  // Legacy digest rows: only the digest's own module, and only from before the first day with digest counts (its
-  // Bangkok midnight), so a day is never listed twice.
+  // Legacy digest rows: only the digest's own module, and only from before the stored first structured day (its Bangkok
+  // midnight), so a day is never listed twice. The day is a system setting the digest writes once, so pruning the daily
+  // counts never moves it; while it is missing (no structured day yet) every digest row is legacy.
   const legacyWhere: LegacyDigestQuery["where"] = { userId: user.id, module: "notification_digest" }
-  if (stats.firstDay) legacyWhere.createdAt = { lt: startOfBangkokDay(stats.firstDay) }
+  const legacyCutoff = parseStructuredSince(structuredSince)
+  if (legacyCutoff) legacyWhere.createdAt = { lt: legacyCutoff }
   const legacy = await d.findLegacyDigests({
     where: legacyWhere,
     orderBy: { createdAt: "desc" },
@@ -296,11 +305,19 @@ export async function getNotificationsPageData(
       items: summary.advance.total,
       previousItems: sumPrevious(summary.advance.keys),
     },
-    digest: { days, totalDays: stats.totalDays, legacy },
+    // ดูย้อนหลังทั้งหมด (n วัน) counts only the days it opens.
+    digest: { days, totalDays: Math.min(stats.totalDays, DIGEST_DAYS_ALL), legacy },
     previousDay: previous ? { day: previous.day, isYesterday: previous.isYesterday } : null,
     assignees,
     canOpenWorkCenter: hasPermission(user, "dashboard", "view"),
   }
+}
+
+// Bangkok midnight of a stored YYYY-MM-DD; anything else is treated as missing.
+function parseStructuredSince(value: string | null): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const date = new Date(`${value}T00:00:00.000+07:00`)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 // Every visible key's count today, zero included. A failure is logged without data; the page goes on.

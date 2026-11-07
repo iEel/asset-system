@@ -54,6 +54,12 @@ export const ldapSyncStatusSettingKeys = [
 export const notificationDigestLastRunAtKey = "notification_digest_last_run_at"
 export const notificationDigestLastStatusKey = "notification_digest_last_status"
 export const notificationDigestLastErrorKey = "notification_digest_last_error"
+// The Bangkok date (YYYY-MM-DD) of the first digest that stored its topics per day (group 9 plan 3 final review).
+// Written once by the digest, never shown in Admin > Settings; the notifications page lists the digest rows created
+// before it as legacy text. Pruning the daily counts cannot move it.
+export const notificationDigestStructuredSinceKey = "notification_digest_structured_since"
+// Settings the system keeps for itself; Admin > Settings never lists them.
+export const hiddenSystemSettingKeys: ReadonlySet<string> = new Set([notificationDigestStructuredSinceKey])
 export const notificationDigestStatusSettingKeys = [
   notificationDigestLastRunAtKey,
   notificationDigestLastStatusKey,

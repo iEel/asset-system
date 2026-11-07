@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import * as nodeModule from "node:module"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
@@ -114,7 +114,8 @@ function fakes(
       calls.digestLimits.push(options.limit)
       return []
     },
-    readDigestDayStats: async () => ({ totalDays: 0, firstDay: null }),
+    readDigestDayStats: async () => ({ totalDays: 0 }),
+    readDigestStructuredSince: async () => null,
     findLegacyDigests: async (args) => {
       calls.legacyArgs.push(args)
       return []
@@ -295,8 +296,7 @@ test("a failed recording does not break the page", async () => {
   for (const args of errors) assert.ok(args.every((arg) => typeof arg === "string" && !arg.includes("secret")))
 })
 
-test("legacy digest rows are filtered by module", async () => {
-  const firstDay = new Date("2026-11-03T00:00:00.000Z")
+test("legacy digest rows are filtered by module and end at the stored first structured day", async () => {
   const days = [{ day: new Date("2026-11-06T00:00:00.000Z"), topics: [{ key: "approvalInbox" as const, count: 3 }], items: 3 }]
   const legacy = [{ id: "n-1", title: "สรุป", message: "ข้อความ", type: "warning", createdAt: new Date("2026-11-01T00:30:00.000Z") }]
   const { deps, calls } = fakes(work({ approvalInbox: 3 }), {}, {
@@ -304,7 +304,8 @@ test("legacy digest rows are filtered by module", async () => {
       calls.digestLimits.push(options.limit)
       return days
     },
-    readDigestDayStats: async () => ({ totalDays: 4, firstDay }),
+    readDigestDayStats: async () => ({ totalDays: 4 }),
+    readDigestStructuredSince: async () => "2026-11-03",
     findLegacyDigests: async (args) => {
       calls.legacyArgs.push(args)
       return legacy
@@ -317,7 +318,7 @@ test("legacy digest rows are filtered by module", async () => {
       where: {
         userId: "user-1",
         module: "notification_digest",
-        // Before the first digest day's Bangkok midnight.
+        // Before the stored first structured day's Bangkok midnight.
         createdAt: { lt: new Date("2026-11-02T17:00:00.000Z") },
       },
       orderBy: { createdAt: "desc" },
@@ -330,10 +331,41 @@ test("legacy digest rows are filtered by module", async () => {
   assert.deepEqual(calls.digestLimits, [3, 30])
   assert.equal((calls.legacyArgs[1] as { take: number }).take, 30)
 
-  // No digest day yet: every legacy digest row may list.
+  // No structured day stored yet: every legacy digest row may list.
   const none = fakes(work({ approvalInbox: 3 }))
   await loader.getNotificationsPageData(user, input(), none.deps)
   assert.deepEqual((none.calls.legacyArgs[0] as { where: unknown }).where, { userId: "user-1", module: "notification_digest" })
+})
+
+// Final review (group 9 plan 3): pruning the daily counts after 35 days must not move the cutoff, so it is read from
+// the stored setting, never from the first remaining day with digest counts.
+test("the legacy cutoff does not follow the pruned daily counts", async () => {
+  const { deps, calls } = fakes(work({ approvalInbox: 3 }), {}, {
+    readDigestDayStats: async () => ({ totalDays: 35 }),
+    readDigestStructuredSince: async () => "2026-11-03",
+  })
+  await loader.getNotificationsPageData(user, { ...input(), now: new Date("2027-01-20T03:00:00.000Z") }, deps)
+  assert.deepEqual((calls.legacyArgs[0] as { where: unknown }).where, {
+    userId: "user-1",
+    module: "notification_digest",
+    createdAt: { lt: new Date("2026-11-02T17:00:00.000Z") },
+  })
+  const source = readFileSync("src/lib/notifications-page-data.ts", "utf8")
+  assert.doesNotMatch(source, /firstDay/, "the cutoff is not derived from the pruned table")
+})
+
+test("an unreadable stored first structured day lists every legacy digest row", async () => {
+  const { deps, calls } = fakes(work({ approvalInbox: 3 }), {}, { readDigestStructuredSince: async () => "junk" })
+  await loader.getNotificationsPageData(user, input(), deps)
+  assert.deepEqual((calls.legacyArgs[0] as { where: unknown }).where, { userId: "user-1", module: "notification_digest" })
+})
+
+test("ดูย้อนหลังทั้งหมด counts at most the 30 days it opens", async () => {
+  const { deps } = fakes(work({ approvalInbox: 3 }), {}, { readDigestDayStats: async () => ({ totalDays: 36 }) })
+  const data = await loader.getNotificationsPageData(user, input(), deps)
+  assert.equal(data.digest.totalDays, 30)
+  const few = await loader.getNotificationsPageData(user, input(), fakes(work({ approvalInbox: 3 }), {}, { readDigestDayStats: async () => ({ totalDays: 2 }) }).deps)
+  assert.equal(few.digest.totalDays, 2)
 })
 
 test("a nearest due date before today reads overdue since, today and later read nearest", async () => {

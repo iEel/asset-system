@@ -185,7 +185,8 @@
       "unread": "No unread topics",
       "read": "No read topics",
       "snoozed": "No snoozed topics",
-      "all": "No follow-up work to notify"
+      "all": "No follow-up work to notify",
+      "assigned": "No assigned topics in this tab"
     },
     "bellLine": "Top-bar bell = {count, plural, one {# unread topic} other {# unread topics}}",
     "pageSubtitle": "The same queues as the work center, with the same numbers. Select a row to open its queue.",
@@ -253,7 +254,8 @@
     "type_info": "General",
     "type_warning": "Needs attention",
     "type_danger": "Urgent",
-    "type_success": "Done"
+    "type_success": "Done",
+    "clearAssignedFilter": "Clear the assigned filter"
   },
   "nav": {
     "mainNavigation": "Main navigation",

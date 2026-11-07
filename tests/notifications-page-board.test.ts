@@ -138,3 +138,36 @@ test("the digest panel: one <details> per day, the first open, the digest=all li
   assert.match(page(), /lg:grid-cols-\[minmax\(0,1fr\)_20rem\]/)
   assert.ok(page().indexOf("<NotificationDigestPanel") > page().indexOf('id="advance"'))
 })
+
+// Final review (group 9 plan 3).
+test("digest topic links are a 44px target on phones and still truncate", () => {
+  const source = digest()
+  assert.match(
+    source,
+    /<Link href=\{buildWaitingWorkHref\(locale, topic\.key\)\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "flex min-h-11 min-w-0 items-center md:min-h-0"\)\}>\n\s+<span className="truncate">\{t\(topic\.key\)\}<\/span>/,
+  )
+  assert.match(source, /<li key=\{topic\.key\} className="flex items-center gap-3">/)
+})
+
+test("ดูย้อนหลังทั้งหมด shows only while it opens more days than shown", () => {
+  assert.match(digest(), /\{!params\.digestAll && totalDays > days\.length \? \(/)
+})
+
+test("the assigned filter with no rows says so and offers to clear the filter", () => {
+  const source = page()
+  assert.match(
+    source,
+    /data\.params\.assigned \? \(\n\s+<EmptyNote padded>\n\s+\{t\("empty\.assigned"\)\}\{" "\}\n\s+<Link href=\{buildNotificationsHref\(locale, data\.params, \{ assigned: false \}\)\} scroll=\{false\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>\n\s+\{t\("clearAssignedFilter"\)\}/,
+  )
+  assert.equal(message("th", "empty.assigned"), "ไม่มีหัวข้อที่มอบหมายในแท็บนี้")
+  assert.equal(typeof message("en", "empty.assigned"), "string")
+  assert.equal(typeof message("th", "clearAssignedFilter"), "string")
+  assert.equal(typeof message("en", "clearAssignedFilter"), "string")
+})
+
+test("the list region's name counts the rows shown", () => {
+  const source = page()
+  assert.match(source, /const shownCount = data\.backlog\.rows\.length \+ data\.advance\.rows\.length/)
+  assert.match(source, /aria-label=\{t\("topicsLabel", \{ count: shownCount \}\)\} role="region"/)
+  assert.doesNotMatch(source, /t\("topicsLabel", \{ count: data\.counts\.all \}\)/)
+})

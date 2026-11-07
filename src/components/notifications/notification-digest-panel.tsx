@@ -69,9 +69,10 @@ export function NotificationDigestPanel({
           </summary>
           <ul className="flex flex-col gap-1 pb-2.5 pl-10 pr-4 text-meta">
             {day.topics.filter((topic): topic is { key: WaitingWorkKey; count: number } => isWaitingWorkKey(topic.key)).map((topic) => (
-              <li key={topic.key} className="flex items-baseline gap-3">
-                <Link href={buildWaitingWorkHref(locale, topic.key)} className={cn(linkVariants({ size: "inherit" }), "min-w-0 truncate")}>
-                  {t(topic.key)}
+              <li key={topic.key} className="flex items-center gap-3">
+                {/* A 44px target on phones; the label truncates inside the link. */}
+                <Link href={buildWaitingWorkHref(locale, topic.key)} className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 items-center md:min-h-0")}>
+                  <span className="truncate">{t(topic.key)}</span>
                 </Link>
                 <span className="ms-auto num text-foreground">{formatCount(topic.count)}</span>
               </li>

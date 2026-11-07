@@ -4,7 +4,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { SystemSettingsForm } from "@/components/admin/system-settings-form"
 import { PageHeader } from "@/components/ui/page-header"
 import { maskSecretSystemSettings } from "@/lib/system-setting-secrets"
-import { systemSettingDefaults } from "@/lib/system-setting-defaults"
+import { hiddenSystemSettingKeys, systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { buildLdapSyncHistoryItems } from "@/lib/system-log-history"
 
 type SettingsPageProps = {
@@ -47,7 +47,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const defaultKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
   const settings = [
     ...systemSettingDefaults.map((defaultSetting) => savedByKey.get(defaultSetting.key) ?? defaultSetting),
-    ...savedSettings.filter((setting) => !defaultKeys.has(setting.key)),
+    ...savedSettings.filter((setting) => !defaultKeys.has(setting.key) && !hiddenSystemSettingKeys.has(setting.key)),
   ]
     .sort((a, b) => a.key.localeCompare(b.key))
 
