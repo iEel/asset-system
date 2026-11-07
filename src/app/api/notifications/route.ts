@@ -35,9 +35,11 @@ export async function PATCH(request: NextRequest) {
       const center = await getNotificationCenter(user, locale)
       const unread = center.items.filter((item) => !item.isRead)
       if (unread.length > 0) {
+        // One read time for every row this marks read, including the rows it creates.
+        const now = new Date()
         await prisma.$transaction(
           unread.map((item) => {
-            const update = buildNotificationStateUpdate({ action: "read", count: item.count })
+            const update = buildNotificationStateUpdate({ action: "read", count: item.count }, now)
             return prisma.notificationUserState.upsert({
               where: { userId_key: { userId: user.id, key: item.key } },
               create: { userId: user.id, key: item.key, ...update },

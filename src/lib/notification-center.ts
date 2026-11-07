@@ -76,15 +76,16 @@ export function buildActiveNotificationSummary(items: NotificationCenterItem[]) 
   }
 }
 
+// readAt records when a row was marked read; unread and snooze clear it, assign leaves it as it is.
 export function buildNotificationStateUpdate(input: NotificationStateUpdateInput, now = new Date()) {
   const lastCount = Math.max(0, Math.trunc(input.count))
-  if (input.action === "read") return { isRead: true, lastCount, snoozedUntil: null }
-  if (input.action === "unread") return { isRead: false, lastCount, snoozedUntil: null }
+  if (input.action === "read") return { isRead: true, lastCount, snoozedUntil: null, readAt: now }
+  if (input.action === "unread") return { isRead: false, lastCount, snoozedUntil: null, readAt: null }
   if (input.action === "snooze") {
     const snoozeHours = Math.min(168, Math.max(1, Math.trunc(input.snoozeHours ?? 24)))
     const snoozedUntil = new Date(now)
     snoozedUntil.setHours(snoozedUntil.getHours() + snoozeHours)
-    return { isRead: false, lastCount, snoozedUntil }
+    return { isRead: false, lastCount, snoozedUntil, readAt: null }
   }
   return {
     lastCount,

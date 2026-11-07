@@ -1163,6 +1163,7 @@ model NotificationUserState {
   lastCount        Int       @default(0)
   snoozedUntil     DateTime?
   assignedToUserId String?   @db.NVarChar(100)
+  readAt           DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -1170,4 +1171,22 @@ model NotificationUserState {
   @@index([userId])
   @@index([assignedToUserId])
   @@map("notification_user_states")
+}
+
+// One row per user, Bangkok day and notification key: that day's count and the count the daily digest sent.
+// Manual migration: prisma/manual-migrations/2026-11-07-add-notification-daily-counts.sql.
+model NotificationDailyCount {
+  id          String   @id @default(uuid())
+  userId      String   @db.NVarChar(100)
+  day         DateTime @db.Date
+  key         String   @db.NVarChar(50)
+  count       Int
+  digestCount Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, day, key], map: "UX_notification_daily_counts_user_day_key")
+  @@index([userId, day], map: "IX_notification_daily_counts_user_day")
+  @@index([day], map: "IX_notification_daily_counts_day")
+  @@map("notification_daily_counts")
 }

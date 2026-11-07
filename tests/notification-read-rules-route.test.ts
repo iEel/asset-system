@@ -150,18 +150,27 @@ test("read_all marks every row not yet read at the server's own count and answer
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "read_all", key: "approvalInbox", count: 99 }),
   }))
+  const before = Date.now()
   const response = await patch()
   assert.equal(response.status, 200)
-  assert.deepEqual(calls("notificationUserState.upsert"), [
+  const upserts = calls("notificationUserState.upsert") as { create: { readAt?: unknown }; update: { readAt?: unknown } }[]
+  // Every row read_all marks read, created or updated, carries one read time (group 9 plan 1 task 1).
+  const readAt = upserts[0]?.update.readAt
+  assert.ok(readAt instanceof Date && readAt.getTime() >= before && readAt.getTime() <= Date.now(), "readAt is the time of the request")
+  for (const upsert of upserts) {
+    assert.equal(upsert.create.readAt, readAt)
+    assert.equal(upsert.update.readAt, readAt)
+  }
+  assert.deepEqual(upserts, [
     {
       where: { userId_key: { userId: "user-1", key: "approvalInbox" } },
-      create: { userId: "user-1", key: "approvalInbox", isRead: true, lastCount: 2, snoozedUntil: null },
-      update: { isRead: true, lastCount: 2, snoozedUntil: null },
+      create: { userId: "user-1", key: "approvalInbox", isRead: true, lastCount: 2, snoozedUntil: null, readAt },
+      update: { isRead: true, lastCount: 2, snoozedUntil: null, readAt },
     },
     {
       where: { userId_key: { userId: "user-1", key: "returnsDueSoon" } },
-      create: { userId: "user-1", key: "returnsDueSoon", isRead: true, lastCount: 1, snoozedUntil: null },
-      update: { isRead: true, lastCount: 1, snoozedUntil: null },
+      create: { userId: "user-1", key: "returnsDueSoon", isRead: true, lastCount: 1, snoozedUntil: null, readAt },
+      update: { isRead: true, lastCount: 1, snoozedUntil: null, readAt },
     },
   ])
   const body = await response.json()

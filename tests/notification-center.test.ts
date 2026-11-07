@@ -49,17 +49,22 @@ test("builds state updates for read, snooze, and assignment actions", () => {
     isRead: true,
     lastCount: 2,
     snoozedUntil: null,
+    readAt: now,
   })
   assert.deepEqual(buildNotificationStateUpdate({ action: "unread", count: 2 }, now), {
     isRead: false,
     lastCount: 2,
     snoozedUntil: null,
+    readAt: null,
   })
   assert.deepEqual(buildNotificationStateUpdate({ action: "snooze", count: 2, snoozeHours: 24 }, now), {
     isRead: false,
     lastCount: 2,
     snoozedUntil: new Date("2026-05-21T08:00:00.000Z"),
+    readAt: null,
   })
+  const assigned = buildNotificationStateUpdate({ action: "assign", count: 2, assignedToUserId: "user-2" }, now)
+  assert.equal("readAt" in assigned, false, "assign leaves readAt out of the update")
   assert.deepEqual(buildNotificationStateUpdate({ action: "assign", count: 2, assignedToUserId: "user-2" }, now), {
     lastCount: 2,
     assignedToUserId: "user-2",
