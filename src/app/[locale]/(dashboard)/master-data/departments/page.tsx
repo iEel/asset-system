@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Pencil, Plus } from "lucide-react"
+import { Pencil, Plus, SlidersHorizontal } from "lucide-react"
 import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -20,6 +20,7 @@ import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { MasterDataReactivateButton, MasterDataRowActions, type MasterDataReactivate } from "@/components/master-data/master-data-row-actions"
 import { formatCount } from "@/lib/display-format"
+import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage, listPageWindow } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -134,7 +135,9 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
   const summary = buildDepartmentSummary(summaryDepartments)
   // The record status is the segmented control, not a form field; the clear link still resets it. The sort is not a
   // filter (as on the companies and branches lists).
-  const hasActiveFilters = listState.status !== "active" || departmentListHasFilters(listState)
+  // A field of the filter form is set (the sort is not a filter): opens the phone filters disclosure.
+  const hasFieldFilters = departmentListHasFilters(listState)
+  const hasActiveFilters = listState.status !== "active" || hasFieldFilters
   // Spec §3: the status column shows only under ทั้งหมด.
   const showRecordStatus = listState.status === "all"
   const columnCount = showRecordStatus ? 6 : 5
@@ -216,6 +219,71 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
     }
   })
 
+  // Search, three filters, the sort and its order: every sort stays reachable here (code, company and date added
+  // too), on phones as well.
+  // Keyed on the list's query: a header sort, a card, a chip or the segmented control changes the URL without this
+  // form, and the uncontrolled selects would otherwise send the old sort and filters with the next search (final
+  // review).
+  // Rendered twice: in the phone disclosure and in the desktop panel. Field gives each copy its own ids (useId), and the
+  // copy that is display: none leaves the accessibility tree, so the page keeps one search landmark (as suppliers).
+  const filterForm = (className: string) => (
+    <form key={departmentReturnHref} role="search" action={basePath} className={className}>
+      {listState.pageSize !== 25 ? <input type="hidden" name="pageSize" value={listState.pageSize} /> : null}
+      {/* The record status is the segmented control below (spec §3); a search keeps it. */}
+      {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
+      <Field label={tCommon("search")}>
+        <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
+      </Field>
+      <FilterSelect
+        label={t("company")}
+        name="companyId"
+        defaultValue={listState.companyId}
+        options={[
+          { value: "", label: tCommon("all") },
+          // Spec §3: reference filters show names only; แผนกกลาง is the departments with no company.
+          ...companies.map((company) => ({ value: company.id, label: company.nameTh })),
+          { value: departmentSharedCompanyValue, label: t("sharedDepartment") },
+        ]}
+      />
+      <FilterSelect
+        label={t("employeeUsageFilter")}
+        name="employeeUsage"
+        defaultValue={listState.employeeUsage}
+        options={[
+          { value: "all", label: tCommon("all") },
+          { value: "withEmployees", label: t("withEmployees") },
+          { value: "withoutEmployees", label: t("withoutEmployees") },
+        ]}
+      />
+      <FilterSelect
+        label={t("assetUsageFilter")}
+        name="assetUsage"
+        defaultValue={listState.assetUsage}
+        options={[
+          { value: "all", label: tCommon("all") },
+          { value: "withAssets", label: t("withAssets") },
+          { value: "withoutAssets", label: t("withoutAssets") },
+        ]}
+      />
+      <FilterSelect
+        label={t("list.sortLabel")}
+        name="sort"
+        defaultValue={listState.sort}
+        options={departmentSorts.map((sort) => ({ value: sort, label: sortLabel(sort) }))}
+      />
+      <FilterSelect
+        label={t("list.sortDirection")}
+        name="direction"
+        defaultValue={listState.direction}
+        options={[
+          { value: "asc", label: t("list.sortAsc") },
+          { value: "desc", label: t("list.sortDesc") },
+        ]}
+      />
+      <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
+    </form>
+  )
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -263,68 +331,17 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
         ]}
       />
 
-      <FilterPanel>
-        {/* Search, three filters, the sort and its order: every sort stays reachable here (code, company and date added
-            too), on phones as well. */}
-        {/* Keyed on the list's query: a header sort, a card, a chip or the segmented control changes the URL without this
-            form, and the uncontrolled selects would otherwise send the old sort and filters with the next search (final
-            review). */}
-        <form key={departmentReturnHref} role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
-          {listState.pageSize !== 25 ? <input type="hidden" name="pageSize" value={listState.pageSize} /> : null}
-          {/* The record status is the segmented control below (spec §3); a search keeps it. */}
-          {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
-          <Field label={tCommon("search")}>
-            <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
-          </Field>
-          <FilterSelect
-            label={t("company")}
-            name="companyId"
-            defaultValue={listState.companyId}
-            options={[
-              { value: "", label: tCommon("all") },
-              // Spec §3: reference filters show names only; แผนกกลาง is the departments with no company.
-              ...companies.map((company) => ({ value: company.id, label: company.nameTh })),
-              { value: departmentSharedCompanyValue, label: t("sharedDepartment") },
-            ]}
-          />
-          <FilterSelect
-            label={t("employeeUsageFilter")}
-            name="employeeUsage"
-            defaultValue={listState.employeeUsage}
-            options={[
-              { value: "all", label: tCommon("all") },
-              { value: "withEmployees", label: t("withEmployees") },
-              { value: "withoutEmployees", label: t("withoutEmployees") },
-            ]}
-          />
-          <FilterSelect
-            label={t("assetUsageFilter")}
-            name="assetUsage"
-            defaultValue={listState.assetUsage}
-            options={[
-              { value: "all", label: tCommon("all") },
-              { value: "withAssets", label: t("withAssets") },
-              { value: "withoutAssets", label: t("withoutAssets") },
-            ]}
-          />
-          <FilterSelect
-            label={t("list.sortLabel")}
-            name="sort"
-            defaultValue={listState.sort}
-            options={departmentSorts.map((sort) => ({ value: sort, label: sortLabel(sort) }))}
-          />
-          <FilterSelect
-            label={t("list.sortDirection")}
-            name="direction"
-            defaultValue={listState.direction}
-            options={[
-              { value: "asc", label: t("list.sortAsc") },
-              { value: "desc", label: t("list.sortDesc") },
-            ]}
-          />
-          <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
-        </form>
-      </FilterPanel>
+      {/* Phones fold the filters under ค้นหาและตัวกรอง, open while a field filter is set (as suppliers and employees,
+          look step 2026-11-07). A <details> cannot be ContentPanel: the panel classes (2D-2 R4). */}
+      <details className={cn(getPanelClasses(), "md:hidden")} open={hasFieldFilters}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          {t("filtersTitle")}
+        </summary>
+        {filterForm("grid gap-3 border-t border-border p-4")}
+      </details>
+
+      <FilterPanel className="hidden md:block">{filterForm("grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3")}</FilterPanel>
 
       <RecordStatusSegmented value={listState.status} counts={recordStatusCounts} hrefFor={(status) => listHref({ status, page: 1 })} />
 

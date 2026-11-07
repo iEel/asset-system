@@ -221,7 +221,10 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <>
               {/* From md the table (its scroll area named by the caption until the main column is wide enough); below md
-                  one card per asset with the same facts, as the documents panel does. */}
+                  one card per asset with the same facts, as the documents panel does. At 1440 the main column beside the
+                  side column is ~730px and all five columns fit (look step 2026-11-07): the name wraps over its tag,
+                  หมวดหมู่ · ที่ตั้ง is one stacked cell that wraps, a second document number wraps under the first, and
+                  only the status badge and the amount keep to one line. */}
               <DataTable data-supplier-assets-desktop framed={false} caption={t("detail.assetsCaption")} scrollHint={tCommon("tableScrollHint")} className="hidden md:block">
                 <DataTableHeader>
                   <tr>
@@ -235,7 +238,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 <DataTableBody>
                   {detail.latestAssets.map((asset) => (
                     <DataTableRow key={asset.id}>
-                      <DataTableCell className="min-w-48">
+                      <DataTableCell data-supplier-asset-cell="asset" className="min-w-36">
                         {canViewAssets ? (
                           <Link href={`/${locale}/assets/${asset.id}`} className={cn(linkVariants(), "font-medium")}>
                             {asset.name}
@@ -245,20 +248,20 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                         )}
                         <span className="mt-0.5 block text-meta text-muted-foreground"><span className="tag">{asset.assetTag}</span></span>
                       </DataTableCell>
-                      <DataTableCell className="min-w-40">
+                      <DataTableCell data-supplier-asset-cell="categoryLocation" className="min-w-32">
                         <span className="block text-foreground">{asset.categoryName}</span>
                         <span className="block text-meta text-muted-foreground">{asset.locationName} · {asset.branchName}</span>
                       </DataTableCell>
                       <DataTableCell>
                         <StatusBadge label={locale === "en" ? asset.status.name : asset.status.nameTh} status={asset.status.name} />
                       </DataTableCell>
-                      <DataTableCell className="whitespace-nowrap">
+                      <DataTableCell data-supplier-asset-cell="document">
                         {asset.documents.length === 0 ? (
-                          <span className="text-meta text-warning">{t("detail.noDocument")}</span>
+                          <span className="text-meta whitespace-nowrap text-warning">{t("detail.noDocument")}</span>
                         ) : (
                           <>
-                            <span className="tag">{asset.documents[0].documentNo}</span>
-                            {asset.documents.length > 1 ? <span className="ml-1 text-meta text-muted-foreground">{t("detail.moreDocuments", { count: asset.documents.length - 1 })}</span> : null}
+                            <span className="tag whitespace-nowrap">{asset.documents[0].documentNo}</span>
+                            {asset.documents.length > 1 ? <> <span className="text-meta whitespace-nowrap text-muted-foreground">{t("detail.moreDocuments", { count: asset.documents.length - 1 })}</span></> : null}
                           </>
                         )}
                       </DataTableCell>
@@ -389,8 +392,10 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 {detail.repairHistory.map((ticket) => {
                   const body = (
                     <>
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="min-w-0 font-medium text-foreground">{ticket.asset.name}</span>
+                      {/* The title takes the full width and the badge sits on its own line under it, so Thai never breaks
+                          inside a word because of the badge (look step 2026-11-07). */}
+                      <div data-supplier-repair-title className="font-medium text-foreground">{ticket.asset.name}</div>
+                      <div className="mt-1 flex">
                         <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
                       </div>
                       <div className="mt-1 font-mono text-meta text-muted-foreground">{ticket.asset.assetTag} · {ticket.repairNo}</div>

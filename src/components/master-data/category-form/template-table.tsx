@@ -147,13 +147,16 @@ export function CustomFieldTemplateTable({
         caption={t("form.templateCaption", { count: fields.length })}
         scrollHint={tCommon("tableScrollHint")}
       >
+        {/* ชื่อ field, ป้ายชื่อ and ป้ายชื่อภาษาไทย share what is left equally (no width): at 1440 beside the side panel
+            each input is ~140px, enough for a 12-character Thai label (อยู่ในประกัน); ชนิดข้อมูล keeps room for รายการเลือก,
+            จำเป็น and the row buttons take their content's width (look step 2026-11-07). */}
         <colgroup>
-          <col className="w-[22%]" />
-          <col className="w-[22%]" />
-          <col />
+          <col data-template-col="name" />
+          <col data-template-col="label" />
+          <col data-template-col="label-th" />
           <col className="w-36" />
-          <col className="w-16" />
-          <col className="w-36" />
+          <col className="w-14" />
+          <col className="w-32" />
         </colgroup>
         <DataTableHeader>
           <tr>

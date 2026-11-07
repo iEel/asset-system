@@ -1715,7 +1715,8 @@
       "confirmTitle": "Reactivate {name}?",
       "confirmBody": "This company will be offered again on other pages such as new branches, employees and assets",
       "success": "Reactivated"
-    }
+    },
+    "filtersTitle": "Search and filters"
   },
   "branch": {
     "title": "Branches",
@@ -1777,7 +1778,8 @@
       "confirmTitle": "Reactivate {name}?",
       "confirmBody": "This branch will be offered again on other pages such as new locations, employees and assets",
       "success": "Reactivated"
-    }
+    },
+    "filtersTitle": "Search and filters"
   },
   "department": {
     "title": "Departments",
@@ -1834,7 +1836,8 @@
       "confirmTitle": "Reactivate \"{name}\"?",
       "confirmBody": "This department will be offered again on other pages such as new employees, handovers and new assets",
       "success": "Reactivated"
-    }
+    },
+    "filtersTitle": "Search and filters"
   },
   "employee": {
     "title": "Employees",
@@ -2325,7 +2328,8 @@
       "optionsDoneFor": "Done editing options of field {name}",
       "unsavedChangesConfirm": "You have unsaved category changes. Leave this page?",
       "unsavedChangesLeave": "Leave without saving"
-    }
+    },
+    "filtersTitle": "Search and filters"
   },
   "brandModel": {
     "title": "Brands / Models",

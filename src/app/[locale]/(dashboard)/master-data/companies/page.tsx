@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Pencil, Plus } from "lucide-react"
+import { Pencil, Plus, SlidersHorizontal } from "lucide-react"
 import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -19,6 +19,7 @@ import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { MasterDataReactivateButton, MasterDataRowActions, type MasterDataReactivate } from "@/components/master-data/master-data-row-actions"
 import { formatCount } from "@/lib/display-format"
+import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -119,7 +120,9 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
   // The record status is the segmented control now, not a form field; the clear link still resets it. The sort is not a
   // filter (as on the employee list).
-  const hasActiveFilters = listState.status !== "active" || Boolean(listState.search || listState.assetUsage !== "all" || listState.branchUsage !== "all")
+  // A field of the filter form is set (the sort is not a filter): opens the phone filters disclosure.
+  const hasFieldFilters = Boolean(listState.search || listState.assetUsage !== "all" || listState.branchUsage !== "all")
+  const hasActiveFilters = listState.status !== "active" || hasFieldFilters
   // Spec §3: the status column shows only under ทั้งหมด.
   const showRecordStatus = listState.status === "all"
   const columnCount = showRecordStatus ? 8 : 7
@@ -190,6 +193,60 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
     }
   })
 
+  // Search, two filters, the sort and its order: every sort stays reachable here (code and date added too, which
+  // no header carries any more), on phones as well.
+  // Keyed on the list's query: a header sort, a card or the segmented control changes the URL without this form, and
+  // the uncontrolled selects would otherwise send the old sort and filters with the next search (final review).
+  // Rendered twice: in the phone disclosure and in the desktop panel. Field gives each copy its own ids (useId), and the
+  // copy that is display: none leaves the accessibility tree, so the page keeps one search landmark (as suppliers).
+  const filterForm = (className: string) => (
+    <form key={companyReturnHref} role="search" action={basePath} className={className}>
+      <input type="hidden" name="page" value="1" />
+      <input type="hidden" name="pageSize" value={listState.pageSize} />
+      {/* The record status is the segmented control below (spec §3); a search keeps it. */}
+      {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
+      <Field label={tCommon("search")}>
+        <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
+      </Field>
+      <FilterSelect
+        label={t("assetUsageFilter")}
+        name="assetUsage"
+        defaultValue={listState.assetUsage}
+        options={[
+          { value: "all", label: tCommon("all") },
+          { value: "withAssets", label: t("withAssets") },
+          { value: "withoutAssets", label: t("withoutAssets") },
+        ]}
+      />
+      <FilterSelect
+        label={t("branchUsageFilter")}
+        name="branchUsage"
+        defaultValue={listState.branchUsage}
+        options={[
+          { value: "all", label: tCommon("all") },
+          { value: "withBranches", label: t("withBranches") },
+          { value: "withoutBranches", label: t("withoutBranches") },
+        ]}
+      />
+      <FilterSelect
+        label={t("list.sortLabel")}
+        name="sort"
+        defaultValue={listState.sort}
+        options={companySorts.map((sort) => ({ value: sort, label: sortLabel(sort) }))}
+      />
+      <FilterSelect
+        label={t("list.sortDirection")}
+        name="direction"
+        defaultValue={listState.direction}
+        options={[
+          { value: "asc", label: t("list.sortAsc") },
+          { value: "desc", label: t("list.sortDesc") },
+        ]}
+      />
+      <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
+    </form>
+  )
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -247,57 +304,17 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         ]}
       />
 
-      <FilterPanel>
-        {/* Search, two filters, the sort and its order: every sort stays reachable here (code and date added too, which
-            no header carries any more), on phones as well. */}
-        {/* Keyed on the list's query: a header sort, a card or the segmented control changes the URL without this form, and
-            the uncontrolled selects would otherwise send the old sort and filters with the next search (final review). */}
-        <form key={companyReturnHref} role="search" action={basePath} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
-          <input type="hidden" name="page" value="1" />
-          <input type="hidden" name="pageSize" value={listState.pageSize} />
-          {/* The record status is the segmented control below (spec §3); a search keeps it. */}
-          {listState.status !== "active" ? <input type="hidden" name="status" value={listState.status} /> : null}
-          <Field label={tCommon("search")}>
-            <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
-          </Field>
-          <FilterSelect
-            label={t("assetUsageFilter")}
-            name="assetUsage"
-            defaultValue={listState.assetUsage}
-            options={[
-              { value: "all", label: tCommon("all") },
-              { value: "withAssets", label: t("withAssets") },
-              { value: "withoutAssets", label: t("withoutAssets") },
-            ]}
-          />
-          <FilterSelect
-            label={t("branchUsageFilter")}
-            name="branchUsage"
-            defaultValue={listState.branchUsage}
-            options={[
-              { value: "all", label: tCommon("all") },
-              { value: "withBranches", label: t("withBranches") },
-              { value: "withoutBranches", label: t("withoutBranches") },
-            ]}
-          />
-          <FilterSelect
-            label={t("list.sortLabel")}
-            name="sort"
-            defaultValue={listState.sort}
-            options={companySorts.map((sort) => ({ value: sort, label: sortLabel(sort) }))}
-          />
-          <FilterSelect
-            label={t("list.sortDirection")}
-            name="direction"
-            defaultValue={listState.direction}
-            options={[
-              { value: "asc", label: t("list.sortAsc") },
-              { value: "desc", label: t("list.sortDesc") },
-            ]}
-          />
-          <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
-        </form>
-      </FilterPanel>
+      {/* Phones fold the filters under ค้นหาและตัวกรอง, open while a field filter is set (as suppliers and employees,
+          look step 2026-11-07). A <details> cannot be ContentPanel: the panel classes (2D-2 R4). */}
+      <details className={cn(getPanelClasses(), "md:hidden")} open={hasFieldFilters}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          {t("filtersTitle")}
+        </summary>
+        {filterForm("grid gap-3 border-t border-border p-4")}
+      </details>
+
+      <FilterPanel className="hidden md:block">{filterForm("grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3")}</FilterPanel>
 
       <RecordStatusSegmented value={listState.status} counts={recordStatusCounts} hrefFor={(status) => listHref({ status, page: 1 })} />
 
