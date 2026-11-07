@@ -12,7 +12,7 @@ import { statValue } from "./support/ui.ts"
 test.describe("IT staff", () => {
   asUser("itStaff")
 
-  test("IT staff see the run's assets in every report view and download the register and the overview, which open", async ({ page, measure }, testInfo) => {
+  test("IT staff see the run's assets in every report view and download the register and the overview, which open", async ({ page, measure, e2eDevice }, testInfo) => {
     const choices = await readAssetChoices(page, measure)
     const assets = []
     for (const [index, price] of [1000, 2000, 3000].entries()) {
@@ -25,7 +25,9 @@ test.describe("IT staff", () => {
     await expect(statValue(page, "ทรัพย์สินทั้งหมด")).toHaveText("3")
     await expect(statValue(page, "ราคาซื้อรวม")).toHaveText("6,000.00")
     for (const asset of assets) await expect(inReport(page, asset.assetTag)).toBeVisible()
-    // The group tables read the name with the code under it (group 10 spec §4.2).
+    // The group tables read the name with the code under it (group 10 spec §4.2). The phone shows one table at a time
+    // (spec §7, `group=`), so it opens the department table first.
+    if (e2eDevice === "phone") await measure.visit(`/th/reports?search=${encodeURIComponent(search)}&group=department`, "reports: overview, departments on the phone")
     await expect(inReport(page, `${readRunState().runId} แผนกทดสอบ E2E`)).toBeVisible()
 
     // The two exports of the header, each a file that opens with the three assets.
