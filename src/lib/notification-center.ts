@@ -6,6 +6,7 @@ export type NotificationStateRecord = {
   lastCount: number
   snoozedUntil: Date | string | null
   assignedToUserId: string | null
+  readAt?: Date | string | null
 }
 
 export type NotificationCenterItem = NotificationSummaryItem & {
@@ -14,6 +15,8 @@ export type NotificationCenterItem = NotificationSummaryItem & {
   isSuppressed: boolean
   snoozedUntil: string | null
   assignedToUserId: string | null
+  /** When the topic was marked read; null unless it still counts as read (a risen topic drops it). */
+  readAt: Date | null
 }
 
 export type NotificationStateAction = "read" | "unread" | "snooze" | "assign"
@@ -46,6 +49,7 @@ export function mergeNotificationItemsWithStates(
       isSuppressed: isRead || isSnoozed,
       snoozedUntil: snoozedUntil ? snoozedUntil.toISOString() : null,
       assignedToUserId: state?.assignedToUserId ?? null,
+      readAt: isRead ? parseDate(state?.readAt) : null,
     }
   })
 }

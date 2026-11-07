@@ -7,7 +7,7 @@ import {
   getNotificationCountDrops,
   mergeNotificationItemsWithStates,
 } from "@/lib/notification-center"
-import { getWaitingWork } from "@/lib/waiting-work"
+import { getWaitingWork, type WaitingWork } from "@/lib/waiting-work"
 import { WAITING_WORK_KEYS } from "@/lib/waiting-work-rules"
 
 // Every listed row with its read state (menu B shell task 3); snoozedUntil and assignedToUserId stay on the server.
@@ -24,9 +24,10 @@ export async function getNotificationSummary(user: SessionUser, locale: string):
 export async function getNotificationCenter(
   user: SessionUser,
   locale: string,
-  options?: { recordCountDrops?: boolean },
+  options?: { recordCountDrops?: boolean; work?: WaitingWork },
 ) {
-  const { counts } = await getWaitingWork(user)
+  // A caller that already read the waiting work (the notifications page) passes it, so it is not read twice.
+  const { counts } = options?.work ?? (await getWaitingWork(user))
   const items = buildNotificationSummaryItems(locale, counts)
   // Every counted key's state is read, even when nothing is listed: a read row whose count fell to 0 records the drop.
   const states = await prisma.notificationUserState.findMany({
@@ -40,6 +41,7 @@ export async function getNotificationCenter(
       lastCount: true,
       snoozedUntil: true,
       assignedToUserId: true,
+      readAt: true,
     },
   })
   if (options?.recordCountDrops !== false) {

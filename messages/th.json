@@ -190,7 +190,12 @@
     "openRepairs": "ซ่อมยังไม่เสร็จ",
     "openRepairsDetail": "บันทึกซ่อมที่รอกด \"ซ่อมเสร็จ\"",
     "stuckRepairs": "รอซ่อมแต่ยังไม่มีบันทึกซ่อม",
-    "stuckRepairsDetail": "สถานะรอซ่อมหรืออยู่ระหว่างซ่อม แต่ไม่มีบันทึกซ่อมที่เปิดอยู่ บันทึกซ่อมให้สถานะกับประวัติตรงกัน"
+    "stuckRepairsDetail": "สถานะรอซ่อมหรืออยู่ระหว่างซ่อม แต่ไม่มีบันทึกซ่อมที่เปิดอยู่ บันทึกซ่อมให้สถานะกับประวัติตรงกัน",
+    "detail": {
+      "approvalParts": "ตัดจำหน่าย {disposal, number} · รายการไม่ตรง {mismatches, number} · ปิดรอบตรวจนับ {rounds, number}",
+      "openRepairsOldest": "บันทึกซ่อมที่รอกด \"ซ่อมเสร็จ\" · นานสุด {days, number} วัน",
+      "nearestDue": "ใกล้สุด {date}"
+    }
   },
   "nav": {
     "mainNavigation": "เมนูหลัก",

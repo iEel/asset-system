@@ -51,7 +51,8 @@ test("return reminders count temporary loans only", () => {
 
 test("the bell counts nothing itself: getNotificationCenter reads the waiting-work source (group 1 dashboard task 1)", () => {
   const source = readFileSync("src/lib/notification-summary.ts", "utf8")
-  assert.match(source, /const \{ counts \} = await getWaitingWork\(user\)/)
+  // The notifications page passes the waiting work it already read (group 9 plan 3 task 1); otherwise it is read here.
+  assert.match(source, /const \{ counts \} = options\?\.work \?\? \(await getWaitingWork\(user\)\)/)
   assert.match(source, /key: \{ in: \[\.\.\.WAITING_WORK_KEYS\] \}/)
   assert.doesNotMatch(source, /\.count\(|systemSetting|startOfToday|addDays/)
 })

@@ -74,7 +74,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 9 plan 1 Task 6 added 1: the bell's name "การแจ้งเตือน มี {n} หัวข้อที่ยังไม่อ่าน" (notifications.bellLabel).
   // Group 9 plan 2 Task 2 added 9: the work center's notifications link name, "พิจารณา {n} งาน", "{n} ชิ้น", แสดงเพิ่ม,
   // the two age lines, เกิน SLA, เกินกำหนด and the due-in line (keyed on days).
-  assert.equal(pluralKeys.size, 137,[...pluralKeys.keys()].join(", "))
+  // Group 9 plan 3 Task 1 added 1: the notifications page's repair line "นานสุด {days} วัน" (keyed on days).
+  assert.equal(pluralKeys.size, 138,[...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
   assert.equal(pluralKeys.get("category.form.usageLine"), "models")

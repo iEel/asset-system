@@ -107,3 +107,22 @@ test("a drop in a read or snoozed row's count is reported as the lower count to 
     state("licenseExpiringSoon", true, 2), state("openAuditActions", true, 2), state("overdue:asset-1", true, 2),
   ], now), [{ key: "approvalInbox", count: 2 }, { key: "duePm", count: 0 }, { key: "returnsDueSoon", count: 1 }])
 })
+
+test("readAt shows only while the topic counts as read; a risen topic drops it (group 9 plan 3 task 1)", () => {
+  const now = new Date("2026-11-07T03:00:00.000Z")
+  const readAt = new Date("2026-11-07T02:15:00.000Z")
+  const items = mergeNotificationItemsWithStates([
+    { key: "approvalInbox", count: 2, href: "/th/admin/approvals", tone: "danger" },
+    { key: "duePm", count: 4, href: "/th/maintenance#pm-due", tone: "warning" },
+    { key: "openRepairs", count: 1, href: "/th/maintenance", tone: "warning" },
+  ], [
+    { key: "approvalInbox", isRead: true, lastCount: 2, snoozedUntil: null, assignedToUserId: null, readAt },
+    { key: "duePm", isRead: true, lastCount: 3, snoozedUntil: null, assignedToUserId: null, readAt },
+    { key: "openRepairs", isRead: false, lastCount: 1, snoozedUntil: null, assignedToUserId: null, readAt: null },
+  ], now)
+  assert.deepEqual(items.map((item) => [item.key, item.isRead, item.readAt]), [
+    ["approvalInbox", true, readAt],
+    ["duePm", false, null],
+    ["openRepairs", false, null],
+  ])
+})
