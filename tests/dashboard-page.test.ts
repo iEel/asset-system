@@ -47,7 +47,7 @@ test("every register link carries the overview's own filter, exact, with the cho
   }
 })
 
-const noInbox = { total: 0, disposal: 0, audit: 0 }
+const noInbox = { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 }
 
 test("งานที่รอคุณ: the visible queue kinds with a count in the shared order, the kinds at zero, the backlog and the oldest (spec §6.3; group 9 §3.1)", () => {
   const counts = {
@@ -81,7 +81,7 @@ test("buildDashboardWaiting total excludes advance warnings", () => {
     auditActionsDueSoon: 2, pendingDisposals: 0, approvedDisposals: 3, returnsDueSoon: 2, warrantyExpiringSoon: 5, licenseExpiringSoon: 1,
   }
   const visibleKeys = WAITING_WORK_KEYS.filter((key) => key !== "pendingAuditFindings" && key !== "pendingDisposals")
-  const work = { counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 14 } }
+  const work = { counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 15, findings: 14, rounds: 1 } }
   const waiting = buildDashboardWaiting(work, {})
   assert.equal(waiting.total, 38, "the work center's งานค้างทั้งหมด")
   assert.equal(waiting.total, buildWorkQueueSummary(work).backlogTotal)

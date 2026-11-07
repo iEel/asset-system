@@ -176,9 +176,19 @@ export function buildApprovalInboxItems(source: ApprovalInboxSource): ApprovalIn
 
 export type ApprovalInboxCountParts = { disposal: number; auditFindings: number; auditRoundsReady: number }
 
-export function buildApprovalInboxCounts(parts: ApprovalInboxCountParts): { total: number; disposal: number; audit: number } {
+// audit = findings + rounds for the callers that hide or count the audit side as one; findings and rounds apart for the
+// work center's parts (รายการไม่ตรง · ปิดรอบตรวจนับ) and for hiding pendingAuditFindings only when findings are held.
+export type ApprovalInboxCountTotals = { total: number; disposal: number; audit: number; findings: number; rounds: number }
+
+export function buildApprovalInboxCounts(parts: ApprovalInboxCountParts): ApprovalInboxCountTotals {
   const audit = parts.auditFindings + parts.auditRoundsReady
-  return { total: parts.disposal + audit, disposal: parts.disposal, audit }
+  return {
+    total: parts.disposal + audit,
+    disposal: parts.disposal,
+    audit,
+    findings: parts.auditFindings,
+    rounds: parts.auditRoundsReady,
+  }
 }
 
 function tonePriority(tone: ApprovalInboxItem["tone"]) {

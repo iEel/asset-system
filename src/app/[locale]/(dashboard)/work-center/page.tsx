@@ -267,7 +267,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
 
   const approvalInboxCounts = waitingWork.approvalInbox
   const approvalInboxVisible = approvalInboxAccess.canAnyApproval
-  const visibleAuditItems = approvalInboxVisible && approvalInboxCounts.audit > 0
+  const visibleAuditItems = approvalInboxVisible && approvalInboxCounts.findings > 0
     ? auditItems.filter((finding) => finding.reviewStatus !== "pending")
     : auditItems
   const visibleDisposalItems = approvalInboxVisible && approvalInboxCounts.disposal > 0

@@ -58,14 +58,15 @@ export type WaitingWorkAccess = {
   asset: boolean
 }
 
-// A kind is visible by its page's permission; the inbox hides the queues it already holds.
-export function waitingWorkVisibleKeys(access: WaitingWorkAccess, inbox: { audit: number; disposal: number }): WaitingWorkKey[] {
+// A kind is visible by its page's permission; the inbox hides the queues it already holds. Pending findings hide only
+// when the inbox holds findings (spec §3): a round ready to close alone does not hold them.
+export function waitingWorkVisibleKeys(access: WaitingWorkAccess, inbox: { findings: number; disposal: number }): WaitingWorkKey[] {
   const visible: Record<WaitingWorkKey, boolean> = {
     approvalInbox: access.approval,
     openRepairs: access.maintenance,
     stuckRepairs: access.maintenance,
     duePm: access.maintenance,
-    pendingAuditFindings: access.audit && inbox.audit === 0,
+    pendingAuditFindings: access.audit && inbox.findings === 0,
     openAuditActions: access.audit,
     auditActionsDueSoon: access.audit,
     pendingDisposals: access.disposal && inbox.disposal === 0,

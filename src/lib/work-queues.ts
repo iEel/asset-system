@@ -24,7 +24,7 @@ export function queueKeysFor(queue: WorkQueue): readonly WaitingWorkKey[] {
 export type WorkQueueInput = {
   counts: WaitingWorkCounts
   visibleKeys: readonly WaitingWorkKey[]
-  approvalInbox: { total: number; disposal: number; audit: number }
+  approvalInbox: { total: number; disposal: number; audit: number; findings: number; rounds: number }
 }
 
 export type WorkQueueSummary = {
@@ -54,7 +54,7 @@ export function buildWorkQueueSummary(work: WorkQueueInput): WorkQueueSummary {
   const approvalsQueue = queues.find((queue) => queue.queue === "approvals")
   const approvals = approvalsQueue?.count ?? 0
   const approvedDisposals = countOf("approvedDisposals")
-  const { total, disposal, audit } = work.approvalInbox
+  const { disposal, findings, rounds } = work.approvalInbox
 
   const advanceKeys = ADVANCE_WARNING_KEYS.filter((key) => visible.has(key))
 
@@ -62,7 +62,7 @@ export function buildWorkQueueSummary(work: WorkQueueInput): WorkQueueSummary {
     queues,
     backlogTotal,
     today: { total: approvals + approvedDisposals, approvals, approvedDisposals },
-    approvalParts: approvalsQueue ? { disposal, audit, round: total - disposal - audit } : null,
+    approvalParts: approvalsQueue ? { disposal, audit: findings, round: rounds } : null,
     advance: { total: sum(advanceKeys), keys: advanceKeys },
   }
 }

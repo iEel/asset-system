@@ -2,6 +2,7 @@
 // digest sent (never overwritten), the previous recorded day for the "เมื่อวาน" comparison, and the 35-day keep.
 import { prisma } from "@/lib/db"
 import { getBangkokDateKey } from "./preventive-maintenance.ts"
+import { withPrismaUniqueRetry } from "./prisma-unique-retry.ts"
 import type { WaitingWorkKey } from "./waiting-work-rules.ts"
 
 export type DailyCountKey = WaitingWorkKey | "dataIssues"
@@ -51,6 +52,12 @@ export function bangkokDayDate(now: Date = new Date()): Date {
   return new Date(`${getBangkokDateKey(now)}T00:00:00.000Z`)
 }
 
+// Two writers on the same (userId, day, key) can both take an upsert's insert path on SQL Server; the second fails with
+// P2002. The batch is built again and run once more, and the retry takes the update path. Any other error is rethrown.
+function runBatchRetryingInsertRace(db: DailyCountDb, build: () => Promise<unknown>[]): Promise<unknown> {
+  return withPrismaUniqueRetry(() => db.$transaction(build()), 2)
+}
+
 function definedEntries(counts: DailyCountCounts): Array<[DailyCountKey, number]> {
   return (Object.entries(counts) as Array<[DailyCountKey, number | undefined]>).filter(
     (entry): entry is [DailyCountKey, number] => entry[1] !== undefined
@@ -67,7 +74,7 @@ export async function recordDailyCounts(
   const entries = definedEntries(counts)
   if (entries.length === 0) return
   const day = bangkokDayDate(now)
-  await db.$transaction(
+  await runBatchRetryingInsertRace(db, () =>
     entries.map(([key, count]) =>
       db.notificationDailyCount.upsert({
         where: { userId_day_key: { userId, day, key } },
@@ -127,7 +134,7 @@ export async function markDigestCounts(
   const entries = definedEntries(counts)
   if (entries.length === 0) return
   const day = bangkokDayDate(now)
-  await db.$transaction(
+  await runBatchRetryingInsertRace(db, () =>
     entries.flatMap(([key, count]) => [
       db.notificationDailyCount.upsert({
         where: { userId_day_key: { userId, day, key } },

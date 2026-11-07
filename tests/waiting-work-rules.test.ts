@@ -112,15 +112,20 @@ test("the bell's ten kinds keep today's rules, cut at Bangkok midnight with the 
 test("a kind is visible by its page's permission, and the inbox hides the queues it already holds (group 1 dashboard task 1)", () => {
   const none: WaitingWorkAccess = { approval: false, maintenance: false, audit: false, disposal: false, asset: false }
   const all: WaitingWorkAccess = { approval: true, maintenance: true, audit: true, disposal: true, asset: true }
-  const emptyInbox = { audit: 0, disposal: 0 }
+  const emptyInbox = { findings: 0, disposal: 0 }
   assert.deepEqual(waitingWorkVisibleKeys(all, emptyInbox), [...WAITING_WORK_KEYS])
   assert.deepEqual(waitingWorkVisibleKeys(none, emptyInbox), [])
   assert.deepEqual(waitingWorkVisibleKeys({ ...none, maintenance: true }, emptyInbox), ["openRepairs", "stuckRepairs", "duePm"])
   assert.deepEqual(waitingWorkVisibleKeys({ ...none, audit: true }, emptyInbox), ["pendingAuditFindings", "openAuditActions", "auditActionsDueSoon"])
   assert.deepEqual(
-    waitingWorkVisibleKeys({ ...none, approval: true, audit: true, disposal: true }, { audit: 2, disposal: 1 }),
+    waitingWorkVisibleKeys({ ...none, approval: true, audit: true, disposal: true }, { findings: 2, disposal: 1 }),
     ["approvalInbox", "openAuditActions", "auditActionsDueSoon", "approvedDisposals"],
   )
+  // Spec §3: pendingAuditFindings is hidden only when the inbox holds findings; a round ready to close alone keeps it
+  // (final review F2).
+  const approver: WaitingWorkAccess = { ...none, approval: true, audit: true }
+  assert.ok(waitingWorkVisibleKeys(approver, { findings: 0, disposal: 0 }).includes("pendingAuditFindings"), "0 findings, 1 round: shown")
+  assert.ok(!waitingWorkVisibleKeys(approver, { findings: 1, disposal: 0 }).includes("pendingAuditFindings"), "1 finding: hidden")
   // Returns count assets and link to the register, so asset:view gates them like warranty and licence.
   assert.deepEqual(waitingWorkVisibleKeys({ ...none, asset: true }, emptyInbox), ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"])
 })

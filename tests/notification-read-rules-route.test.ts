@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url"
 
 // The notifications route and summary import next/server and "@/…", which node --test cannot load, so a resolve hook
 // serves stand-ins (as in tests/disposal-pending-source-route.test.ts). The database is a stub: nothing is written anywhere.
-const state = { inbox: { total: 2, audit: 0, disposal: 0 }, counts: {} as Record<string, number>, states: [] as Array<Record<string, unknown>>, calls: [] as Array<{ call: string; args: Record<string, unknown> }> }
+const state = { inbox: { total: 2, audit: 0, disposal: 0, findings: 0, rounds: 0 }, counts: {} as Record<string, number>, states: [] as Array<Record<string, unknown>>, calls: [] as Array<{ call: string; args: Record<string, unknown> }> }
 Object.assign(globalThis, { __notificationRoute: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -103,7 +103,7 @@ const stateRow = (key: string, isRead: boolean, lastCount: number, snoozedUntil:
 const getSummary = () => route.GET(new NextRequest("http://localhost/api/notifications?locale=th"))
 
 beforeEach(() => {
-  state.inbox = { total: 2, audit: 0, disposal: 0 }
+  state.inbox = { total: 2, audit: 0, disposal: 0, findings: 0, rounds: 0 }
   state.counts = {}
   state.states = []
   state.calls = []
@@ -130,7 +130,7 @@ test("the summary reads every counted key's state and records each drop once, gu
 
   state.calls = []
   state.states = []
-  state.inbox = { total: 0, audit: 0, disposal: 0 }
+  state.inbox = { total: 0, audit: 0, disposal: 0, findings: 0, rounds: 0 }
   await getSummary()
   assert.equal(calls("notificationUserState.findMany").length, 1)
 })

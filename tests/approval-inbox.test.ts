@@ -128,8 +128,8 @@ test("disposal items are built whatever disposalRequired says; round closure sti
 })
 
 test("approval inbox counts are the full counts, not the capped rows (critique C1)", () => {
-  assert.deepEqual(buildApprovalInboxCounts({ disposal: 60, auditFindings: 12, auditRoundsReady: 1 }), { total: 73, disposal: 60, audit: 13 })
-  assert.deepEqual(buildApprovalInboxCounts({ disposal: 0, auditFindings: 0, auditRoundsReady: 0 }), { total: 0, disposal: 0, audit: 0 })
+  assert.deepEqual(buildApprovalInboxCounts({ disposal: 60, auditFindings: 12, auditRoundsReady: 1 }), { total: 73, disposal: 60, audit: 13, findings: 12, rounds: 1 })
+  assert.deepEqual(buildApprovalInboxCounts({ disposal: 0, auditFindings: 0, auditRoundsReady: 0 }), { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 })
 })
 
 test("the snapshot's summary and the counts share one database count (critique C1)", () => {

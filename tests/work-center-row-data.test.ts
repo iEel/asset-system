@@ -65,7 +65,7 @@ const work = (visibleKeys: readonly WaitingWorkKey[] = WAITING_WORK_KEYS) => ({
   counts: Object.fromEntries(WAITING_WORK_KEYS.map((key) => [key, 0])) as Record<WaitingWorkKey, number>,
   visibleKeys: [...visibleKeys],
   rules: DEFAULT_WAITING_WORK_RULES,
-  approvalInbox: { total: 0, disposal: 0, audit: 0 },
+  approvalInbox: { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 },
 })
 
 const sourceKind: Record<Source, WorkRowLite["kind"]> = {

@@ -130,6 +130,72 @@ test("the digest's mark creates a row with both counts when none was recorded", 
   assert.deepEqual(rows, [{ userId: "user-1", day: day("2026-11-07"), key: "approvalInbox", count: 3, digestCount: 3 }])
 })
 
+// Two writers on the same (userId, day, key) can both take the insert path on SQL Server; the loser gets P2002 and its
+// batch is built again once, which then takes the update path (final review F3).
+function failingOnce(db: DailyCountDb, error: unknown) {
+  let transactions = 0
+  let upserts = 0
+  const upsert = db.notificationDailyCount.upsert.bind(db.notificationDailyCount)
+  const wrapped: DailyCountDb = {
+    async $transaction(operations) {
+      transactions += 1
+      if (transactions === 1) {
+        await Promise.allSettled(operations)
+        throw error
+      }
+      return db.$transaction(operations)
+    },
+    notificationDailyCount: {
+      ...db.notificationDailyCount,
+      upsert(args) {
+        upserts += 1
+        return upsert(args)
+      },
+    },
+  }
+  return { db: wrapped, calls: () => ({ transactions, upserts }) }
+}
+
+const uniqueError = () => Object.assign(new Error("Unique constraint failed on the constraint: `notification_daily_counts_user_day_key`"), { code: "P2002" })
+
+test("a concurrent insert (P2002) retries the record batch once, rebuilt, and resolves", async () => {
+  const base = fakeDb([row("2026-11-07", "duePm", 40)])
+  const { db, calls } = failingOnce(base.db, uniqueError())
+  await daily.recordDailyCounts("user-1", { duePm: 46, openRepairs: 2 }, new Date("2026-11-07T03:00:00.000Z"), db)
+  assert.deepEqual(calls(), { transactions: 2, upserts: 4 }, "one retry, the operations built again")
+  assert.deepEqual(base.rows.map((entry) => [entry.key, entry.count, entry.digestCount]), [["duePm", 46, null], ["openRepairs", 2, null]])
+})
+
+test("a concurrent insert (P2002) retries the digest mark once and resolves", async () => {
+  const base = fakeDb()
+  const { db, calls } = failingOnce(base.db, uniqueError())
+  await daily.markDigestCounts("user-1", { duePm: 4 }, new Date("2026-11-07T03:00:00.000Z"), db)
+  assert.deepEqual(calls(), { transactions: 2, upserts: 2 })
+  assert.deepEqual(base.rows, [{ userId: "user-1", day: day("2026-11-07"), key: "duePm", count: 4, digestCount: 4 }])
+})
+
+test("any other error is rethrown without a retry, and a second P2002 is rethrown", async () => {
+  const other = Object.assign(new Error("deadlock"), { code: "P2034" })
+  const first = failingOnce(fakeDb().db, other)
+  await assert.rejects(daily.recordDailyCounts("user-1", { duePm: 1 }, new Date("2026-11-07T03:00:00.000Z"), first.db), other)
+  assert.equal(first.calls().transactions, 1)
+  const second = failingOnce(fakeDb().db, other)
+  await assert.rejects(daily.markDigestCounts("user-1", { duePm: 1 }, new Date("2026-11-07T03:00:00.000Z"), second.db), other)
+  assert.equal(second.calls().transactions, 1)
+
+  let attempts = 0
+  const always: DailyCountDb = {
+    ...fakeDb().db,
+    async $transaction(operations) {
+      attempts += 1
+      await Promise.allSettled(operations)
+      throw uniqueError()
+    },
+  }
+  await assert.rejects(daily.recordDailyCounts("user-1", { duePm: 1 }, new Date("2026-11-07T03:00:00.000Z"), always), /Unique constraint/)
+  assert.equal(attempts, 2, "retried once only")
+})
+
 test("no earlier day means no comparison", async () => {
   const { db } = fakeDb([row("2026-11-07", "duePm", 4)])
   const previous = await daily.readPreviousDayCounts("user-1", new Date("2026-11-07T03:00:00.000Z"), db)

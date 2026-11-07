@@ -101,7 +101,12 @@ export async function deliverDailyNotificationDigest({
       if (work.visibleKeys.length > 0) {
         const counts: DailyCountCounts = {}
         for (const key of work.visibleKeys) counts[key] = work.counts[key]
-        await recordDailyCounts(user.id, counts, referenceDate)
+        try {
+          await recordDailyCounts(user.id, counts, referenceDate)
+        } catch {
+          // One user's counts never stop the digest for the rest; the log names the user, never the counts.
+          console.error(`[notification-digest] recording daily counts failed for user ${user.id}`)
+        }
       }
     }
     if (activeItems.length === 0) {
@@ -139,7 +144,11 @@ export async function deliverDailyNotificationDigest({
       // The topics this digest sent (unread, not snoozed); a count already set for the day is kept.
       const sentCounts: DailyCountCounts = {}
       for (const item of activeItems) sentCounts[item.key as keyof DailyCountCounts] = item.count
-      await markDigestCounts(user.id, sentCounts, referenceDate)
+      try {
+        await markDigestCounts(user.id, sentCounts, referenceDate)
+      } catch {
+        console.error(`[notification-digest] marking digest counts failed for user ${user.id}`)
+      }
       if (deliveryConfig.enabled && deliveryConfig.webhookUrl) {
         try {
           await deliverNotificationWebhook({

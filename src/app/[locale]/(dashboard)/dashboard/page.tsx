@@ -112,7 +112,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   ])
 
   // With no visible key nothing reads a count.
-  const waiting = buildDashboardWaiting(waitingWork ?? { counts: {} as WaitingWorkCounts, visibleKeys: [], approvalInbox: { total: 0, disposal: 0, audit: 0 } }, ages)
+  const waiting = buildDashboardWaiting(waitingWork ?? { counts: {} as WaitingWorkCounts, visibleKeys: [], approvalInbox: { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 } }, ages)
   const showWaiting = (waitingWork?.visibleKeys.length ?? 0) > 0
   const statusRows = buildDashboardStatusTable(overview.statusRows, locale, companyId)
   const round = overview.audit.round

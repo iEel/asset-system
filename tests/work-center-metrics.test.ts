@@ -55,12 +55,29 @@ test("a kind the person may not see has no cell, and returns, warranty and licen
 
 test("work center urgent count uses approval inbox instead of covered detail counts", () => {
   const count = calculateWorkCenterUrgentCount({
-    approvalInbox: { visible: true, total: 7, disposal: 2, audit: 4 },
+    approvalInbox: { visible: true, total: 7, disposal: 2, audit: 5, findings: 4, rounds: 1 },
     pendingAuditFindings: 4,
     pendingDisposals: 2,
     approvedDisposals: 5,
   })
   assert.equal(count, 12)
+})
+
+test("work center urgent count: a round ready to close alone does not cover the pending findings (final review F2)", () => {
+  const input = {
+    approvalInbox: { visible: true, total: 1, disposal: 0, audit: 1, findings: 0, rounds: 1 },
+    pendingAuditFindings: 3,
+    pendingDisposals: 0,
+    approvedDisposals: 0,
+  }
+  assert.equal(calculateWorkCenterUrgentCount(input), 4, "1 round + 3 findings the inbox does not hold")
+  assert.equal(calculateWorkCenterUrgentCount({ ...input, approvalInbox: { ...input.approvalInbox, total: 2, audit: 2, findings: 1 } }), 2, "the inbox holds findings: only the inbox counts")
+})
+
+test("the page's audit panel drops pending findings only when the inbox holds findings, not rounds (final review F2)", () => {
+  const source = page()
+  assert.match(source, /const visibleAuditItems = approvalInboxVisible && approvalInboxCounts\.findings > 0\n/)
+  assert.doesNotMatch(source, /approvalInboxCounts\.audit\b/)
 })
 
 test("the page takes each shared kind's count, title, link and gate from the waiting-work source (spec §6.3)", () => {

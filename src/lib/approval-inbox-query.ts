@@ -29,7 +29,12 @@ export type { ApprovalInboxAccess } from "@/lib/approval-inbox"
 export type ApprovalInboxCounts = {
   total: number
   disposal: number
+  /** findings + rounds. */
   audit: number
+  /** Audit findings waiting for approval (รายการไม่ตรง). */
+  findings: number
+  /** Audit rounds ready to close (ปิดรอบตรวจนับ). */
+  rounds: number
 }
 
 // The queues the inbox holds: the pending loader, the count and the oldest all read these. The disposal-approval
@@ -200,7 +205,7 @@ export async function getApprovalInboxPage(
 
 export async function getApprovalInboxCounts(user: SessionUser): Promise<ApprovalInboxCounts> {
   const access = getApprovalInboxAccess(user)
-  if (!access.canAnyApproval) return { total: 0, disposal: 0, audit: 0 }
+  if (!access.canAnyApproval) return { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 }
 
   const policy = await getWorkflowApprovalPolicy()
   return countApprovalInbox(user, access, policy)

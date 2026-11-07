@@ -32,7 +32,7 @@ test("queues group the keys and sum the backlog", () => {
   }
   // An approver: the inbox holds the findings and the disposals, so their own rows are hidden.
   const visibleKeys: WaitingWorkKey[] = WAITING_WORK_KEYS.filter((key) => key !== "pendingAuditFindings" && key !== "pendingDisposals")
-  const summary = buildWorkQueueSummary({ counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 14 } })
+  const summary = buildWorkQueueSummary({ counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 15, findings: 14, rounds: 1 } })
   assert.deepEqual(summary.queues, [
     { queue: "approvals", count: 19, keys: ["approvalInbox"] },
     { queue: "maintenance", count: 10, keys: ["openRepairs", "stuckRepairs", "duePm"] },
@@ -41,6 +41,7 @@ test("queues group the keys and sum the backlog", () => {
   ])
   assert.equal(summary.backlogTotal, 38, "19 + 10 + 6 + 3, the advance warnings never count")
   assert.deepEqual(summary.today, { total: 22, approvals: 19, approvedDisposals: 3 })
+  // total = disposal + findings + rounds; รายการไม่ตรง is the findings only, ปิดรอบตรวจนับ the rounds (final review F1).
   assert.deepEqual(summary.approvalParts, { disposal: 4, audit: 14, round: 1 })
   assert.deepEqual(summary.advance, { total: 8, keys: ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"] })
 })
@@ -48,7 +49,7 @@ test("queues group the keys and sum the backlog", () => {
 test("queues move pending items when the inbox is hidden", () => {
   const counts = { ...zeroCounts(), pendingAuditFindings: 5, pendingDisposals: 2, openAuditActions: 1, approvedDisposals: 3 }
   const visibleKeys: WaitingWorkKey[] = ["pendingAuditFindings", "openAuditActions", "auditActionsDueSoon", "pendingDisposals", "approvedDisposals"]
-  const summary = buildWorkQueueSummary({ counts, visibleKeys, approvalInbox: { total: 0, disposal: 0, audit: 0 } })
+  const summary = buildWorkQueueSummary({ counts, visibleKeys, approvalInbox: { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 } })
   assert.deepEqual(summary.queues, [
     { queue: "audit", count: 6, keys: ["openAuditActions", "auditActionsDueSoon", "pendingAuditFindings"] },
     { queue: "disposal", count: 5, keys: ["approvedDisposals", "pendingDisposals"] },
@@ -64,12 +65,12 @@ test("a queue with no visible key is absent", () => {
   const summary = buildWorkQueueSummary({
     counts,
     visibleKeys: ["openRepairs", "stuckRepairs", "duePm", "warrantyExpiringSoon"],
-    approvalInbox: { total: 0, disposal: 0, audit: 0 },
+    approvalInbox: { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 },
   })
   assert.deepEqual(summary.queues, [{ queue: "maintenance", count: 0, keys: ["openRepairs", "stuckRepairs", "duePm"] }], "a visible queue at 0 stays")
   assert.equal(summary.backlogTotal, 0)
   assert.deepEqual(summary.advance, { total: 4, keys: ["warrantyExpiringSoon"] })
-  const none = buildWorkQueueSummary({ counts, visibleKeys: [], approvalInbox: { total: 0, disposal: 0, audit: 0 } })
+  const none = buildWorkQueueSummary({ counts, visibleKeys: [], approvalInbox: { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 } })
   assert.deepEqual(none.queues, [])
   assert.equal(none.approvalParts, null)
 })

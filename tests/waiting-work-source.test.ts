@@ -26,7 +26,7 @@ import {
 // stand-ins (as in tests/notification-read-rules-route.test.ts). The database is a stub that records every call.
 type Call = { call: string; args: Record<string, unknown> }
 const state = {
-  inbox: { total: 0, audit: 0, disposal: 0 },
+  inbox: { total: 0, audit: 0, disposal: 0, findings: 0, rounds: 0 },
   settings: [] as Array<{ key: string; value: string }>,
   counts: {} as Record<string, number>,
   calls: [] as Call[],
@@ -101,7 +101,7 @@ const today = startOfBangkokDay(now)
 const wheres = (call: string) => state.calls.filter((entry) => entry.call === call).map((entry) => entry.args.where)
 
 beforeEach(() => {
-  state.inbox = { total: 0, audit: 0, disposal: 0 }
+  state.inbox = { total: 0, audit: 0, disposal: 0, findings: 0, rounds: 0 }
   state.settings = []
   state.counts = {}
   state.calls = []
@@ -118,7 +118,7 @@ test("every count uses its kind's where, with the days the settings hold, and no
     { key: "notification_license_expiry_days", value: "400" },
   ]
   state.counts = { maintenanceTicket: 4, maintenancePlan: 2, asset: 1 }
-  state.inbox = { total: 6, audit: 0, disposal: 0 }
+  state.inbox = { total: 6, audit: 0, disposal: 0, findings: 0, rounds: 0 }
   const rules = { returnDueSoonDays: 5, auditActionDueSoonDays: 7, warrantyExpiryDays: 45, licenseExpiryDays: 30 }
   const work = await source.getWaitingWork(user([], ["system_admin"]), now)
   assert.deepEqual(work.rules, rules)
@@ -141,10 +141,10 @@ test("every count uses its kind's where, with the days the settings hold, and no
 })
 
 test("permissions decide what a person sees, and the inbox hides the queues it already holds (group 1 dashboard task 1)", async () => {
-  state.inbox = { total: 3, audit: 2, disposal: 1 }
+  state.inbox = { total: 3, audit: 2, disposal: 1, findings: 2, rounds: 0 }
   let work = await source.getWaitingWork(user(["disposal:approve", "audit:approve", "audit:view", "disposal:view"]), now)
   assert.deepEqual(work.visibleKeys, ["approvalInbox", "openAuditActions", "auditActionsDueSoon", "approvedDisposals"])
-  assert.deepEqual(work.approvalInbox, { total: 3, audit: 2, disposal: 1 })
+  assert.deepEqual(work.approvalInbox, { total: 3, audit: 2, disposal: 1, findings: 2, rounds: 0 })
   assert.deepEqual([work.counts.approvalInbox, work.counts.pendingAuditFindings, work.counts.pendingDisposals], [3, 0, 0])
   assert.deepEqual(wheres("auditFinding.count"), [
     openAuditActionsWhere(today, DEFAULT_WAITING_WORK_RULES),
@@ -153,7 +153,7 @@ test("permissions decide what a person sees, and the inbox hides the queues it a
   assert.deepEqual(wheres("disposalRequest.count"), [approvedDisposalsWhere])
 
   state.calls = []
-  state.inbox = { total: 0, audit: 0, disposal: 0 }
+  state.inbox = { total: 0, audit: 0, disposal: 0, findings: 0, rounds: 0 }
   state.counts = { maintenanceTicket: 2, asset: 1 }
   work = await source.getWaitingWork(user(["maintenance:view"]), now)
   assert.deepEqual(work.visibleKeys, ["openRepairs", "stuckRepairs", "duePm"])

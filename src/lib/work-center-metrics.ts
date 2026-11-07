@@ -49,6 +49,8 @@ export type WorkCenterApprovalInboxCounts = {
   total: number
   disposal: number
   audit: number
+  findings: number
+  rounds: number
 }
 
 export type WorkCenterMetricSelection = {
@@ -70,7 +72,7 @@ export function buildWorkCenterMetricKeys(selection: { visibleKeys: readonly Wai
 
 export function calculateWorkCenterUrgentCount(input: WorkCenterUrgentCountInput) {
   const approvalCount = input.approvalInbox.visible ? input.approvalInbox.total : 0
-  const auditCount = input.approvalInbox.visible && input.approvalInbox.audit > 0 ? 0 : input.pendingAuditFindings
+  const auditCount = input.approvalInbox.visible && input.approvalInbox.findings > 0 ? 0 : input.pendingAuditFindings
   const disposalCount = input.approvalInbox.visible && input.approvalInbox.disposal > 0 ? 0 : input.pendingDisposals
 
   return approvalCount + auditCount + disposalCount + input.approvedDisposals
