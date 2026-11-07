@@ -217,7 +217,7 @@ test("a link that changed between the read and the write (a late return, another
 test("the responsibility rule and the pages that feed it count an outstanding component as held (spec §8.5, P2-R17)", () => {
   const branch = (assetMissingResponsibilityWhere.OR as Array<Record<string, unknown>>).find((entry) => entry.ownershipType === "component")
   assert.deepEqual(branch, { ownershipType: "component", OR: [{ departmentId: null }, { installedInLinks: { none: installedOrOutstandingLinkWhere } }] })
-  for (const file of ["src/app/[locale]/(dashboard)/work-center/page.tsx", "src/app/[locale]/(dashboard)/reports/page.tsx"]) {
+  for (const file of ["src/lib/work-center-page-data.ts", "src/app/[locale]/(dashboard)/reports/page.tsx"]) {
     assert.match(read(file), /installedInLinks: \{ where: installedOrOutstandingLinkWhere, select: \{ id: true \}, take: 1 \}/, file)
     assert.doesNotMatch(read(file), /installedInLinks: \{ where: \{ status: "installed"/, file)
   }

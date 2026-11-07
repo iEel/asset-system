@@ -261,3 +261,26 @@ test("assets panel loads no table", async () => {
   assert.equal(overview.assets, null)
   assert.equal(elsewhere.calls.assetsLoaded, 0)
 })
+
+// Task 1 review ruling: a round with nothing left to check is waiting to close, not a walk to continue.
+test("tracking ignores rounds with nothing left to check", () => {
+  assert.equal(loader.pickTrackingRound([{ id: "r1", auditNo: "AUD-2026-0001", name: "Done", total: 86, pending: 0 }]), null)
+  assert.deepEqual(
+    loader.pickTrackingRound([
+      { id: "r1", auditNo: "AUD-2026-0001", name: "Done", total: 86, pending: 0 },
+      { id: "r2", auditNo: "AUD-2026-0002", name: "Open", total: 10, pending: 1 },
+    ]),
+    { id: "r2", auditNo: "AUD-2026-0002", name: "Open", checked: 9, total: 10, pending: 1 },
+  )
+})
+
+test("the view's counts reach the page for the queue parts line", async () => {
+  const { deps } = fakes({ waiting: work({ openRepairs: 3, duePm: 2 }) })
+  const data = await loader.getWorkCenterPageData(user(allPermissions), input(), deps)
+  assert.equal(data.counts.openRepairs, 3)
+  assert.equal(data.counts.duePm, 2)
+
+  const mine = fakes({ waiting: work({ openRepairs: 3 }) })
+  const scoped = await loader.getWorkCenterPageData(user(allPermissions), input({ view: "mine" }), mine.deps)
+  assert.equal(scoped.counts.openRepairs, 1, "งานของฉัน: the scoped count")
+})

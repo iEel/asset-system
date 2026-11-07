@@ -4,9 +4,6 @@ import test from "node:test"
 import {
   buildDataQualityFixGroups,
   buildWorkCenterHref,
-  filterWorkCenterMetricKeys,
-  getWorkCenterFocusPanels,
-  getWorkCenterItemLimit,
   parseWorkCenterParams,
 } from "../src/lib/work-center-view.ts"
 
@@ -46,31 +43,6 @@ test("parses show and writes it only when it is not 8", () => {
     buildWorkCenterHref("th", { view: "mine", panel: "audit", show: 16 }, { show: 8 }),
     "/th/work-center?view=mine&panel=audit",
   )
-})
-
-test("expands only the active work center panel", () => {
-  assert.equal(getWorkCenterItemLimit("assets", "assets"), 24)
-  assert.equal(getWorkCenterItemLimit("maintenance", "assets"), 6)
-})
-
-test("keeps the overview focused on time-sensitive queues", () => {
-  assert.deepEqual(getWorkCenterFocusPanels("overview", true), ["approvals", "maintenance", "audit", "disposal"])
-  assert.deepEqual(getWorkCenterFocusPanels("assets", true), ["assets"])
-  assert.deepEqual(getWorkCenterFocusPanels("overview", false), ["maintenance", "audit", "disposal"])
-})
-
-test("shows only metrics that support the selected work center focus", () => {
-  const metricKeys = [
-    "approvalInbox", "missingCustodian", "missingSerial", "missingPhoto", "openRepairs", "stuckRepairs", "duePm",
-    "openAuditActions", "auditActionsDueSoon", "pendingAuditItems", "approvedDisposals",
-  ] as const
-
-  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "overview"), [
-    "approvalInbox", "openRepairs", "stuckRepairs", "duePm", "openAuditActions", "auditActionsDueSoon", "pendingAuditItems", "approvedDisposals",
-  ])
-  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "assets"), ["missingCustodian", "missingSerial", "missingPhoto"])
-  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "maintenance"), ["openRepairs", "stuckRepairs", "duePm"])
-  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "audit"), ["openAuditActions", "auditActionsDueSoon", "pendingAuditItems"])
 })
 
 test("builds data quality fix groups from issue counts", () => {

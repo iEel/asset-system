@@ -811,25 +811,20 @@ test("the dashboard: PageHeader with the as-of line, blocks 24px apart, numbers 
   assert.match(source, /if \(user && shouldUseEmployeeHome\(user\)\) \{\n\s+redirect\(`\/\$\{locale\}\/my-assets`\)/)
 })
 
-// Plan 2B-5 Task 15 (spec 2B I10, §4.4.6, §5.6): the work center on the shared frame. "งานทั้งหมด / งานของฉัน" changes
-// the URL, so it is a TabNav of two links named by workCenter.viewNavigation (R-g, not Segmented), and the sentence under
-// it stays. The queue links are a second TabNav; the two summary numbers are a StatStrip under the header and the metrics
-// StatStrips of at most four cells. The cancelled-round filter stays (audit-round-cancellation).
-test("the work center: PageHeader, a summary StatStrip, the view switch and the queues on TabNav, metric rows of at most four (spec 2B I10, §5.6)", () => {
+// Plan 2B-5 Task 15 (spec 2B I10, §4.4.6, §5.6), rebuilt on board WC (group 9 plan 2 Task 2): "งานทั้งหมด / งานของฉัน"
+// changes the URL, so it stays links named by workCenter.viewNavigation with aria-current (R-g), drawn in Segmented's
+// look like RecordStatusSegmented, never the button Segmented. The queue links are a TabNav. The view=mine notice stays.
+test("the work center: PageHeader, the view switch as links, the queues on TabNav, the view=mine notice (spec 2B I10, group 9 §4)", () => {
   const source = read(`${D}work-center/page.tsx`)
-  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
-  assert.equal(source.match(/<TabNav\b/g)?.length, 2, "the view switch and the queue links")
-  assert.match(source, /<TabNav\n\s+aria-label=\{t\("viewNavigation"\)\}\n\s+current=\{workCenterParams\.view\}/)
-  assert.match(source, /\{ key: "all", label: t\("allWork"\), href: buildWorkCenterHref\(locale, workCenterParams, \{ view: "all", panel: workCenterParams\.panel \}\) \}/)
-  assert.match(source, /\{ key: "mine", label: t\("myWork"\), href: buildWorkCenterHref\(locale, workCenterParams, \{ view: "mine", panel: workCenterParams\.panel \}\) \}/)
+  const tabs = read("src/components/work-center/work-center-tabs.tsx")
+  assert.match(source, /<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
+  assert.match(tabs, /<nav aria-label=\{t\("viewNavigation"\)\} data-slot="work-center-view-switch"/)
+  assert.match(tabs, /aria-current=\{selected \? "page" : undefined\}/)
+  assert.match(tabs, /\{view === "all" \? t\("allWork"\) : t\("myWork"\)\}/)
   assert.match(source, /<Notice tone="warning">\{t\("myWorkUnavailable"\)\}<\/Notice>/, "the sentence under the switch stays (I10), as a warning Notice since 2D-2 (D7)")
-  assert.match(source, /<p className="text-xs text-muted-foreground">\{isMineView \? t\("myWorkDetail"\) : t\("allWorkDetail"\)\}<\/p>/)
-  assert.match(source, /<TabNav\n\s+aria-label=\{t\("focusNavigation"\)\}\n\s+current=\{workCenterParams\.panel\}/)
-  assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the summary strip and the metric rows")
-  assert.match(source, /attention: metric\.value > 0 && \(metric\.tone === "danger" \|\| metric\.tone === "warning"\)/)
-  assert.match(source, /^import \{ splitStatRows \} from "@\/lib\/stat-strip-rows"$/m, "the row split is shared with the dashboard since 2D-2")
-  assert.match(source, /status: auditRoundOperationalWhere/)
-  assert.doesNotMatch(source, /function (?:MetricCard|SummaryPill|WorkCenterViewLink|WorkCenterFocusLink|toneClass)\b|<h1\b|aria-current=|toLocaleString\(|<Segmented\b|"use client"/)
+  assert.equal(tabs.match(/<TabNav\b/g)?.length, 1, "the queue links")
+  assert.match(tabs, /<TabNav\n\s+aria-label=\{t\("focusNavigation"\)\}\n\s+current=\{params\.panel\}/)
+  assert.doesNotMatch(source + tabs, /<h1\b|toLocaleString\(|<Segmented\b|"use client"/)
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { workCenter: Record<string, unknown> }
     assert.equal(typeof messages.workCenter.viewNavigation, "string", `${locale}: workCenter.viewNavigation`)
@@ -840,7 +835,7 @@ test("the work center: PageHeader, a summary StatStrip, the view switch and the 
 // never saw the link rows that had no aria-current at all. The four of plan 2B-5 are named here: the log quick
 // filters, the approval inbox chips, the history filter groups and the work-center switch are TabNav.
 test("plan 2B-5: the link rows guard LN1 cannot see are TabNav (spec 2B §5.14, §9.10 #3)", () => {
-  for (const path of [`${D}admin/logs/page.tsx`, `${D}admin/approvals/page.tsx`, `${D}admin/approvals/history/page.tsx`, `${D}work-center/page.tsx`]) {
+  for (const path of [`${D}admin/logs/page.tsx`, `${D}admin/approvals/page.tsx`, `${D}admin/approvals/history/page.tsx`, "src/components/work-center/work-center-tabs.tsx"]) {
     assert.match(read(path), /<TabNav\b/, `${path}: no <TabNav`)
   }
 })

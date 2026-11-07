@@ -89,7 +89,8 @@ test("dashboard, work-center and notification links open the register exactly", 
   // The dashboard's register links are built in src/lib/dashboard-page.ts; the page only calls it (group 1 dashboard task 9).
   const dashboard = read("src/lib/dashboard-page.ts")
   const page = read("src/app/[locale]/(dashboard)/dashboard/page.tsx")
-  const workCenter = read("src/app/[locale]/(dashboard)/work-center/page.tsx")
+  // Group 9 plan 2 Task 2: the work center's register links live in its ข้อมูลไม่ครบ panel.
+  const workCenter = read("src/components/work-center/work-center-assets-panel.tsx")
   const notifications = read("src/lib/waiting-work-rules.ts")
 
   for (const source of [dashboard, workCenter]) {

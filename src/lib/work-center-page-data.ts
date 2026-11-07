@@ -92,6 +92,8 @@ export type WorkCenterPageData = {
   mineUnavailable: boolean
   /** Counts of the current view (งานของฉัน scoped except the approval inbox). */
   summary: WorkQueueSummary
+  /** Each key's count in the current view (the queue tab's parts line). */
+  counts: WaitingWorkCounts
   /** null under งานของฉัน or when nothing is recorded before today. */
   previous: { dayLabelDate: Date; isYesterday: boolean; backlogTotal: number; backlogChange: DailyCountComparison } | null
   unreadTopics: number
@@ -245,9 +247,12 @@ const defaultDeps: WorkCenterPageDeps = {
   loadAssets: loadAssetsFromDb,
 }
 
-/** The open round with the most items left (ties: the lower AUD- number); checked = total − pending. */
+/**
+ * The open round with the most items left (ties: the lower AUD- number); checked = total − pending. A round with
+ * nothing left to check is waiting to close (the approvals queue), so it is never picked.
+ */
 export function pickTrackingRound(rounds: readonly TrackingRoundCandidate[]): WorkCenterPageData["tracking"]["round"] {
-  const [best] = [...rounds].sort((a, b) => b.pending - a.pending || (a.auditNo < b.auditNo ? -1 : a.auditNo > b.auditNo ? 1 : 0))
+  const [best] = rounds.filter((round) => round.pending > 0).sort((a, b) => b.pending - a.pending || (a.auditNo < b.auditNo ? -1 : a.auditNo > b.auditNo ? 1 : 0))
   if (!best) return null
   return { id: best.id, auditNo: best.auditNo, name: best.name, checked: best.total - best.pending, total: best.total, pending: best.pending }
 }
@@ -318,6 +323,7 @@ export async function getWorkCenterPageData(
     params,
     mineUnavailable: isMine && !userScope.enabled,
     summary,
+    counts,
     previous,
     unreadTopics,
     tracking: { round: pickTrackingRound(rounds), dataIssues, advanceTotal: summary.advance.total },

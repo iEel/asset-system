@@ -89,11 +89,18 @@ test("the dashboard: one KPI StatStrip at the top level, divided ContentPanels o
   assert.doesNotMatch(source, /bg-(?:primary|success|warning|danger|info)-soft|rounded-full|rounded-lg border|text-3xl|text-2xl|hover:underline|dark:/)
 })
 
-test("the work center: follow-up panels are ContentPanels with text links (D19), empty queues are EmptyNote, and the dots are shape markers (spec 2D D9, D19, M21)", () => {
-  const source = read(`${D}work-center/page.tsx`)
-  assert.match(source, /<ContentPanel\n\s+title=\{title\}\n\s+description=\{subtitle\}\n\s+className=\{isExpanded \? "border-primary-border" : undefined\}/)
-  assert.ok((source.match(/className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center(?: gap-1)? md:min-h-0"\)\}/g)?.length ?? 0) >= 4, "the four D19 links")
-  assert.equal(source.match(/<EmptyNote tone="clear">\{t\("no\w+Issues"\)\}<\/EmptyNote>/g)?.length, 5)
-  assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone \}\), "mt-2"\)\} \/>/)
-  assert.doesNotMatch(source, /function (?:EmptyState|followUpDotClass|splitStatRows)\b|border-dashed|rounded-full|sm:min-h-0|sm:border-0|hover:underline|text-xs text-warning/)
+// Rebuilt on board WC (group 9 plan 2 Task 2): the ข้อมูลไม่ครบ tab keeps its ContentPanel with D19 text links, its
+// EmptyNote and the shape marker; the table's empty queues are a clear TableEmptyRow and its urgency is a shape marker.
+test("the work center: the assets panel is a ContentPanel with text links (D19), empty queues say so, and the dots are shape markers (spec 2D D9, D19, M21)", () => {
+  const panel = read("src/components/work-center/work-center-assets-panel.tsx")
+  const table = read("src/components/work-center/work-rows-table.tsx")
+  assert.match(panel, /<ContentPanel\n\s+title=\{t\("assetDataTitle"\)\}\n\s+description=\{t\("assetDataSubtitle"\)\}/)
+  assert.ok((panel.match(/className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center(?: gap-1)? md:min-h-0"\)\}/g)?.length ?? 0) >= 2, "the D19 links")
+  assert.match(panel, /<EmptyNote tone="clear">\{t\("noAssetDataIssues"\)\}<\/EmptyNote>/)
+  assert.match(panel, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: "warning" \}\), "mt-2"\)\} \/>/)
+  assert.match(table, /<TableEmptyRow colSpan=\{5\} tone="clear">\{t\(emptyKeys\[queue \?\? "overview"\]\)\}<\/TableEmptyRow>/)
+  assert.match(table, /<span aria-hidden="true" className=\{statusMarkerVariants\(\{ tone: urgencyTones\[row\.urgency\] \}\)\} \/>/)
+  for (const source of [panel, table]) {
+    assert.doesNotMatch(source, /function (?:EmptyState|followUpDotClass|splitStatRows)\b|border-dashed|rounded-full|sm:min-h-0|sm:border-0|hover:underline|text-xs text-warning/)
+  }
 })

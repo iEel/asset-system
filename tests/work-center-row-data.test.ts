@@ -178,8 +178,9 @@ test("getWorkCenterRows hydrates only the first show rows in rank order", async 
   assert.deepEqual(loaded[0].map((row) => row.id), ["p1", "a1", "p2"])
 })
 
-test("the work-center page imports the scope functions from @/lib/work-center-scope and no longer defines them", () => {
-  const page = readFileSync("src/app/[locale]/(dashboard)/work-center/page.tsx", "utf8")
+// Group 9 plan 2 Task 2: the page reads only getWorkCenterPageData, which holds the scoped counters now.
+test("the work-center loader imports the scope functions from @/lib/work-center-scope and does not define them", () => {
+  const page = readFileSync("src/lib/work-center-page-data.ts", "utf8")
   assert.match(page, /from "@\/lib\/work-center-scope"/)
   for (const name of [
     "applyAssetWorkCenterScope",

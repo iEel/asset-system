@@ -145,7 +145,8 @@ test("one set of disposal status names (critique 2026-10-20 D3)", () => {
   const th = JSON.parse(read("messages/th.json")), en = JSON.parse(read("messages/en.json"))
   assert.doesNotMatch(queue, /t\("stages\./)
   assert.match(queue, /pending_approval: t\("statuses\.pending"\),\s+awaiting_execution: t\("statuses\.approved"\),\s+complete: t\("statuses\.disposed"\),\s+rejected: t\("statuses\.rejected"\)/)
-  assert.match(workCenter, /tDisposal\(`statuses\.\$\{request\.requestStatus\}`\)/); assert.doesNotMatch(workCenter, /disposalStatus_/)
+  // Group 9 plan 2 Task 2: the work center's rows name their kind (workCenter.kind.*), never a status copy of their own.
+  assert.doesNotMatch(workCenter, /disposalStatus_/)
   assert.deepEqual(th.disposalPage.statuses, { pending: "รอพิจารณา", approved: "อนุมัติแล้ว รอตัดจำหน่าย", disposed: "ตัดจำหน่ายแล้ว", rejected: "ไม่อนุมัติ" })
   assert.deepEqual(en.disposalPage.statuses, { pending: "Pending decision", approved: "Approved, awaiting disposal", disposed: "Disposed", rejected: "Not approved" })
   for (const m of [th, en]) { assert.equal(m.disposalPage.stages, undefined); assert.equal(m.workCenter.disposalStatus_pending, undefined); assert.equal(m.workCenter.disposalStatus_approved, undefined) }
@@ -177,8 +178,9 @@ test("queue names use the disposal status words (critique 2026-10-20 D3)", () =>
       assert.equal(m.dashboard[key], undefined, `dashboard.${key}: the dashboard reads notifications.${key} (group 1 dashboard task 9)`)
     }
   }
-  assert.doesNotMatch(th.workCenter.disposalSubtitle, /รออนุมัติ|รอดำเนินการ/)
-  assert.doesNotMatch(en.workCenter.disposalSubtitle, /pending approval/)
+  // Group 9 plan 2 Task 2: the work center's own word for a pending request outside the inbox.
+  assert.doesNotMatch(th.workCenter.kind.pendingDisposal, /รออนุมัติ|รอดำเนินการ/)
+  assert.doesNotMatch(en.workCenter.kind.pendingDisposal, /pending approval/)
   const digest = read("src/lib/notification-digest-format.ts")
   const disposalLines = digest.split("\n").filter((line) => /(?:pending|approved)Disposals:/.test(line))
   assert.equal(disposalLines.length, 4)

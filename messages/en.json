@@ -579,28 +579,12 @@
     "advanceWarnings": "Coming up"
   },
   "workCenter": {
-    "title": "Follow-up Work Center",
-    "subtitle": "Collects follow-up work from asset register, audit, maintenance, and disposal so users can jump directly to the right action.",
+    "title": "Work center",
+    "subtitle": "Work to decide or carry on from disposal, audit and maintenance. Use the button in a row to take the next step right away.",
     "allWork": "All work",
     "myWork": "My work",
-    "allWorkDetail": "Shows all visible follow-up work based on your permissions.",
-    "myWorkDetail": "Shows work related to your employee profile, department, or responsible assets.",
     "myWorkUnavailable": "This account is not linked to an employee, so My work cannot be scoped yet.",
     "focusNavigation": "Select a follow-up queue",
-    "focusPriority": "Priority work",
-    "showInWorkCenter": "Show here",
-    "collapseList": "Collapse",
-    "urgent": "Urgent",
-    "allFollowUps": "All follow-ups",
-    "missingCustodian": "No responsible owner",
-    "missingCustodianDetail": "Active assets missing the responsible owner required by ownership type",
-    "missingSerial": "No Serial Number",
-    "missingSerialDetail": "Identity information is incomplete",
-    "missingPhoto": "No asset photo",
-    "missingPhotoDetail": "No register photo evidence attached",
-    "approvalInbox": "Approval Inbox",
-    "pendingAuditItems": "Assets pending audit",
-    "pendingAuditItemsDetail": "Audit items still pending in active rounds",
     "assetDataTitle": "Asset register data to complete",
     "assetDataSubtitle": "Recent assets with important missing data",
     "bulkFixTitle": "Batch data cleanup",
@@ -612,33 +596,14 @@
     "dataQuality_serialDetail": "Use for collecting serial/barcode values for assets that still lack identifiers.",
     "dataQuality_photo": "Missing asset photo",
     "dataQuality_photoDetail": "Use for collecting real asset evidence photos in batches.",
-    "approvalInboxTitle": "Approval Inbox",
-    "approvalInboxSubtitle": "Decisions waiting for the current user's approval permissions",
-    "maintenanceTitle": "Maintenance to follow up",
-    "maintenanceSubtitle": "Repair records not yet marked finished, oldest first",
-    "auditTitle": "Audit decisions needed",
-    "auditSubtitle": "Discrepancies pending decision or open action plans",
-    "disposalTitle": "Disposal work to execute",
-    "disposalSubtitle": "Requests pending decision, or approved and awaiting disposal",
     "missingCustodianShort": "Missing owner",
     "missingSerialShort": "Missing serial",
     "missingPhotoShort": "Missing photo",
     "noAssetDataIssues": "No asset register data issues found",
     "noApprovalInboxIssues": "No approval work waiting for you",
     "noMaintenanceIssues": "No maintenance follow-up needed",
-    "repairSince": "In repair since {date}",
     "noAuditIssues": "No audit decisions needed",
     "noDisposalIssues": "No pending disposal work",
-    "findingType_wrong_location": "Wrong location",
-    "findingType_wrong_custodian": "Wrong custodian",
-    "findingType_wrong_department": "Wrong department",
-    "findingType_wrong_condition": "Wrong condition",
-    "findingType_not_found": "Not found",
-    "findingType_out_of_scope": "Out of scope",
-    "findingReview_pending": "Pending",
-    "findingReview_approved": "Approved",
-    "findingReview_rejected": "Rejected",
-    "findingReview_exception": "Exception",
     "viewNavigation": "Work view",
     "nextStep": {
       "reviewRequest": "Review request",
@@ -662,7 +627,101 @@
       "actionPlan": "Action plan: {plan} · Owner {owner}",
       "repairProblem": "{problem} · Recorded by {name}",
       "roundProgress": "Checked {done} / {total}"
-    }
+    },
+    "notificationsLink": "Notifications",
+    "notificationsLinkLabel": "Notifications, {count, plural, one {# unread topic} other {# unread topics}}",
+    "today": {
+      "title": "To do today",
+      "parts": "Awaiting approval {approvals, number} + approved, awaiting disposal record {approved, number}",
+      "review": "Review {count, plural, one {# item} other {# items}}",
+      "recordDisposal": "Record disposal {count, number}"
+    },
+    "backlog": {
+      "title": "All open work",
+      "yesterday": "Yesterday {count, number}",
+      "onDay": "On {date} {count, number}",
+      "up": "up {count, number}",
+      "down": "down {count, number}",
+      "same": "no change",
+      "sumNote": "{sum} · counted from the whole database, not only the rows shown"
+    },
+    "queue": {
+      "approvals": "Awaiting approval",
+      "maintenance": "Maintenance",
+      "audit": "Audit",
+      "disposal": "Disposal"
+    },
+    "tracking": {
+      "title": "Tracked separately, not open work",
+      "roundProgress": "{checked, number} / {total, number}",
+      "roundBar": "Checked {checked, number} of {total, number}",
+      "pending": "{count, number} not checked",
+      "continueScan": "Continue checking",
+      "dataIssues": "Incomplete register data",
+      "pieces": "{count, plural, one {# item} other {# items}}",
+      "advance": "Advance warnings (returns · warranty · licence)"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "assets": "Incomplete data"
+    },
+    "table": {
+      "caption": "Open work, most urgent first",
+      "sortNote": "Sorted: most urgent first",
+      "urgency": "Urgency",
+      "work": "Work",
+      "queueKind": "Queue · type",
+      "age": "Waiting",
+      "nextStep": "Next step",
+      "more": "More",
+      "menuLabel": "More options for {code}",
+      "shown": "Showing {shown, number} of {total, number} · overdue first, then longest waiting",
+      "showMoreRows": "Show {count, plural, one {# more row} other {# more rows}}"
+    },
+    "urgency": {
+      "overdue": "Overdue",
+      "todo": "To do",
+      "ready": "Ready"
+    },
+    "kind": {
+      "disposalApproval": "Disposal request",
+      "findingApproval": "Mismatch",
+      "roundClose": "Close audit round",
+      "approvedDisposal": "Approved",
+      "pendingDisposal": "Request pending decision",
+      "duePm": "PM due",
+      "openRepair": "Repair not finished",
+      "stuckRepair": "Awaiting repair without a repair record",
+      "auditAction": "Corrective action",
+      "pendingFinding": "Mismatch pending decision"
+    },
+    "age": {
+      "waiting": "Waiting {days, plural, one {# day} other {# days}}",
+      "pending": "Open {days, plural, one {# day} other {# days}}",
+      "due": "Due {date}"
+    },
+    "deadline": {
+      "overSla": "{days, plural, one {# day} other {# days}} over SLA",
+      "overdue": "{days, plural, one {# day} other {# days}} overdue",
+      "dueIn": "{days, plural, =0 {Due today} one {In # day} other {In # days}}",
+      "since": "Since {date}"
+    },
+    "menu": {
+      "openRecord": "Open record",
+      "openAsset": "Open asset details",
+      "printRequest": "Print disposal request",
+      "openRequest": "Open request"
+    },
+    "goTo": {
+      "approvals": "Go to approvals",
+      "maintenance": "Go to maintenance",
+      "audit": "Go to mismatches",
+      "disposal": "Go to disposal"
+    },
+    "parts": {
+      "approvals": "Disposal {disposal, number} · mismatches {mismatches, number} · round close {rounds, number}"
+    },
+    "noBacklog": "No open work"
   },
   "asset": {
     "title": "Asset Register",

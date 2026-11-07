@@ -1,0 +1,138 @@
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import test from "node:test"
+
+// Group 9 plan 2 Task 2: the work center on board WC (spec §4). Sources are read with \r stripped, so a regex here may
+// hold \n.
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const page = read("src/app/[locale]/(dashboard)/work-center/page.tsx")
+const strip = read("src/components/work-center/work-center-strip.tsx")
+const tracking = read("src/components/work-center/work-center-tracking.tsx")
+const tabs = read("src/components/work-center/work-center-tabs.tsx")
+const table = read("src/components/work-center/work-rows-table.tsx")
+const assetsPanel = read("src/components/work-center/work-center-assets-panel.tsx")
+const th = JSON.parse(read("messages/th.json")) as { workCenter: Record<string, unknown> }
+const en = JSON.parse(read("messages/en.json")) as { workCenter: Record<string, unknown> }
+
+function message(messages: { workCenter: Record<string, unknown> }, dotted: string): unknown {
+  return dotted.split(".").reduce<unknown>((node, part) => (node && typeof node === "object" ? (node as Record<string, unknown>)[part] : undefined), messages.workCenter)
+}
+
+test("the page reads everything from getWorkCenterPageData and nothing from the database", () => {
+  assert.match(page, /await getWorkCenterPageData\(user, \{ searchParams: rawSearchParams, locale, returnTo \}\)/)
+  assert.doesNotMatch(page, /from "@\/lib\/db"|prisma\.|getWaitingWork|work-center-metrics|mineCounters/)
+  assert.match(page, /requirePagePermission\(locale, "dashboard", "view"\)/)
+})
+
+test("the header: ศูนย์งานค้าง, the view switch as links and the notifications link with the unread count", () => {
+  assert.match(page, /<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
+  assert.match(page, /<WorkCenterViewSwitch locale=\{locale\} params=\{data\.params\} \/>/)
+  assert.match(tabs, /aria-label=\{t\("viewNavigation"\)\}/)
+  assert.match(tabs, /buildWorkCenterHref\(locale, params, \{ view, show: WORK_SHOW_STEP \}\)/, "the switch keeps panel and drops show")
+  assert.match(tabs, /segmentedFrameClasses/)
+  assert.match(page, /href=\{`\/\$\{locale\}\/notifications`\}/)
+  assert.match(page, /aria-label=\{t\("notificationsLinkLabel", \{ count: data\.unreadTopics \}\)\}/)
+  assert.match(page, /\{data\.unreadTopics > 0 \? \(/)
+  assert.match(page, /<Notice tone="warning">\{t\("myWorkUnavailable"\)\}<\/Notice>/, "the view=mine notice stays")
+})
+
+test("the strip: ต้องทำวันนี้ with its two links, งานค้างทั้งหมด with the previous day, one cell per queue and the sum line", () => {
+  assert.match(strip, /t\("today\.title"\)/)
+  assert.match(strip, /t\("today\.parts", \{ approvals: summary\.today\.approvals, approved: summary\.today\.approvedDisposals \}\)/)
+  assert.match(strip, /summary\.approvalParts \? \(/, "พิจารณา shows with the approvals queue")
+  assert.match(strip, /href=\{`\/\$\{locale\}\/admin\/approvals`\}/)
+  assert.match(strip, /summary\.today\.approvedDisposals > 0 \? \(/)
+  assert.match(strip, /href=\{`\/\$\{locale\}\/disposal\?status=approved`\}/)
+  assert.match(strip, /t\("backlog\.title"\)/)
+  assert.match(strip, /previous\.isYesterday\n\s+\? t\("backlog\.yesterday", \{ count: previous\.backlogTotal \}\)\n\s+: t\("backlog\.onDay", \{ date: formatDate\(previous\.dayLabelDate\), count: previous\.backlogTotal \}\)/)
+  assert.match(strip, /summary\.queues\.map\(\(entry\) => formatCount\(entry\.count\)\)\.join\(" \+ "\)/)
+  assert.match(strip, /t\("backlog\.sumNote", \{ sum: sumLine \}\)/)
+  assert.match(strip, /buildWorkCenterHref\(locale, params, \{ panel: entry\.queue, show: WORK_SHOW_STEP \}\)/)
+})
+
+test("ติดตามแยก: the round to its scan page, data issues to the assets tab, the advance warnings to notifications", () => {
+  assert.match(tracking, /t\("tracking\.title"\)/)
+  assert.match(tracking, /href=\{`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`\}/)
+  assert.match(tracking, /<PaceBar value=\{round\.total > 0 \? round\.checked \/ round\.total : 0\} pace=\{null\}/)
+  assert.match(tracking, /t\("tracking\.pending", \{ count: round\.pending \}\)/)
+  assert.match(tracking, /buildWorkCenterHref\(locale, params, \{ panel: "assets", show: WORK_SHOW_STEP \}\)/)
+  assert.match(tracking, /href=\{`\/\$\{locale\}\/notifications#advance`\}/)
+  assert.match(tracking, /if \(!round && dataIssues === null && !showAdvance\) return null/, "hidden when all three are absent")
+})
+
+test("tabs come from the visible queues, keep view and drop show; ข้อมูลไม่ครบ needs asset:view (its count is not null)", () => {
+  assert.match(tabs, /<TabNav\n\s+aria-label=\{t\("focusNavigation"\)\}/)
+  assert.match(tabs, /\.\.\.summary\.queues\.map\(\(entry\) => \(\{/)
+  assert.match(tabs, /\.\.\.\(dataIssues !== null\n\s+\? \[/)
+  assert.match(tabs, /buildWorkCenterHref\(locale, params, \{ panel, show: WORK_SHOW_STEP \}\)/)
+})
+
+test("the table: urgency dot with a word, the work, queue and kind, the age lines, RowActions with next and the menu", () => {
+  assert.match(table, /<DataTable\b/)
+  assert.match(table, /t\("table\.sortNote"\)/)
+  assert.match(table, /statusMarkerVariants\(\{ tone: urgencyTones\[row\.urgency\] \}\)/)
+  assert.match(table, /<span className="sr-only">\{t\(`urgency\.\$\{row\.urgency\}`\)\}<\/span>/)
+  assert.match(table, /<RowActions\n\s+code=\{row\.documentNo \?\? row\.assetTag \?\? row\.number\}/)
+  assert.match(table, /next=\{\{ label: tRoot\(row\.nextStep\.labelKey\), href: row\.nextStep\.href \}\}/)
+  assert.match(table, /items: row\.menu\.map\(\(item\) => \(\{ kind: "link", key: item\.key, label: menuLabel\(row, item\.key\), href: item\.href \}\)\)/)
+  assert.match(table, /t\("deadline\.overSla", \{ days: row\.overdueDays \}\)/)
+  assert.match(table, /t\("deadline\.overdue", \{ days: row\.overdueDays \}\)/)
+  assert.match(table, /t\("deadline\.dueIn", \{ days: row\.dueInDays \}\)/)
+  assert.match(table, /t\("deadline\.since", \{ date: formatDate\(row\.since\) \}\)/)
+})
+
+test("the more link stops at the total", () => {
+  assert.match(table, /const moreCount = shown < total && shown < WORK_SHOW_MAX \? Math\.min\(WORK_SHOW_STEP, total - shown\) : 0/)
+  assert.match(table, /buildWorkCenterHref\(locale, params, \{ show: params\.show \+ WORK_SHOW_STEP \}\)/)
+  assert.match(table, /t\("table\.shown", \{ shown, total \}\)/)
+  assert.match(table, /\{moreCount > 0 \? \(/)
+})
+
+test("a queue tab: its parts line and one link to the source page named by destination; the empty words", () => {
+  assert.match(table, /t\("parts\.approvals", \{ disposal: summary\.approvalParts\.disposal, mismatches: summary\.approvalParts\.audit, rounds: summary\.approvalParts\.round \}\)/)
+  assert.match(table, /\.map\(\(key\) => `\$\{tNotifications\(key\)\} \$\{formatCount\(counts\[key\] \?\? 0\)\}`\)\n\s+\.join\(" · "\)/)
+  assert.match(table, /t\(`goTo\.\$\{queue\}`\)/)
+  for (const key of ["noApprovalInboxIssues", "noMaintenanceIssues", "noAuditIssues", "noDisposalIssues", "noBacklog"]) {
+    assert.match(table, new RegExp(`"${key}"`), key)
+  }
+})
+
+test("the assets tab is the moved panel: the fix cards with their register filters and the asset list", () => {
+  assert.match(page, /<WorkCenterAssetsPanel locale=\{locale\} assets=\{data\.assets\} \/>/)
+  assert.match(assetsPanel, /buildExactAssetRegisterHref\(locale\)/)
+  assert.match(assetsPanel, /group\.assetsHref/)
+  assert.match(assetsPanel, /<EmptyNote tone="clear">\{t\("noAssetDataIssues"\)\}<\/EmptyNote>/)
+  assert.match(assetsPanel, /hasAssetResponsibility\(asset\)/)
+})
+
+test("the board's words exist in th and en", () => {
+  const keys = [
+    "title", "subtitle", "notificationsLink", "notificationsLinkLabel", "today.title", "today.parts", "today.review", "today.recordDisposal",
+    "backlog.title", "backlog.yesterday", "backlog.onDay", "backlog.up", "backlog.down", "backlog.same", "backlog.sumNote",
+    "queue.approvals", "queue.maintenance", "queue.audit", "queue.disposal", "tracking.title", "tracking.roundProgress",
+    "tracking.roundBar", "tracking.pending", "tracking.continueScan", "tracking.dataIssues", "tracking.pieces", "tracking.advance",
+    "tabs.overview", "tabs.assets", "table.caption", "table.sortNote", "table.urgency", "table.work", "table.queueKind", "table.age",
+    "table.nextStep", "table.more", "table.menuLabel", "table.shown", "table.showMoreRows", "urgency.overdue", "urgency.todo",
+    "urgency.ready", "age.waiting", "age.pending", "age.due", "deadline.overSla", "deadline.overdue", "deadline.dueIn",
+    "deadline.since", "menu.openRecord", "menu.openRequest", "menu.openAsset", "menu.printRequest", "goTo.approvals", "goTo.maintenance",
+    "goTo.audit", "goTo.disposal", "parts.approvals", "noBacklog",
+  ]
+  for (const key of keys) {
+    assert.equal(typeof message(th, key), "string", `th workCenter.${key}`)
+    assert.equal(typeof message(en, key), "string", `en workCenter.${key}`)
+  }
+  assert.equal(message(th, "title"), "ศูนย์งานค้าง")
+  assert.equal(message(th, "tracking.title"), "ติดตามแยก ไม่นับเป็นงานค้าง")
+  assert.equal(message(th, "goTo.approvals"), "ไปหน้างานรออนุมัติ")
+  assert.equal(message(th, "noBacklog"), "ไม่มีงานค้าง")
+})
+
+// Moved from the deleted work-center-metrics test: the source's titles live in notifications only.
+test("the work center keeps no copies of the waiting-work titles (spec §6.3)", () => {
+  for (const m of [th, en]) {
+    for (const key of ["openRepairs", "duePm", "pendingAuditFindings", "openAuditActions", "pendingDisposals", "approvedDisposals", "approvalInbox"]) {
+      assert.equal(m.workCenter[key], undefined, `workCenter.${key}`)
+      assert.equal(m.workCenter[`${key}Detail`], undefined, `workCenter.${key}Detail`)
+    }
+  }
+})
