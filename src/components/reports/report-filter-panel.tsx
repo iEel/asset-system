@@ -1,9 +1,12 @@
+import { ChevronDown } from "lucide-react"
 import { Field } from "@/components/ui/field"
-import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterFormActions } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { SearchField } from "@/components/ui/search-field"
 import { parseAssetListParams } from "@/lib/asset-list-query"
+import { getPanelClasses } from "@/lib/design-system"
 import { buildReportHref, type ReportView } from "@/lib/report-view"
+import { cn } from "@/lib/utils"
 
 export type ReportFilterOption = {
   value: string
@@ -33,6 +36,11 @@ export type ReportFilterLabels = {
   all: string
   apply: string
   clear: string
+  hide: string
+  show: string
+  more: string
+  // "เพิ่มเติม: หมวดหมู่ · สภาพ · ประเภทการถือครอง · แก้ค่าแล้วกด "ใช้ตัวกรอง" ตัวเลขและไฟล์จึงเปลี่ยน"
+  moreLine: string
 }
 
 export type ReportFilterPanelProps = {
@@ -43,37 +51,75 @@ export type ReportFilterPanelProps = {
   labels: ReportFilterLabels
   // Any report filter is on, the URL-only scopes included (the page's chip list): "clear filters" shows only then.
   hasActiveFilters: boolean
+  // The overview's own params (breakdown, bq, group), carried while on the overview so applying a filter keeps them.
+  viewParams?: ReadonlyArray<readonly [string, string]>
 }
 
-// The report filters on the shared parts (spec 2B §6.5 row 12): Field + SearchField, six FilterSelect at 40px with the
-// "all" option first, and FilterFormActions. A GET form: the view and the URL-only scopes ride along as hidden inputs.
-export function ReportFilterPanel({ locale, activeView, filters, options, labels, hasActiveFilters }: ReportFilterPanelProps) {
+export const REPORT_FILTER_BAR_ID = "report-filters"
+
+// The report filter bar (group 10 spec §3, board RP-Overview): a <details> "ตัวกรองรายงาน" open on the first visit (no
+// filter at all) and while any field filter is set; "ซ่อนตัวกรอง" folds it for this page view only (ruling G10P1-R1,
+// no memory). ค้นหา, บริษัท, สาขา and สถานะ show; หมวดหมู่, สภาพ and ประเภทการถือครอง sit in the nested "ตัวกรองเพิ่มเติม",
+// open while one of them is set. A GET form: the view and the URL-only scopes ride along as hidden inputs, as before.
+// Fields in a closed <details> still submit, so a folded value is never lost. Server-safe: no script.
+export function ReportFilterPanel({ locale, activeView, filters, options, labels, hasActiveFilters, viewParams = [] }: ReportFilterPanelProps) {
+  const moreFilterSet = Boolean(filters.categoryId || filters.conditionId || filters.ownershipType)
+  const fieldFilterSet = Boolean(filters.search || filters.companyId || filters.branchId || filters.statusId || moreFilterSet)
+
   return (
-    <FilterPanel title={labels.title} description={labels.help} className="p-5">
-      <form role="search" action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <input type="hidden" name="view" value={activeView} />
-        {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
-        {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
-        {filters.custodianId ? <input type="hidden" name="custodianId" value={filters.custodianId} /> : null}
-        {filters.supplierId ? <input type="hidden" name="supplierId" value={filters.supplierId} /> : null}
-        {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
-        {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
-        {filters.activity ? <input type="hidden" name="activity" value={filters.activity} /> : null}
-        <Field label={labels.search}>
-          <SearchField name="search" defaultValue={filters.search} placeholder={labels.searchPlaceholder} />
-        </Field>
-        <FilterSelect label={labels.company} name="companyId" defaultValue={filters.companyId} allLabel={labels.all} options={options.companies} />
-        <FilterSelect label={labels.branch} name="branchId" defaultValue={filters.branchId} allLabel={labels.all} options={options.branches} />
-        <FilterSelect label={labels.category} name="categoryId" defaultValue={filters.categoryId} allLabel={labels.all} options={options.categories} />
-        <FilterSelect label={labels.status} name="statusId" defaultValue={filters.statusId} allLabel={labels.all} options={options.statuses} />
-        <FilterSelect label={labels.condition} name="conditionId" defaultValue={filters.conditionId} allLabel={labels.all} options={options.conditions} />
-        <FilterSelect label={labels.ownershipType} name="ownershipType" defaultValue={filters.ownershipType} allLabel={labels.all} options={options.ownershipTypes} />
-        <FilterFormActions
-          className="md:col-span-2 xl:col-span-3"
-          submitLabel={labels.apply}
-          clear={hasActiveFilters ? { href: buildReportHref(locale, activeView, parseAssetListParams({})), label: labels.clear } : undefined}
-        />
-      </form>
-    </FilterPanel>
+    <details
+      id={REPORT_FILTER_BAR_ID}
+      data-report-filter-bar
+      open={!hasActiveFilters || fieldFilterSet}
+      className={cn(getPanelClasses(), "group/filters scroll-mt-4")}
+    >
+      <summary className="flex min-h-11 cursor-pointer list-none items-start justify-between gap-3 p-4 md:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block break-words text-base font-semibold text-foreground">{labels.title}</span>
+          <span className="mt-1 block break-words text-sm text-muted-foreground">{labels.help}</span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+          <span className="group-open/filters:hidden">{labels.show}</span>
+          <span className="hidden group-open/filters:inline">{labels.hide}</span>
+          <ChevronDown aria-hidden="true" className="size-4 transition-transform motion-reduce:transition-none group-open/filters:rotate-180" />
+        </span>
+      </summary>
+      <div className="border-t border-border-soft p-4 md:px-5">
+        <form role="search" action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <input type="hidden" name="view" value={activeView} />
+          {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
+          {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
+          {filters.custodianId ? <input type="hidden" name="custodianId" value={filters.custodianId} /> : null}
+          {filters.supplierId ? <input type="hidden" name="supplierId" value={filters.supplierId} /> : null}
+          {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
+          {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
+          {filters.activity ? <input type="hidden" name="activity" value={filters.activity} /> : null}
+          {viewParams.map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
+          <Field label={labels.search}>
+            <SearchField name="search" defaultValue={filters.search} placeholder={labels.searchPlaceholder} />
+          </Field>
+          <FilterSelect label={labels.company} name="companyId" defaultValue={filters.companyId} allLabel={labels.all} options={options.companies} />
+          <FilterSelect label={labels.branch} name="branchId" defaultValue={filters.branchId} allLabel={labels.all} options={options.branches} />
+          <FilterSelect label={labels.status} name="statusId" defaultValue={filters.statusId} allLabel={labels.all} options={options.statuses} />
+          <details data-report-more-filters open={moreFilterSet} className="group/more md:col-span-2 xl:col-span-4">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium text-primary md:min-h-9 [&::-webkit-details-marker]:hidden">
+              {labels.more}
+              <ChevronDown aria-hidden="true" className="size-4 transition-transform motion-reduce:transition-none group-open/more:rotate-180" />
+            </summary>
+            <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <FilterSelect label={labels.category} name="categoryId" defaultValue={filters.categoryId} allLabel={labels.all} options={options.categories} />
+              <FilterSelect label={labels.condition} name="conditionId" defaultValue={filters.conditionId} allLabel={labels.all} options={options.conditions} />
+              <FilterSelect label={labels.ownershipType} name="ownershipType" defaultValue={filters.ownershipType} allLabel={labels.all} options={options.ownershipTypes} />
+            </div>
+          </details>
+          <FilterFormActions
+            className="md:col-span-2 xl:col-span-4"
+            submitLabel={labels.apply}
+            clear={hasActiveFilters ? { href: buildReportHref(locale, activeView, parseAssetListParams({})), label: labels.clear } : undefined}
+          />
+        </form>
+        <p data-report-filter-note className="mt-3 text-meta text-muted-foreground">{labels.moreLine}</p>
+      </div>
+    </details>
   )
 }

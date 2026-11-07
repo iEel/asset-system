@@ -23,9 +23,10 @@ test.describe("IT staff", () => {
     // Overview: the totals, the preview of the three, and the run's department in the breakdown.
     await measure.visit(`/th/reports?search=${encodeURIComponent(search)}`, "reports: overview")
     await expect(statValue(page, "ทรัพย์สินทั้งหมด")).toHaveText("3")
-    await expect(statValue(page, "มูลค่ารวม")).toHaveText("6,000.00")
+    await expect(statValue(page, "ราคาซื้อรวม")).toHaveText("6,000.00")
     for (const asset of assets) await expect(inReport(page, asset.assetTag)).toBeVisible()
-    await expect(page.locator("[data-report-view-content]").getByText(new RegExp(`^${readRunState().runId}-D - `)).filter({ visible: true }).first()).toBeVisible()
+    // The group tables read the name with the code under it (group 10 spec §4.2).
+    await expect(inReport(page, `${readRunState().runId} แผนกทดสอบ E2E`)).toBeVisible()
 
     // The two exports of the header, each a file that opens with the three assets.
     const register = await downloadBy(page, () => page.getByRole("link", { name: "ส่งออกทะเบียนทรัพย์สิน" }).click(), "register", (name) => testInfo.outputPath(name))

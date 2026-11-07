@@ -116,18 +116,19 @@ test("the maintenance filter keeps the page size, and its asset chip clears only
   )
 })
 
-// Plan 2B-5 Task 9 (spec 2B §6.5 row 12, §6.2 6-จ, I6): the report filter panel keeps its FilterPanel, its grid, the
-// hidden view and the URL-only scopes, and moves onto Field + SearchField, FilterSelect and FilterFormActions. The page
-// tells it whether any filter is on, so "clear filters" shows only then. ActionButton was deleted in plan 2D-1.
+// Plan 2B-5 Task 9 (spec 2B §6.5 row 12, §6.2 6-จ, I6): the report filters are Field + SearchField, FilterSelect and
+// FilterFormActions with the hidden view and the URL-only scopes. The page tells it whether any filter is on, so "clear
+// filters" shows only then. ActionButton was deleted in plan 2D-1. Group 10 plan 1 Task 2 (board RP-Overview) folds the
+// panel into a <details> bar and moves หมวดหมู่, สภาพ and ประเภทการถือครอง into "ตัวกรองเพิ่มเติม"; the six fields stay.
 test("the report filters are Field + SearchField, six FilterSelect and FilterFormActions (2B §6.5 row 12)", () => {
   const panel = read("src/components/reports/report-filter-panel.tsx")
-  assert.match(panel, /<FilterPanel title=\{labels\.title\} description=\{labels\.help\} className="p-5">/)
-  assert.match(panel, /<form role="search" action=\{`\/\$\{locale\}\/reports`\} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">/)
+  assert.match(panel, /<details\n\s+id=\{REPORT_FILTER_BAR_ID\}\n\s+data-report-filter-bar\n\s+open=\{!hasActiveFilters \|\| fieldFilterSet\}/)
+  assert.match(panel, /<form role="search" action=\{`\/\$\{locale\}\/reports`\} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">/)
   assert.match(panel, /<Field label=\{labels\.search\}>\n\s+<SearchField name="search" defaultValue=\{filters\.search\} placeholder=\{labels\.searchPlaceholder\} \/>/)
   for (const [name, options] of [["companyId", "companies"], ["branchId", "branches"], ["categoryId", "categories"], ["statusId", "statuses"], ["conditionId", "conditions"], ["ownershipType", "ownershipTypes"]]) {
     assert.match(panel, new RegExp(`<FilterSelect label=\\{labels\\.\\w+\\} name="${name}" defaultValue=\\{filters\\.${name}\\} allLabel=\\{labels\\.all\\} options=\\{options\\.${options}\\} />`), name)
   }
-  assert.match(panel, /<FilterFormActions\n\s+className="md:col-span-2 xl:col-span-3"\n\s+submitLabel=\{labels\.apply\}\n\s+clear=\{hasActiveFilters \? \{ href: buildReportHref\(locale, activeView, parseAssetListParams\(\{\}\)\), label: labels\.clear \} : undefined\}/)
+  assert.match(panel, /<FilterFormActions\n\s+className="md:col-span-2 xl:col-span-4"\n\s+submitLabel=\{labels\.apply\}\n\s+clear=\{hasActiveFilters \? \{ href: buildReportHref\(locale, activeView, parseAssetListParams\(\{\}\)\), label: labels\.clear \} : undefined\}/)
   assert.doesNotMatch(panel, /ActionButton|getActionButtonClasses|getFieldControlClasses|<label\b|<select\b/)
   const page = read("src/app/[locale]/(dashboard)/reports/page.tsx")
   assert.match(page, /<ReportFilterPanel\n(?:\s+\w+=\{\w+\}\n)*\s+hasActiveFilters=\{hasActiveFilters\}\n/, "the page passes whether a filter is on")

@@ -88,7 +88,10 @@ test("wide report datasets have mutually exclusive table and mobile list hooks",
   assert.match(responsiveList, /<DataTableHead\b/)
   assert.match(responsiveList, /<dl/)
 
-  assert.equal(overviewView.match(/<ResponsiveReportList/g)?.length, 1)
+  // Group 10 plan 1 Task 2: the overview preview is its own DataTable from md and three cards below it (board RP-Phone).
+  assert.equal(overviewView.match(/<ResponsiveReportList/g)?.length, undefined)
+  assert.match(overviewView, /<DataTable data-report-preview-table framed=\{false\} caption=\{t\("previewShortTitle"\)\} className="hidden md:block">/)
+  assert.match(overviewView, /<ul data-report-preview-cards className="divide-y divide-border-soft md:hidden">/)
   assert.equal(accountingView.match(/<ResponsiveReportList/g)?.length, 2)
   assert.equal(operationsView.match(/<ResponsiveReportList/g)?.length, 1)
 })
@@ -102,7 +105,8 @@ test("mobile report cards use two labelled columns with optional full-width fiel
 })
 
 test("wide report identity fields span both mobile columns", () => {
-  assert.equal(overviewView.match(/mobileClassName: "col-span-2"/g)?.length, 2)
+  // The overview's phone cards put the asset's name and tag first, full width (group 10 plan 1 Task 2).
+  assert.match(overviewView, /data\.preview\.slice\(0, PREVIEW_PHONE_ROWS\)\.map/)
   assert.equal(accountingView.match(/mobileClassName: "col-span-2"/g)?.length, 2)
 
   const crossScopePreview = operationsView.slice(
@@ -169,11 +173,15 @@ test("wide report lists render the shared DataTable from md and one EmptyNote li
 
 // Plan 2B-5 Task 12 (spec 2B §5.6, §5.1, R-p): the overview counts go through formatCount with tabular figures, the
 // asset code is a tag, the preview table is named by its panel title, and an empty breakdown is one EmptyNote line.
+// Group 10 plan 1 Task 2 moved these onto board RP-Overview: the preview table is named by its title, the tag and the
+// group codes are tags under the names, the counts go through formatCount in numeric cells, and an empty table is one
+// EmptyNote line.
 test("the report overview formats its counts and codes and names its preview table (spec 2B §5.6)", () => {
-  assert.match(overviewView, /caption=\{labels\.previewTitle\}/)
-  assert.match(overviewView, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
-  assert.match(overviewView, /<span className="font-semibold text-foreground num">\{formatCount\(row\.count\)\}<\/span>/)
-  assert.match(overviewView, /<EmptyNote>\{emptyLabel\}<\/EmptyNote>/)
+  assert.match(overviewView, /caption=\{t\("previewShortTitle"\)\}/)
+  assert.match(overviewView, /<span className="block text-meta text-faint-foreground"><span className="tag">\{asset\.assetTag\}<\/span><\/span>/)
+  assert.match(overviewView, /<span className="block text-meta text-faint-foreground"><span className="tag">\{code\}<\/span><\/span>/)
+  assert.match(overviewView, /<DataTableCell numeric>\{formatCount\(row\.count\)\}<\/DataTableCell>/)
+  assert.match(overviewView, /<EmptyNote padded>\{emptyLabel\}<\/EmptyNote>/)
   assert.doesNotMatch(overviewView, /toLocaleString/)
 })
 

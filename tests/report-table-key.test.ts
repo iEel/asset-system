@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 const reportsPage = readFileSync("src/app/[locale]/(dashboard)/reports/page.tsx", "utf8")
+const overviewData = readFileSync("src/lib/reports-overview-data.ts", "utf8")
 const overviewView = readFileSync("src/components/reports/reports-overview-view.tsx", "utf8")
 const accountingView = readFileSync("src/components/reports/reports-accounting-view.tsx", "utf8")
 const operationsView = readFileSync("src/components/reports/reports-operations-view.tsx", "utf8")
@@ -13,15 +14,13 @@ test("report table rows use stable row keys so duplicate labels are safe", () =>
   assert.doesNotMatch(overviewView, /key=\{row\.label\}/)
 })
 
+// Group 10 plan 1 Task 2 (spec §4.2): the branch group reads its name with "company code · branch code" under it.
 test("branch report labels include company code to disambiguate repeated branch names", () => {
   assert.match(
-    reportsPage,
-    /prisma\.branch\.findMany\(\{ where: \{ id: \{ in: byBranch\.map\(\(item\) => item\.branchId\) \} \}, select: \{ id: true, code: true, name: true, company: \{ select: \{ code: true \} \} \} \}\)/
+    overviewData,
+    /db\.branch\.findMany\(\{ where: \{ id: \{ in: ids\(byBranch, "branchId"\) \} \}, select: \{ id: true, code: true, name: true, company: \{ select: \{ code: true \} \} \} \}\)/
   )
-  assert.match(
-    reportsPage,
-    /const branchMap = new Map\(branches\.map\(\(branch\) => \[branch\.id, `\$\{branch\.company\.code\} \/ \$\{branch\.code\} - \$\{branch\.name\}`\]\)\)/
-  )
+  assert.match(overviewData, /code: branch \? `\$\{branch\.company\.code\} · \$\{branch\.code\}` : null/)
 })
 
 test("reports page exposes cross-scope asset visibility and export shortcuts", () => {
@@ -34,7 +33,8 @@ test("reports page exposes cross-scope asset visibility and export shortcuts", (
 })
 
 test("adaptive report rows use stable database identifiers", () => {
-  assert.match(overviewView, /rowKey=\{\(asset\) => asset\.id\}/)
+  assert.match(overviewView, /<DataTableRow key=\{asset\.id\}>/)
+  assert.match(overviewView, /<li key=\{asset\.id\}/)
   assert.equal(accountingView.match(/rowKey=\{\(asset\) => asset\.id\}/g)?.length, 2)
   assert.match(operationsView, /rowKey=\{\(asset\) => asset\.id\}/)
   assert.doesNotMatch(overviewView + accountingView + operationsView, /rowKey=\{\(.*\) => .*\.label\}/)

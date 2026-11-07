@@ -30,6 +30,7 @@ test("mobile report tabs snap and reveal the active view after direct navigation
 test("report view tabs wrap the shared TabNav and keep their own scrolling (spec 2B I9)", () => {
   assert.match(viewTabsSource, /import \{ TabNav \} from "@\/components\/ui\/tab-nav"/)
   assert.match(viewTabsSource, /<TabNav\s+ref=\{tabsRef\}\s+data-report-tabs\s+aria-label=\{navigationLabel\}\s+current=\{activeView\}\s+className="snap-x snap-mandatory"\s+linkClassName="snap-start"/)
-  assert.match(viewTabsSource, /items=\{reportViews\.map\(\(view\) => \(\{ key: view, label: labels\[view\], href: buildReportHref\(locale, view, filters\) \}\)\)\}/)
+  // Group 10 plan 1 Task 2: the overview's breakdown, bq and group stay on the overview tab's own link only.
+  assert.match(viewTabsSource, /items=\{reportViews\.map\(\(view\) => \(\{ key: view, label: labels\[view\], href: buildReportHref\(locale, view, filters\) \+ \(view === activeView && currentViewQuery \? `&\$\{currentViewQuery\}` : ""\) \}\)\)\}/)
   assert.match(viewTabsSource, /tabs\?\.querySelector<HTMLElement>\('\[aria-current="page"\]'\)/)
 })

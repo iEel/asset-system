@@ -12,7 +12,7 @@ import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
-import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility } from "@/lib/asset-ownership"
 import { buildAssetDetailSectionHref } from "@/lib/asset-detail-view"
 import { buildCostInsights } from "@/lib/cost-insights"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
@@ -20,7 +20,8 @@ import { buttonVariants } from "@/components/ui/button-variants"
 import { FilterChipList } from "@/components/ui/filter-chips"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
+import { REPORT_FILTER_BAR_ID, ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
+import { ReportFilterToggle } from "@/components/reports/report-filter-toggle"
 import { ReportViewTabs } from "@/components/reports/report-view-tabs"
 import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
 import { ReportsCatalogView, type ReportCatalogCategory } from "@/components/reports/reports-catalog-view"
@@ -29,11 +30,19 @@ import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
 import { buildReportActiveFilters } from "@/lib/report-active-filters"
 import { buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { cn } from "@/lib/utils"
 import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
+import {
+  getReportsOverviewData,
+  parseReportBreakdownDimension,
+  parseReportBreakdownQuery,
+  parseReportPhoneGroup,
+  type ReportsOverviewDb,
+} from "@/lib/reports-overview-data"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<AssetListParams & { view?: string | string[] }>
+  searchParams: Promise<AssetListParams & { view?: string | string[]; breakdown?: string | string[]; bq?: string | string[]; group?: string | string[] }>
 }
 
 type ReportFilterOptions = {
@@ -66,10 +75,30 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const activeView = parseReportView(rawSearchParams.view)
   const assetSearchParams = { ...rawSearchParams }
   delete assetSearchParams.view
+  delete assetSearchParams.breakdown
+  delete assetSearchParams.bq
+  delete assetSearchParams.group
+  // The overview's own params (group 10 spec §4.2, §7): the full list of one dimension, its search and the phone's group.
+  const breakdown = parseReportBreakdownDimension(rawSearchParams.breakdown)
+  const breakdownQuery = breakdown ? parseReportBreakdownQuery(rawSearchParams.bq) : ""
+  const phoneGroup = parseReportPhoneGroup(rawSearchParams.group)
   const filters = parseAssetListParams(assetSearchParams)
   const baseAssetWhere = buildAssetWhere(filters, await getAssetWhereOptions(filters))
   const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
+  // The report's filters as a register query: the overview's row links add their group to it.
+  const registerBaseQuery = new URLSearchParams(buildAssetQueryString(filters, { page: 1 }))
+  registerBaseQuery.delete("page")
+  registerBaseQuery.delete("pageSize")
+  // Kept in the tab, chip and filter-form links only while on the overview (plan task 2).
+  const overviewViewParams: Array<[string, string]> = activeView === "overview"
+    ? [
+        ...(breakdown ? [["breakdown", breakdown] as [string, string]] : []),
+        ...(breakdownQuery ? [["bq", breakdownQuery] as [string, string]] : []),
+        ...(phoneGroup !== "status" ? [["group", phoneGroup] as [string, string]] : []),
+      ]
+    : []
+  const overviewViewQuery = overviewViewParams.length > 0 ? new URLSearchParams(overviewViewParams).toString() : ""
   const timingContext = {
     route: "/reports",
     locale,
@@ -197,14 +226,21 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       crossScope: crossScopeFilterLabels[filters.crossScope],
       activity: filters.activity === "idle_180d" ? tAsset("activityIdle180d") : undefined,
     },
-  })
+  }).map((chip) => (overviewViewQuery ? { ...chip, href: `${chip.href}&${overviewViewQuery}` } : chip))
   const hasActiveFilters = activeFilters.length > 0
+  // "ส่งออก {n} รายการ · ตัวกรอง: …" under the header's exports (group 10 spec §3): the chips as text, as the files use them.
+  const filterSummary = hasActiveFilters ? activeFilters.map((chip) => chip.label).join(" · ") : t("noFilters")
+  const exportCaption = hasActiveFilters
+    ? t("exportCaption", { count: totalAssets, filters: filterSummary })
+    : t("exportCaptionNoFilters", { count: totalAssets })
   // The header's buttons (spec 2B §4.4.6, K8): the register export (outline) first, the overview export (primary)
   // last. Plain <a href download> links to the export routes, like the report cards' (spec 2D M31): a download, not a
-  // page to prefetch.
+  // page to prefetch. Under them the caption of what they export (group 10 spec §3); on the overview below md the
+  // export card takes their place (board RP-Phone).
   const headerActions =
     canAssetExport || canReportExport ? (
-      <>
+      <div data-report-header-exports className={cn("flex min-w-0 flex-col gap-1.5 md:items-end", activeView === "overview" && "max-md:hidden")}>
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
         {canAssetExport ? (
           <a href={"/api/assets/export?" + exportQuery} download className={buttonVariants({ variant: "outline", size: "md" })}>
             <Download aria-hidden="true" />
@@ -217,45 +253,30 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             {t("exportAssetOverview")}
           </a>
         ) : null}
-      </>
+        </div>
+        <p data-report-export-caption className="max-w-md text-meta text-muted-foreground md:text-right">{exportCaption}</p>
+      </div>
     ) : undefined
 
   let viewContent: React.ReactNode
   switch (activeView) {
     case "overview": {
       async function loadOverviewView(): Promise<React.ReactNode> {
-        const [byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, previewAssets] = await Promise.all([
-          prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
-          prisma.asset.groupBy({ by: ["categoryId"], where: assetWhere, _count: { _all: true } }),
-          prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
-          prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
-          prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
-          prisma.asset.groupBy({ by: ["ownershipType"], where: assetWhere, _count: { _all: true } }),
-          prisma.asset.findMany({
-            where: assetWhere,
-            take: 10,
-            orderBy: { createdAt: "desc" },
-            include: {
-              category: { select: { code: true, name: true } },
-              branch: { select: { code: true, name: true } },
-              department: { select: { code: true, name: true } },
-              custodian: { select: { code: true, fullNameTh: true } },
-              status: { select: { nameTh: true } },
+        const data = await getReportsOverviewData(
+          assetWhere,
+          {
+            locale,
+            baseQuery: registerBaseQuery,
+            breakdown,
+            bq: breakdownQuery,
+            phoneGroup,
+            labels: {
+              unassignedDepartment: t("unassignedDepartment"),
+              ownership: (type) => tAsset("ownershipType_" + type),
             },
-          }),
-        ])
-        const [statuses, categories, companies, branches, departments] = await Promise.all([
-          prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
-          prisma.assetCategory.findMany({ where: { id: { in: byCategory.map((item) => item.categoryId) } }, select: { id: true, code: true, name: true } }),
-          prisma.company.findMany({ where: { id: { in: byCompany.map((item) => item.companyId) } }, select: { id: true, code: true, nameTh: true } }),
-          prisma.branch.findMany({ where: { id: { in: byBranch.map((item) => item.branchId) } }, select: { id: true, code: true, name: true, company: { select: { code: true } } } }),
-          prisma.department.findMany({ where: { id: { in: byDepartment.map((item) => item.departmentId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, name: true } }),
-        ])
-        const statusMap = new Map(statuses.map((status) => [status.id, status.nameTh]))
-        const categoryMap = new Map(categories.map((category) => [category.id, `${category.code} - ${category.name}`]))
-        const companyMap = new Map(companies.map((company) => [company.id, `${company.code} - ${company.nameTh}`]))
-        const branchMap = new Map(branches.map((branch) => [branch.id, `${branch.company.code} / ${branch.code} - ${branch.name}`]))
-        const departmentMap = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
+          },
+          prisma as unknown as ReportsOverviewDb,
+        )
 
         return (
           <ReportsOverviewView
@@ -263,51 +284,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             hasActiveFilters={hasActiveFilters}
             hasMatchingAssets={totalAssets > 0}
             emptyCopy={{ filtered: t("previewEmpty"), dataset: tAsset("importBatchStatusEmpty") }}
-            previewRows={previewAssets.map((asset) => ({
-              id: asset.id,
-              assetTag: asset.assetTag,
-              name: asset.name,
-              category: asset.category.code + " - " + asset.category.name,
-              branch: asset.branch.code + " - " + asset.branch.name,
-              department: asset.department ? asset.department.code + " - " + asset.department.name : t("unassigned"),
-              custodian: asset.custodian ? asset.custodian.code + " - " + asset.custodian.fullNameTh : t("unassigned"),
-              ownership: tAsset("ownershipType_" + normalizeAssetOwnershipType(asset.ownershipType)),
-              status: asset.status.nameTh,
-            }))}
-            breakdowns={{
-              status: byStatus.map((item) => ({ key: item.statusId, label: statusMap.get(item.statusId) ?? item.statusId, count: item._count._all })),
-              category: byCategory.map((item) => ({ key: item.categoryId, label: categoryMap.get(item.categoryId) ?? item.categoryId, count: item._count._all })),
-              company: byCompany.map((item) => ({ key: item.companyId, label: companyMap.get(item.companyId) ?? item.companyId, count: item._count._all })),
-              branch: byBranch.map((item) => ({ key: item.branchId, label: branchMap.get(item.branchId) ?? item.branchId, count: item._count._all })),
-              department: byDepartment.map((item) => ({
-                key: item.departmentId ?? "unassigned",
-                label: departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? t("unassigned"),
-                count: item._count._all,
-              })),
-              ownership: byOwnership.map((item) => ({
-                key: normalizeAssetOwnershipType(item.ownershipType),
-                label: tAsset("ownershipType_" + normalizeAssetOwnershipType(item.ownershipType)),
-                count: item._count._all,
-              })),
-            }}
-            labels={{
-              previewTitle: t("previewTitle"),
-              previewHelp: t("previewHelp"),
-              previewCount: t("previewCount", { count: previewAssets.length }),
-              assetTag: t("assetTag"),
-              assetName: t("assetName"),
-              category: t("category"),
-              branch: t("branch"),
-              department: t("department"),
-              custodian: t("custodian"),
-              ownership: tAsset("ownershipType"),
-              status: t("status"),
-              byStatus: t("byStatus"),
-              byCategory: t("byCategory"),
-              byCompany: t("byCompany"),
-              byBranch: t("byBranch"),
-              byDepartment: t("byDepartment"),
-              byOwnership: t("byOwnership"),
+            data={data}
+            baseQuery={registerBaseQuery.toString()}
+            breakdown={breakdown}
+            bq={breakdownQuery}
+            phoneGroup={phoneGroup}
+            exports={{
+              registerHref: canAssetExport ? "/api/assets/export?" + exportQuery : undefined,
+              overviewHref: canReportExport ? "/api/reports/assets-overview/export?" + exportQuery : undefined,
+              filterSummary,
             }}
           />
         )
@@ -748,6 +733,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           filters={filters}
           labels={viewLabels}
           navigationLabel={t("viewNavigation")}
+          currentViewQuery={overviewViewQuery || undefined}
         />
       </div>
       <div data-report-filters>
@@ -757,6 +743,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           filters={filters}
           options={filterOptions}
           hasActiveFilters={hasActiveFilters}
+          viewParams={overviewViewParams}
           labels={{
             title: t("filterTitle"),
             help: t("filterHelp"),
@@ -771,7 +758,19 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             all: t("all"),
             apply: t("applyFilters"),
             clear: t("clearFilters"),
+            hide: t("hideFilters"),
+            show: t("showFilters"),
+            more: t("moreFilters"),
+            moreLine: t("moreFiltersLine", { fields: [t("category"), t("condition"), tAsset("ownershipType")].join(" · ") }),
           }}
+        />
+      </div>
+      {/* Phones: "ตัวกรอง (n)" opens the filter bar (board RP-Phone). */}
+      <div className="md:hidden">
+        <ReportFilterToggle
+          targetId={REPORT_FILTER_BAR_ID}
+          label={hasActiveFilters ? t("filterButton", { count: activeFilters.length }) : t("filterTitle")}
+          className="w-full"
         />
       </div>
       {activeFilters.length > 0 ? (
@@ -779,16 +778,19 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <FilterChipList chips={activeFilters} label={t("activeFilters")} removeLabel={t("clearActiveFilter")} />
         </div>
       ) : null}
-      <div data-report-shared-metrics>
-        {/* A total in the 28px metric size needs about 230px: one tile a row below sm. */}
-        <StatStrip
-          className="max-sm:grid-cols-1"
-          items={[
-            { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets) },
-            { key: "totalValue", label: t("totalValue"), value: formatMoney(totalPurchaseValue), unit: tCommon("baht") },
-          ]}
-        />
-      </div>
+      {/* The overview has its own strip that adds up (group 10 spec §4.1); the other views keep the two shared numbers. */}
+      {activeView !== "overview" ? (
+        <div data-report-shared-metrics>
+          {/* A total in the 28px metric size needs about 230px: one tile a row below sm. */}
+          <StatStrip
+            className="max-sm:grid-cols-1"
+            items={[
+              { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets) },
+              { key: "totalValue", label: t("totalValue"), value: formatMoney(totalPurchaseValue), unit: tCommon("baht") },
+            ]}
+          />
+        </div>
+      ) : null}
       <div data-report-view-content>{viewContent}</div>
     </div>
   )

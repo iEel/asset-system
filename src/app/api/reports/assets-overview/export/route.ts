@@ -11,6 +11,8 @@ import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/a
 import { assetMissingResponsibilityWhere, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 
+const UNASSIGNED_DEPARTMENT_LABEL = "ยังไม่ระบุแผนก"
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
@@ -25,7 +27,8 @@ export async function GET(request: NextRequest) {
       prisma.asset.groupBy({ by: ["categoryId"], where: assetWhere, _count: { _all: true } }),
       prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
       prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
-      prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
+      // Nulls included (group 10 spec §4.4): the assets with no department are a "ยังไม่ระบุแผนก" row, so the sheet adds up.
+      prisma.asset.groupBy({ by: ["departmentId"], where: assetWhere, _count: { _all: true } }),
       prisma.asset.groupBy({ by: ["ownershipType"], where: assetWhere, _count: { _all: true } }),
       prisma.asset.aggregate({
         where: { AND: [assetWhere, { ownershipType: "software_license" }] },
@@ -108,7 +111,7 @@ export async function GET(request: NextRequest) {
     addGroupSheet(workbook, "By Category", byCategory.map((item) => [categoryMap.get(item.categoryId) ?? item.categoryId, item._count._all]))
     addGroupSheet(workbook, "By Company", byCompany.map((item) => [companyMap.get(item.companyId) ?? item.companyId, item._count._all]))
     addGroupSheet(workbook, "By Branch", byBranch.map((item) => [branchMap.get(item.branchId) ?? item.branchId, item._count._all]))
-    addGroupSheet(workbook, "By Department", byDepartment.map((item) => [departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? "Unassigned", item._count._all]))
+    addGroupSheet(workbook, "By Department", byDepartment.map((item) => [item.departmentId === null ? UNASSIGNED_DEPARTMENT_LABEL : departmentMap.get(item.departmentId) ?? item.departmentId, item._count._all]))
     addGroupSheet(workbook, "By Ownership Type", byOwnership.map((item) => [normalizeAssetOwnershipType(item.ownershipType), item._count._all]))
     addCrossScopeSheet(workbook, crossScopeSummary.rows)
     addDepreciationSheet(workbook, depreciationSummary.depreciableAssets)

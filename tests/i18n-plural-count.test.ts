@@ -78,7 +78,10 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 9 plan 3 Task 2 added 7: the notifications page's bell line, the list's name, the backlog section's queue
   // count, a section's items, the footer sum (keyed on total), a digest day (keyed on topics; items is a plural too) and
   // ดูย้อนหลังทั้งหมด (n วัน).
-  assert.equal(pluralKeys.size, 145,[...pluralKeys.keys()].join(", "))
+  // Group 10 plan 1 Task 2 added 11: the reports header's export caption with and without filters, the strip's active
+  // foot (with and without examples) and purchase foot, the group tables' count, others and view-all lines (keyed on
+  // count, the dimension a select inside), the department equation (keyed on limit), and the phone export card's two counts.
+  assert.equal(pluralKeys.size, 156,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

@@ -26,6 +26,9 @@ export type StatStripItem = {
   filterNote?: string
   // A bar full width under the value (PaceBar for a round's progress), server-safe and phrasing content. It holds no link or word: the value and the foot say what it shows, and the cell's link covers it.
   meter?: React.ReactNode
+  // A sum the strip spells out (the reports overview: total = a + b + c): "=" or "+" on the line before this cell, from lg
+  // where the cells share one row. A picture only (aria-hidden): the page says the sum in words for screen readers.
+  operator?: "=" | "+"
   // data-* hooks on the cell, for the tests that read a cell (the PM page's data-pm-due-cell).
   data?: Readonly<Record<`data-${string}`, string>>
 }
@@ -50,6 +53,11 @@ export function StatStrip({ items, className }: { items: readonly StatStripItem[
         const noteId = item.href && item.filterNote ? `${noteIdBase}-note-${index}` : undefined
         return (
           <div key={item.key} {...item.data} data-slot="stat" className={cn(statClasses, item.href && !item.current && "hover:bg-background", item.href && statLinkClasses, item.current && statCurrentClasses)} style={noteId ? { anchorName: `--${noteId}` } : undefined}>
+            {item.operator ? (
+              <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-0 z-10 hidden size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-sm border border-border bg-surface text-meta font-semibold text-muted-foreground lg:flex">
+                {item.operator}
+              </span>
+            ) : null}
             <dt className="text-meta font-medium text-muted-foreground text-balance">
               {item.href ? (
                 <Link href={item.href} scroll={item.scroll} aria-describedby={noteId} aria-current={item.current ? "page" : undefined} className="after:absolute after:inset-0 focus-visible:outline-none">

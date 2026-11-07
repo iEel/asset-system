@@ -11,11 +11,13 @@ type ReportViewTabsProps = {
   filters: ReturnType<typeof parseAssetListParams>
   labels: Record<ReportView, string>
   navigationLabel: string
+  // The current view's own params (the overview's breakdown, bq and group), kept on its own tab's link only.
+  currentViewQuery?: string
 }
 
 // The client wrapper that owns the scrolling of the shared TabNav (spec 2B I9): the row snaps link by link, and below
 // md a direct link to a later view brings its tab into the row. TabNav draws the underline and sets aria-current.
-export function ReportViewTabs({ locale, activeView, filters, labels, navigationLabel }: ReportViewTabsProps) {
+export function ReportViewTabs({ locale, activeView, filters, labels, navigationLabel, currentViewQuery }: ReportViewTabsProps) {
   const tabsRef = useRef<HTMLElement>(null)
   // TabNav renders the links, so the current one is looked up in the row after each view change.
   const activeTabRef = useRef<HTMLElement | null>(null)
@@ -45,7 +47,7 @@ export function ReportViewTabs({ locale, activeView, filters, labels, navigation
       current={activeView}
       className="snap-x snap-mandatory"
       linkClassName="snap-start"
-      items={reportViews.map((view) => ({ key: view, label: labels[view], href: buildReportHref(locale, view, filters) }))}
+      items={reportViews.map((view) => ({ key: view, label: labels[view], href: buildReportHref(locale, view, filters) + (view === activeView && currentViewQuery ? `&${currentViewQuery}` : "") }))}
     />
   )
 }

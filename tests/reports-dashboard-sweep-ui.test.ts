@@ -62,12 +62,14 @@ test("report operations: ContentPanels, the cross-scope export as a plain <a>, t
   assert.doesNotMatch(source, /border-dashed|rounded-full|bg-warning-soft|text-white|sm:h-|hover:underline|<Link\s+href=\{crossScope\.exportHref\}|rounded-lg border/)
 })
 
+// Group 10 plan 1 Task 2: the breakdowns are divided flush ContentPanels with a DataTable now, and the overview has its
+// own sections (the strip, the group tables, the phone export card), each named.
 test("report overview: the preview is a divided flush ContentPanel, the breakdowns ContentPanels, and the asset link a text link (spec 2D D9, M29)", () => {
   const source = read(`${C}reports/reports-overview-view.tsx`)
-  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{labels\.previewTitle\}/)
-  assert.match(source, /<ContentPanel title=\{title\}>/)
-  assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/)
-  assert.doesNotMatch(source, /rounded-lg border|hover:underline|<section\b/)
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{t\("previewShortTitle"\)\}/)
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+title=\{title\}/)
+  assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "line-clamp-2 min-h-11 md:min-h-0"\)\}/)
+  assert.doesNotMatch(source, /hover:underline/)
 })
 
 test("report accounting: an empty ratio is Nil through StatStrip, and the asset links are text links (2D-1 R5 hand-on, M29)", () => {
