@@ -659,7 +659,8 @@
       "continueScan": "Continue checking",
       "dataIssues": "Incomplete register data",
       "pieces": "{count, plural, one {# item} other {# items}}",
-      "advance": "Advance warnings (returns · warranty · licence)"
+      "advance": "Advance warnings (returns · warranty · licence)",
+      "roundChecked": "Checked {checked, number} / {total, number}"
     },
     "tabs": {
       "overview": "Overview",

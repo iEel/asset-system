@@ -17,19 +17,30 @@ import type { WorkQueueSummary } from "@/lib/work-queues"
 // Board WC: งานทั้งหมด / งานของฉัน beside the title. The view is in the URL, so each option is a link named by the
 // <nav> and marked with aria-current (R-g), drawn in Segmented's look like RecordStatusSegmented. It keeps the panel
 // and drops show (a new view starts at the first 8 rows). Server-safe.
-export function WorkCenterViewSwitch({ locale, params }: { locale: string; params: WorkCenterParams }) {
+// Board WC-Phone: below md the page renders a second copy fullWidth under the title (the header's copy is hidden there).
+export function WorkCenterViewSwitch({
+  locale,
+  params,
+  fullWidth = false,
+  className,
+}: {
+  locale: string
+  params: WorkCenterParams
+  fullWidth?: boolean
+  className?: string
+}) {
   const t = useTranslations("workCenter")
   return (
-    <nav aria-label={t("viewNavigation")} data-slot="work-center-view-switch" className="max-w-full overflow-x-auto">
-      <ul className={cn("inline-flex", segmentedFrameClasses)}>
+    <nav aria-label={t("viewNavigation")} data-slot="work-center-view-switch" className={cn("max-w-full overflow-x-auto", className)}>
+      <ul className={cn(fullWidth ? "flex w-full" : "inline-flex", segmentedFrameClasses)}>
         {workCenterViews.map((view) => {
           const selected = view === params.view
           return (
-            <li key={view} className="flex">
+            <li key={view} className={cn("flex", fullWidth && "flex-1")}>
               <Link
                 href={buildWorkCenterHref(locale, params, { view, show: WORK_SHOW_STEP })}
                 aria-current={selected ? "page" : undefined}
-                className={cn(segmentedOptionClasses, segmentedSizeClasses.md, "whitespace-nowrap px-3", selected ? segmentedPressedClasses : segmentedIdleClasses)}
+                className={cn(segmentedOptionClasses, segmentedSizeClasses.md, "whitespace-nowrap px-3", fullWidth && "flex-1", selected ? segmentedPressedClasses : segmentedIdleClasses)}
               >
                 {view === "all" ? t("allWork") : t("myWork")}
               </Link>
@@ -69,11 +80,43 @@ export function WorkCenterTabs({
       : []),
   ]
   return (
-    <TabNav
-      aria-label={t("focusNavigation")}
-      current={params.panel}
-      items={items}
-      scroll={false}
-    />
+    <>
+      {/* Board WC-Phone: a 3 × 2 grid below md, each cell its label over its count; ข้อมูลไม่ครบ takes the sixth cell
+          on the page's background with a muted word (it is tracking, not a queue; N2 keeps dashed lines for the drop
+          zone). */}
+      <nav aria-label={t("focusNavigation")} className="md:hidden">
+        <ul data-slot="work-center-tabs-grid" className="grid grid-cols-3 gap-1.5 md:hidden">
+          {items.map((item) => {
+            const selected = item.key === params.panel
+            return (
+              <li key={item.key} className="flex min-w-0">
+                <Link
+                  href={item.href}
+                  aria-current={selected ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-11 w-full min-w-0 flex-col items-center justify-center rounded-md border px-1 py-1.5 text-center text-meta leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    selected
+                      ? "border-primary bg-primary font-semibold text-primary-foreground"
+                      : item.key === "assets"
+                        ? "border-border bg-background text-muted-foreground hover:bg-row-hover"
+                        : "border-border bg-surface text-foreground hover:bg-row-hover",
+                  )}
+                >
+                  <span className="max-w-full truncate">{item.label}</span>
+                  <span className={cn("num", item.key === "assets" && !selected ? "font-medium" : "font-semibold")}>{item.count}</span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
+      <TabNav
+        aria-label={t("focusNavigation")}
+        current={params.panel}
+        items={items}
+        scroll={false}
+        className="max-md:hidden"
+      />
+    </>
   )
 }

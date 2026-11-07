@@ -659,7 +659,8 @@
       "continueScan": "เดินตรวจต่อ",
       "dataIssues": "ข้อมูลทะเบียนไม่ครบ",
       "pieces": "{count, number} ชิ้น",
-      "advance": "เตือนล่วงหน้า (คืน · ประกัน · License)"
+      "advance": "เตือนล่วงหน้า (คืน · ประกัน · License)",
+      "roundChecked": "ตรวจแล้ว {checked, number} / {total, number}"
     },
     "tabs": {
       "overview": "ภาพรวม",

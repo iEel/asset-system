@@ -191,7 +191,7 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
   LK1: {},
   LN1: {
     [`${D}master-data/brands/page.tsx`]: { count: 2, kind: "permanent", why: "the brand picker is a vertical list of links, where aria-current=\"page\" is right", ruling: "2B I11" },
-    [`${C}work-center/work-center-tabs.tsx`]: { count: 1, kind: "permanent", why: "งานทั้งหมด / งานของฉัน is two links in Segmented's look (like RecordStatusSegmented); the current view is marked", ruling: "group 9 spec §4.1, plan 2 Task 2" },
+    [`${C}work-center/work-center-tabs.tsx`]: { count: 2, kind: "permanent", why: "งานทั้งหมด / งานของฉัน is two links in Segmented's look (like RecordStatusSegmented); the current view is marked. Below md the queue tabs are a 3 × 2 grid of links (board WC-Phone), where TabNav's one row does not fit; the current queue is marked", ruling: "group 9 spec §4.1, §4.2 Phone, plan 2 Tasks 2 and 3" },
     [`${C}assets/asset-register-saved-views.tsx`]: { count: 2, kind: "permanent", why: "the saved views (the desktop row and the phone menu) are links to register views; the one whose query equals the page's is current", ruling: "group 4 spec §6.4, plan 1 Task 6" },
   },
   LN2: {},

@@ -4,7 +4,8 @@ import { ArrowRight } from "lucide-react"
 import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
-import { RowActions } from "@/components/ui/row-actions"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { RowActions, type RowActionGroup } from "@/components/ui/row-actions"
 import { formatCount } from "@/lib/display-format"
 import { cn, formatDate } from "@/lib/utils"
 import type { WaitingWorkCounts } from "@/lib/waiting-work-rules"
@@ -76,10 +77,21 @@ export function WorkRowsTable({
 
   const menuLabel = (row: WorkRow, key: WorkRowMenuKey) =>
     key === "openRecord" && requestKinds.has(row.kind) ? t("menu.openRequest") : t(`menu.${key}`)
+  const menuGroups = (row: WorkRow): RowActionGroup[] => [
+    {
+      key: "open",
+      items: row.menu.map((item) => ({ kind: "link", key: item.key, label: menuLabel(row, item.key), href: item.href })),
+    },
+  ]
 
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        {queueEntry ? (
+          <h2 className="text-base font-semibold text-foreground md:hidden">
+            {t(`queue.${queueEntry.queue}`)} <span className="num">{formatCount(queueEntry.count)}</span>
+          </h2>
+        ) : null}
         {queue ? (
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-meta">
             {partsLine ? <p className="num text-muted-foreground">{partsLine}</p> : null}
@@ -89,10 +101,11 @@ export function WorkRowsTable({
             </Link>
           </div>
         ) : <span />}
-        <p className="text-meta text-muted-foreground">{t("table.sortNote")}</p>
+        <p className="text-meta text-muted-foreground max-md:hidden">{t("table.sortNote")}</p>
       </div>
 
       <DataTable
+        className="hidden md:block"
         caption={t("table.caption")}
         minWidth={880}
         footer={
@@ -176,12 +189,7 @@ export function WorkRowsTable({
                       name={row.title}
                       menuLabel={t("table.menuLabel", { code: row.documentNo ?? row.assetTag ?? row.number })}
                       next={{ label: tRoot(row.nextStep.labelKey), href: row.nextStep.href }}
-                      groups={[
-                        {
-                          key: "open",
-                          items: row.menu.map((item) => ({ kind: "link", key: item.key, label: menuLabel(row, item.key), href: item.href })),
-                        },
-                      ]}
+                      groups={menuGroups(row)}
                     />
                   </DataTableCell>
                 </DataTableRow>
@@ -190,6 +198,72 @@ export function WorkRowsTable({
           )}
         </DataTableBody>
       </DataTable>
+
+      {/* Board WC-Phone: below md each row is a card: the urgency mark, the title (2 lines), tag · document, type ·
+          context, the age lines, ⋯ in the corner (a bottom sheet) and the next step full width at 44px. */}
+      <ul data-slot="work-center-cards" className="grid gap-2.5 md:hidden">
+        {rows.length === 0 ? (
+          <li className="rounded-lg border border-border bg-surface">
+            <EmptyNote tone="clear" padded>{t(emptyKeys[queue ?? "overview"])}</EmptyNote>
+          </li>
+        ) : (
+          rows.map((row) => {
+            const age = ageLines(t, row)
+            const codes = [row.assetTag, row.documentNo].filter(Boolean).join(" · ")
+            return (
+              <li key={`${row.kind}:${row.id}`} className="min-w-0 rounded-lg border border-border bg-surface py-3 ps-3.5 pe-2">
+                <div className="flex items-start gap-2">
+                  <span className="mt-1.5 flex shrink-0 items-center">
+                    <span aria-hidden="true" className={statusMarkerVariants({ tone: urgencyTones[row.urgency] })} />
+                    <span className="sr-only">{t(`urgency.${row.urgency}`)}</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="line-clamp-2 break-words text-base font-semibold text-foreground">{row.title}</h3>
+                    {codes ? (
+                      <p className="break-all text-xs text-muted-foreground">
+                        <span className="tag">{codes}</span>
+                      </p>
+                    ) : null}
+                    <p className="mt-0.5 break-words text-meta text-muted-foreground">
+                      {t(`kind.${row.kind}`)}
+                      {row.context ? ` · ${tRoot(row.context.key, row.context.values)}` : null}
+                    </p>
+                    <p className="mt-1.5 text-meta num text-foreground">{age.first}</p>
+                    <p className={cn("text-meta num", age.alert ? "font-medium text-danger" : "text-muted-foreground")}>{age.second}</p>
+                  </div>
+                  <RowActions
+                    menu="sheet"
+                    code={row.documentNo ?? row.assetTag ?? row.number}
+                    name={row.title}
+                    menuLabel={t("table.menuLabel", { code: row.documentNo ?? row.assetTag ?? row.number })}
+                    groups={menuGroups(row)}
+                    className="-mt-1.5 shrink-0"
+                  />
+                </div>
+                <div className="pe-1.5">
+                  <Link href={row.nextStep.href} className={cn(buttonVariants({ size: "md" }), "mt-2.5 min-h-11 w-full")}>
+                    {tRoot(row.nextStep.labelKey)}
+                    <span className="sr-only"> {row.documentNo ?? row.assetTag ?? row.number}</span>
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                </div>
+              </li>
+            )
+          })
+        )}
+      </ul>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-meta text-muted-foreground md:hidden">
+        <span className="num">{t("table.shown", { shown, total })}</span>
+        {moreCount > 0 ? (
+          <Link
+            href={buildWorkCenterHref(locale, params, { show: params.show + WORK_SHOW_STEP })}
+            scroll={false}
+            className={cn(buttonVariants({ variant: "outline", size: "md" }), "ms-auto")}
+          >
+            {t("table.showMoreRows", { count: moreCount })}
+          </Link>
+        ) : null}
+      </div>
     </div>
   )
 }

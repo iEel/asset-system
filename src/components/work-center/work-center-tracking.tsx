@@ -38,7 +38,8 @@ export function WorkCenterTracking({
         <div className="mt-2.5 text-sm">
           <div className="flex items-baseline gap-1.5">
             <span className="min-w-0 flex-1 break-words text-foreground">{round.name}</span>
-            <span className="shrink-0 num text-muted-foreground">{t("tracking.roundProgress", { checked: round.checked, total: round.total })}</span>
+            <span className="shrink-0 num text-muted-foreground max-md:hidden">{t("tracking.roundProgress", { checked: round.checked, total: round.total })}</span>
+            <span className="shrink-0 num text-muted-foreground md:hidden">{t("tracking.roundChecked", { checked: round.checked, total: round.total })}</span>
           </div>
           <div className="mt-1.5">
             <PaceBar value={round.total > 0 ? round.checked / round.total : 0} pace={null} behind={false} label={t("tracking.roundBar", { checked: round.checked, total: round.total })} />

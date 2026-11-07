@@ -35,7 +35,7 @@ export function WorkCenterStrip({
         <p className="mt-0.5 text-meta text-muted-foreground">
           {t("today.parts", { approvals: summary.today.approvals, approved: summary.today.approvedDisposals })}
         </p>
-        <div className="mt-auto flex flex-wrap gap-2 pt-3">
+        <div className="mt-auto flex flex-wrap gap-2 pt-3 max-md:hidden">
           {summary.approvalParts ? (
             <Link href={`/${locale}/admin/approvals`} className={cn(buttonVariants({ size: "md" }), "flex-1")}>
               {t("today.review", { count: summary.today.approvals })}
@@ -47,9 +47,24 @@ export function WorkCenterStrip({
             </Link>
           ) : null}
         </div>
+        {/* Board WC-Phone: งานค้างทั้งหมด is one line under ต้องทำวันนี้; its card with the queue cells shows from md. */}
+        <p data-slot="work-center-backlog-line" className="mt-2 border-t border-border-soft pt-2 text-xs num text-muted-foreground md:hidden">
+          {summary.queues.length > 0
+            ? `${t("backlog.title")} ${formatCount(summary.backlogTotal)} = ${summary.queues.map((entry) => formatCount(entry.count)).join(" + ")}`
+            : `${t("backlog.title")} ${formatCount(summary.backlogTotal)}`}
+          {previous ? (
+            <>
+              {" · "}
+              {previous.isYesterday
+                ? t("backlog.yesterday", { count: previous.backlogTotal })
+                : t("backlog.onDay", { date: formatDate(previous.dayLabelDate), count: previous.backlogTotal })}
+              {previousChange(t, previous.backlogChange)}
+            </>
+          ) : null}
+        </p>
       </section>
 
-      <section aria-labelledby="work-center-backlog" data-slot="work-center-backlog" className={cardClasses}>
+      <section aria-labelledby="work-center-backlog" data-slot="work-center-backlog" className={cn(cardClasses, "max-md:hidden")}>
         <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
           <h2 id="work-center-backlog" className="text-sm font-semibold text-foreground">{t("backlog.title")}</h2>
           <span className="text-xl font-semibold num text-foreground">{formatCount(summary.backlogTotal)}</span>

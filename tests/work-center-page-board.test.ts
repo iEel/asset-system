@@ -26,7 +26,7 @@ test("the page reads everything from getWorkCenterPageData and nothing from the 
 
 test("the header: ศูนย์งานค้าง, the view switch as links and the notifications link with the unread count", () => {
   assert.match(page, /<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
-  assert.match(page, /<WorkCenterViewSwitch locale=\{locale\} params=\{data\.params\} \/>/)
+  assert.match(page, /<WorkCenterViewSwitch locale=\{locale\} params=\{data\.params\} className="max-md:hidden" \/>/)
   assert.match(tabs, /aria-label=\{t\("viewNavigation"\)\}/)
   assert.match(tabs, /buildWorkCenterHref\(locale, params, \{ view, show: WORK_SHOW_STEP \}\)/, "the switch keeps panel and drops show")
   assert.match(tabs, /segmentedFrameClasses/)
@@ -135,4 +135,43 @@ test("the work center keeps no copies of the waiting-work titles (spec §6.3)", 
       assert.equal(m.workCenter[`${key}Detail`], undefined, `workCenter.${key}Detail`)
     }
   }
+})
+
+// Group 9 plan 2 Task 3: the phone layout to board WC-Phone (spec §4.2 "Phone"). The desktop from md is unchanged.
+test("phone: the view switch full width under the title, the desktop one stays in the header", () => {
+  assert.match(page, /<WorkCenterViewSwitch locale=\{locale\} params=\{data\.params\} className="max-md:hidden" \/>/)
+  assert.match(page, /<WorkCenterViewSwitch locale=\{locale\} params=\{data\.params\} fullWidth className="md:hidden" \/>/)
+})
+
+test("phone: ต้องทำวันนี้ then one line งานค้างทั้งหมด n = a + b … · เมื่อวาน m; the backlog card from md", () => {
+  assert.match(strip, /data-slot="work-center-backlog-line" className="[^"]*md:hidden/)
+  assert.match(strip, /data-slot="work-center-backlog" className=\{cn\(cardClasses, "max-md:hidden"\)\}/)
+  assert.match(strip, /`\$\{t\("backlog\.title"\)\} \$\{formatCount\(summary\.backlogTotal\)\} = \$\{summary\.queues\.map\(\(entry\) => formatCount\(entry\.count\)\)\.join\(" \+ "\)\}`/)
+})
+
+test("phone: the tabs are a 3 × 2 grid of links below md, the tab row from md", () => {
+  assert.match(tabs, /data-slot="work-center-tabs-grid" className="grid grid-cols-3 gap-1\.5 md:hidden"/)
+  assert.match(tabs, /aria-current=\{selected \? "page" : undefined\}/)
+  assert.match(tabs, /<TabNav\n\s+aria-label=\{t\("focusNavigation"\)\}[\s\S]*?className="max-md:hidden"/)
+})
+
+test("phone: rows are cards below md and the table from md", () => {
+  assert.match(table, /<DataTable\n\s+className="hidden md:block"/)
+  assert.match(table, /data-slot="work-center-cards" className="grid gap-2\.5 md:hidden"/)
+  assert.match(table, /<h3 className="line-clamp-2 [^"]*">\{row\.title\}<\/h3>/, "the title clamps at 2 lines")
+  assert.match(table, /className=\{cn\(buttonVariants\(\{ size: "md" \}\), "mt-2\.5 min-h-11 w-full"\)\}/, "the next step is full width at 44px")
+  assert.match(
+    table,
+    /<RowActions\n\s+menu="sheet"\n\s+code=\{row\.documentNo \?\? row\.assetTag \?\? row\.number\}\n\s+name=\{row\.title\}\n\s+menuLabel=[^\n]+\n\s+groups=\{menuGroups\(row\)\}/,
+    "the card's ⋯ holds only the menu; the next step is its own button",
+  )
+})
+
+test("phone: ติดตามแยก comes after the list, the round reads ตรวจแล้ว x / y", () => {
+  assert.match(tracking, /className="shrink-0 num text-muted-foreground md:hidden">\{t\("tracking\.roundChecked", \{ checked: round\.checked, total: round\.total \}\)\}/)
+  assert.equal(message(th, "tracking.roundChecked"), "ตรวจแล้ว {checked, number} / {total, number}")
+  assert.equal(typeof message(en, "tracking.roundChecked"), "string")
+  assert.match(page, /className="max-md:order-last md:col-span-2 xl:col-span-1"/)
+  assert.match(page, /className="flex flex-col gap-4 md:block md:space-y-4"/)
+  assert.match(page, /className="contents md:grid /)
 })

@@ -23,6 +23,8 @@ type WorkCenterPageProps = {
 // (ต้องทำวันนี้, งานค้างทั้งหมด with the previous day, a cell per queue, the sum) beside ติดตามแยก; the queue tabs; one
 // ranked table with the urgency, the next step and ⋯, and แสดงเพิ่ม; the ข้อมูลไม่ครบ tab keeps its fix cards and list.
 // Every number and row comes from getWorkCenterPageData; the page reads nothing else.
+// Board WC-Phone (Task 3, spec §4.2 "Phone"): below md the view switch is full width under the title, the strip's grid
+// dissolves (contents) so ติดตามแยก can move after the list (order-last), the tabs are a 3 × 2 grid and rows are cards.
 export default async function WorkCenterPage({ params, searchParams }: WorkCenterPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
@@ -33,13 +35,13 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
   const data = await getWorkCenterPageData(user, { searchParams: rawSearchParams, locale, returnTo })
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 md:block md:space-y-4">
       <PageHeader
         title={t("title")}
         meta={t("subtitle")}
         actions={
           <>
-            <WorkCenterViewSwitch locale={locale} params={data.params} />
+            <WorkCenterViewSwitch locale={locale} params={data.params} className="max-md:hidden" />
             <Link
               href={`/${locale}/notifications`}
               aria-label={t("notificationsLinkLabel", { count: data.unreadTopics })}
@@ -57,16 +59,18 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         }
       />
 
+      <WorkCenterViewSwitch locale={locale} params={data.params} fullWidth className="md:hidden" />
+
       {data.mineUnavailable ? <Notice tone="warning">{t("myWorkUnavailable")}</Notice> : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_minmax(0,20rem)]">
+      <div className="contents md:grid md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] md:gap-4 xl:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_minmax(0,20rem)]">
         <WorkCenterStrip locale={locale} params={data.params} summary={data.summary} previous={data.previous} />
         <WorkCenterTracking
           locale={locale}
           params={data.params}
           tracking={data.tracking}
           showAdvance={data.summary.advance.keys.length > 0}
-          className="md:col-span-2 xl:col-span-1"
+          className="max-md:order-last md:col-span-2 xl:col-span-1"
         />
       </div>
 
