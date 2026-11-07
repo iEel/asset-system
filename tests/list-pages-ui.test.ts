@@ -756,21 +756,26 @@ test("access denied: the permission empty state with its two links on the shared
   assert.doesNotMatch(source, /font-mono|\bbg-primary\b|hover:bg-accent|<h1\b|rounded-md border|size: "lg"/)
 })
 
-// Plan 2B-5 Task 7 (spec 2B §5.6 row notifications, bug §5.10 #1, R-d, O17): the notification center. A delivered
-// notification shows its type in Thai words (it showed warning, danger or info), the local StatusBadge and the tinted
-// SummaryCards give way to the shared parts, and a muted item greys its title instead of fading the whole card.
-// notification-center-actions.tsx (2C plan 4, O17) is placed as before and never edited here.
-test("notifications: PageHeader, one StatStrip, the shared StatusBadge, and each delivered type in words (spec 2B §5.6, §5.10 #1)", () => {
+// Plan 2B-5 Task 7 (spec 2B §5.6 row notifications, bug §5.10 #1, R-d, O17), rewritten to board NT by group 9 plan 3
+// Task 2: the shared PageHeader, an EmptyNote per status tab and per empty digest, the delivered (legacy digest) rows'
+// type in Thai words through the shared StatusBadge (an unknown type as it is), unread titles bold and the rest muted
+// instead of fading, and the work-center link as an outline md button.
+test("notifications: PageHeader, the shared StatusBadge, each delivered type in words and EmptyNotes (spec 2B §5.6, §5.10 #1; board NT)", () => {
   const source = read(`${D}notifications/page.tsx`)
-  for (const part of ["<PageHeader", "<StatStrip", "<NotificationCenterActions", "<EmptyNote padded>{t(\"empty\")}</EmptyNote>", "<EmptyNote padded>{t(\"deliveredDigestEmpty\")}</EmptyNote>"]) {
+  const digest = read("src/components/notifications/notification-digest-panel.tsx")
+  const row = read("src/components/notifications/notification-topic-row.tsx")
+  for (const part of ["<PageHeader", "<NotificationTopicRow", "<NotificationDigestPanel", "<EmptyNote padded>{t(`empty.${data.params.status}`)}</EmptyNote>"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
-  assert.match(source, /^import \{ StatusBadge \} from "@\/components\/ui\/status-badge"$/m)
-  assert.match(source, /<StatusBadge label=\{t\.has\(`type_\$\{notification\.type\}`\) \? t\(`type_\$\{notification\.type\}`\) : notification\.type\} tone=\{notification\.type\} \/>/, "bug §5.10 #1: the type in words, an unknown type as it is")
-  assert.match(source, /<h2 className=\{item\.isSuppressed \? "font-semibold text-muted-foreground" : "font-semibold text-foreground"\}>/)
-  assert.match(source, /\{formatCount\(item\.count\)\}/)
+  assert.match(digest, /^import \{ StatusBadge \} from "@\/components\/ui\/status-badge"$/m)
+  assert.match(digest, /<StatusBadge label=\{t\.has\(`type_\$\{entry\.type\}`\) \? t\(`type_\$\{entry\.type\}`\) : entry\.type\} tone=\{entry\.type\} \/>/, "bug §5.10 #1: the type in words, an unknown type as it is")
+  assert.match(digest, /<EmptyNote>\{t\("digest\.empty"\)\}<\/EmptyNote>/)
+  assert.match(row, /row\.state === "unread" \? "font-semibold text-foreground" : "text-muted-foreground"/)
+  assert.match(row, /\{formatCount\(row\.count\)\}/)
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.doesNotMatch(source, /function (?:SummaryCard|StatusBadge|notificationToneClass|summaryClass)\b|opacity-70|toLocaleString\(|border-dashed|<h1\b/)
+  for (const file of [source, digest, row]) {
+    assert.doesNotMatch(file, /function (?:SummaryCard|StatusBadge|notificationToneClass|summaryClass)|opacity-70|toLocaleString\(|border-dashed|<h1/)
+  }
   for (const locale of ["th", "en"]) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { notifications: Record<string, unknown> }
     for (const type of ["info", "warning", "danger", "success"]) assert.equal(typeof messages.notifications[`type_${type}`], "string", `${locale}: notifications.type_${type}`)

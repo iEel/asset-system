@@ -1,14 +1,17 @@
 "use client"
 
-import { useState, useTransition, type MouseEvent as ReactMouseEvent } from "react"
+import { useRef, useState, useTransition, type MouseEvent as ReactMouseEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Check, Clock3, ExternalLink, RotateCcw, UserRound } from "lucide-react"
+import { Check, CheckCheck, Clock3, RotateCcw, UserRound } from "lucide-react"
 import { toast } from "sonner"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
 import { NativeSelect } from "@/components/ui/native-select"
+import { RowActions, type RowActionGroup, type RowActionItem } from "@/components/ui/row-actions"
 import {
   isPlainPrimaryClick,
+  markAllNotificationsRead,
   markNotificationRead,
   notifyNotificationSummaryChanged,
 } from "@/lib/notification-client-sync"
@@ -18,31 +21,20 @@ type AssigneeOption = {
   label: string
 }
 
-type NotificationCenterActionsProps = {
-  item: {
-    key: string
-    count: number
-    href: string
-    isRead: boolean
-    assignedToUserId: string | null
-  }
-  assignees: AssigneeOption[]
-  labels: {
-    openItem: string
-    markRead: string
-    markUnread: string
-    snoozeOneDay: string
-    assignTo: string
-    unassigned: string
-    saved: string
-    error: string
-  }
-}
-
-export function NotificationCenterActions({ item, assignees, labels }: NotificationCenterActionsProps) {
+// Board NT (group 9 plan 3 task 2, spec §5.2): the whole topic row is this link. A plain click marks the topic read
+// before it opens the queue's page, as the bell and the old center did; a new-tab click goes straight through.
+export function NotificationOpenLink({
+  item,
+  errorLabel,
+  className,
+  children,
+}: {
+  item: { key: string; count: number; href: string }
+  errorLabel: string
+  className?: string
+  children: ReactNode
+}) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [assignedToUserId, setAssignedToUserId] = useState(item.assignedToUserId ?? "")
 
   const openItem = async (event: ReactMouseEvent<HTMLAnchorElement>) => {
     if (!isPlainPrimaryClick(event)) return
@@ -52,14 +44,70 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
       if (await markNotificationRead(item)) {
         notifyNotificationSummaryChanged()
       } else {
-        toast.error(labels.error)
+        toast.error(errorLabel)
       }
     } finally {
       router.push(item.href)
     }
   }
 
-  const mutate = (payload: { action: "read" | "unread" | "snooze" | "assign"; assignedToUserId?: string | null; snoozeHours?: number }) => {
+  return (
+    <Link href={item.href} onClick={(event) => void openItem(event)} className={className}>
+      {children}
+    </Link>
+  )
+}
+
+// Spec §5.2: เลื่อนเตือน 1 วัน / 3 วัน / 1 สัปดาห์; the API takes 1–168 hours.
+const SNOOZE_CHOICES = [
+  { key: "day", hours: 24 },
+  { key: "threeDays", hours: 72 },
+  { key: "week", hours: 168 },
+] as const
+
+type NotificationCenterActionsProps = {
+  item: {
+    key: string
+    count: number
+    title: string
+    state: "unread" | "read" | "snoozed"
+    assignedToUserId: string | null
+  }
+  assignees: AssigneeOption[]
+  labels: {
+    menu: string
+    markRead: string
+    markUnread: string
+    snooze: string
+    snoozeDay: string
+    snoozeThreeDays: string
+    snoozeWeek: string
+    cancelSnooze: string
+    changeAssignee: string
+    assignDialogTitle: string
+    assignDialogDescription: string
+    assignTo: string
+    unassigned: string
+    save: string
+    saved: string
+    error: string
+  }
+}
+
+// The row's ⋯ (RowActions: a menu from md, a sheet below): ทำเป็นอ่านแล้ว or ทำเป็นยังไม่อ่าน, the snooze choices,
+// ยกเลิกการเลื่อนเตือน on a snoozed row (the unread action, which clears the snooze) and เปลี่ยนผู้รับผิดชอบ…, which
+// opens a dialog with the assignee list. Every save toasts, tells the bell and refreshes the page.
+export function NotificationCenterActions({ item, assignees, labels }: NotificationCenterActionsProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignedToUserId, setAssignedToUserId] = useState(item.assignedToUserId ?? "")
+  const openerRef = useRef<HTMLElement | null>(null)
+
+  const mutate = (
+    payload: { action: "read" | "unread" | "snooze" | "assign"; assignedToUserId?: string | null; snoozeHours?: number },
+    onSaved?: () => void,
+  ) => {
     startTransition(async () => {
       try {
         const response = await fetch("/api/notifications", {
@@ -75,6 +123,7 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
           toast.error(labels.error)
           return
         }
+        onSaved?.()
         toast.success(labels.saved)
         notifyNotificationSummaryChanged()
         router.refresh()
@@ -84,56 +133,125 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
     })
   }
 
-  return (
-    <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div className="flex flex-wrap gap-2">
-        {/* md, beside the md assignee select (36px from md, 44px below). One transition drives both buttons and the
-            select, so they keep the shared disabled look instead of a spinner (2C O17). */}
-        <Link
-          href={item.href}
-          onClick={(event) => void openItem(event)}
-          className={buttonVariants({ variant: "outline", size: "md" })}
-        >
-          <ExternalLink aria-hidden="true" />
-          {labels.openItem}
-        </Link>
-        <Button
-          variant="outline"
-          size="md"
-          onClick={() => mutate({ action: item.isRead ? "unread" : "read" })}
-          disabled={isPending}
-        >
-          {item.isRead ? <RotateCcw aria-hidden="true" /> : <Check aria-hidden="true" />}
-          {item.isRead ? labels.markUnread : labels.markRead}
-        </Button>
-        <Button variant="outline" size="md" onClick={() => mutate({ action: "snooze", snoozeHours: 24 })} disabled={isPending}>
-          <Clock3 aria-hidden="true" />
-          {labels.snoozeOneDay}
-        </Button>
-      </div>
+  const snoozeLabels = { day: labels.snoozeDay, threeDays: labels.snoozeThreeDays, week: labels.snoozeWeek }
+  const stateItem: RowActionItem =
+    item.state === "read"
+      ? { kind: "action", key: "unread", label: labels.markUnread, onSelect: () => mutate({ action: "unread" }) }
+      : { kind: "action", key: "read", label: labels.markRead, onSelect: () => mutate({ action: "read" }) }
+  const groups: RowActionGroup[] = [
+    {
+      key: "state",
+      items: [
+        { ...stateItem, icon: item.state === "read" ? <RotateCcw aria-hidden="true" /> : <Check aria-hidden="true" /> },
+        ...(item.state === "snoozed"
+          ? [{ kind: "action", key: "cancel-snooze", label: labels.cancelSnooze, onSelect: () => mutate({ action: "unread" }) }]
+          : []) as RowActionItem[],
+      ],
+    },
+    {
+      key: "snooze",
+      label: labels.snooze,
+      items: SNOOZE_CHOICES.map((choice) => ({
+        kind: "action" as const,
+        key: `snooze-${choice.key}`,
+        label: snoozeLabels[choice.key],
+        icon: <Clock3 aria-hidden="true" />,
+        onSelect: () => mutate({ action: "snooze", snoozeHours: choice.hours }),
+      })),
+    },
+    {
+      key: "assign",
+      items: [
+        {
+          kind: "action",
+          key: "assign",
+          label: labels.changeAssignee,
+          icon: <UserRound aria-hidden="true" />,
+          onSelect: () => {
+            setAssignedToUserId(item.assignedToUserId ?? "")
+            setAssignOpen(true)
+          },
+        },
+      ],
+    },
+  ]
 
-      <label className="flex min-w-0 items-center gap-2 text-sm">
-        <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="shrink-0 text-muted-foreground">{labels.assignTo}</span>
-        <NativeSelect
-          fieldSize="md"
-          value={assignedToUserId}
-          disabled={isPending}
-          onChange={(event) => {
-            const value = event.target.value
-            setAssignedToUserId(value)
-            mutate({ action: "assign", assignedToUserId: value || null })
-          }}
-          className="min-w-44"
-        >
-          <option value="">{labels.unassigned}</option>
-          {assignees.map((assignee) => (
-            <option key={assignee.id} value={assignee.id}>
-              {assignee.label}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
-    </div>
+  return (
+    <>
+      <RowActions code={item.title} menuLabel={labels.menu} groups={groups} openerRef={openerRef} className="shrink-0" />
+      <AccessibleDialog
+        open={assignOpen}
+        title={labels.assignDialogTitle}
+        description={labels.assignDialogDescription}
+        busy={isPending}
+        size="sm"
+        returnFocusRef={openerRef}
+        onClose={() => setAssignOpen(false)}
+      >
+        <AccessibleDialogBody>
+          <p className="mb-3 text-sm font-medium text-foreground">{item.title}</p>
+          <label className="flex min-w-0 items-center gap-2 text-sm">
+            <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="shrink-0 text-muted-foreground">{labels.assignTo}</span>
+            <NativeSelect
+              fieldSize="md"
+              value={assignedToUserId}
+              disabled={isPending}
+              onChange={(event) => setAssignedToUserId(event.target.value)}
+              className="min-w-44"
+            >
+              <option value="">{labels.unassigned}</option>
+              {assignees.map((assignee) => (
+                <option key={assignee.id} value={assignee.id}>
+                  {assignee.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </label>
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel />
+          <Button
+            type="button"
+            disabled={isPending}
+            onClick={() => mutate({ action: "assign", assignedToUserId: assignedToUserId || null }, () => setAssignOpen(false))}
+          >
+            {labels.save}
+          </Button>
+        </AccessibleDialogFooter>
+      </AccessibleDialog>
+    </>
+  )
+}
+
+// ทำเป็นอ่านแล้วทั้งหมด: the existing read_all (the server marks every unread topic at its own count).
+export function NotificationReadAllButton({
+  locale,
+  labels,
+}: {
+  locale: string
+  labels: { markAllRead: string; saved: string; error: string }
+}) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  const readAll = () => {
+    startTransition(async () => {
+      const summary = await markAllNotificationsRead(locale)
+      if (!summary) {
+        toast.error(labels.error)
+        return
+      }
+      toast.success(labels.saved)
+      notifyNotificationSummaryChanged()
+      router.refresh()
+    })
+  }
+
+  return (
+    <Button variant="outline" size="sm" onClick={readAll} disabled={isPending}>
+      <CheckCheck aria-hidden="true" />
+      {labels.markAllRead}
+    </Button>
   )
 }

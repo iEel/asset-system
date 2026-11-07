@@ -132,23 +132,13 @@
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "No follow-up work to notify",
     "openWorkCenter": "Open Work Center",
     "openNotificationCenter": "Open Notification Center",
-    "centerTitle": "Notification Center",
-    "centerSubtitle": "Track notification state with read, snooze, and assignment controls",
-    "active": "Active",
     "read": "Read",
     "snoozed": "Snoozed",
     "assigned": "Assigned",
-    "openItem": "Open item",
-    "markRead": "Mark read",
-    "markUnread": "Mark unread",
-    "snoozeOneDay": "Snooze 1 day",
     "assignTo": "Assignee",
     "unassigned": "Unassigned",
-    "assignedTo": "Assignee",
-    "mutedUntil": "Muted until",
     "saved": "Notification state saved",
     "saveFailed": "Could not save notification state",
     "approvalInbox": "Approval Inbox",
@@ -171,13 +161,6 @@
     "warrantyExpiringSoonDetail": "Assets whose warranty ends within the notification rule",
     "licenseExpiringSoon": "License expiring soon",
     "licenseExpiringSoonDetail": "Software/licenses that need renewal or review",
-    "deliveredDigestTitle": "Delivered Digests",
-    "deliveredDigestSubtitle": "Daily digest notifications the system has delivered, so users can review what was already sent.",
-    "deliveredDigestEmpty": "No digest has been delivered to this user yet.",
-    "type_info": "General",
-    "type_warning": "Needs attention",
-    "type_danger": "Urgent",
-    "type_success": "Done",
     "increaseAnnouncement": "{title}: {count} more",
     "bellLabel": "Notifications, {count, plural, one {# unread topic} other {# unread topics}}",
     "bellEmpty": "Nothing waiting",
@@ -194,8 +177,83 @@
     "detail": {
       "approvalParts": "Disposal {disposal, number} · mismatches {mismatches, number} · round close {rounds, number}",
       "openRepairsOldest": "Repair records waiting to be marked finished · oldest {days, plural, one {# day} other {# days}}",
-      "nearestDue": "Nearest due {date}"
-    }
+      "nearestDue": "Nearest due {date}",
+      "overdueSince": "Overdue since {date}",
+      "assignee": "assigned to {name}"
+    },
+    "empty": {
+      "unread": "No unread topics",
+      "read": "No read topics",
+      "snoozed": "No snoozed topics",
+      "all": "No follow-up work to notify"
+    },
+    "bellLine": "Top-bar bell = {count, plural, one {# unread topic} other {# unread topics}}",
+    "pageSubtitle": "The same queues as the work center, with the same numbers. Select a row to open its queue.",
+    "help": "<b>Mark as read</b> = stop counting on the bell until the queue's number changes; the work stays in the work center until it is done · <b>Snooze</b> = hide until the chosen time, then unread again",
+    "statusNavigation": "Notification status",
+    "tabs": {
+      "unread": "Unread",
+      "read": "Read",
+      "snoozed": "Snoozed",
+      "all": "All"
+    },
+    "assignedFilter": "Assigned {count, number}",
+    "markAllReadCommand": "Mark all as read",
+    "topicsLabel": "{count, plural, one {# notification topic} other {# notification topics}}",
+    "sections": {
+      "backlog": "Open work",
+      "backlogMeta": "{queues, plural, one {# queue} other {# queues}}, the same as the work center",
+      "advance": "Early warnings",
+      "advanceMeta": "Not open work yet",
+      "items": "{count, plural, one {# item} other {# items}}",
+      "yesterday": "yesterday {count, number}",
+      "onDay": "on {date} {count, number}"
+    },
+    "change": {
+      "upWord": "up",
+      "downWord": "down",
+      "fromYesterday": "{count, number} from yesterday",
+      "fromDay": "{count, number} from {date}",
+      "same": "No change",
+      "new": "New"
+    },
+    "pill": {
+      "readToday": "Read {time}",
+      "readOn": "Read {date}",
+      "snoozedUntil": "Snoozed until {date} {time}"
+    },
+    "state": {
+      "unread": "Unread",
+      "read": "Read",
+      "snoozed": "Snoozed"
+    },
+    "footer": "{total, plural, one {# topic} other {# topics}} = {unread, number} unread + {read, number} read + {snoozed, number} snoozed · Incomplete register data and count progress are in the work center and are not notified",
+    "actions": {
+      "menu": "Options for {title}",
+      "markRead": "Mark as read",
+      "markUnread": "Mark as unread",
+      "snooze": "Snooze",
+      "snoozeDay": "1 day",
+      "snoozeThreeDays": "3 days",
+      "snoozeWeek": "1 week",
+      "cancelSnooze": "Cancel snooze",
+      "changeAssignee": "Change assignee…",
+      "assignDialogTitle": "Change assignee",
+      "assignDialogDescription": "A note for yourself only; the assignee is not notified.",
+      "save": "Save"
+    },
+    "digest": {
+      "title": "Daily digests sent",
+      "subtitle": "Sent once a day, counting only the topics unread when sent",
+      "day": "{date} · {topics, plural, one {# topic} other {# topics}} · {items, plural, one {# item} other {# items}}",
+      "showAll": "Show all history ({days, plural, one {# day} other {# days}})",
+      "legacyTitle": "Before topics were stored separately",
+      "empty": "No daily digest sent yet"
+    },
+    "type_info": "General",
+    "type_warning": "Needs attention",
+    "type_danger": "Urgent",
+    "type_success": "Done"
   },
   "nav": {
     "mainNavigation": "Main navigation",

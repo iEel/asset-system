@@ -39,6 +39,16 @@ export function parseNotificationsParams(input: { status?: ParamValue; assigned?
   }
 }
 
+// The page's own links (group 9 plan 3 task 2): the status always, assigned=1 and digest=all only when on; a link
+// changes one of them and keeps the others.
+export function buildNotificationsHref(locale: string, params: NotificationsParams, change: Partial<NotificationsParams> = {}): string {
+  const next = { ...params, ...change }
+  const query = new URLSearchParams({ status: next.status })
+  if (next.assigned) query.set("assigned", "1")
+  if (next.digestAll) query.set("digest", "all")
+  return `/${locale}/notifications?${query.toString()}`
+}
+
 export type NotificationTopicState = "unread" | "read" | "snoozed"
 
 export type NotificationTopicRow = {
@@ -51,13 +61,16 @@ export type NotificationTopicRow = {
   /** Only while the topic counts as read. */
   readAt: Date | null
   snoozedUntil: Date | null
+  /** The personal assignee note (spec §5.4): its user id, and the name the row shows. */
+  assigneeId: string | null
   assigneeName: string | null
   /** A message key in the `notifications` namespace and its values; the page appends the assignee. */
   detail: { key: string; values: Record<string, string | number> }
   change: DailyCountComparison
 }
 
-export type NotificationLegacyDigest = { id: string; title: string; message: string; createdAt: Date }
+// type is the delivered row's tone (info, warning, danger, success); the page shows it as a badge, as before.
+export type NotificationLegacyDigest = { id: string; title: string; message: string; type: string; createdAt: Date }
 
 export type NotificationsPageData = {
   params: NotificationsParams
@@ -67,6 +80,8 @@ export type NotificationsPageData = {
   backlog: { rows: NotificationTopicRow[]; queues: number; items: number; previousItems: number | null }
   advance: { rows: NotificationTopicRow[]; items: number; previousItems: number | null }
   digest: { days: DigestDay[]; totalDays: number; legacy: NotificationLegacyDigest[] }
+  /** The latest recorded day before today (a Bangkok date at UTC midnight); null when nothing is recorded yet. */
+  previousDay: { day: Date; isYesterday: boolean } | null
   assignees: { id: string; label: string }[]
   canOpenWorkCenter: boolean
 }
@@ -75,7 +90,7 @@ export type LegacyDigestQuery = {
   where: { userId: string; module: "notification_digest"; createdAt?: { lt: Date } }
   orderBy: { createdAt: "desc" }
   take: number
-  select: { id: true; title: true; message: true; createdAt: true }
+  select: { id: true; title: true; message: true; type: true; createdAt: true }
 }
 
 export type NotificationsPageDeps = {
@@ -149,6 +164,33 @@ function formatShortDate(date: Date, locale: string): string {
   }).format(date)
 }
 
+function formatBangkokTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Bangkok" }).format(date)
+}
+
+export type TopicStatePill =
+  | { key: "pill.readToday"; values: { time: string } }
+  | { key: "pill.readOn"; values: { date: string } }
+  | { key: "pill.snoozedUntil"; values: { date: string; time: string } }
+
+// The row's state pill (spec §5.2, §5.3): อ่านแล้ว HH:mm when read today (Bangkok), the date when read before, and
+// เลื่อนถึง date time while snoozed. Unread, or read without a read time, has none.
+export function topicStatePill(
+  row: Pick<NotificationTopicRow, "state" | "readAt" | "snoozedUntil">,
+  now: Date,
+  locale: string,
+): TopicStatePill | null {
+  if (row.state === "snoozed" && row.snoozedUntil) {
+    return { key: "pill.snoozedUntil", values: { date: formatShortDate(row.snoozedUntil, locale), time: formatBangkokTime(row.snoozedUntil) } }
+  }
+  if (row.state === "read" && row.readAt) {
+    return startOfBangkokDay(row.readAt).getTime() === startOfBangkokDay(now).getTime()
+      ? { key: "pill.readToday", values: { time: formatBangkokTime(row.readAt) } }
+      : { key: "pill.readOn", values: { date: formatShortDate(row.readAt, locale) } }
+  }
+  return null
+}
+
 function buildDetail(
   key: WaitingWorkKey,
   context: { ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>>; summary: WorkQueueSummary; today: Date; locale: string },
@@ -160,9 +202,10 @@ function buildDetail(
   }
   const age = context.ages[key]
   if (key === "openRepairs" && age?.kind === "age") return { key: "detail.openRepairsOldest", values: { days: age.days } }
+  // A nearest due date already before today reads เกินกำหนดตั้งแต่ (Task 1 review ruling), today and later ใกล้สุด.
   if ((key === "duePm" || key === "auditActionsDueSoon") && age?.kind === "due") {
     const due = new Date(context.today.getTime() + age.days * dayMs)
-    return { key: "detail.nearestDue", values: { date: formatShortDate(due, context.locale) } }
+    return { key: age.days < 0 ? "detail.overdueSince" : "detail.nearestDue", values: { date: formatShortDate(due, context.locale) } }
   }
   return plain
 }
@@ -200,7 +243,7 @@ export async function getNotificationsPageData(
     where: legacyWhere,
     orderBy: { createdAt: "desc" },
     take: params.digestAll ? LEGACY_ALL : LEGACY_SHOWN,
-    select: { id: true, title: true, message: true, createdAt: true },
+    select: { id: true, title: true, message: true, type: true, createdAt: true },
   })
 
   const summary = buildWorkQueueSummary({ counts: work.counts, visibleKeys: work.visibleKeys, approvalInbox: work.approvalInbox })
@@ -219,6 +262,7 @@ export async function getNotificationsPageData(
       state,
       readAt: state === "read" ? item.readAt : null,
       snoozedUntil: state === "snoozed" && item.snoozedUntil ? new Date(item.snoozedUntil) : null,
+      assigneeId: item.assignedToUserId,
       assigneeName: item.assignedToUserId ? assigneeNameById.get(item.assignedToUserId) ?? item.assignedToUserId : null,
       detail: buildDetail(key, { ages, summary, today, locale: input.locale }),
       change: compareWithPrevious(item.count, previous?.counts[key], hasPrevious),
@@ -253,6 +297,7 @@ export async function getNotificationsPageData(
       previousItems: sumPrevious(summary.advance.keys),
     },
     digest: { days, totalDays: stats.totalDays, legacy },
+    previousDay: previous ? { day: previous.day, isYesterday: previous.isYesterday } : null,
     assignees,
     canOpenWorkCenter: hasPermission(user, "dashboard", "view"),
   }

@@ -117,7 +117,9 @@ test("every work-center link needs dashboard:view, and access denied goes home (
   }
   assert.match(sources.myAssets, /const canOpenWorkCenter = hasPermission\(user, "dashboard", "view"\)/)
   assert.match(sources.myAssets, /actions=\{canOpenWorkCenter \? \(\n\s+<Link href=\{`\/\$\{locale\}\/work-center\?view=mine`\}/)
-  assert.match(sources.notifications, /const canOpenWorkCenter = hasPermission\(user, "dashboard", "view"\)/)
+  // Group 9 plan 3 Task 2: the notifications page takes the flag from its loader, which reads the permission.
+  assert.match(sources.notifications, /const canOpenWorkCenter = data\.canOpenWorkCenter/)
+  assert.match(readLf("src/lib/notifications-page-data.ts"), /canOpenWorkCenter: hasPermission\(user, "dashboard", "view"\)/)
   assert.match(sources.dashboard, /const canOpenWorkCenter = user \? hasPermission\(user, "dashboard", "view"\) : false/)
   assert.match(sources.bell, /const canOpenWorkCenter = hasNavigationPermission\(user, \{ module: "dashboard", action: "view" \}\)/)
   assert.match(sources.bell, /import \{ hasNavigationPermission \} from "@\/lib\/navigation-permissions"/)

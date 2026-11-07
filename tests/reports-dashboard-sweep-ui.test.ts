@@ -9,21 +9,24 @@ import test from "node:test"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const C = "src/components/"
 
-test("notification center actions: the open link and the two commands are outline md, with the shared disabled look (spec 2D M29)", () => {
+// Group 9 plan 3 Task 2 (board NT): the commands moved into the row's ⋯ (RowActions); read-all and the assign dialog's
+// save are Button parts with the shared disabled look; no raw <button> and no fading.
+test("notification center actions: ⋯ is RowActions, read-all and the assign save are Buttons with the shared disabled look (spec 2D M29; board NT)", () => {
   const source = read(`${C}notifications/notification-center-actions.tsx`)
-  assert.match(source, /className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}/)
-  assert.equal(source.match(/<Button\s+variant="outline"\s+size="md"/g)?.length, 2)
-  assert.equal(source.match(/disabled=\{isPending\}/g)?.length, 3, "the two buttons and the assignee select")
-  assert.doesNotMatch(source, /<button\b|disabled:opacity|\bh-9\b|hover:bg-accent/)
+  assert.match(source, /<RowActions code=\{item\.title\} menuLabel=\{labels\.menu\} groups=\{groups\} openerRef=\{openerRef\}/)
+  assert.match(source, /<Button variant="outline" size="sm" onClick=\{readAll\} disabled=\{isPending\}>/)
+  assert.equal(source.match(/disabled=\{isPending\}/g)?.length, 3, "read-all, the assignee select and the assign save")
+  assert.doesNotMatch(source, /<button|disabled:opacity|h-9|hover:bg-accent/)
 })
 
 const D = "src/app/[locale]/(dashboard)/"
 
-test("notifications: the cards use the panel classes and the count is a StatusBadge (spec 2D D9, M30)", () => {
+test("notifications: the list and the digest use the panel classes and states are StatusBadges (spec 2D D9, M30; board NT)", () => {
   const source = read(`${D}notifications/page.tsx`)
-  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}/g)?.length, 2)
-  assert.match(source, /<StatusBadge label=\{formatCount\(item\.count\)\} tone=\{item\.tone\} \/>/)
-  assert.doesNotMatch(source, /function toneClass\b|rounded-full|rounded-lg border/)
+  assert.match(source, /className=\{cn\(getPanelClasses\(\), "min-w-0 overflow-hidden"\)\}/)
+  assert.match(read(`${C}notifications/notification-digest-panel.tsx`), /className=\{cn\(getPanelClasses\(\), "min-w-0"\)\}/)
+  assert.match(read(`${C}notifications/notification-topic-row.tsx`), /<StatusBadge label=\{t\(pill\.key, pill\.values\)\} tone="muted" \/>/)
+  assert.doesNotMatch(source, /function toneClass|rounded-lg border/)
 })
 
 test("report presets: lg save beside the 40px field, an outline icon-sm delete, a text-link row, an error Notice and EmptyNote (spec 2D M29, D5, D7)", () => {

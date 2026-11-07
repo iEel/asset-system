@@ -240,8 +240,9 @@ test("detail lines per key", async () => {
   const detailOf = (key: WaitingWorkKey) => [...data.backlog.rows, ...data.advance.rows].find((row) => row.key === key)?.detail
   assert.deepEqual(detailOf("approvalInbox"), { key: "detail.approvalParts", values: { disposal: 4, mismatches: 14, rounds: 1 } })
   assert.deepEqual(detailOf("openRepairs"), { key: "detail.openRepairsOldest", values: { days: 18 } })
-  // Today 7 Nov 2569 (Bangkok); PM two days overdue, the nearest action due in 15 days.
-  assert.deepEqual(detailOf("duePm"), { key: "detail.nearestDue", values: { date: "5 พ.ย." } })
+  // Today 7 Nov 2569 (Bangkok); PM two days overdue (Task 1 review ruling: เกินกำหนดตั้งแต่, not ใกล้สุด), the nearest
+  // action due in 15 days.
+  assert.deepEqual(detailOf("duePm"), { key: "detail.overdueSince", values: { date: "5 พ.ย." } })
   assert.deepEqual(detailOf("auditActionsDueSoon"), { key: "detail.nearestDue", values: { date: "22 พ.ย." } })
   assert.deepEqual(detailOf("stuckRepairs"), { key: "stuckRepairsDetail", values: {} })
   assert.deepEqual(detailOf("returnsDueSoon"), { key: "returnsDueSoonDetail", values: {} })
@@ -297,7 +298,7 @@ test("a failed recording does not break the page", async () => {
 test("legacy digest rows are filtered by module", async () => {
   const firstDay = new Date("2026-11-03T00:00:00.000Z")
   const days = [{ day: new Date("2026-11-06T00:00:00.000Z"), topics: [{ key: "approvalInbox" as const, count: 3 }], items: 3 }]
-  const legacy = [{ id: "n-1", title: "สรุป", message: "ข้อความ", createdAt: new Date("2026-11-01T00:30:00.000Z") }]
+  const legacy = [{ id: "n-1", title: "สรุป", message: "ข้อความ", type: "warning", createdAt: new Date("2026-11-01T00:30:00.000Z") }]
   const { deps, calls } = fakes(work({ approvalInbox: 3 }), {}, {
     readDigestDays: async (_userId, options) => {
       calls.digestLimits.push(options.limit)
@@ -321,7 +322,7 @@ test("legacy digest rows are filtered by module", async () => {
       },
       orderBy: { createdAt: "desc" },
       take: 10,
-      select: { id: true, title: true, message: true, createdAt: true },
+      select: { id: true, title: true, message: true, type: true, createdAt: true },
     },
   ])
 
@@ -333,4 +334,68 @@ test("legacy digest rows are filtered by module", async () => {
   const none = fakes(work({ approvalInbox: 3 }))
   await loader.getNotificationsPageData(user, input(), none.deps)
   assert.deepEqual((none.calls.legacyArgs[0] as { where: unknown }).where, { userId: "user-1", module: "notification_digest" })
+})
+
+test("a nearest due date before today reads overdue since, today and later read nearest", async () => {
+  const waiting = work({ duePm: 3, auditActionsDueSoon: 2 })
+  const { deps } = fakes(waiting, {}, {
+    getWaitingWorkAges: async () => ({
+      duePm: { kind: "due", days: 0, overdue: false },
+      auditActionsDueSoon: { kind: "due", days: -1, overdue: true },
+    }),
+  })
+  const data = await loader.getNotificationsPageData(user, input(), deps)
+  const detailOf = (key: WaitingWorkKey) => [...data.backlog.rows, ...data.advance.rows].find((row) => row.key === key)?.detail
+  assert.deepEqual(detailOf("duePm"), { key: "detail.nearestDue", values: { date: "7 พ.ย." } })
+  assert.deepEqual(detailOf("auditActionsDueSoon"), { key: "detail.overdueSince", values: { date: "6 พ.ย." } })
+})
+
+test("the previous recorded day is given with whether it is yesterday", async () => {
+  const waiting = work({ approvalInbox: 3 })
+  const none = await loader.getNotificationsPageData(user, input(), fakes(waiting).deps)
+  assert.equal(none.previousDay, null)
+  const day = new Date("2026-11-04T00:00:00.000Z")
+  const { deps } = fakes(waiting, {}, { readPreviousDayCounts: async () => ({ day, isYesterday: false, counts: { approvalInbox: 1 } }) })
+  const data = await loader.getNotificationsPageData(user, input(), deps)
+  assert.deepEqual(data.previousDay, { day, isYesterday: false })
+})
+
+test("an empty status tab shows its own empty state", async () => {
+  // Review focus 2: status=snoozed with nothing snoozed lists nothing (not the unread rows) and counts 0.
+  const { deps } = fakes(work({ approvalInbox: 3, licenseExpiringSoon: 1 }))
+  const data = await loader.getNotificationsPageData(user, input({ status: "snoozed" }), deps)
+  assert.equal(data.params.status, "snoozed")
+  assert.equal(data.counts.snoozed, 0)
+  assert.deepEqual([...data.backlog.rows, ...data.advance.rows], [])
+  assert.equal(data.counts.unread, 2)
+})
+
+test("buildNotificationsHref keeps the other params and changes one", () => {
+  const params = loader.parseNotificationsParams({ status: "read", assigned: "1" })
+  assert.equal(loader.buildNotificationsHref("th", params), "/th/notifications?status=read&assigned=1")
+  assert.equal(loader.buildNotificationsHref("th", params, { status: "all" }), "/th/notifications?status=all&assigned=1")
+  assert.equal(loader.buildNotificationsHref("th", params, { assigned: false }), "/th/notifications?status=read")
+  assert.equal(loader.buildNotificationsHref("en", params, { digestAll: true }), "/en/notifications?status=read&assigned=1&digest=all")
+  assert.equal(
+    loader.buildNotificationsHref("th", loader.parseNotificationsParams({}), { assigned: true }),
+    "/th/notifications?status=unread&assigned=1",
+  )
+})
+
+test("the state pill reads the time today, the date before, and the snooze end", () => {
+  const base = { state: "unread" as const, readAt: null, snoozedUntil: null }
+  assert.equal(loader.topicStatePill(base, now, "th"), null)
+  // Read 09:15 Bangkok today.
+  assert.deepEqual(loader.topicStatePill({ ...base, state: "read", readAt: readTime }, now, "th"), { key: "pill.readToday", values: { time: "09:15" } })
+  // Read 6 Nov 23:30 Bangkok: yesterday, so the date.
+  assert.deepEqual(
+    loader.topicStatePill({ ...base, state: "read", readAt: new Date("2026-11-06T16:30:00.000Z") }, now, "th"),
+    { key: "pill.readOn", values: { date: "6 พ.ย." } },
+  )
+  // A read row with no read time (read before the column existed) has no pill.
+  assert.equal(loader.topicStatePill({ ...base, state: "read" }, now, "th"), null)
+  assert.deepEqual(
+    loader.topicStatePill({ ...base, state: "snoozed", snoozedUntil: new Date("2026-11-08T02:00:00.000Z") }, now, "th"),
+    { key: "pill.snoozedUntil", values: { date: "8 พ.ย.", time: "09:00" } },
+  )
 })

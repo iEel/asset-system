@@ -132,23 +132,13 @@
   },
   "notifications": {
     "title": "การแจ้งเตือน",
-    "empty": "ยังไม่มีงานค้างที่ต้องแจ้งเตือน",
     "openWorkCenter": "เปิดศูนย์งานค้าง",
     "openNotificationCenter": "เปิดศูนย์แจ้งเตือน",
-    "centerTitle": "ศูนย์แจ้งเตือน",
-    "centerSubtitle": "ติดตามรายการแจ้งเตือนแบบอ่านแล้ว เลื่อนเตือน และมอบหมายผู้รับผิดชอบ",
-    "active": "ยังต้องติดตาม",
     "read": "อ่านแล้ว",
     "snoozed": "เลื่อนเตือน",
     "assigned": "มอบหมายแล้ว",
-    "openItem": "เปิดรายการ",
-    "markRead": "อ่านแล้ว",
-    "markUnread": "ยังไม่อ่าน",
-    "snoozeOneDay": "เลื่อน 1 วัน",
     "assignTo": "ผู้รับผิดชอบ",
     "unassigned": "ยังไม่มอบหมาย",
-    "assignedTo": "ผู้รับผิดชอบ",
-    "mutedUntil": "เตือนอีกครั้ง",
     "saved": "บันทึกสถานะแจ้งเตือนแล้ว",
     "saveFailed": "บันทึกสถานะแจ้งเตือนไม่สำเร็จ",
     "approvalInbox": "งานรออนุมัติ",
@@ -171,13 +161,6 @@
     "warrantyExpiringSoonDetail": "ทรัพย์สินที่ประกันจะหมดตามเงื่อนไขแจ้งเตือน",
     "licenseExpiringSoon": "License ใกล้หมดอายุ",
     "licenseExpiringSoonDetail": "Software/License ที่ต้องต่ออายุหรือทบทวน",
-    "deliveredDigestTitle": "Digest ที่ส่งแล้ว",
-    "deliveredDigestSubtitle": "รายการแจ้งเตือนที่ระบบส่งแบบสรุปรายวัน เพื่อให้ผู้ใช้ย้อนดูสิ่งที่ถูกแจ้งไปแล้วได้",
-    "deliveredDigestEmpty": "ยังไม่มี digest ที่ถูกส่งถึงผู้ใช้นี้",
-    "type_info": "ทั่วไป",
-    "type_warning": "ควรติดตาม",
-    "type_danger": "เร่งด่วน",
-    "type_success": "เรียบร้อย",
     "increaseAnnouncement": "{title} เพิ่ม {count} รายการ",
     "bellLabel": "การแจ้งเตือน มี {count, number} หัวข้อที่ยังไม่อ่าน",
     "bellEmpty": "ไม่มีงานค้าง",
@@ -194,8 +177,83 @@
     "detail": {
       "approvalParts": "ตัดจำหน่าย {disposal, number} · รายการไม่ตรง {mismatches, number} · ปิดรอบตรวจนับ {rounds, number}",
       "openRepairsOldest": "บันทึกซ่อมที่รอกด \"ซ่อมเสร็จ\" · นานสุด {days, number} วัน",
-      "nearestDue": "ใกล้สุด {date}"
-    }
+      "nearestDue": "ใกล้สุด {date}",
+      "overdueSince": "เกินกำหนดตั้งแต่ {date}",
+      "assignee": "มอบหมาย {name}"
+    },
+    "empty": {
+      "unread": "ไม่มีหัวข้อที่ยังไม่อ่าน",
+      "read": "ไม่มีหัวข้อที่อ่านแล้ว",
+      "snoozed": "ไม่มีหัวข้อที่เลื่อนเตือนอยู่",
+      "all": "ยังไม่มีงานค้างที่ต้องแจ้งเตือน"
+    },
+    "bellLine": "กระดิ่งแถบบน = หัวข้อที่ยังไม่อ่าน {count, number}",
+    "pageSubtitle": "สรุปคิวงานชุดเดียวกับศูนย์งานค้าง ตัวเลขตรงกัน กดแถวเพื่อเปิดคิวนั้น",
+    "help": "<b>ทำเป็นอ่านแล้ว</b> = เลิกนับบนกระดิ่งจนกว่าจำนวนในคิวจะเปลี่ยน งานยังอยู่ในศูนย์งานค้างจนกว่าจะทำเสร็จ · <b>เลื่อนเตือน</b> = ซ่อนไว้จนถึงเวลาที่เลือก แล้วกลับมาเป็นยังไม่อ่าน",
+    "statusNavigation": "สถานะการแจ้งเตือน",
+    "tabs": {
+      "unread": "ยังไม่อ่าน",
+      "read": "อ่านแล้ว",
+      "snoozed": "เลื่อนเตือน",
+      "all": "ทั้งหมด"
+    },
+    "assignedFilter": "มอบหมายแล้ว {count, number}",
+    "markAllReadCommand": "ทำเป็นอ่านแล้วทั้งหมด",
+    "topicsLabel": "หัวข้อแจ้งเตือน {count, number} หัวข้อ",
+    "sections": {
+      "backlog": "งานค้าง",
+      "backlogMeta": "{queues, number} คิว ตรงกับศูนย์งานค้าง",
+      "advance": "เตือนล่วงหน้า",
+      "advanceMeta": "ยังไม่ถึงขั้นเป็นงานค้าง",
+      "items": "{count, number} รายการ",
+      "yesterday": "เมื่อวาน {count, number}",
+      "onDay": "เมื่อ {date} {count, number}"
+    },
+    "change": {
+      "upWord": "เพิ่ม",
+      "downWord": "ลด",
+      "fromYesterday": "{count, number} จากเมื่อวาน",
+      "fromDay": "{count, number} จาก {date}",
+      "same": "เท่าเดิม",
+      "new": "ใหม่"
+    },
+    "pill": {
+      "readToday": "อ่านแล้ว {time}",
+      "readOn": "อ่านแล้ว {date}",
+      "snoozedUntil": "เลื่อนถึง {date} {time}"
+    },
+    "state": {
+      "unread": "ยังไม่อ่าน",
+      "read": "อ่านแล้ว",
+      "snoozed": "เลื่อนเตือนอยู่"
+    },
+    "footer": "{total, number} หัวข้อ = ยังไม่อ่าน {unread, number} + อ่านแล้ว {read, number} + เลื่อนเตือน {snoozed, number} · ข้อมูลทะเบียนไม่ครบและความคืบหน้าตรวจนับดูที่ศูนย์งานค้าง ไม่ส่งแจ้งเตือน",
+    "actions": {
+      "menu": "ตัวเลือกของ {title}",
+      "markRead": "ทำเป็นอ่านแล้ว",
+      "markUnread": "ทำเป็นยังไม่อ่าน",
+      "snooze": "เลื่อนเตือน",
+      "snoozeDay": "1 วัน",
+      "snoozeThreeDays": "3 วัน",
+      "snoozeWeek": "1 สัปดาห์",
+      "cancelSnooze": "ยกเลิกการเลื่อนเตือน",
+      "changeAssignee": "เปลี่ยนผู้รับผิดชอบ…",
+      "assignDialogTitle": "เปลี่ยนผู้รับผิดชอบ",
+      "assignDialogDescription": "บันทึกไว้ดูเองเท่านั้น ผู้รับผิดชอบไม่ได้รับแจ้ง",
+      "save": "บันทึก"
+    },
+    "digest": {
+      "title": "สรุปรายวันที่ส่งแล้ว",
+      "subtitle": "ส่งวันละครั้ง นับเฉพาะหัวข้อที่ยังไม่อ่านตอนส่ง",
+      "day": "{date} · {topics, number} หัวข้อ · {items, number} รายการ",
+      "showAll": "ดูย้อนหลังทั้งหมด ({days, number} วัน)",
+      "legacyTitle": "ก่อนเก็บแบบแยกหัวข้อ",
+      "empty": "ยังไม่มีสรุปรายวันที่ส่ง"
+    },
+    "type_info": "ทั่วไป",
+    "type_warning": "ควรติดตาม",
+    "type_danger": "เร่งด่วน",
+    "type_success": "เรียบร้อย"
   },
   "nav": {
     "mainNavigation": "เมนูหลัก",
