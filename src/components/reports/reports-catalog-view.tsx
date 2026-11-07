@@ -250,7 +250,8 @@ function CatalogReportCard({
     : report.formats.map((format) => (format === "pdf" ? t("catalogFormatPdf") : t("catalogFormatExcel")))
 
   const actions = (
-    <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ms-auto">
+    // Phones: one column, each export button full width (board RP-Phone); from md one wrapping row at the end.
+    <div data-report-catalog-actions className="flex min-w-0 flex-col gap-2 md:ms-auto md:flex-row md:flex-wrap md:items-center">
       {missing.map((permission) => (
         <span key={`${permission.module}:${permission.action}`} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <StatusBadge label={t("catalogNoExportRight")} tone="muted" />
@@ -269,7 +270,7 @@ function CatalogReportCard({
           href={entry.href}
           download
           aria-label={t("catalogExportName", { label: t(entry.label), report: title })}
-          className={buttonVariants({ variant: entry.format === "pdf" ? "outline" : "default", size: "sm" })}
+          className={cn(buttonVariants({ variant: entry.format === "pdf" ? "outline" : "default", size: "sm" }), "w-full md:w-auto")}
         >
           {entry.format === "pdf" ? null : <Download aria-hidden="true" />}
           {t(entry.label)}
@@ -293,7 +294,7 @@ function CatalogReportCard({
 
   if (variant === "row") {
     return (
-      <div data-report-catalog-report={report.key} className="flex min-w-0 flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
+      <div data-report-catalog-report={report.key} className="flex min-w-0 flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-foreground text-pretty">{title}</h3>
           <p className="text-meta text-muted-foreground text-pretty">
@@ -319,7 +320,7 @@ function CatalogReportCard({
           <Chip key={format}>{format}</Chip>
         ))}
       </div>
-      <div className="mt-auto flex min-w-0 flex-col gap-2 border-t border-border pt-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="mt-auto flex min-w-0 flex-col gap-2 border-t border-border pt-2.5 md:flex-row md:flex-wrap md:items-center">
         {lastExport}
         {actions}
       </div>

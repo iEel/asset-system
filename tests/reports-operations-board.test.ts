@@ -105,3 +105,34 @@ test("the kept blocks: cross-scope with its equation, preview and export, idle, 
   // The old 8-row preview of issues is gone: the queue pages through every issue.
   assert.doesNotMatch(page, /take: 8|getDataQualityIssues/)
 })
+
+// Group 10 plan 2 Task 3 (board RP-Phone): below md the five cells sit two a row, the queue rows are cards (name, tag,
+// issue badges, category · branch, the fix button full width) and the paging controls are 44px tall.
+test("queue cards below md", () => {
+  assert.match(view, /<DataTable data-report-ops-table [^\n]*className="hidden md:block">/)
+  const cards = view.slice(view.indexOf("<ul data-report-ops-cards"), view.indexOf("</ul>", view.indexOf("<ul data-report-ops-cards")))
+  assert.match(cards, /<ul data-report-ops-cards className="[^"]*md:hidden">/)
+  const order = ["<QueueAssetName", "<QueueIssueBadges", "{asset.categoryName} · {asset.branchName}", "<QueueFix"].map((part) => cards.indexOf(part))
+  assert.ok(order.every((at, index) => at >= 0 && (index === 0 || at > order[index - 1])), String(order))
+  assert.match(cards, /<QueueFix [^\n]*fullWidth \/>/)
+  assert.match(view, /buttonVariants\(\{ size: "sm" \}\), fullWidth && "w-full"\)/)
+  // The cells: the shared StatStrip, two columns below lg.
+  assert.match(read("src/components/ui/stat-strip.tsx"), /className=\{cn\("grid grid-cols-2 [^"]*lg:grid-cols-none/)
+  // Paging: the shared Pagination's controls are size sm buttons, 44px below md.
+  assert.match(read("src/components/ui/pagination.tsx"), /const controlClasses = buttonVariants\(\{ variant: "outline", size: "sm" \}\)/)
+  assert.match(read("src/components/ui/button-variants.ts"), /const sizeSm = "min-h-11 [^"]*md:min-h-0/)
+})
+
+// The controller's ruling after Task 1: each issue badge (table and cards) links to that issue's own fix place, as the
+// old page's per-issue links did; the edit-page targets (responsibility, serial) only with asset:edit.
+test("each issue badge links to its own fix place; edit targets only with asset:edit", () => {
+  assert.equal(view.match(/<QueueIssueBadges locale=\{locale\} asset=\{asset\} canEdit=\{canEdit\} labels=\{issueLabels\} \/>/g)?.length, 2)
+  assert.match(view, /const fix = getReportIssueFix\(locale, asset\.id, issue\)/)
+  assert.match(view, /return fix\.place === "detail" \|\| canEdit \? \(\n\s+<Link\n\s+key=\{issue\}\n\s+data-report-ops-issue=\{issue\}\n\s+href=\{fix\.href\}/)
+  assert.match(view, /<span key=\{issue\} data-report-ops-issue=\{issue\} className="[^"]*">\n\s+\{badge\}\n\s+<\/span>/)
+  const lib = read("src/lib/reports-operations-data.ts")
+  assert.match(lib, /if \(issue === "serial"\) return \{ href: editHref, fieldKey: "serialNumber", place: "edit" \}/)
+  assert.match(lib, /if \(issue === "photo"\) return \{ href: buildAssetDetailSectionHref\(locale, assetId, null, "photos"\), fieldKey: "photos", place: "detail" \}/)
+  assert.match(lib, /if \(issue === "warranty"\) return \{ href: buildAssetDetailSectionHref\(locale, assetId, null, "purchase"\), fieldKey: "warranty", place: "detail" \}/)
+  assert.match(lib, /return \{ href: editHref, fieldKey: "responsibility", place: "edit" \}/)
+})

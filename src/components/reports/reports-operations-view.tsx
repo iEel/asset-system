@@ -18,6 +18,7 @@ import { ASSET_EXPORT_MAX_ROWS, assetExportCapped } from "@/lib/asset-export-lim
 import { formatCount } from "@/lib/display-format"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 import {
+  getReportIssueFix,
   OPERATIONS_QUEUE_ANCHOR,
   REPORT_ISSUE_KINDS,
   type OperationsQueueRow,
@@ -269,7 +270,7 @@ export async function ReportsOperationsView({
                         <QueueAssetName locale={locale} asset={asset} />
                       </DataTableCell>
                       <DataTableCell>
-                        <QueueIssueBadges issues={asset.issues} labels={issueLabels} />
+                        <QueueIssueBadges locale={locale} asset={asset} canEdit={canEdit} labels={issueLabels} />
                       </DataTableCell>
                       <DataTableCell className="text-muted-foreground">
                         <span className="block">{asset.categoryName}</span>
@@ -287,7 +288,7 @@ export async function ReportsOperationsView({
                 {queue.rows.map((asset) => (
                   <li key={asset.id} className="space-y-2 px-4 py-3">
                     <QueueAssetName locale={locale} asset={asset} />
-                    <QueueIssueBadges issues={asset.issues} labels={issueLabels} />
+                    <QueueIssueBadges locale={locale} asset={asset} canEdit={canEdit} labels={issueLabels} />
                     <p className="text-meta text-muted-foreground">{asset.categoryName} · {asset.branchName}</p>
                     <QueueFix locale={locale} asset={asset} canEdit={canEdit} fixLabel={labels.fixData} place={fixPlace(asset)} openLabel={t("opsOpenAssetPage")} noEditLabel={t("opsNoEditRight")} fullWidth />
                   </li>
@@ -373,13 +374,40 @@ function QueueAssetName({ locale, asset }: { locale: string; asset: OperationsQu
   )
 }
 
-// Missing data is a warning; a warranty ending soon is information (a date coming, not a gap).
-function QueueIssueBadges({ issues, labels }: { issues: ReportIssueKind[]; labels: Record<ReportIssueKind, string> }) {
+// Missing data is a warning; a warranty ending soon is information (a date coming, not a gap). Each badge is a link to
+// its own issue's fix place, as the old page's per-issue links: the asset page's photos or purchase section, and the
+// edit page (responsibility, serial) only with asset:edit; without it those badges stay plain.
+function QueueIssueBadges({
+  locale,
+  asset,
+  canEdit,
+  labels,
+}: {
+  locale: string
+  asset: OperationsQueueRow
+  canEdit: boolean
+  labels: Record<ReportIssueKind, string>
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {issues.map((issue) => (
-        <StatusBadge key={issue} label={labels[issue]} tone={issue === "warranty" ? "info" : "warning"} />
-      ))}
+      {asset.issues.map((issue) => {
+        const badge = <StatusBadge label={labels[issue]} tone={issue === "warranty" ? "info" : "warning"} />
+        const fix = getReportIssueFix(locale, asset.id, issue)
+        return fix.place === "detail" || canEdit ? (
+          <Link
+            key={issue}
+            data-report-ops-issue={issue}
+            href={fix.href}
+            className="inline-flex min-h-11 items-center rounded-control transition-opacity hover:opacity-80 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+          >
+            {badge}
+          </Link>
+        ) : (
+          <span key={issue} data-report-ops-issue={issue} className="inline-flex min-h-11 items-center md:min-h-0">
+            {badge}
+          </span>
+        )
+      })}
     </div>
   )
 }

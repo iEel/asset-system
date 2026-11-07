@@ -26,3 +26,23 @@ export async function expectCatalogRights(page: Page, user: E2eUserKey) {
   await page.locator("summary", { hasText: "สิทธิ์รายงานของคุณ" }).click()
   for (const plan of EXPORTS) await expect(page.getByText(permissionBadge(user, plan), { exact: true })).toBeVisible()
 }
+
+// The operations queue's cell (a filter link, issue=) by its label, inside the five cells: the issue badges of the rows
+// below carry the same words as links.
+export function queueCell(page: Page, label: string) {
+  return page.locator("[data-report-ops-cells]").getByRole("link", { name: label, exact: true })
+}
+
+// A report's card in the catalog (data-report-catalog-report, src/lib/report-catalog.ts keys), in its audience's
+// section (data-report-catalog-section).
+export function catalogCard(page: Page, audience: string, report: string) {
+  return page.locator(`[data-report-catalog-section="${audience}"] [data-report-catalog-report="${report}"]`)
+}
+
+// Today's date as the catalog's "ส่งออกล่าสุด" line writes it (formatAsOf, src/lib/dashboard-overview-rules.ts):
+// Bangkok time, Buddhist year, "8 พ.ย. 2569" (the time after it is left out).
+export function bangkokToday(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric" }).formatToParts(now)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((candidate) => candidate.type === type)?.value ?? ""
+  return `${part("day")} ${part("month")} ${part("year")}`
+}

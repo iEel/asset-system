@@ -116,3 +116,18 @@ test("after the sections: the scope legend, the saved presets and สิทธ�
   // Tokens only.
   assert.doesNotMatch(view, /#[0-9a-fA-F]{3,6}\b|text-white|bg-white|style=/)
 })
+
+// Group 10 plan 2 Task 3 (board RP-Phone): below md the cards stack one a column, their badges wrap, the export buttons
+// are full width, and each audience keeps its header.
+test("catalog cards stack below md", () => {
+  assert.match(view, /className=\{cn\("grid min-w-0 grid-cols-1 gap-6", row\.length > 1 && "md:grid-cols-2 md:gap-3"\)\}/)
+  assert.match(view, /<div className=\{cn\("grid grid-cols-1 gap-3", !paired && "md:grid-cols-2"\)\}>/)
+  assert.match(view, /<div className="flex min-w-0 flex-wrap gap-1\.5">\n\s+<StatusBadge label=\{scope\}/)
+  assert.match(view, /<div data-report-catalog-actions className="flex min-w-0 flex-col gap-2 md:ms-auto md:flex-row md:flex-wrap md:items-center">/)
+  assert.match(view, /className=\{cn\(buttonVariants\(\{ variant: entry\.format === "pdf" \? "outline" : "default", size: "sm" \}\), "w-full md:w-auto"\)\}/)
+  assert.match(view, /border-t border-border pt-2\.5 md:flex-row md:flex-wrap md:items-center">/)
+  assert.match(view, /<div data-report-catalog-report=\{report\.key\} className="flex min-w-0 flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:gap-3">/)
+  // The section header (title, สำหรับ line, count) stays on every width.
+  assert.match(view, /<div className="mb-2\.5 flex items-center gap-2\.5">\n\s+<div className="min-w-0">\n\s+<h2 id=\{headingId\}/)
+  assert.doesNotMatch(view, /\bsm:/)
+})

@@ -44,7 +44,8 @@ test("report presets: lg save beside the 40px field, an outline icon-sm delete, 
 test("report catalog: panels, /api downloads as plain <a>, the cadence a Chip and permissions as status badges (spec 2D D9, M29, M31)", () => {
   const source = read(`${C}reports/reports-catalog-view.tsx`)
   assert.match(source, /<a\n\s+key=\{entry\.href\}\n\s+href=\{entry\.href\}\n\s+download\n/)
-  assert.match(source, /className=\{buttonVariants\(\{ variant: entry\.format === "pdf" \? "outline" : "default", size: "sm" \}\)\}/)
+  // Task 3 (board RP-Phone): full width below md.
+  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: entry\.format === "pdf" \? "outline" : "default", size: "sm" \}\), "w-full md:w-auto"\)\}/)
   assert.match(source, /<Link href=\{report\.openHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\)/)
   assert.match(source, /\{report\.cadenceKey \? <Chip>\{t\(report\.cadenceKey\)\}<\/Chip> : null\}/)
   assert.match(source, /<StatusBadge label=\{scope\} tone=\{report\.scope === "system" \? "muted" : "info"\} wrap \/>/)
@@ -58,7 +59,8 @@ test("report operations: ContentPanels, the cross-scope export as a plain <a>, t
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 4)
   assert.match(source, /<a href=\{crossScope\.exportHref\} download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   // Group 10 plan 2 Task 1 (board RP-Ops): a queue row's issues are badges, and one fix button opens the first issue's place.
-  assert.match(source, /<StatusBadge key=\{issue\} label=\{labels\[issue\]\} tone=\{issue === "warranty" \? "info" : "warning"\} \/>/)
+  // Task 3: each badge is a link to its own issue's fix place (the edit page only with asset:edit).
+  assert.match(source, /const badge = <StatusBadge label=\{labels\[issue\]\} tone=\{issue === "warranty" \? "info" : "warning"\} \/>/)
   assert.match(source, /<StatusBadge key=\{label\} label=\{label\} tone="warning" \/>/)
   assert.match(source, /<Link href=\{asset\.fix\.href\} className=\{cn\(buttonVariants\(\{ size: "sm" \}\), fullWidth && "w-full"\)\}>/)
   assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{title\}<\/h3>/)

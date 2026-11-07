@@ -399,3 +399,41 @@ test("the round's accounting Excel is a disposal:view report, not one of the six
   assert.ok(refusals.isWriteLink("/th/disposal/rounds/new") && !refusals.isWriteLink("/th/disposal/rounds"))
   assert.ok(refusals.READ_ONLY_LISTS.includes("/th/disposal/rounds"))
 })
+
+test("the reports spec's operations queue and catalog words and hooks (group 10 plan 2 Task 3)", async () => {
+  const { bangkokToday } = await import("../e2e/cross-cutting/support/reports-ui.ts")
+  const { formatAsOf } = await import("../src/lib/dashboard-overview-rules.ts")
+  const labels = thai.reportsPage as Record<string, string>
+  const roles = thai.adminRolesPage as { actions: Record<string, string>; modules: Record<string, string> }
+  const spec = read("e2e/cross-cutting/reports.spec.ts")
+  const operations = read("src/components/reports/reports-operations-view.tsx")
+  const catalog = read("src/components/reports/reports-catalog-view.tsx")
+  // The queue: the serial cell's label, the header "{issue} {count} ชิ้น", the range, the export's words and hooks.
+  assert.equal(labels.missingSerial, "ไม่มีหมายเลขเครื่อง")
+  assert.equal(labels.opsQueueHeader, "{issue} {count, number} ชิ้น")
+  assert.equal(labels.opsQueueRange, "แสดง {from, number}–{to, number} จาก {total, number}")
+  assert.equal(labels.opsExport, "ส่งออก {count, number} รายการ Excel")
+  for (const hook of ["<div data-report-ops-cells>", "data-report-ops-queue-head", "data-report-ops-export href=", "data-report-ops-issue={issue}"]) {
+    assert.ok(operations.includes(hook), hook)
+  }
+  assert.ok(spec.includes(`toHaveText("ไม่มีหมายเลขเครื่อง 3 ชิ้น")`) && spec.includes(`hasText: "แสดง 1–3 จาก 3"`))
+  // The run's three report assets are created without a serial number, so issue=serial holds them.
+  const itStaff = spec.slice(spec.indexOf(`test.describe("IT staff"`), spec.indexOf(`test.describe("the viewer"`))
+  assert.ok(!itStaff.includes("serialNumber"), "no serial number on the run's report assets")
+  const records = read("e2e/cross-cutting/support/records.ts")
+  const createAssetBody = records.slice(records.indexOf("export async function createAsset("), records.indexOf("\n}\n", records.indexOf("export async function createAsset(")))
+  assert.ok(createAssetBody.includes(`"/api/assets", {`) && !createAssetBody.includes("serialNumber"), "createAsset sends no serial")
+  // The catalog: the sections and cards by key, the export's name, the last-export line and the permission words.
+  assert.ok(catalog.includes("data-report-catalog-section={section.audience}") && catalog.includes("data-report-catalog-report={report.key}"))
+  assert.ok(catalog.includes("<p data-report-last-export"))
+  assert.equal(labels.catalogExportName, "{label}: {report}")
+  assert.equal(`${labels.catalogExportExcel}: ${labels.assetRegister}`, "ส่งออก Excel: ทะเบียนทรัพย์สิน")
+  assert.equal(labels.catalogGroupAccounting, "บัญชีและทะเบียนทรัพย์สิน")
+  assert.equal(labels.catalogLastExport, "ส่งออกล่าสุด")
+  assert.equal(labels.catalogNoExportRight, "ไม่มีสิทธิ์ส่งออก")
+  assert.equal(labels.catalogNeedsPermission.replace("{action}", roles.actions.export).replace("{module}", roles.modules.report), "ต้องมีสิทธิ์ส่งออกของรายงาน")
+  // bangkokToday is the date part of the line's formatAsOf.
+  const now = new Date("2026-11-07T18:30:00Z")
+  assert.equal(bangkokToday(now), "8 พ.ย. 2569")
+  assert.ok(formatAsOf(now, "th").startsWith(`${bangkokToday(now)} `))
+})

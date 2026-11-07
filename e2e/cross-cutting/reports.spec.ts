@@ -6,7 +6,7 @@ import { readRunState } from "../support/state.ts"
 import { mayExport } from "./support/export-rights.ts"
 import { downloadBy, isPdf, openWorkbook } from "./support/files.ts"
 import { createAsset, projectMarker, readAssetChoices, registerAssetsAsItStaff } from "./support/records.ts"
-import { expectCatalogRights, inReport, openView } from "./support/reports-ui.ts"
+import { bangkokToday, catalogCard, expectCatalogRights, inReport, openView, queueCell } from "./support/reports-ui.ts"
 import { statValue } from "./support/ui.ts"
 
 test.describe("IT staff", () => {
@@ -46,15 +46,45 @@ test.describe("IT staff", () => {
     await expect(statValue(page, "ต้นทุนซื้อ", "[data-report-view-content]")).toHaveText("6,000.00")
     for (const asset of assets) await expect(inReport(page, `${asset.assetTag} - ${asset.name}`)).toBeVisible()
 
-    // Operations: no serial number on any of the three, each in the list to fix.
+    // Operations: no serial number on any of the three, each in the data-fix queue.
     await openView(page, "operations")
     await measure.recordPage("reports: operations")
     await expect(statValue(page, "ไม่มีหมายเลขเครื่อง", "[data-report-view-content]")).toHaveText("3")
     for (const asset of assets) await expect(inReport(page, asset.assetTag)).toBeVisible()
+    // The serial cell filters the queue (issue=serial): the three, one page ("แสดง 1–3 จาก 3"), each serial badge a
+    // link to the asset's edit page (IT staff hold asset:edit), and the export of that issue alone (dataQuality=serial).
+    await queueCell(page, "ไม่มีหมายเลขเครื่อง").click()
+    await expect(page).toHaveURL(/[?&]issue=serial(?:&|#|$)/)
+    await measure.recordPage("reports: operations, no serial")
+    await expect(queueCell(page, "ไม่มีหมายเลขเครื่อง")).toHaveAttribute("aria-current", "page")
+    await expect(page.locator("[data-report-ops-queue-head] h3")).toHaveText("ไม่มีหมายเลขเครื่อง 3 ชิ้น")
+    await expect(page.locator("[data-report-view-content] nav").filter({ hasText: "แสดง 1–3 จาก 3" })).toBeVisible()
+    for (const asset of assets) {
+      await expect(inReport(page, asset.assetTag)).toBeVisible()
+      await expect(page.locator(`[data-report-ops-issue="serial"][href="/th/assets/${asset.id}/edit"]`).filter({ visible: true })).toHaveCount(1)
+    }
+    const queueExport = page.locator("[data-report-ops-export]")
+    await expect(queueExport).toHaveText("ส่งออก 3 รายการ Excel")
+    await expect(queueExport).toHaveAttribute("href", /^\/api\/assets\/export\?(?:.*&)?dataQuality=serial(?:&|$)/)
+    const serialFile = await downloadBy(page, () => queueExport.click(), "queue-serial", (name) => testInfo.outputPath(name))
+    expect(serialFile.filename).toMatch(/^assets-export-\d{4}-\d{2}-\d{2}\.xlsx$/)
+    expect((await openWorkbook(serialFile.bytes)).Assets.slice(1).map((row) => row[0]).sort()).toEqual(assets.map((asset) => asset.assetTag).sort())
 
-    // The catalog: the exports IT staff may use, and the ones they may not.
+    // The catalog: the reports by who uses them, the exports IT staff may use, and the ones they may not.
     await openView(page, "catalog")
     await measure.recordPage("reports: catalog")
+    await expect(page.locator('[data-report-catalog-section="accounting"] h2')).toHaveText("บัญชีและทะเบียนทรัพย์สิน")
+    for (const audience of ["accounting", "maintenance", "approver", "auditor", "admin"]) {
+      await expect(page.locator(`[data-report-catalog-section="${audience}"]`), audience).toBeVisible()
+    }
+    // The register card's export downloads the three (the catalog keeps the report's filters), and the card then says
+    // when: "ส่งออกล่าสุด" with today's Bangkok date (each export route logs to SystemLog).
+    const registerCard = catalogCard(page, "accounting", "assets-register")
+    const catalogRegister = await downloadBy(page, () => registerCard.getByRole("link", { name: "ส่งออก Excel: ทะเบียนทรัพย์สิน" }).click(), "catalog-register", (name) => testInfo.outputPath(name))
+    expect((await openWorkbook(catalogRegister.bytes)).Assets.slice(1).map((row) => row[0]).sort()).toEqual(assets.map((asset) => asset.assetTag).sort())
+    await page.reload()
+    await expect(registerCard.locator("[data-report-last-export]")).toContainText("ส่งออกล่าสุด")
+    await expect(registerCard.locator("[data-report-last-export]")).toContainText(bangkokToday())
     await expectCatalogRights(page, "itStaff")
   })
 
@@ -96,6 +126,14 @@ test.describe("the viewer", () => {
 
     await openView(page, "catalog")
     await measure.recordPage("reports: catalog (viewer)")
+    // The overview card offers the viewer no export: "ไม่มีสิทธิ์ส่งออก" and the permission it needs in words; the
+    // register card keeps its export (asset:view).
+    const overviewCard = catalogCard(page, "accounting", "assets-overview")
+    await expect(overviewCard.locator('a[href^="/api/reports/assets-overview/export"]')).toHaveCount(0)
+    await expect(overviewCard.getByText("ไม่มีสิทธิ์ส่งออก", { exact: true })).toBeVisible()
+    await expect(overviewCard.getByText("ต้องมีสิทธิ์ส่งออกของรายงาน", { exact: true })).toBeVisible()
+    await expect(page.locator('[data-report-view-content] a[href^="/api/reports/assets-overview/export"]')).toHaveCount(0)
+    await expect(catalogCard(page, "accounting", "assets-register").getByRole("link", { name: "ส่งออก Excel: ทะเบียนทรัพย์สิน" })).toBeVisible()
     await expectCatalogRights(page, "viewer")
   })
 
