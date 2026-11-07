@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { describeNotificationIncrease } from "../src/lib/notification-announcement.ts"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r/g, "")
 const provider = () => read("src/components/layout/shell-notifications.tsx")
@@ -49,4 +50,14 @@ test("the dashboard shell mounts the provider around the menu and the top bar (m
   assert.match(shell, /import \{ ShellNotificationsProvider \} from "@\/components\/layout\/shell-notifications"/)
   // Loose on purpose: Task 9's More sheet, Task 10's ShellBannerProvider and Task 12a's SessionKeeper go around or beside the shell div.
   assert.match(shell, /<ConfirmProvider>[\s\S]*<ShellNotificationsProvider>[\s\S]*<div ref=\{shellRef\}[\s\S]*<\/ShellNotificationsProvider>[\s\S]*<\/ConfirmProvider>/)
+})
+
+test("the live region speaks when the unread-topic number rises, not when an unread queue only grows (group 9 plan 1 task 6)", () => {
+  const row = (key: string, count: number, isRead = false) => ({ key, count, href: `/th/${key}`, tone: "warning" as const, isRead, isSnoozed: false, isSuppressed: isRead })
+  const topics = (...items: ReturnType<typeof row>[]) => ({ total: items.filter((i) => !i.isSuppressed && i.count > 0).length, generatedAt: "2026-11-07T08:00:00.000Z", items })
+  const template = messages("th").notifications.increaseAnnouncement
+  const labels = { increase: (key: string, count: number) => template.replace("{title}", key).replace("{count}", String(count)) }
+  assert.equal(describeNotificationIncrease(topics(row("approvalInbox", 19)), topics(row("approvalInbox", 25)), labels), null)
+  assert.equal(describeNotificationIncrease(topics(row("approvalInbox", 19)), topics(row("approvalInbox", 19), row("duePm", 7)), labels), "duePm เพิ่ม 7 รายการ")
+  assert.equal(describeNotificationIncrease(topics(row("duePm", 7, true)), topics(row("duePm", 8)), labels), "duePm เพิ่ม 1 รายการ")
 })

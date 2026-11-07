@@ -1,7 +1,7 @@
 // The words the shell checks read on screen, as the app writes them in messages/th.json (tests/e2e-shell.test.ts checks
 // every value is one of th.json's). Plain data, no imports, so the node test can load it.
 export const SHELL_WORDS = {
-  bellLabel: "การแจ้งเตือน {count} รายการ", title: "การแจ้งเตือน", bellEmpty: "ไม่มีงานค้าง",
+  bellLabel: "การแจ้งเตือน มี {count, number} หัวข้อที่ยังไม่อ่าน", title: "การแจ้งเตือน", bellEmpty: "ไม่มีงานค้าง",
   groupDecide: "รอคุณตัดสิน", groupFollow: "ควรติดตาม", read: "อ่านแล้ว", markAllRead: "อ่านแล้วทั้งหมด", allRead: "อ่านครบแล้ว",
   approvalInbox: "งานรออนุมัติ", increase: "{title} เพิ่ม {count} รายการ", openWorkCenter: "เปิดศูนย์งานค้าง",
   workCenter: "ศูนย์งานค้าง", workCenterWaiting: "มีงานรอคุณ {count, number} รายการ",

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 
 import { buildDailyDigestMessage } from "../src/lib/notification-digest-format.ts"
 import { buildNotificationSummaryItems } from "../src/lib/notification-summary-items.ts"
+import { buildActiveNotificationSummary, mergeNotificationItemsWithStates } from "../src/lib/notification-center.ts"
 import { buildWaitingWorkHref, WAITING_WORK_KEYS, type WaitingWorkCounts, type WaitingWorkKey } from "../src/lib/waiting-work-rules.ts"
 
 function emptyCounts(): WaitingWorkCounts {
@@ -68,4 +69,34 @@ test("every waiting kind has its title and detail in both languages, and the dig
   const th = JSON.parse(readFileSync("messages/th.json", "utf8")) as { notifications: Record<string, string> }
   assert.equal(th.notifications.openRepairs, "ซ่อมยังไม่เสร็จ")
   assert.equal(th.notifications.stuckRepairs, "รอซ่อมแต่ยังไม่มีบันทึกซ่อม")
+})
+
+// Group 9 plan 1 task 6 (spec §5.1): the bell's number is the unread topics, not the sum of their items.
+const centerItem = (key: string, count: number) => ({ key, count, href: `/th/${key}`, tone: "warning" as const })
+const stateOf = (key: string, lastCount: number, isRead = true) => ({ key, isRead, lastCount, snoozedUntil: null, assignedToUserId: null })
+
+test("the badge counts unread topics (group 9 plan 1 task 6)", () => {
+  const now = new Date("2026-11-07T08:00:00.000Z")
+  const items = mergeNotificationItemsWithStates(
+    [centerItem("approvalInbox", 19), centerItem("duePm", 7), centerItem("openRepairs", 3), centerItem("returnsDueSoon", 5)],
+    [stateOf("returnsDueSoon", 5)],
+    now,
+  )
+  const active = buildActiveNotificationSummary(items)
+  assert.equal(active.topics, 3)
+  assert.equal(active.total, 29, "the items' sum stays for callers that need it")
+  // A queue at 0 is never a topic, even when it is listed unread.
+  assert.equal(buildActiveNotificationSummary([...items, { ...items[0], key: "duePm2", count: 0 }]).topics, 3)
+
+  const source = readFileSync("src/lib/notification-summary.ts", "utf8").replace(/\r/g, "")
+  assert.match(source, /total: center\.activeTopics,/)
+  assert.match(source, /activeTotal: active\.total,\n\s+activeTopics: active\.topics,/)
+})
+
+test("a rise above lastCount brings a topic back (group 9 plan 1 task 6)", () => {
+  const now = new Date("2026-11-07T08:00:00.000Z")
+  const rows = [centerItem("approvalInbox", 19), centerItem("duePm", 7), centerItem("openRepairs", 3), centerItem("returnsDueSoon", 5)]
+  assert.equal(buildActiveNotificationSummary(mergeNotificationItemsWithStates(rows, [stateOf("returnsDueSoon", 5)], now)).topics, 3)
+  const risen = rows.map((row) => row.key === "returnsDueSoon" ? { ...row, count: 6 } : row)
+  assert.equal(buildActiveNotificationSummary(mergeNotificationItemsWithStates(risen, [stateOf("returnsDueSoon", 5)], now)).topics, 4)
 })

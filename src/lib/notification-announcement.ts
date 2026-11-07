@@ -7,7 +7,8 @@ export type NotificationIncreaseLabels = {
 export const NOTIFICATION_ANNOUNCEMENT_CLEAR_MS = 10_000
 
 // One polite sentence per unread row that grew against the last server summary (menu B shell task 3). Nothing on the
-// first load, nothing unless the unread total rose, and nothing when it rose with no row growing (a snooze ending).
+// first load, nothing unless the unread-topic number rose (group 9 plan 1 task 6: an unread queue that only grows
+// leaves the badge alone), and nothing when it rose with no row growing (a snooze ending).
 export function describeNotificationIncrease(
   previous: NotificationClientSummary | null,
   next: NotificationClientSummary,

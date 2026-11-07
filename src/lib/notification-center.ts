@@ -68,10 +68,18 @@ export function getNotificationCountDrops(
   return drops
 }
 
+// An unread topic is a listed key with work in it that is neither read nor snoozed; the bell shows how many there are
+// (group 9 plan 1 task 6, spec §5.1), never the sum of their items.
+export function countUnreadNotificationTopics(items: readonly { count: number; isSuppressed: boolean }[]): number {
+  return items.filter((item) => !item.isSuppressed && item.count > 0).length
+}
+
+// total is the active items' sum, kept for callers that need it; topics is the bell's number.
 export function buildActiveNotificationSummary(items: NotificationCenterItem[]) {
   const activeItems = items.filter((item) => !item.isSuppressed)
   return {
     total: activeItems.reduce((sum, item) => sum + item.count, 0),
+    topics: countUnreadNotificationTopics(activeItems),
     items: activeItems,
   }
 }

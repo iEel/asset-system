@@ -16,9 +16,9 @@ export type { Locator, Page }
 
 // The top bar (<header>, outside <main>), the bell and its box.
 export const topBar = (page: Page): Locator => page.getByRole("banner")
-// "การแจ้งเตือน N รายการ" while something is unread (N may hold a comma), "การแจ้งเตือน" when every listed row is read,
+// "การแจ้งเตือน มี N หัวข้อที่ยังไม่อ่าน" while a topic is unread (N may hold a comma), "การแจ้งเตือน" when every listed row is read,
 // "ไม่มีงานค้าง" for an empty box.
-export const bell = (page: Page): Locator => page.getByRole("button", { name: /^(?:การแจ้งเตือน(?: [\d,]+ รายการ)?|ไม่มีงานค้าง)$/ })
+export const bell = (page: Page): Locator => page.getByRole("button", { name: /^(?:การแจ้งเตือน(?: มี [\d,]+ หัวข้อที่ยังไม่อ่าน)?|ไม่มีงานค้าง)$/ })
 export const bellBox = (page: Page): Locator => page.getByRole("dialog", { name: "การแจ้งเตือน" })
 export const skipLink = (page: Page): Locator => page.getByRole("link", { name: "ข้ามไปเนื้อหาหลัก", exact: true })
 

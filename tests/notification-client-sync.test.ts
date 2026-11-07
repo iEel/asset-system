@@ -14,13 +14,15 @@ import {
 } from "../src/lib/notification-client-sync.ts"
 
 const item = (key: string, count: number, read = false) => ({ key, count, href: `/th/${key}`, tone: "warning" as const, isRead: read, isSnoozed: false, isSuppressed: read })
-const summary = { total: 5, generatedAt: "2026-10-21T08:00:00.000Z", items: [item("approvalInbox", 2), item("duePm", 3), item("returnsDueSoon", 4, true)] }
+// total = unread topics (group 9 plan 1 task 6): approvalInbox and duePm, not their 5 items.
+const summary = { total: 2, generatedAt: "2026-10-21T08:00:00.000Z", items: [item("approvalInbox", 2), item("duePm", 3), item("returnsDueSoon", 4, true)] }
 
 test("polls every 2 minutes (menu B shell task 3)", () => assert.equal(NOTIFICATION_POLL_MS, 120_000))
 
-test("marking one row read keeps it listed, marks it read and lowers the badge (menu B shell task 3)", () => {
+test("marking one row read keeps it listed, marks it read and lowers the badge by one topic, not by its items (menu B shell task 3, group 9 plan 1 task 6)", () => {
   const next = markNotificationSummaryItemRead(summary, "approvalInbox")
-  assert.equal(next.total, 3)
+  assert.equal(next.total, 1)
+  assert.equal(markNotificationSummaryItemRead(next, "duePm").total, 0)
   assert.deepEqual(next.items.map((i) => [i.key, i.isRead, i.isSnoozed, i.isSuppressed]), [["approvalInbox", true, false, true], ["duePm", false, false, false], ["returnsDueSoon", true, false, true]])
   assert.equal(next.generatedAt, summary.generatedAt)
   assert.equal(markNotificationSummaryItemRead(summary, "returnsDueSoon"), summary)

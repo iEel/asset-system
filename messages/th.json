@@ -179,7 +179,7 @@
     "type_danger": "เร่งด่วน",
     "type_success": "เรียบร้อย",
     "increaseAnnouncement": "{title} เพิ่ม {count} รายการ",
-    "bellLabel": "การแจ้งเตือน {count} รายการ",
+    "bellLabel": "การแจ้งเตือน มี {count, number} หัวข้อที่ยังไม่อ่าน",
     "bellEmpty": "ไม่มีงานค้าง",
     "bellEmptyDetail": "งานที่รอคุณตัดสินหรือควรติดตามจะขึ้นที่นี่",
     "groupDecide": "รอคุณตัดสิน",

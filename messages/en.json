@@ -179,7 +179,7 @@
     "type_danger": "Urgent",
     "type_success": "Done",
     "increaseAnnouncement": "{title}: {count} more",
-    "bellLabel": "Notifications, {count} waiting",
+    "bellLabel": "Notifications, {count, plural, one {# unread topic} other {# unread topics}}",
     "bellEmpty": "Nothing waiting",
     "bellEmptyDetail": "Work that waits for your decision or needs follow-up shows up here.",
     "groupDecide": "Waiting for your decision",

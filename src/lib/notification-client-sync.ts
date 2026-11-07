@@ -1,8 +1,10 @@
 import type { NotificationSummaryItem } from "./notification-summary-items.ts"
+import { countUnreadNotificationTopics } from "./notification-center.ts"
 
 export const notificationSummaryChangedEvent = "asset-system:notification-summary-changed"
 
-// Every listed row, read ones included, with its read state; total counts the unread rows only (menu B shell task 3).
+// Every listed row, read ones included, with its read state (menu B shell task 3); total is the number of unread
+// topics, not the sum of their items (group 9 plan 1 task 6), and each row keeps its own count.
 export type NotificationClientItem = NotificationSummaryItem & {
   isRead: boolean
   isSnoozed: boolean
@@ -46,7 +48,7 @@ export type NotificationJsonFetch = (
   init?: RequestInit,
 ) => Promise<{ ok: boolean; json(): Promise<unknown> }>
 
-// A read row stays listed and stops counting; reading also clears its snooze.
+// A read row stays listed and stops counting, so the badge drops by one topic; reading also clears its snooze.
 export function markNotificationSummaryItemRead(
   summary: NotificationClientSummary,
   key: string,
@@ -59,7 +61,7 @@ export function markNotificationSummaryItemRead(
     : item)
 
   return {
-    total: items.reduce((sum, item) => sum + (item.isSuppressed ? 0 : item.count), 0),
+    total: countUnreadNotificationTopics(items),
     items,
     generatedAt: summary.generatedAt,
   }

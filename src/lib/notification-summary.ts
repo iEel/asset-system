@@ -11,10 +11,11 @@ import { getWaitingWork } from "@/lib/waiting-work"
 import { WAITING_WORK_KEYS } from "@/lib/waiting-work-rules"
 
 // Every listed row with its read state (menu B shell task 3); snoozedUntil and assignedToUserId stay on the server.
+// total is the number of unread topics, the bell's badge (group 9 plan 1 task 6); each row keeps its own count.
 export async function getNotificationSummary(user: SessionUser, locale: string): Promise<NotificationClientSummary> {
   const center = await getNotificationCenter(user, locale)
   return {
-    total: center.activeTotal,
+    total: center.activeTopics,
     items: center.items.map(({ key, count, href, tone, isRead, isSnoozed, isSuppressed }) => ({ key, count, href, tone, isRead, isSnoozed, isSuppressed })),
     generatedAt: center.generatedAt,
   }
@@ -59,10 +60,12 @@ export async function getNotificationCenter(
     }
   }
   const centerItems = mergeNotificationItemsWithStates(items, states)
+  const active = buildActiveNotificationSummary(centerItems)
 
   return {
     total: centerItems.reduce((sum, item) => sum + item.count, 0),
-    activeTotal: buildActiveNotificationSummary(centerItems).total,
+    activeTotal: active.total,
+    activeTopics: active.topics,
     items: centerItems,
     generatedAt: new Date().toISOString(),
   }
