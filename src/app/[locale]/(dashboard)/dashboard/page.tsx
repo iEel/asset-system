@@ -32,6 +32,7 @@ import {
   formatRecentTime,
   normalizeDashboardCompanyId,
   pickDashboardBranchRows,
+  type DashboardWaitingRow,
 } from "@/lib/dashboard-page"
 import { getWaitingWork, getWaitingWorkAges } from "@/lib/waiting-work"
 import { buildWaitingWorkHref, type WaitingWorkAge, type WaitingWorkCounts, type WaitingWorkKey } from "@/lib/waiting-work-rules"
@@ -111,7 +112,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   ])
 
   // With no visible key nothing reads a count.
-  const waiting = buildDashboardWaiting(waitingWork ?? { counts: {} as WaitingWorkCounts, visibleKeys: [] }, ages)
+  const waiting = buildDashboardWaiting(waitingWork ?? { counts: {} as WaitingWorkCounts, visibleKeys: [], approvalInbox: { total: 0, disposal: 0, audit: 0 } }, ages)
   const showWaiting = (waitingWork?.visibleKeys.length ?? 0) > 0
   const statusRows = buildDashboardStatusTable(overview.statusRows, locale, companyId)
   const round = overview.audit.round
@@ -176,11 +177,82 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   }
   const kpiItems = DASHBOARD_KPI_ORDER[profile].map((key) => kpiCells[key]).filter((item): item is StatStripItem => item !== null)
 
-  const zeroLineClassName = waiting.rows.length > 0 ? "border-t border-border-soft" : undefined
+  const zeroLineClassName = waiting.rows.length > 0 || waiting.advanceRows.length > 0 ? "border-t border-border-soft" : undefined
   const waitingAge = (age: WaitingWorkAge) => {
     const described = describeWaitingAge(age, locale, now)
     return { text: t(described.key, described.values), overdue: described.overdue }
   }
+
+  // One row per kind on both widths, a table from md and links on the phone: the queue rows and the advance warnings alike.
+  const renderWaitingRows = (rows: DashboardWaitingRow[], caption: string) => (
+    <>
+      <DataTable framed={false} className="hidden md:block" caption={caption}>
+        <DataTableHeader>
+          <tr>
+            <DataTableHead>{t("waitingColumnKind")}</DataTableHead>
+            <DataTableHead align="right">{t("columnCount")}</DataTableHead>
+            <DataTableHead>{t("waitingColumnAge")}</DataTableHead>
+            <DataTableHead hideLabel>{t("waitingColumnNext")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {rows.map((row) => {
+            const href = buildWaitingWorkHref(locale, row.key)
+            const age = row.age ? waitingAge(row.age) : null
+            return (
+              <DataTableRow key={row.key} data-waiting-key={row.key}>
+                <DataTableCell className="text-foreground">{tNotifications(row.key)}</DataTableCell>
+                <DataTableCell numeric>
+                  <Link href={href} title={tNotifications(`${row.key}Detail`)} className={cn(linkVariants({ size: "inherit" }), "num font-semibold")}>
+                    {formatCount(row.count)}
+                  </Link>
+                </DataTableCell>
+                <DataTableCell className={cn("whitespace-nowrap", age?.overdue ? "text-warning" : "text-muted-foreground")}>
+                  {age ? (
+                    <span className="inline-flex items-center gap-1">
+                      {age.overdue ? <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
+                      {age.text}
+                    </span>
+                  ) : null}
+                </DataTableCell>
+                <DataTableCell className="text-right">
+                  <Link href={href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                    {t(`waitingNext.${row.key}`)}
+                    <span className="sr-only"> {tNotifications(row.key)}</span>
+                  </Link>
+                </DataTableCell>
+              </DataTableRow>
+            )
+          })}
+        </DataTableBody>
+      </DataTable>
+      <ContentPanelRows className="md:hidden">
+        {rows.map((row) => {
+          const age = row.age ? waitingAge(row.age) : null
+          return (
+            <li key={row.key}>
+              <Link
+                href={buildWaitingWorkHref(locale, row.key)}
+                data-waiting-key={row.key}
+                className="-mx-4 -my-3 flex min-h-14 items-center gap-3 px-4 py-3 hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <span className="num min-w-12 text-xl font-semibold text-foreground">{formatCount(row.count)}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">{tNotifications(row.key)}</span>
+                  {age && row.age ? (
+                    <span className={cn("flex items-center gap-1 text-meta", age.overdue ? "text-warning" : "text-muted-foreground")}>
+                      {age.overdue ? <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
+                      {row.age.kind === "age" ? t("waitingAgeRow", { age: age.text }) : age.text}
+                    </span>
+                  ) : null}
+                </span>
+              </Link>
+            </li>
+          )
+        })}
+      </ContentPanelRows>
+    </>
+  )
 
   const sections: Partial<Record<DashboardSectionKey, ReactNode>> = {
     waiting: showWaiting ? (
@@ -196,74 +268,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           </Link>
         ) : undefined}
       >
-        {waiting.rows.length > 0 ? (
-          <>
-            <DataTable framed={false} className="hidden md:block" caption={t("waitingTitle")}>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{t("waitingColumnKind")}</DataTableHead>
-                  <DataTableHead align="right">{t("columnCount")}</DataTableHead>
-                  <DataTableHead>{t("waitingColumnAge")}</DataTableHead>
-                  <DataTableHead hideLabel>{t("waitingColumnNext")}</DataTableHead>
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
-                {waiting.rows.map((row) => {
-                  const href = buildWaitingWorkHref(locale, row.key)
-                  const age = row.age ? waitingAge(row.age) : null
-                  return (
-                    <DataTableRow key={row.key} data-waiting-key={row.key}>
-                      <DataTableCell className="text-foreground">{tNotifications(row.key)}</DataTableCell>
-                      <DataTableCell numeric>
-                        <Link href={href} title={tNotifications(`${row.key}Detail`)} className={cn(linkVariants({ size: "inherit" }), "num font-semibold")}>
-                          {formatCount(row.count)}
-                        </Link>
-                      </DataTableCell>
-                      <DataTableCell className={cn("whitespace-nowrap", age?.overdue ? "text-warning" : "text-muted-foreground")}>
-                        {age ? (
-                          <span className="inline-flex items-center gap-1">
-                            {age.overdue ? <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
-                            {age.text}
-                          </span>
-                        ) : null}
-                      </DataTableCell>
-                      <DataTableCell className="text-right">
-                        <Link href={href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
-                          {t(`waitingNext.${row.key}`)}
-                          <span className="sr-only"> {tNotifications(row.key)}</span>
-                        </Link>
-                      </DataTableCell>
-                    </DataTableRow>
-                  )
-                })}
-              </DataTableBody>
-            </DataTable>
-            <ContentPanelRows className="md:hidden">
-              {waiting.rows.map((row) => {
-                const age = row.age ? waitingAge(row.age) : null
-                return (
-                  <li key={row.key}>
-                    <Link
-                      href={buildWaitingWorkHref(locale, row.key)}
-                      data-waiting-key={row.key}
-                      className="-mx-4 -my-3 flex min-h-14 items-center gap-3 px-4 py-3 hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:outline-none"
-                    >
-                      <span className="num min-w-12 text-xl font-semibold text-foreground">{formatCount(row.count)}</span>
-                      <span className="min-w-0">
-                        <span className="block text-sm text-foreground">{tNotifications(row.key)}</span>
-                        {age && row.age ? (
-                          <span className={cn("flex items-center gap-1 text-meta", age.overdue ? "text-warning" : "text-muted-foreground")}>
-                            {age.overdue ? <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
-                            {row.age.kind === "age" ? t("waitingAgeRow", { age: age.text }) : age.text}
-                          </span>
-                        ) : null}
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ContentPanelRows>
-          </>
+        {waiting.rows.length > 0 ? renderWaitingRows(waiting.rows, t("waitingTitle")) : null}
+        {waiting.advanceRows.length > 0 ? (
+          <div data-waiting-advance className={waiting.rows.length > 0 ? "border-t border-border-soft" : undefined}>
+            <h3 className="px-4 pt-3 text-sm font-semibold text-muted-foreground md:px-5">{t("advanceWarnings")}</h3>
+            {renderWaitingRows(waiting.advanceRows, t("advanceWarnings"))}
+          </div>
         ) : null}
         {waiting.zeroKeys.length > 0 ? (
           <EmptyNote tone="clear" padded className={zeroLineClassName}>{t("waitingZero", { kinds: waiting.zeroKeys.map((key) => tNotifications(key)).join(" · ") })}</EmptyNote>

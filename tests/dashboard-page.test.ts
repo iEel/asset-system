@@ -14,6 +14,7 @@ import {
   pickDashboardBranchRows,
 } from "../src/lib/dashboard-page.ts"
 import { buildExactAssetRegisterHref } from "../src/lib/asset-register-view-memory.ts"
+import { buildWorkQueueSummary } from "../src/lib/work-queues.ts"
 import { dashboardRegisterParams, type DashboardRegisterCount } from "../src/lib/dashboard-overview-rules.ts"
 import { WAITING_WORK_KEYS, type WaitingWorkAge, type WaitingWorkKey } from "../src/lib/waiting-work-rules.ts"
 
@@ -46,7 +47,9 @@ test("every register link carries the overview's own filter, exact, with the cho
   }
 })
 
-test("งานที่รอคุณ: the visible kinds with a count in the shared order, the kinds at zero, the sum and the oldest (spec §6.3)", () => {
+const noInbox = { total: 0, disposal: 0, audit: 0 }
+
+test("งานที่รอคุณ: the visible queue kinds with a count in the shared order, the kinds at zero, the backlog and the oldest (spec §6.3; group 9 §3.1)", () => {
   const counts = {
     approvalInbox: 9, openRepairs: 4, stuckRepairs: 2, duePm: 0, pendingAuditFindings: 3, openAuditActions: 0,
     auditActionsDueSoon: 0, pendingDisposals: 1, approvedDisposals: 0, returnsDueSoon: 5, warrantyExpiringSoon: 7, licenseExpiringSoon: 0,
@@ -60,16 +63,46 @@ test("งานที่รอคุณ: the visible kinds with a count in the s
     returnsDueSoon: { kind: "due", days: -3, overdue: true },
     warrantyExpiringSoon: { kind: "expires", date: new Date("2027-01-12T00:00:00Z"), days: 78 },
   }
-  const waiting = buildDashboardWaiting({ counts, visibleKeys }, ages)
+  const waiting = buildDashboardWaiting({ counts, visibleKeys, approvalInbox: noInbox }, ages)
   assert.deepEqual(waiting.rows.map((row) => [row.key, row.count]), [
-    ["openRepairs", 4], ["stuckRepairs", 2], ["pendingAuditFindings", 3], ["pendingDisposals", 1], ["returnsDueSoon", 5], ["warrantyExpiringSoon", 7],
+    ["openRepairs", 4], ["stuckRepairs", 2], ["pendingAuditFindings", 3], ["pendingDisposals", 1],
   ])
   assert.deepEqual(waiting.rows[0].age, ages.openRepairs)
   assert.deepEqual(waiting.zeroKeys, ["duePm", "approvedDisposals"])
-  assert.equal(waiting.total, 22, "approvals are not visible here, so their 9 never count")
-  assert.deepEqual(waiting.oldest, { days: 12, overdue: true }, "the oldest age, overdue because a return is past due")
-  assert.equal(buildDashboardWaiting({ counts, visibleKeys: ["pendingDisposals", "warrantyExpiringSoon"] }, ages).oldest, null, "nothing older than today, nothing overdue")
-  assert.equal(buildDashboardWaiting({ counts, visibleKeys: ["openRepairs"] }, {}).rows[0].age, null)
+  assert.equal(waiting.total, 10, "approvals are not visible here, so their 9 never count; nor do the advance warnings")
+  assert.deepEqual(waiting.oldest, { days: 12, overdue: false }, "the oldest age from the queue rows only")
+  assert.equal(buildDashboardWaiting({ counts, visibleKeys: ["pendingDisposals", "warrantyExpiringSoon"], approvalInbox: noInbox }, ages).oldest, null, "nothing older than today, nothing overdue")
+  assert.equal(buildDashboardWaiting({ counts, visibleKeys: ["openRepairs"], approvalInbox: noInbox }, {}).rows[0].age, null)
+})
+
+test("buildDashboardWaiting total excludes advance warnings", () => {
+  const counts = {
+    approvalInbox: 19, openRepairs: 7, stuckRepairs: 0, duePm: 3, pendingAuditFindings: 0, openAuditActions: 4,
+    auditActionsDueSoon: 2, pendingDisposals: 0, approvedDisposals: 3, returnsDueSoon: 2, warrantyExpiringSoon: 5, licenseExpiringSoon: 1,
+  }
+  const visibleKeys = WAITING_WORK_KEYS.filter((key) => key !== "pendingAuditFindings" && key !== "pendingDisposals")
+  const work = { counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 14 } }
+  const waiting = buildDashboardWaiting(work, {})
+  assert.equal(waiting.total, 38, "the work center's งานค้างทั้งหมด")
+  assert.equal(waiting.total, buildWorkQueueSummary(work).backlogTotal)
+})
+
+test("advanceRows hold returns, warranty and licence", () => {
+  const counts = {
+    approvalInbox: 0, openRepairs: 1, stuckRepairs: 0, duePm: 0, pendingAuditFindings: 0, openAuditActions: 0,
+    auditActionsDueSoon: 0, pendingDisposals: 0, approvedDisposals: 0, returnsDueSoon: 2, warrantyExpiringSoon: 0, licenseExpiringSoon: 1,
+  }
+  const ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>> = {
+    returnsDueSoon: { kind: "due", days: -3, overdue: true },
+    licenseExpiringSoon: { kind: "expires", date: new Date("2026-11-20T00:00:00Z"), days: 13 },
+  }
+  const waiting = buildDashboardWaiting({ counts, visibleKeys: ["openRepairs", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"], approvalInbox: noInbox }, ages)
+  assert.deepEqual(waiting.rows.map((row) => row.key), ["openRepairs"])
+  assert.deepEqual(waiting.advanceRows.map((row) => [row.key, row.count]), [["returnsDueSoon", 2], ["licenseExpiringSoon", 1]])
+  assert.deepEqual(waiting.advanceRows[0].age, ages.returnsDueSoon)
+  assert.deepEqual(waiting.zeroKeys, ["warrantyExpiringSoon"])
+  assert.equal(waiting.total, 1)
+  assert.equal(waiting.oldest, null, "an advance warning is never a wait")
 })
 
 test("ค้างนานสุด reads an age, a due date or an expiry, in Bangkok days (spec §6.3)", () => {
@@ -147,10 +180,16 @@ test("งานที่รอคุณ: the bell's titles, links and order, one
   assert.match(source, /tNotifications\(row\.key\)/)
   assert.match(source, /title=\{tNotifications\(`\$\{row\.key\}Detail`\)\}/)
   assert.match(source, /t\(`waitingNext\.\$\{row\.key\}`\)/)
-  assert.match(source, /<DataTable framed=\{false\} className="hidden md:block" caption=\{t\("waitingTitle"\)\}>/)
+  assert.match(source, /<DataTable framed=\{false\} className="hidden md:block" caption=\{caption\}>/)
+  assert.match(source, /renderWaitingRows\(waiting\.rows, t\("waitingTitle"\)\)/)
+  // The advance warnings: listed under their own heading, never in the number (group 9 spec §3.1).
+  assert.match(source, /\{waiting\.advanceRows\.length > 0 \? \(/)
+  assert.match(source, /<h3[^>]*>\{t\("advanceWarnings"\)\}<\/h3>/)
+  assert.match(source, /renderWaitingRows\(waiting\.advanceRows, t\("advanceWarnings"\)\)/)
+  assert.match(source, /value: formatCount\(waiting\.total\)/)
   assert.match(source, /<ContentPanelRows className="md:hidden">/)
   assert.match(source, /min-h-14/)
-  assert.match(source, /const zeroLineClassName = waiting\.rows\.length > 0/)
+  assert.match(source, /const zeroLineClassName = waiting\.rows\.length > 0 \|\| waiting\.advanceRows\.length > 0/)
   assert.match(source, /<EmptyNote tone="clear" padded[^>]*>\{t\("waitingZero", /)
 })
 
@@ -159,7 +198,7 @@ test("the dashboard's words (spec §6, docs/19_THAI_GLOSSARY.md)", () => {
   const thai: Record<string, string> = {
     asOf: "ข้อมูล ณ {time}", allCompanies: "ทุกบริษัท", custodianAssigned: "มีผู้ถือครอง", waitingTitle: "งานที่รอคุณ",
     noDueRound: "ไม่มีรอบตรวจนับที่ถึงกำหนดช่วงนี้", noRound: "ไม่มีรอบตรวจนับที่กำลังตรวจ", idleFoot: "ไม่มีความเคลื่อนไหวเกิน 180 วัน {count}", responsibilityFoot: "ยังไม่มีผู้รับผิดชอบ {count}",
-    oldestFoot: "ค้างนานสุด {days} วัน", auditFoot: "ตรวจแล้ว {processed} / {expected} · ควรถึง {pace}", waitingZero: "ไม่มีงานค้าง: {kinds}",
+    oldestFoot: "ค้างนานสุด {days} วัน", auditFoot: "ตรวจแล้ว {processed} / {expected} · ควรถึง {pace}", waitingZero: "ไม่มีงานค้าง: {kinds}", advanceWarnings: "เตือนล่วงหน้า",
     statusTitle: "ตามสถานะ", statusSegmentTitle: "{status} {count} รายการ · {note}", crossScopeLine: "นอกขอบเขตเจ้าของรหัส {count} รายการ",
   }
   for (const [key, value] of Object.entries(thai)) assert.equal(th[key], value, `th dashboard.${key}`)

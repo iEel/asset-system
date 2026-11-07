@@ -40,8 +40,9 @@ test.describe("the IT head", () => {
     expect(await bellRows(page)).toEqual(rows)
     await recordSettled(page, measure, "IT head: the bell box over the dashboard")
     await page.keyboard.press("Escape")
-    // The KPI is the rows' sum.
-    const sum = rows.reduce((total, row) => total + Number(row.count.replaceAll(",", "")), 0)
+    // The KPI is the queue rows' sum: the advance warnings (เตือนล่วงหน้า) are listed, never added (group 9 spec §3.1).
+    const advanceKeys: string[] = ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"]
+    const sum = rows.filter((row) => !advanceKeys.includes(row.key)).reduce((total, row) => total + Number(row.count.replaceAll(",", "")), 0)
     expect(Number((await countIn(kpiCell(page, DASHBOARD_WORDS.waitingTitle).locator("dd").first())).replaceAll(",", ""))).toBe(sum)
 
     // (b) The work order: งานที่รอคุณ, the round, then the totals; the sections the same way.

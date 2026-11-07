@@ -575,7 +575,8 @@
     "recentTitle": "Recent",
     "recentYesterday": "Yesterday",
     "recentEmpty": "No asset activity yet",
-    "branchesEmpty": "This round has no items with a branch yet"
+    "branchesEmpty": "This round has no items with a branch yet",
+    "advanceWarnings": "Coming up"
   },
   "workCenter": {
     "title": "Follow-up Work Center",

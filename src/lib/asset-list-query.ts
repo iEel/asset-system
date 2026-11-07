@@ -205,7 +205,8 @@ export function buildAssetQueryString(
   return params.toString()
 }
 
-function buildAssetDataQualityWhere(
+// The register's data-quality rule; the work center counts its data issues with the same wheres (group 9 spec §3).
+export function buildAssetDataQualityWhere(
   dataQuality: ReturnType<typeof normalizeAssetDataQualityFilter>,
   options: AssetWhereOptions,
 ): Prisma.AssetWhereInput | null {

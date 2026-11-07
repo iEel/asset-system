@@ -4,7 +4,8 @@ import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
 import { dashboardRegisterParams, type DashboardOverview, type DashboardRegisterCount } from "./dashboard-overview-rules.ts"
 import { getAssetStateTone, type UiTone } from "./design-system.ts"
 import { formatCount } from "./display-format.ts"
-import { bangkokDayDiff, type WaitingWorkAge, type WaitingWorkCounts, type WaitingWorkKey } from "./waiting-work-rules.ts"
+import { bangkokDayDiff, type WaitingWorkAge, type WaitingWorkKey } from "./waiting-work-rules.ts"
+import { buildWorkQueueSummary, isAdvanceWarningKey, type WorkQueueInput } from "./work-queues.ts"
 
 /** Up to this many companies the switcher is a row of links; past it, a select in a GET form. */
 export const DASHBOARD_COMPANY_TAB_LIMIT = 4
@@ -25,23 +26,32 @@ export function buildDashboardRegisterHref(locale: string, count: DashboardRegis
   return buildExactAssetRegisterHref(locale, dashboardRegisterParams(count, companyId))
 }
 
+export type DashboardWaitingRow = { key: WaitingWorkKey; count: number; age: WaitingWorkAge | null }
+
 export type DashboardWaiting = {
-  rows: { key: WaitingWorkKey; count: number; age: WaitingWorkAge | null }[]
+  rows: DashboardWaitingRow[]
+  advanceRows: DashboardWaitingRow[]
   zeroKeys: WaitingWorkKey[]
   total: number
   oldest: { days: number; overdue: boolean } | null
 }
 
-/** The visible kinds with a count in the shared order, the kinds at zero, their sum and the oldest wait (spec §6.3). */
+/**
+ * The visible queue kinds with a count in the shared order, the advance warnings (เตือนล่วงหน้า) with a count apart,
+ * the kinds at zero, the work center's งานค้างทั้งหมด and the oldest wait (spec §6.3; group 9 spec §3.1).
+ */
 export function buildDashboardWaiting(
-  work: { counts: WaitingWorkCounts; visibleKeys: readonly WaitingWorkKey[] },
+  work: WorkQueueInput,
   ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>>,
 ): DashboardWaiting {
-  const rows = work.visibleKeys
+  const withCount = work.visibleKeys
     .filter((key) => work.counts[key] > 0)
     .map((key) => ({ key, count: work.counts[key], age: ages[key] ?? null }))
+  const rows = withCount.filter((row) => !isAdvanceWarningKey(row.key))
+  const advanceRows = withCount.filter((row) => isAdvanceWarningKey(row.key))
   const zeroKeys = work.visibleKeys.filter((key) => work.counts[key] === 0)
-  const total = rows.reduce((sum, row) => sum + row.count, 0)
+  // The same backlog as the work center: the advance warnings are listed, never added.
+  const total = buildWorkQueueSummary(work).backlogTotal
 
   let days = 0
   let overdue = false
@@ -53,7 +63,7 @@ export function buildDashboardWaiting(
     if (age.kind !== "expires" && age.overdue) overdue = true
   }
 
-  return { rows, zeroKeys, total, oldest: days > 0 ? { days, overdue } : null }
+  return { rows, advanceRows, zeroKeys, total, oldest: days > 0 ? { days, overdue } : null }
 }
 
 export type DashboardAgeKey = "waitingAgeDays" | "waitingAgeUnderDay" | "waitingOverdue" | "waitingDueToday" | "waitingDueIn" | "waitingExpires"

@@ -575,7 +575,8 @@
     "recentTitle": "ล่าสุด",
     "recentYesterday": "เมื่อวาน",
     "recentEmpty": "ยังไม่มีความเคลื่อนไหวของทรัพย์สิน",
-    "branchesEmpty": "รอบนี้ยังไม่มีรายการที่ระบุสาขา"
+    "branchesEmpty": "รอบนี้ยังไม่มีรายการที่ระบุสาขา",
+    "advanceWarnings": "เตือนล่วงหน้า"
   },
   "workCenter": {
     "title": "ศูนย์แจ้งเตือนงานค้าง",
