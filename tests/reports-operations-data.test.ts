@@ -163,7 +163,8 @@ test("issue filters rows; others shows all issues", async () => {
 
   const withOthers = fakeDb(standardCounts, rows)
   const shown = await getReportsOperationsData(scope, input({ issue: "serial", others: true }), withOthers.db)
-  assert.deepEqual(shown.queue.rows.map((row) => row.issues), [["responsibility", "serial"], ["serial", "photo"]])
+  // The chosen issue's badge comes first, then the others in the cells' order.
+  assert.deepEqual(shown.queue.rows.map((row) => row.issues), [["serial", "responsibility"], ["serial", "photo"]])
   assert.match(shown.queue.links.toggleOthers, /issue=serial/)
   assert.doesNotMatch(shown.queue.links.toggleOthers, /others=1/)
   assert.match(queue.links.toggleOthers, /others=1/)
@@ -205,6 +206,21 @@ test("fix link and field per first issue", async () => {
   assert.match(queue.rows[3].fix.href, /^\/th\/assets\/w1\?.*#purchase$/)
   assert.equal(queue.rows[0].categoryName, "จอภาพ")
   assert.equal(queue.rows[0].branchName, "สำนักงานใหญ่")
+})
+
+test("the fix button follows the chosen issue, with others on or off", async () => {
+  const rows = [asset("r1", { custodianId: null, serialNumber: null, attachments: [] })]
+  for (const others of [false, true]) {
+    const { queue } = await getReportsOperationsData(scope, input({ issue: "photo", others }), fakeDb(standardCounts, rows).db)
+    assert.equal(queue.rows[0].fix.fieldKey, "photos", `others=${others}`)
+    assert.equal(queue.rows[0].issues[0], "photo", `others=${others}`)
+  }
+  const shown = await getReportsOperationsData(scope, input({ issue: "photo", others: true }), fakeDb(standardCounts, rows).db)
+  assert.deepEqual(shown.queue.rows[0].issues, ["photo", "responsibility", "serial"])
+  // Under "all" the first issue in the cells' order picks the fix.
+  const all = await getReportsOperationsData(scope, input({ others: true }), fakeDb(standardCounts, rows).db)
+  assert.equal(all.queue.rows[0].fix.fieldKey, "responsibility")
+  assert.deepEqual(all.queue.rows[0].issues, ["responsibility", "serial", "photo"])
 })
 
 test("idle and the top lists keep today's reads, names first", async () => {

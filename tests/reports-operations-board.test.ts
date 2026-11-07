@@ -21,14 +21,14 @@ test("operations shows the chips line instead of the filter bar", () => {
   assert.match(page, /\{showsFilterBar \? \(\n\s+<div data-report-filters>/)
   assert.match(page, /\{showsFilterBar \? \(\n\s+<div className="md:hidden">\n\s+<ReportFilterToggle/)
   assert.match(page, /\{!showsFilterBar \? \(\n\s+<div data-report-chips-line>\n\s+<ReportChipsLine/)
-  assert.match(page, /: hasActiveFilters\n\s+\? t\("opsScopeLine", \{ count: totalAssets \}\)\n\s+: t\("opsScopeLineNoFilters", \{ count: totalAssets \}\)/)
+  assert.match(page, /: hasActiveFilters\n\s+\? \[t\("opsScopeLine", \{ count: operationsScope\.count \}\), \.\.\.\(operationsScope\.skipsFilters \? \[t\("opsScopeLineSkips"\)\] : \[\]\)\]\.join\(" · "\)\n\s+: t\("opsScopeLineNoFilters", \{ count: totalAssets \}\)/)
   assert.match(page, /clearHref=\{hasActiveFilters \? buildReportHref\(locale, activeView, parseAssetListParams\(\{\}\)\) : undefined\}/)
   assert.match(page, /editHref=\{buildReportHref\(locale, "overview", filters\)\}/)
   // The chips keep the chosen issue and toggle while on operations.
   assert.match(page, /\.map\(\(chip\) => \(operationsViewQuery \? \{ \.\.\.chip, href: `\$\{chip\.href\}&\$\{operationsViewQuery\}` \} : chip\)\)/)
   assert.match(filterPanel, /export function ReportChipsLine\(/)
   assert.match(filterPanel, /clearAll=\{clearHref \? \{ href: clearHref, label: labels\.clear \} : undefined\}/)
-  assert.equal(th.opsScopeLine, "ทุกตัวเลขในแท็บนี้นับตามตัวกรองนี้ · ทรัพย์สิน {count, number} รายการ")
+  assert.equal(th.opsScopeLine, "นับตามตัวกรองนี้ · ทรัพย์สิน {count, number} รายการ")
   assert.equal(th.opsEditFilters, "แก้ตัวกรองที่แท็บภาพรวม")
 })
 
@@ -126,13 +126,43 @@ test("queue cards below md", () => {
 // The controller's ruling after Task 1: each issue badge (table and cards) links to that issue's own fix place, as the
 // old page's per-issue links did; the edit-page targets (responsibility, serial) only with asset:edit.
 test("each issue badge links to its own fix place; edit targets only with asset:edit", () => {
-  assert.equal(view.match(/<QueueIssueBadges locale=\{locale\} asset=\{asset\} canEdit=\{canEdit\} labels=\{issueLabels\} \/>/g)?.length, 2)
+  assert.equal(view.match(/<QueueIssueBadges locale=\{locale\} asset=\{asset\} canEdit=\{canEdit\} labels=\{issueLabels\} t=\{t\} \/>/g)?.length, 2)
   assert.match(view, /const fix = getReportIssueFix\(locale, asset\.id, issue\)/)
-  assert.match(view, /return fix\.place === "detail" \|\| canEdit \? \(\n\s+<Link\n\s+key=\{issue\}\n\s+data-report-ops-issue=\{issue\}\n\s+href=\{fix\.href\}/)
+  assert.match(view, /return fix\.place === "detail" \|\| canEdit \? \(\n\s+<Link\n\s+key=\{issue\}\n\s+data-report-ops-issue=\{issue\}\n\s+href=\{fix\.href\}\n/)
   assert.match(view, /<span key=\{issue\} data-report-ops-issue=\{issue\} className="[^"]*">\n\s+\{badge\}\n\s+<\/span>/)
   const lib = read("src/lib/reports-operations-data.ts")
   assert.match(lib, /if \(issue === "serial"\) return \{ href: editHref, fieldKey: "serialNumber", place: "edit" \}/)
   assert.match(lib, /if \(issue === "photo"\) return \{ href: buildAssetDetailSectionHref\(locale, assetId, null, "photos"\), fieldKey: "photos", place: "detail" \}/)
   assert.match(lib, /if \(issue === "warranty"\) return \{ href: buildAssetDetailSectionHref\(locale, assetId, null, "purchase"\), fieldKey: "warranty", place: "detail" \}/)
   assert.match(lib, /return \{ href: editHref, fieldKey: "responsibility", place: "edit" \}/)
+})
+
+// Final review (findings 2, 3): the chips line does not claim every number follows every chip. Its count is the queue's
+// scope (the filters without dataQuality and activity), it names what the queue and idle count leave out when those chips
+// are on, and the cross-scope panel says it leaves out the status filter (the counts keep their scope rules, spec §5).
+test("the operations scope line counts the queue's scope and names the filters the queue and cross-scope leave out", () => {
+  assert.match(page, /const operationsScope = \{ count: totalAssets, skipsFilters: Boolean\(filters\.dataQuality \|\| filters\.activity\) \}/)
+  assert.match(page, /operationsScope\.skipsFilters \? prisma\.asset\.count\(\{ where: operationsQualityWhere \}\) : Promise\.resolve\(totalAssets\)/)
+  assert.match(page, /operationsScope\.count = scopeCount/)
+  assert.doesNotMatch(th.opsScopeLine, /ทุกตัวเลข/)
+  assert.doesNotMatch(en.opsScopeLine, /[Ee]very number/)
+  assert.equal(th.opsScopeLineSkips, "คิวและจำนวนไม่เคลื่อนไหวไม่ใช้ตัวกรองคุณภาพข้อมูลและความเคลื่อนไหว")
+  assert.equal(typeof en.opsScopeLineSkips, "string")
+  // Cross-scope: "ไม่รวมตัวกรองสถานะ" under its equation when a status filter is set.
+  assert.match(page, /statusNote: filters\.statusId \? t\("opsCrossScopeNoStatus"\) : undefined,/)
+  assert.match(view, /\{crossScope\.statusNote \? \(\n\s+<p data-report-ops-cross-scope-status className="[^"]*">\{crossScope\.statusNote\}<\/p>\n\s+\) : null\}/)
+  assert.equal(th.opsCrossScopeNoStatus, "ไม่รวมตัวกรองสถานะ")
+  assert.equal(typeof en.opsCrossScopeNoStatus, "string")
+})
+
+// Final review (finding 4): the queue's badge links and fix links are named by their visible text, then the asset name
+// and tag, so rows with the same issue sound different to a screen reader. The plain <span> badges stay as they are.
+test("the queue's badge and fix links are named by their asset", () => {
+  assert.match(view, /aria-label=\{t\("opsIssueLinkName", \{ issue: labels\[issue\], asset: asset\.name, tag: asset\.assetTag \}\)\}/)
+  assert.match(view, /aria-label=\{t\("opsFixLinkName", \{ label: fixLabel, asset: asset\.name, tag: asset\.assetTag \}\)\}/)
+  assert.match(view, /aria-label=\{t\("opsFixLinkName", \{ label: openLabel, asset: asset\.name, tag: asset\.assetTag \}\)\}/)
+  assert.equal(th.opsIssueLinkName, "{issue}: {asset} ({tag})")
+  assert.equal(en.opsIssueLinkName, "{issue}: {asset} ({tag})")
+  assert.equal(th.opsFixLinkName, "{label}: {asset} ({tag})")
+  assert.equal(en.opsFixLinkName, "{label}: {asset} ({tag})")
 })

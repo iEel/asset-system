@@ -36,6 +36,7 @@ export type ReportCrossScopeCard = {
 }
 
 type ReportInsightRow = OperationsTopRow
+type Translate = Awaited<ReturnType<typeof getTranslations>>
 
 export type ReportsOperationsLabels = {
   missingCustodian: string
@@ -86,6 +87,8 @@ export type ReportsOperationsViewProps = {
     cards: ReportCrossScopeCard[]
     rows: AssetCrossScopeSummaryRow[]
     exportHref?: string
+    // "ไม่รวมตัวกรองสถานะ" when a status filter is set: the cross-scope counts leave it out (spec §5).
+    statusNote?: string
   }
   insights: {
     custodians: ReportInsightRow[]
@@ -270,14 +273,14 @@ export async function ReportsOperationsView({
                         <QueueAssetName locale={locale} asset={asset} />
                       </DataTableCell>
                       <DataTableCell>
-                        <QueueIssueBadges locale={locale} asset={asset} canEdit={canEdit} labels={issueLabels} />
+                        <QueueIssueBadges locale={locale} asset={asset} canEdit={canEdit} labels={issueLabels} t={t} />
                       </DataTableCell>
                       <DataTableCell className="text-muted-foreground">
                         <span className="block">{asset.categoryName}</span>
                         <span className="block text-meta text-faint-foreground">{asset.branchName}</span>
                       </DataTableCell>
                       <DataTableCell className="min-w-44">
-                        <QueueFix locale={locale} asset={asset} canEdit={canEdit} fixLabel={labels.fixData} place={fixPlace(asset)} openLabel={t("opsOpenAssetPage")} noEditLabel={t("opsNoEditRight")} />
+                        <QueueFix locale={locale} asset={asset} canEdit={canEdit} fixLabel={labels.fixData} place={fixPlace(asset)} openLabel={t("opsOpenAssetPage")} noEditLabel={t("opsNoEditRight")} t={t} />
                       </DataTableCell>
                     </DataTableRow>
                   ))}
@@ -288,9 +291,9 @@ export async function ReportsOperationsView({
                 {queue.rows.map((asset) => (
                   <li key={asset.id} className="space-y-2 px-4 py-3">
                     <QueueAssetName locale={locale} asset={asset} />
-                    <QueueIssueBadges locale={locale} asset={asset} canEdit={canEdit} labels={issueLabels} />
+                    <QueueIssueBadges locale={locale} asset={asset} canEdit={canEdit} labels={issueLabels} t={t} />
                     <p className="text-meta text-muted-foreground">{asset.categoryName} · {asset.branchName}</p>
-                    <QueueFix locale={locale} asset={asset} canEdit={canEdit} fixLabel={labels.fixData} place={fixPlace(asset)} openLabel={t("opsOpenAssetPage")} noEditLabel={t("opsNoEditRight")} fullWidth />
+                    <QueueFix locale={locale} asset={asset} canEdit={canEdit} fixLabel={labels.fixData} place={fixPlace(asset)} openLabel={t("opsOpenAssetPage")} noEditLabel={t("opsNoEditRight")} t={t} fullWidth />
                   </li>
                 ))}
               </ul>
@@ -336,6 +339,9 @@ export async function ReportsOperationsView({
             all: crossScopeCount("all"),
           })}
         </p>
+        {crossScope.statusNote ? (
+          <p data-report-ops-cross-scope-status className="mt-1 text-meta text-muted-foreground text-pretty">{crossScope.statusNote}</p>
+        ) : null}
         <CrossScopePreviewTable rows={crossScope.rows} locale={locale} emptyLabel={crossScopeEmpty} labels={labels} />
       </ContentPanel>
 
@@ -382,11 +388,13 @@ function QueueIssueBadges({
   asset,
   canEdit,
   labels,
+  t,
 }: {
   locale: string
   asset: OperationsQueueRow
   canEdit: boolean
   labels: Record<ReportIssueKind, string>
+  t: Translate
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -398,6 +406,8 @@ function QueueIssueBadges({
             key={issue}
             data-report-ops-issue={issue}
             href={fix.href}
+            // Named by its visible issue, then the asset name and tag, so rows with one issue sound apart (final review).
+            aria-label={t("opsIssueLinkName", { issue: labels[issue], asset: asset.name, tag: asset.assetTag })}
             className="inline-flex min-h-11 items-center rounded-control transition-opacity hover:opacity-80 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
           >
             {badge}
@@ -421,6 +431,7 @@ function QueueFix({
   openLabel,
   noEditLabel,
   fullWidth = false,
+  t,
 }: {
   locale: string
   asset: OperationsQueueRow
@@ -430,15 +441,16 @@ function QueueFix({
   openLabel: string
   noEditLabel: string
   fullWidth?: boolean
+  t: Translate
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       {canEdit ? (
-        <Link href={asset.fix.href} className={cn(buttonVariants({ size: "sm" }), fullWidth && "w-full")}>
+        <Link href={asset.fix.href} aria-label={t("opsFixLinkName", { label: fixLabel, asset: asset.name, tag: asset.assetTag })} className={cn(buttonVariants({ size: "sm" }), fullWidth && "w-full")}>
           {fixLabel}
         </Link>
       ) : (
-        <Link href={`/${locale}/assets/${asset.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), fullWidth && "w-full")}>
+        <Link href={`/${locale}/assets/${asset.id}`} aria-label={t("opsFixLinkName", { label: openLabel, asset: asset.name, tag: asset.assetTag })} className={cn(buttonVariants({ variant: "outline", size: "sm" }), fullWidth && "w-full")}>
           {openLabel}
         </Link>
       )}

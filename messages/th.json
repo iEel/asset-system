@@ -3904,7 +3904,7 @@
     "noFilters": "ไม่มีตัวกรอง",
     "exportRegisterCappedCaption": "ทะเบียนทรัพย์สิน: ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด จาก {count, number} รายการ",
     "exportRegisterDescriptionCapped": "Excel รายการทีละชิ้น · ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด จาก {count, number} รายการ",
-    "opsScopeLine": "ทุกตัวเลขในแท็บนี้นับตามตัวกรองนี้ · ทรัพย์สิน {count, number} รายการ",
+    "opsScopeLine": "นับตามตัวกรองนี้ · ทรัพย์สิน {count, number} รายการ",
     "opsScopeLineNoFilters": "ไม่มีตัวกรอง · ทุกตัวเลขในแท็บนี้นับจากทรัพย์สิน {count, number} รายการ",
     "opsEditFilters": "แก้ตัวกรองที่แท็บภาพรวม",
     "opsQueueTitle": "คิวแก้ข้อมูลทะเบียน",
@@ -3990,7 +3990,11 @@
     "catalogScopeLegendTitle": "ป้ายขอบเขตของไฟล์",
     "catalogScopeLegendFilters": "ไฟล์ได้เฉพาะรายการตามตัวกรองด้านบน ตอนนี้ {filters} {count, number} รายการ",
     "catalogScopeLegendNoFilters": "ไม่มีตัวกรอง ไฟล์มีทรัพย์สินทั้งหมด {count, number} รายการ",
-    "catalogScopeLegendSystem": "ซ่อมบำรุง ตัดจำหน่าย และตรวจนับใช้ตัวกรองของแต่ละโมดูลเอง ไฟล์จึงมีทุกบริษัท"
+    "catalogScopeLegendSystem": "ซ่อมบำรุง ตัดจำหน่าย และตรวจนับใช้ตัวกรองของแต่ละโมดูลเอง ไฟล์จึงมีทุกบริษัท",
+    "opsScopeLineSkips": "คิวและจำนวนไม่เคลื่อนไหวไม่ใช้ตัวกรองคุณภาพข้อมูลและความเคลื่อนไหว",
+    "opsCrossScopeNoStatus": "ไม่รวมตัวกรองสถานะ",
+    "opsIssueLinkName": "{issue}: {asset} ({tag})",
+    "opsFixLinkName": "{label}: {asset} ({tag})"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",

@@ -72,7 +72,9 @@ test("each card: title, description, scope, cadence and format badges, last expo
   assert.match(view, /const lastLine = catalogLastExportLine\(report, lastExports, locale\)/)
   assert.match(view, /\{t\("catalogLastExport"\)\}\n\s+<br \/>\n\s+\{lastLine\.at\}/)
   assert.match(view, /t\("catalogNeverExported"\)/)
-  assert.match(view, /\{report\.openLabelKey \? t\(report\.openLabelKey\) : t\("openReport"\)\}/)
+  assert.match(view, /const openText = report\.openLabelKey \? t\(report\.openLabelKey\) : t\("openReport"\)/)
+  // The open link is named by its visible text and the report, as the export buttons (final review finding 5).
+  assert.match(view, /<Link href=\{report\.openHref\} aria-label=\{t\("catalogExportName", \{ label: openText, report: title \}\)\} className=\{[^\n]*\}>\n\s+\{openText\}\n\s+<\/Link>/)
   assert.match(view, /aria-label=\{t\("catalogExportName", \{ label: t\(entry\.label\), report: title \}\)\}/)
   assert.equal(th.reportsPage.catalogScopeFiltersNoStatus, "ใช้ตัวกรองปัจจุบัน · ไม่รวมตัวกรองสถานะ")
   assert.equal(th.reportsPage.catalogScopeSystem, "ทั้งระบบ · ไม่ใช้ตัวกรอง")

@@ -244,6 +244,8 @@ function CatalogReportCard({
   const title = t(report.titleKey)
   const description = t(report.descriptionKey, report.descriptionValues)
   const lastLine = catalogLastExportLine(report, lastExports, locale)
+  // The open link's visible text; its name adds the report, as the export buttons do (final review).
+  const openText = report.openLabelKey ? t(report.openLabelKey) : t("openReport")
   const { allowed, missing } = catalogExportState(report, canExport)
   const formatBadges = report.formatHintKey
     ? [t(report.formatHintKey)]
@@ -259,8 +261,8 @@ function CatalogReportCard({
         </span>
       ))}
       {report.openHref ? (
-        <Link href={report.openHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm md:min-h-0")}>
-          {report.openLabelKey ? t(report.openLabelKey) : t("openReport")}
+        <Link href={report.openHref} aria-label={t("catalogExportName", { label: openText, report: title })} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm md:min-h-0")}>
+          {openText}
         </Link>
       ) : null}
       {/* An /api download is a plain <a> (M31): no prefetch and no client routing. */}

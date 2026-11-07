@@ -3904,7 +3904,7 @@
     "noFilters": "No filters",
     "exportRegisterCappedCaption": "Asset register: the file has the {max, number} most recently added of {count, plural, one {# asset} other {# assets}}",
     "exportRegisterDescriptionCapped": "Excel, one row per asset · the file has the {max, number} most recently added of {count, plural, one {# asset} other {# assets}}",
-    "opsScopeLine": "Every number on this tab counts with these filters · {count, plural, one {# asset} other {# assets}}",
+    "opsScopeLine": "Counted with these filters · {count, plural, one {# asset} other {# assets}}",
     "opsScopeLineNoFilters": "No filters · every number on this tab counts from {count, plural, one {# asset} other {# assets}}",
     "opsEditFilters": "Change the filters on the overview tab",
     "opsQueueTitle": "Register data-fix queue",
@@ -3990,7 +3990,11 @@
     "catalogScopeLegendTitle": "File scope labels",
     "catalogScopeLegendFilters": "The file holds only the rows matching the filters above · now {filters}, {count, plural, one {# asset} other {# assets}}",
     "catalogScopeLegendNoFilters": "No filters · the file holds all {count, plural, one {# asset} other {# assets}}",
-    "catalogScopeLegendSystem": "Maintenance, disposal and audit use each module's own filters, so their files cover every company"
+    "catalogScopeLegendSystem": "Maintenance, disposal and audit use each module's own filters, so their files cover every company",
+    "opsScopeLineSkips": "The queue and the idle count do not use the data quality and activity filters",
+    "opsCrossScopeNoStatus": "Status filter not applied",
+    "opsIssueLinkName": "{issue}: {asset} ({tag})",
+    "opsFixLinkName": "{label}: {asset} ({tag})"
   },
   "maintenancePage": {
     "title": "Maintenance",

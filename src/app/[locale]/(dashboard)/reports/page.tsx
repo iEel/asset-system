@@ -290,6 +290,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   let viewContent: React.ReactNode
   // The catalog's chips line: "{k} จาก {n} รายงาน" follow the current filters (board RP-Library), set by its loader.
   const catalogScope = { filtered: 0, count: 0 }
+  // The operations chips line counts the queue's scope (the filters without dataQuality and activity), set by its
+  // loader, and names the filters the queue and idle count leave out when those chips are on (final review).
+  const operationsScope = { count: totalAssets, skipsFilters: Boolean(filters.dataQuality || filters.activity) }
   switch (activeView) {
     case "overview": {
       async function loadOverviewView(): Promise<React.ReactNode> {
@@ -435,20 +438,25 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         const operationsQualityFilters = parseAssetListParams({ ...filters, dataQuality: "", activity: "", page: 1 })
         const operationsQualityWhere = await applyAssetCrossScopeFilter(buildAssetWhere(operationsQualityFilters), operationsQualityFilters.crossScope)
         const crossScopeFilters = parseAssetListParams({ ...filters, dataQuality: "", statusId: "", page: 1 })
-        const data = await getReportsOperationsData(
-          operationsQualityWhere,
-          {
-            locale,
-            ...operationsParams,
-            baseQuery: operationsBaseQuery,
-            canEdit: canAssetEdit,
-            whereOptions,
-            topsWhere: assetWhere,
-            loadCrossScope: () => buildAssetCrossScopeSummary(buildAssetWhere(crossScopeFilters), 8),
-            labels: { unassigned: t("unassigned") },
-          },
-          prisma as unknown as ReportsOperationsDb,
-        )
+        const [data, scopeCount] = await Promise.all([
+          getReportsOperationsData(
+            operationsQualityWhere,
+            {
+              locale,
+              ...operationsParams,
+              baseQuery: operationsBaseQuery,
+              canEdit: canAssetEdit,
+              whereOptions,
+              topsWhere: assetWhere,
+              loadCrossScope: () => buildAssetCrossScopeSummary(buildAssetWhere(crossScopeFilters), 8),
+              labels: { unassigned: t("unassigned") },
+            },
+            prisma as unknown as ReportsOperationsDb,
+          ),
+          // Without dataQuality and activity the queue's scope is the report's own: no second count.
+          operationsScope.skipsFilters ? prisma.asset.count({ where: operationsQualityWhere }) : Promise.resolve(totalAssets),
+        ])
+        operationsScope.count = scopeCount
         const crossScopeSummary = data.crossScope
         const crossScopeCards = [
           {
@@ -494,6 +502,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               exportHref: canAssetExport
                 ? "/api/assets/export?" + buildAssetQueryString(crossScopeFilters, { crossScope: "all", page: 1 })
                 : undefined,
+              // The cross-scope counts keep their rule (no dataQuality, no status, spec §5): say so when status is set.
+              statusNote: filters.statusId ? t("opsCrossScopeNoStatus") : undefined,
             }}
             insights={{
               custodians: data.tops.custodians,
@@ -655,7 +665,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <FilterChipList chips={activeFilters} label={t("activeFilters")} removeLabel={t("clearActiveFilter")} />
         </div>
       ) : null}
-      {/* Operations and the catalog: the chips line with what every number (or which report) counts, ล้างตัวกรอง and the way to the filter bar (spec §3, §5). */}
+      {/* Operations and the catalog: the chips line with what the queue (or which report) counts, ล้างตัวกรอง and the way to the filter bar (spec §3, §5). */}
       {!showsFilterBar ? (
         <div data-report-chips-line>
           <ReportChipsLine
@@ -664,7 +674,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               activeView === "catalog"
                 ? t("catalogScopeLine", catalogScope)
                 : hasActiveFilters
-                  ? t("opsScopeLine", { count: totalAssets })
+                  ? [t("opsScopeLine", { count: operationsScope.count }), ...(operationsScope.skipsFilters ? [t("opsScopeLineSkips")] : [])].join(" · ")
                   : t("opsScopeLineNoFilters", { count: totalAssets })
             }
             clearHref={hasActiveFilters ? buildReportHref(locale, activeView, parseAssetListParams({})) : undefined}

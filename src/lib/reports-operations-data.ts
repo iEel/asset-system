@@ -35,9 +35,10 @@ export type OperationsQueueRow = {
   assetTag: string
   categoryName: string
   branchName: string
-  // Only the chosen issue unless `others` (or the queue shows all issues).
+  // Only the chosen issue unless `others` (or the queue shows all issues); a chosen issue always comes first.
   issues: ReportIssueKind[]
-  // The first issue's place: the edit page for responsibility and serial, the asset page's photos or purchase section.
+  // The chosen issue's place (under "all", the first issue's): the edit page for responsibility and serial, the
+  // asset page's photos or purchase section.
   fix: { href: string; fieldKey: OperationsFixField; place: "edit" | "detail" }
 }
 
@@ -237,7 +238,9 @@ export async function getReportsOperationsData<CrossScopeRow = unknown>(
 
   const rows: OperationsQueueRow[] = queueAssets.map((asset) => {
     const all = getAssetReportIssues(asset, warrantyWindow)
-    const issues = input.issue === "all" || input.others ? all : [input.issue]
+    // One issue chosen: its badge comes first (then the others when shown) and the fix goes to its place.
+    const chosen = input.issue === "all" ? null : input.issue
+    const issues = chosen === null ? all : input.others ? [chosen, ...all.filter((issue) => issue !== chosen)] : [chosen]
     return {
       id: asset.id,
       name: asset.name,

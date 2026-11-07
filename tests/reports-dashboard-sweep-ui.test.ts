@@ -46,7 +46,7 @@ test("report catalog: panels, /api downloads as plain <a>, the cadence a Chip an
   assert.match(source, /<a\n\s+key=\{entry\.href\}\n\s+href=\{entry\.href\}\n\s+download\n/)
   // Task 3 (board RP-Phone): full width below md.
   assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: entry\.format === "pdf" \? "outline" : "default", size: "sm" \}\), "w-full md:w-auto"\)\}/)
-  assert.match(source, /<Link href=\{report\.openHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\)/)
+  assert.match(source, /<Link href=\{report\.openHref\} aria-label=\{[^\n]*\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\)/)
   assert.match(source, /\{report\.cadenceKey \? <Chip>\{t\(report\.cadenceKey\)\}<\/Chip> : null\}/)
   assert.match(source, /<StatusBadge label=\{scope\} tone=\{report\.scope === "system" \? "muted" : "info"\} wrap \/>/)
   assert.match(source, /<EmptyNote>\{emptyLabel\}<\/EmptyNote>/)
@@ -62,7 +62,7 @@ test("report operations: ContentPanels, the cross-scope export as a plain <a>, t
   // Task 3: each badge is a link to its own issue's fix place (the edit page only with asset:edit).
   assert.match(source, /const badge = <StatusBadge label=\{labels\[issue\]\} tone=\{issue === "warranty" \? "info" : "warning"\} \/>/)
   assert.match(source, /<StatusBadge key=\{label\} label=\{label\} tone="warning" \/>/)
-  assert.match(source, /<Link href=\{asset\.fix\.href\} className=\{cn\(buttonVariants\(\{ size: "sm" \}\), fullWidth && "w-full"\)\}>/)
+  assert.match(source, /<Link href=\{asset\.fix\.href\} aria-label=\{[^\n]*\} className=\{cn\(buttonVariants\(\{ size: "sm" \}\), fullWidth && "w-full"\)\}>/)
   assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{title\}<\/h3>/)
   assert.doesNotMatch(source, /border-dashed|rounded-full|bg-warning-soft|text-white|sm:h-|hover:underline|<Link\s+href=\{crossScope\.exportHref\}|rounded-lg border/)
 })
