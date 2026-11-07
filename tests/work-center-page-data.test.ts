@@ -139,7 +139,7 @@ test("a user with no queue sees an empty page", async () => {
   assert.equal(data.mineUnavailable, false)
   assert.deepEqual(data.table, { rows: [], total: 0, show: 8 })
   assert.equal(data.assets, null)
-  assert.deepEqual(data.tracking, { round: null, dataIssues: null, advanceTotal: 0 })
+  assert.deepEqual(data.tracking, { round: null, dataIssues: null, advanceTotal: 0, canScan: false })
   assert.equal(data.unreadTopics, 2)
 })
 
@@ -283,4 +283,42 @@ test("the view's counts reach the page for the queue parts line", async () => {
   const mine = fakes({ waiting: work({ openRepairs: 3 }) })
   const scoped = await loader.getWorkCenterPageData(user(allPermissions), input({ view: "mine" }), mine.deps)
   assert.equal(scoped.counts.openRepairs, 1, "งานของฉัน: the scoped count")
+})
+
+// Final review ruling 2: เดินตรวจต่อ needs the scan page's audit:edit; the panel itself needs audit:view.
+test("tracking says whether the user may scan (audit:edit)", async () => {
+  const viewer = await loader.getWorkCenterPageData(user(allPermissions), input(), fakes().deps)
+  assert.equal(viewer.tracking.canScan, false)
+  const scanner = await loader.getWorkCenterPageData(user([...allPermissions, "audit:edit"]), input(), fakes().deps)
+  assert.equal(scanner.tracking.canScan, true)
+})
+
+// Final review ruling 4: a queue panel the user cannot see, or ข้อมูลไม่ครบ without asset:view, falls back to ภาพรวม
+// before the rows, the return link or anything else uses it.
+test("a forbidden panel falls back to the overview", async () => {
+  const hiddenQueue = fakes({ waiting: work({ openRepairs: 3 }) })
+  const queueData = await loader.getWorkCenterPageData(
+    user(allPermissions),
+    { ...input({ panel: "disposal", show: "16" }), returnTo: "/th/work-center?panel=disposal&show=16" },
+    { ...hiddenQueue.deps, getRows: async (_user, _work, options) => {
+      hiddenQueue.calls.rows.push({ queue: options.queue, show: options.show, scope: options.scope })
+      assert.equal(options.returnTo, "/th/work-center?show=16")
+      return { rows: [], total: 0 }
+    } },
+  )
+  assert.equal(queueData.params.panel, "overview")
+  assert.deepEqual(hiddenQueue.calls.rows, [{ queue: null, show: 16, scope: null }])
+
+  const visibleQueue = fakes({ waiting: work({ openRepairs: 3 }) })
+  const kept = await loader.getWorkCenterPageData(user(allPermissions), input({ panel: "maintenance" }), visibleQueue.deps)
+  assert.equal(kept.params.panel, "maintenance")
+  assert.deepEqual(visibleQueue.calls.rows, [{ queue: "maintenance", show: 8, scope: null }])
+
+  const noAssetView = fakes({ countDataIssues: async () => null })
+  const assets = await loader.getWorkCenterPageData(user(["dashboard:view", "maintenance:view"]), input({ panel: "assets" }), noAssetView.deps)
+  assert.equal(assets.params.panel, "overview")
+  assert.equal(assets.assets, null)
+  assert.equal(noAssetView.calls.assetsLoaded, 0)
+  assert.deepEqual(noAssetView.calls.rows, [{ queue: null, show: 8, scope: null }])
+  assert.notEqual(assets.table, null)
 })

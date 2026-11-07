@@ -24,11 +24,12 @@ import {
 import { queueKeysFor, type WorkQueue } from "@/lib/work-queues"
 import {
   rankWorkRows,
-  workRowNextStep,
+  workRowPermittedNextStep,
   workRowQueue,
   workRowUrgency,
   type WorkRowKind,
   type WorkRowLite,
+  type WorkRowNextStep,
   type WorkRowUrgency,
 } from "@/lib/work-center-rows"
 import {
@@ -273,7 +274,8 @@ export type WorkRow = WorkRowLite & {
   ageDays: number
   overdueDays: number
   dueInDays: number | null
-  nextStep: { labelKey: string; href: string }
+  /** null when neither the step's target nor the record's own page is allowed (final review ruling 1). */
+  nextStep: WorkRowNextStep | null
   menu: { key: WorkRowMenuKey; href: string }[]
 }
 
@@ -546,6 +548,7 @@ export async function loadWorkRows(user: SessionUser, lites: readonly WorkRowLit
   const canViewAsset = hasPermission(user, "asset", "view")
   const canViewDisposal = hasPermission(user, "disposal", "view")
   const withReturn = (href: string) => appendOperationalReturnTo(href, returnTo)
+  const can = (module: string, action: string) => hasPermission(user, module, action)
 
   return lites.flatMap((lite): WorkRow[] => {
     const detail = details.get(detailKey(lite))
@@ -572,10 +575,17 @@ export async function loadWorkRows(user: SessionUser, lites: readonly WorkRowLit
         ageDays: Math.max(0, bangkokDayDiff(lite.since, today)),
         overdueDays: dueInDays !== null && dueInDays < 0 ? -dueInDays : 0,
         dueInDays,
-        nextStep: workRowNextStep(
+        // The step only with its target's permission; else the record's own page, or none (final review ruling 1).
+        nextStep: workRowPermittedNextStep(
           lite.kind,
-          { id: lite.id, assetId: detail.assetId, planId: lite.kind === "duePm" ? lite.id : undefined },
+          {
+            id: lite.id,
+            assetId: detail.assetId,
+            planId: lite.kind === "duePm" ? lite.id : undefined,
+            planNo: lite.kind === "duePm" ? detail.documentNo : undefined,
+          },
           locale,
+          can,
           returnTo,
         ),
         menu,

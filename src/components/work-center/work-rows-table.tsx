@@ -92,6 +92,8 @@ export function WorkRowsTable({
           <h2 className="text-base font-semibold text-foreground md:hidden">
             {t(`queue.${queueEntry.queue}`)} <span className="num">{formatCount(queueEntry.count)}</span>
           </h2>
+        ) : queue === null ? (
+          <h2 className="text-base font-semibold text-foreground md:hidden">{t("backlog.title")}</h2>
         ) : null}
         {queue ? (
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-meta">
@@ -195,7 +197,7 @@ export function WorkRowsTable({
                       code={row.documentNo ?? row.assetTag ?? row.number}
                       name={row.title}
                       menuLabel={t("table.menuLabel", { code: row.documentNo ?? row.assetTag ?? row.number })}
-                      next={{ label: tRoot(row.nextStep.labelKey), href: row.nextStep.href }}
+                      next={row.nextStep ? { label: tRoot(row.nextStep.labelKey), href: row.nextStep.href } : null}
                       nextWidth="auto"
                       groups={menuGroups(row)}
                     />
@@ -255,13 +257,15 @@ export function WorkRowsTable({
                     className="-mt-1.5 shrink-0"
                   />
                 </div>
-                <div className="pe-1.5">
-                  <Link href={row.nextStep.href} className={cn(buttonVariants({ size: "md" }), "mt-2.5 min-h-11 w-full")}>
-                    {tRoot(row.nextStep.labelKey)}
-                    <span className="sr-only"> {row.documentNo ?? row.assetTag ?? row.number}</span>
-                    <ArrowRight aria-hidden="true" />
-                  </Link>
-                </div>
+                {row.nextStep ? (
+                  <div className="pe-1.5">
+                    <Link href={row.nextStep.href} className={cn(buttonVariants({ size: "md" }), "mt-2.5 min-h-11 w-full")}>
+                      {tRoot(row.nextStep.labelKey)}
+                      <span className="sr-only"> {row.documentNo ?? row.assetTag ?? row.number}</span>
+                      <ArrowRight aria-hidden="true" />
+                    </Link>
+                  </div>
+                ) : null}
               </li>
             )
           })

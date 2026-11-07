@@ -7,6 +7,7 @@ import {
   WORK_SHOW_MAX,
   WORK_SHOW_STEP,
   workRowNextStep,
+  workRowPermittedNextStep,
   workRowQueue,
   workRowUrgency,
   type WorkRowKind,
@@ -110,4 +111,48 @@ test("parseWorkShow clamps", () => {
   assert.equal(parseWorkShow("16"), 16)
   assert.equal(parseWorkShow("999"), 200)
   assert.equal(parseWorkShow(["24", "8"]), 24)
+})
+
+// Final review ruling 1: a next step shows only with its target page's permission; without it the record's own view
+// link ("เปิด…") or nothing.
+test("the next step needs its target's permission, else the record's view link or none", () => {
+  const ids = { id: "rec-1", assetId: "asset-9", planId: "plan-3", planNo: "PM-0007" }
+  const can = (granted: string[]) => (module: string, action: string) => granted.includes(`${module}:${action}`)
+  const returnTo = "/th/work-center"
+  const back = `returnTo=${encodeURIComponent(returnTo)}`
+  const step = (kind: WorkRowKind, granted: string[]) => workRowPermittedNextStep(kind, ids, "th", can(granted), returnTo)
+
+  // With the target's permission: the step itself.
+  assert.deepEqual(step("duePm", ["maintenance:view", "maintenance:create"]), workRowNextStep("duePm", ids, "th", returnTo))
+  assert.deepEqual(step("stuckRepair", ["maintenance:view", "maintenance:create"]), workRowNextStep("stuckRepair", ids, "th", returnTo))
+  assert.deepEqual(step("approvedDisposal", ["disposal:view", "disposal:edit"]), workRowNextStep("approvedDisposal", ids, "th", returnTo))
+  assert.deepEqual(step("disposalApproval", ["disposal:approve"]), workRowNextStep("disposalApproval", ids, "th", returnTo))
+  assert.deepEqual(step("findingApproval", ["audit:approve"]), workRowNextStep("findingApproval", ids, "th", returnTo))
+  assert.deepEqual(step("roundClose", ["audit:approve"]), workRowNextStep("roundClose", ids, "th", returnTo))
+  assert.deepEqual(step("openRepair", ["maintenance:view"]), workRowNextStep("openRepair", ids, "th", returnTo))
+  assert.deepEqual(step("auditAction", ["audit:view"]), workRowNextStep("auditAction", ids, "th", returnTo))
+  assert.deepEqual(step("pendingFinding", ["audit:view"]), workRowNextStep("pendingFinding", ids, "th", returnTo))
+  assert.deepEqual(step("pendingDisposal", ["disposal:view"]), workRowNextStep("pendingDisposal", ids, "th", returnTo))
+
+  // A view-only user: the record's own page, labelled เปิด…
+  const viewOnly = ["maintenance:view", "audit:view", "disposal:view", "asset:view"]
+  assert.deepEqual(step("duePm", viewOnly), {
+    labelKey: "workCenter.nextStep.openPlan",
+    href: `/th/maintenance/pm?q=PM-0007&${back}`,
+  })
+  assert.deepEqual(step("stuckRepair", viewOnly), { labelKey: "workCenter.nextStep.openAsset", href: `/th/assets/asset-9?${back}` })
+  assert.deepEqual(step("approvedDisposal", viewOnly), {
+    labelKey: "workCenter.nextStep.openRequest",
+    href: `/th/disposal/rec-1?${back}`,
+  })
+  assert.equal(step("stuckRepair", ["maintenance:view"]), null, "no asset:view: no fallback")
+  assert.equal(step("duePm", []), null)
+  assert.equal(step("approvedDisposal", []), null)
+  assert.equal(step("disposalApproval", viewOnly), null)
+  assert.equal(step("findingApproval", ["disposal:approve"]), null)
+  assert.equal(step("roundClose", ["disposal:approve"]), null)
+  assert.equal(step("openRepair", ["audit:view"]), null)
+  assert.equal(step("auditAction", ["maintenance:view"]), null)
+  assert.equal(step("pendingFinding", ["disposal:view"]), null)
+  assert.equal(step("pendingDisposal", ["audit:view"]), null)
 })

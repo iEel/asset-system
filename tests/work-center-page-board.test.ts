@@ -47,12 +47,25 @@ test("the strip: ต้องทำวันนี้ with its two links, งา
   assert.match(strip, /previous\.isYesterday\n\s+\? t\("backlog\.yesterday", \{ count: previous\.backlogTotal \}\)\n\s+: t\("backlog\.onDay", \{ date: formatDate\(previous\.dayLabelDate\), count: previous\.backlogTotal \}\)/)
   assert.match(strip, /summary\.queues\.map\(\(entry\) => formatCount\(entry\.count\)\)\.join\(" \+ "\)/)
   assert.match(strip, /t\("backlog\.sumNote", \{ sum: sumLine \}\)/)
+  // Final review ruling 3: no bare "= 0" sum note when no queue is visible.
+  assert.match(
+    strip,
+    /\{summary\.queues\.length > 0 \? \(\n\s+<p className="mt-2\.5 text-xs num text-muted-foreground">\{t\("backlog\.sumNote", \{ sum: sumLine \}\)\}<\/p>\n\s+\) : null\}/,
+  )
   assert.match(strip, /buildWorkCenterHref\(locale, params, \{ panel: entry\.queue, show: WORK_SHOW_STEP \}\)/)
 })
 
 test("ติดตามแยก: the round to its scan page, data issues to the assets tab, the advance warnings to notifications", () => {
   assert.match(tracking, /t\("tracking\.title"\)/)
-  assert.match(tracking, /href=\{`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`\}/)
+  // Final review ruling 2: เดินตรวจต่อ only with audit:edit; otherwise the round's page, ดูรอบตรวจนับ.
+  assert.match(tracking, /const \{ round, dataIssues, advanceTotal, canScan \} = tracking/)
+  assert.match(
+    tracking,
+    /href=\{canScan \? `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan` : `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}`\}/,
+  )
+  assert.match(tracking, /\{canScan \? t\("tracking\.continueScan"\) : t\("tracking\.openRound"\)\}/)
+  assert.equal(message(th, "tracking.openRound"), "ดูรอบตรวจนับ")
+  assert.equal(typeof message(en, "tracking.openRound"), "string")
   assert.match(tracking, /<PaceBar value=\{round\.total > 0 \? round\.checked \/ round\.total : 0\} pace=\{null\}/)
   assert.match(tracking, /t\("tracking\.pending", \{ count: round\.pending \}\)/)
   assert.match(tracking, /buildWorkCenterHref\(locale, params, \{ panel: "assets", show: WORK_SHOW_STEP \}\)/)
@@ -73,7 +86,11 @@ test("the table: urgency dot with a word, the work, queue and kind, the age line
   assert.match(table, /statusMarkerVariants\(\{ tone: urgencyTones\[row\.urgency\] \}\)/)
   assert.match(table, /<span className="sr-only">\{t\(`urgency\.\$\{row\.urgency\}`\)\}<\/span>/)
   assert.match(table, /<RowActions\n\s+code=\{row\.documentNo \?\? row\.assetTag \?\? row\.number\}/)
-  assert.match(table, /next=\{\{ label: tRoot\(row\.nextStep\.labelKey\), href: row\.nextStep\.href \}\}\n\s+nextWidth="auto"\n/, "the next step shows its whole label (look step)")
+  assert.match(
+    table,
+    /next=\{row\.nextStep \? \{ label: tRoot\(row\.nextStep\.labelKey\), href: row\.nextStep\.href \} : null\}\n\s+nextWidth="auto"\n/,
+    "the next step shows its whole label (look step); none without its target's permission (final review ruling 1)",
+  )
   assert.match(
     table,
     /<col \/>\n\s+<col className="hidden w-44 xl:table-column" \/>\n\s+<col className="w-40" \/>\n\s+<col className="w-60" \/>\n\s+<\/colgroup>/,
@@ -181,6 +198,11 @@ test("phone: rows are cards below md and the table from md", () => {
   assert.match(table, /className=\{cn\(buttonVariants\(\{ size: "md" \}\), "mt-2\.5 min-h-11 w-full"\)\}/, "the next step is full width at 44px")
   assert.match(
     table,
+    /\{row\.nextStep \? \(\n\s+<div className="pe-1\.5">\n\s+<Link href=\{row\.nextStep\.href\}/,
+    "the card has no next button without its target's permission (final review ruling 1)",
+  )
+  assert.match(
+    table,
     /<RowActions\n\s+menu="sheet"\n\s+code=\{row\.documentNo \?\? row\.assetTag \?\? row\.number\}\n\s+name=\{row\.title\}\n\s+menuLabel=[^\n]+\n\s+groups=\{menuGroups\(row\)\}/,
     "the card's ⋯ holds only the menu; the next step is its own button",
   )
@@ -201,7 +223,21 @@ test("phone: ติดตามแยก comes after the list, the round reads �
   assert.match(tracking, /className="shrink-0 num text-muted-foreground md:hidden">\{t\("tracking\.roundChecked", \{ checked: round\.checked, total: round\.total \}\)\}/)
   assert.equal(message(th, "tracking.roundChecked"), "ตรวจแล้ว {checked, number} / {total, number}")
   assert.equal(typeof message(en, "tracking.roundChecked"), "string")
-  assert.match(page, /className="max-md:order-last md:col-span-2 xl:col-span-1"/)
+  // Final review ruling 5: two copies in reading order, no visual reorder; the phone overview list has its own h2.
+  assert.doesNotMatch(page, /order-last/)
+  assert.match(page, /tracking=\{data\.tracking\}[\s\S]*?className="max-md:hidden md:col-span-2 xl:col-span-1"/)
+  assert.match(
+    page,
+    /\{data\.assets \? <WorkCenterAssetsPanel locale=\{locale\} assets=\{data\.assets\} \/> : null\}\n(?:\s+\{\/\*[^\n]*\*\/\}\n)?\s+<WorkCenterTracking\n[\s\S]*?headingId="work-center-tracking-phone"\n\s+className="md:hidden"/,
+  )
+  assert.equal(page.match(/<WorkCenterTracking\n/g)?.length, 2)
+  assert.match(tracking, /headingId = "work-center-tracking"/)
+  assert.match(tracking, /<section aria-labelledby=\{headingId\}/)
+  assert.match(tracking, /<h2 id=\{headingId\}/)
+  assert.match(
+    table,
+    /\) : queue === null \? \(\n\s+<h2 className="text-base font-semibold text-foreground md:hidden">\{t\("backlog\.title"\)\}<\/h2>/,
+  )
   assert.match(page, /className="flex flex-col gap-4 md:block md:space-y-4"/)
   assert.match(page, /className="contents md:grid /)
 })

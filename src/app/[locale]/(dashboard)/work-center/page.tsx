@@ -24,7 +24,8 @@ type WorkCenterPageProps = {
 // ranked table with the urgency, the next step and ⋯, and แสดงเพิ่ม; the ข้อมูลไม่ครบ tab keeps its fix cards and list.
 // Every number and row comes from getWorkCenterPageData; the page reads nothing else.
 // Board WC-Phone (Task 3, spec §4.2 "Phone"): below md the view switch is full width under the title, the strip's grid
-// dissolves (contents) so ติดตามแยก can move after the list (order-last), the tabs are a 3 × 2 grid and rows are cards.
+// dissolves (contents), ติดตามแยก is rendered a second time after the list (each copy hidden at the other width, so
+// the DOM order is the reading order), the tabs are a 3 × 2 grid and rows are cards.
 export default async function WorkCenterPage({ params, searchParams }: WorkCenterPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
@@ -70,7 +71,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           params={data.params}
           tracking={data.tracking}
           showAdvance={data.summary.advance.keys.length > 0}
-          className="max-md:order-last md:col-span-2 xl:col-span-1"
+          className="max-md:hidden md:col-span-2 xl:col-span-1"
         />
       </div>
 
@@ -80,6 +81,15 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         <WorkRowsTable locale={locale} params={data.params} summary={data.summary} counts={data.counts} table={data.table} />
       ) : null}
       {data.assets ? <WorkCenterAssetsPanel locale={locale} assets={data.assets} /> : null}
+      {/* Phone: ติดตามแยก after the list in the DOM too, so reading, focus and heading order match what shows. */}
+      <WorkCenterTracking
+        locale={locale}
+        params={data.params}
+        tracking={data.tracking}
+        showAdvance={data.summary.advance.keys.length > 0}
+        headingId="work-center-tracking-phone"
+        className="md:hidden"
+      />
     </div>
   )
 }

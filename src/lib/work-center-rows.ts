@@ -75,7 +75,7 @@ export function rankWorkRows(rows: readonly WorkRowLite[], today: Date): WorkRow
   return keyed.map((entry) => entry.row)
 }
 
-export type WorkRowIds = { id: string; assetId: string | null; planId?: string | null; findingId?: string }
+export type WorkRowIds = { id: string; assetId: string | null; planId?: string | null; planNo?: string | null; findingId?: string }
 
 const workRowLabelKeys: Record<WorkRowKind, string> = {
   disposalApproval: "workCenter.nextStep.reviewRequest",
@@ -123,6 +123,51 @@ export function workRowNextStep(
 ): { labelKey: string; href: string } {
   const href = workRowHref(kind, ids, locale)
   return { labelKey: workRowLabelKeys[kind], href: returnTo ? appendOperationalReturnTo(href, returnTo) : href }
+}
+
+export type WorkRowNextStep = { labelKey: string; href: string }
+export type WorkRowPermissionCheck = (module: string, action: string) => boolean
+
+// The permission each next step's target page needs: the create/record pages need their write permission, the
+// approval inbox items their approve permission, the rest the module's view.
+const workRowNextStepPermissions: Record<WorkRowKind, readonly [string, string]> = {
+  disposalApproval: ["disposal", "approve"],
+  findingApproval: ["audit", "approve"],
+  roundClose: ["audit", "approve"],
+  approvedDisposal: ["disposal", "edit"],
+  duePm: ["maintenance", "create"],
+  openRepair: ["maintenance", "view"],
+  stuckRepair: ["maintenance", "create"],
+  auditAction: ["audit", "view"],
+  pendingFinding: ["audit", "view"],
+  pendingDisposal: ["disposal", "view"],
+}
+
+/**
+ * The next step only when the user may open its target (final review ruling 1); otherwise the record's own view
+ * page labelled เปิด… (a PM plan: the PM list searched by its number; a stuck asset: the asset page; an approved
+ * request: the request page), or null when that is not allowed either.
+ */
+export function workRowPermittedNextStep(
+  kind: WorkRowKind,
+  ids: WorkRowIds,
+  locale: string,
+  can: WorkRowPermissionCheck,
+  returnTo?: string,
+): WorkRowNextStep | null {
+  const [module, action] = workRowNextStepPermissions[kind]
+  if (can(module, action)) return workRowNextStep(kind, ids, locale, returnTo)
+  const withReturn = (href: string) => (returnTo ? appendOperationalReturnTo(href, returnTo) : href)
+  if (kind === "duePm" && ids.planNo && can("maintenance", "view")) {
+    return { labelKey: "workCenter.nextStep.openPlan", href: withReturn(`/${locale}/maintenance/pm?q=${encodeURIComponent(ids.planNo)}`) }
+  }
+  if (kind === "stuckRepair" && ids.assetId && can("asset", "view")) {
+    return { labelKey: "workCenter.nextStep.openAsset", href: withReturn(`/${locale}/assets/${ids.assetId}`) }
+  }
+  if (kind === "approvedDisposal" && can("disposal", "view")) {
+    return { labelKey: "workCenter.nextStep.openRequest", href: withReturn(`/${locale}/disposal/${ids.id}`) }
+  }
+  return null
 }
 
 export const WORK_SHOW_STEP = 8

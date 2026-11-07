@@ -615,7 +615,9 @@
       "openRepair": "Open repair",
       "updateAction": "Update action plan",
       "openFinding": "Open finding",
-      "openRequest": "Open request"
+      "openRequest": "Open request",
+      "openPlan": "Open PM plan",
+      "openAsset": "Open asset details"
     },
     "rowContext": {
       "requestedBy": "Requested by {name} {department}",
@@ -660,7 +662,8 @@
       "dataIssues": "Incomplete register data",
       "pieces": "{count, plural, one {# item} other {# items}}",
       "advance": "Advance warnings (returns · warranty · licence)",
-      "roundChecked": "Checked {checked, number} / {total, number}"
+      "roundChecked": "Checked {checked, number} / {total, number}",
+      "openRound": "View audit round"
     },
     "tabs": {
       "overview": "Overview",

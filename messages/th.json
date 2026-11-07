@@ -615,7 +615,9 @@
       "openRepair": "เปิดงานซ่อม",
       "updateAction": "อัปเดตแผนแก้ไข",
       "openFinding": "เปิดรายการ",
-      "openRequest": "เปิดคำขอ"
+      "openRequest": "เปิดคำขอ",
+      "openPlan": "เปิดแผน PM",
+      "openAsset": "เปิดรายละเอียดทรัพย์สิน"
     },
     "rowContext": {
       "requestedBy": "ขอโดย {name} {department}",
@@ -660,7 +662,8 @@
       "dataIssues": "ข้อมูลทะเบียนไม่ครบ",
       "pieces": "{count, number} ชิ้น",
       "advance": "เตือนล่วงหน้า (คืน · ประกัน · License)",
-      "roundChecked": "ตรวจแล้ว {checked, number} / {total, number}"
+      "roundChecked": "ตรวจแล้ว {checked, number} / {total, number}",
+      "openRound": "ดูรอบตรวจนับ"
     },
     "tabs": {
       "overview": "ภาพรวม",

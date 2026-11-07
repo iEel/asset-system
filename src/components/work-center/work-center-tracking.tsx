@@ -11,7 +11,7 @@ import { buildWorkCenterHref, type WorkCenterParams } from "@/lib/work-center-vi
 
 const rowLinkClasses = "flex min-h-11 items-center gap-2 rounded-sm text-sm text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-0"
 
-// Board WC, spec §4.1: ติดตามแยก ไม่นับเป็นงานค้าง. The open round with most items left (its scan page), ข้อมูลทะเบียน
+// Board WC, spec §4.1: ติดตามแยก ไม่นับเป็นงานค้าง. The open round with most items left (its scan page with audit:edit, else the round's page),ข้อมูลทะเบียน
 // ไม่ครบ (to the assets tab; null without asset:view) and เตือนล่วงหน้า (to the notifications page's section, shown
 // while an advance key is visible). None of these is in งานค้างทั้งหมด. Hidden when all three are absent. Server-safe.
 export function WorkCenterTracking({
@@ -19,21 +19,24 @@ export function WorkCenterTracking({
   params,
   tracking,
   showAdvance,
+  headingId = "work-center-tracking",
   className,
 }: {
   locale: string
   params: WorkCenterParams
   tracking: WorkCenterPageData["tracking"]
   showAdvance: boolean
+  /** The page renders this panel twice (desktop place, and after the list on phones), each with its own heading id. */
+  headingId?: string
   className?: string
 }) {
   const t = useTranslations("workCenter")
-  const { round, dataIssues, advanceTotal } = tracking
+  const { round, dataIssues, advanceTotal, canScan } = tracking
   if (!round && dataIssues === null && !showAdvance) return null
 
   return (
-    <section aria-labelledby="work-center-tracking" data-slot="work-center-tracking" className={cn("min-w-0 rounded-lg border border-border bg-surface px-4 py-3.5", className)}>
-      <h2 id="work-center-tracking" className="text-sm font-semibold text-foreground">{t("tracking.title")}</h2>
+    <section aria-labelledby={headingId} data-slot="work-center-tracking" className={cn("min-w-0 rounded-lg border border-border bg-surface px-4 py-3.5", className)}>
+      <h2 id={headingId} className="text-sm font-semibold text-foreground">{t("tracking.title")}</h2>
       {round ? (
         <div className="mt-2.5 text-sm">
           <div className="flex items-baseline gap-1.5">
@@ -47,8 +50,12 @@ export function WorkCenterTracking({
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
             <span className="tag">{round.auditNo}</span>
             <span>· {t("tracking.pending", { count: round.pending })}</span>
-            <Link href={`/${locale}/audit/rounds/${round.id}/scan`} className={cn(linkVariants(), "ms-auto inline-flex min-h-11 items-center md:min-h-0")}>
-              {t("tracking.continueScan")}
+            {/* เดินตรวจต่อ needs the scan page's audit:edit; without it the round's own page (audit:view). */}
+            <Link
+              href={canScan ? `/${locale}/audit/rounds/${round.id}/scan` : `/${locale}/audit/rounds/${round.id}`}
+              className={cn(linkVariants(), "ms-auto inline-flex min-h-11 items-center md:min-h-0")}
+            >
+              {canScan ? t("tracking.continueScan") : t("tracking.openRound")}
             </Link>
           </div>
         </div>

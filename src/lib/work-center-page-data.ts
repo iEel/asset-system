@@ -45,6 +45,7 @@ import {
 } from "@/lib/work-center-scope"
 import {
   buildDataQualityFixGroups,
+  buildWorkCenterHref,
   buildWorkCenterUserScope,
   parseWorkCenterParams,
   type WorkCenterParamInput,
@@ -101,6 +102,8 @@ export type WorkCenterPageData = {
     round: { id: string; auditNo: string; name: string; checked: number; total: number; pending: number } | null
     dataIssues: number | null
     advanceTotal: number
+    /** audit:edit, the scan page's permission: เดินตรวจต่อ, else the round's page. */
+    canScan: boolean
   }
   /** null on panel=assets. */
   table: { rows: WorkRow[]; total: number; show: number } | null
@@ -269,8 +272,8 @@ export async function getWorkCenterPageData(
   const d: WorkCenterPageDeps = { ...defaultDeps, ...deps }
   const now = input.now ?? new Date()
   const today = startOfBangkokDay(now)
-  const params = parseWorkCenterParams(input.searchParams)
-  const isMine = params.view === "mine"
+  const parsed = parseWorkCenterParams(input.searchParams)
+  const isMine = parsed.view === "mine"
 
   const [work, departmentId, slaDays, unreadTopics, dataIssues] = await Promise.all([
     d.getWaitingWork(user, now),
@@ -293,16 +296,25 @@ export async function getWorkCenterPageData(
   }
   const summary = buildWorkQueueSummary({ counts, visibleKeys: work.visibleKeys, approvalInbox: work.approvalInbox })
 
+  // A queue the user cannot see, or ข้อมูลไม่ครบ without asset:view, falls back to ภาพรวม before anything uses the
+  // panel: the rows, the return link, the tabs' aria-current and the empty words follow the visible tabs.
+  const canViewAssets = hasPermission(user, "asset", "view")
+  const panelAllowed = isWorkQueue(parsed.panel)
+    ? summary.queues.some((entry) => entry.queue === parsed.panel)
+    : parsed.panel !== "assets" || canViewAssets
+  const params: WorkCenterParams = panelAllowed ? parsed : { ...parsed, panel: "overview" }
+  const returnTo = panelAllowed ? input.returnTo : buildWorkCenterHref(input.locale, params)
+
   const queue = isWorkQueue(params.panel) ? params.panel : null
   const showTable = params.panel !== "assets"
-  const showAssets = params.panel === "assets" && hasPermission(user, "asset", "view")
+  const showAssets = params.panel === "assets"
 
   const [previousDay, , rounds, rowResult, assets] = await Promise.all([
     isMine ? Promise.resolve(null) : readPreviousSafely(d, user.id, now),
     isMine ? Promise.resolve() : recordSafely(d, user.id, work, dataIssues, now),
     hasPermission(user, "audit", "view") ? d.readTrackingRounds(scope) : Promise.resolve([]),
     showTable
-      ? d.getRows(user, work, { today, scope, queue, show: params.show, locale: input.locale, returnTo: input.returnTo, slaDays })
+      ? d.getRows(user, work, { today, scope, queue, show: params.show, locale: input.locale, returnTo, slaDays })
       : Promise.resolve(null),
     showAssets ? d.loadAssets({ locale: input.locale, params, scope }) : Promise.resolve(null),
   ])
@@ -326,7 +338,7 @@ export async function getWorkCenterPageData(
     counts,
     previous,
     unreadTopics,
-    tracking: { round: pickTrackingRound(rounds), dataIssues, advanceTotal: summary.advance.total },
+    tracking: { round: pickTrackingRound(rounds), dataIssues, advanceTotal: summary.advance.total, canScan: hasPermission(user, "audit", "edit") },
     table: rowResult ? { rows: rowResult.rows, total: rowResult.total, show: params.show } : null,
     assets,
   }

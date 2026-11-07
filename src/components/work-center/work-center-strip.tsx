@@ -92,7 +92,10 @@ export function WorkCenterStrip({
             ))}
           </ul>
         ) : null}
-        <p className="mt-2.5 text-xs num text-muted-foreground">{t("backlog.sumNote", { sum: sumLine })}</p>
+        {/* No queue visible: no bare "= 0" note under the 0 (final review ruling 3). */}
+        {summary.queues.length > 0 ? (
+          <p className="mt-2.5 text-xs num text-muted-foreground">{t("backlog.sumNote", { sum: sumLine })}</p>
+        ) : null}
       </section>
     </>
   )
