@@ -13,3 +13,20 @@ export const USERS_WORDS = {
   employeeLeft: "พนักงานลาออกแล้ว", reviewTitle: "ควรตรวจ {count, number} บัญชี", reviewLink: "ดู {count, number} บัญชีนี้",
   editUserLabel: "แก้ไขผู้ใช้ {name} ({username})",
 } as const
+
+// The words the user form spec reads (page group 11 plan 2 Task 5, spec §5, board US-User-Edit), from
+// messages/th.json adminUsersPage(.form) and common (tests/admin-user-form-board.test.ts checks each one).
+export const USER_FORM_WORDS = {
+  // The headings: create, and edit as "แก้ไขผู้ใช้ · <name>".
+  createTitle: "เพิ่มผู้ใช้", editTitle: "แก้ไขผู้ใช้",
+  // The AD choice (a radio named by its label), the employee picker's search, and the hint under a suggested username.
+  authAd: "เข้าระบบด้วย AD (แนะนำ)", employeeSearch: "ค้นหาชื่อหรือรหัสพนักงาน",
+  usernameSuggested: "เดาจากอีเมลพนักงาน ตรวจให้ตรงกับชื่อเข้าระบบ AD เช่น veerapon.l",
+  // The role search, the access preview's table (its caption), the footer's note and save.
+  roleSearch: "ค้นหาบทบาท", previewTitle: "หลังบันทึก ผู้ใช้นี้จะทำอะไรได้", note: "หมายเหตุ", save: "บันทึก",
+  // อื่น ๆ, its close and reopen items (also the dialogs' confirm buttons), and the dialogs' titles.
+  more: "อื่น ๆ", closeAccount: "ปิดใช้งานบัญชี", reopenAccount: "เปิดใช้งานบัญชี",
+  closeTitle: "ปิดใช้งานบัญชี {name}", reopenTitle: "เปิดใช้งานบัญชี {name}",
+  // The status badge in the edit header (common.active / common.inactive).
+  active: "ใช้งาน", inactive: "ไม่ใช้งาน",
+} as const

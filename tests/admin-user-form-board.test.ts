@@ -163,3 +163,40 @@ test("kept: field errors focus the first field", () => {
   assert.match(edit, /loadUserFormData\(\{ userId: id, actor \}\)/)
   assert.match(edit, /if \(!data\.user\) notFound\(\)/)
 })
+
+// Task 5: the user form E2E spec (e2e/admin/user-form.spec.ts) reads the app's own words, opens the pages with the seed
+// admin's saved session, and writes only the employee POST through the API (the user create, edit and status change go
+// through the page). These pins need no app.
+test("the user form E2E spec reads the app's words and writes only the employee POST", async () => {
+  const { USER_FORM_WORDS: W } = await import("../e2e/admin/users-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const page = th.adminUsersPage
+  const f = page.form
+  assert.equal(W.createTitle, page.createTitle)
+  assert.equal(W.editTitle, page.editTitle)
+  assert.equal(W.authAd, f.authAd)
+  assert.equal(W.employeeSearch, f.employeeSearch)
+  assert.equal(W.usernameSuggested, f.usernameSuggested)
+  assert.equal(W.roleSearch, f.roleSearch)
+  assert.equal(W.previewTitle, f.previewTitle)
+  assert.equal(W.note, f.note)
+  assert.equal(W.more, f.more)
+  assert.equal(W.closeAccount, f.closeAccount)
+  assert.equal(W.reopenAccount, f.reopenAccount)
+  assert.equal(W.closeTitle, f.closeTitle)
+  assert.equal(W.reopenTitle, f.reopenTitle)
+  assert.equal(W.save, th.common.save)
+  assert.equal(W.active, th.common.active)
+  assert.equal(W.inactive, th.common.inactive)
+
+  const spec = read("e2e/admin/user-form.spec.ts")
+  assert.ok(spec.includes(`import { expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!spec.includes(`from "@playwright/test"`))
+  assert.ok(spec.includes("test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })"), "the seed admin's saved session")
+  assert.ok(spec.includes(`import { recordSettled } from "../audit/settle.ts"`) && !spec.includes("measure.recordPage("), "axe through recordSettled")
+  const writes = [...spec.matchAll(/admin\.(post|put|patch)\(\s*([`"][^`"]+[`"])/g)].map((match) => `${match[1]} ${match[2]}`)
+  assert.deepEqual(writes, ['post "/api/employees"'])
+  assert.doesNotMatch(spec, /page\.request\.(?:post|put|patch|delete)|\.delete\(|method:\s*["'`]|signInOnce\(|ldap-(?:sync|test)|\/api\/admin\/settings/)
+  assert.match(spec, /code: `\$\{runId\}-\$\{code\}-UF`/, "the run's employee code pattern, one per project")
+  assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/, "the edit test builds on the create test")
+})
