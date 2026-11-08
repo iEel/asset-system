@@ -382,7 +382,7 @@ and the history panel keep their content and only get restyled.
 
 ## 13. Recon notes (2026-11-08)
 
-The full inventory is in `C:\Users\Eltross\AppData\Local\Temp\claude\68d1dc0003761e7e\f250ea8d-3040-422b-ad7a-15dd9aed94b9\scratchpad\g13-recon.md`.
+The full inventory (the kept-features checklist for every page) is in `docs/superpowers/specs/2026-11-08-page-group-12-admin-recon.md`.
 
 **Settings:**
 - Page 358 lines, form 2,612 lines.
