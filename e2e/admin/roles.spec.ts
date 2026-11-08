@@ -149,10 +149,15 @@ test.describe("the roles pages as the seed admin (group 11 plan 3)", () => {
       await expect(page.locator("#role-permission-matrix label").filter({ has: cell })).toContainText("+")
     }
 
-    // The summary: 0 → 2 with one line per added permission, then the audit segregation warning.
-    await expect(page.getByRole("heading", { name: fillTemplate(W.summaryTitle, { before: 0, after: 2 }), exact: true })).toBeVisible()
+    // The summary: 0 → 2 with one line per added permission, then the audit segregation warning. Each line is an <li>
+    // whose text starts with an aria-hidden "+" mark, so the line is found as the summary's list item holding the words.
+    const summaryHeading = page.getByRole("heading", { name: fillTemplate(W.summaryTitle, { before: 0, after: 2 }), exact: true })
+    await expect(summaryHeading).toBeVisible()
+    const summary = page.locator("section").filter({ has: summaryHeading })
     for (const action of ["create", "approve"] as const) {
-      await expect(page.getByText(fillTemplate(W.summaryAdd, { action: W.actions[action], module: W.moduleAudit }), { exact: true })).toBeVisible()
+      const line = summary.getByRole("listitem").filter({ hasText: fillTemplate(W.summaryAdd, { action: W.actions[action], module: W.moduleAudit }) })
+      await expect(line).toHaveCount(1)
+      await expect(line).toBeVisible()
     }
     await expect(page.getByText(W.sodTitle, { exact: true })).toBeVisible()
     await expect(page.getByText(W.sodAudit, { exact: true })).toBeVisible()
