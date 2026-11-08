@@ -43,7 +43,7 @@ test("the bind password is never rendered and the stored box says saved", () => 
   assert.match(source, /^"use client"/)
   assert.match(source, /stored \? t\("ldapBind\.stored"\) : t\("ldapBind\.notSet"\)/)
   assert.match(source, /\{t\("ldapBind\.change"\)\}/)
-  assert.match(source, /<Button variant="ghost" size="sm" className="text-primary" aria-label=\{`\$\{t\("ldapBind\.change"\)\} \$\{label\}`\} aria-describedby=\{stateId\} onClick=\{onOpen\}>/, "the change control is a small text button")
+  assert.match(source, /<Button ref=\{changeRef\} variant="ghost" size="sm" className="text-primary" aria-label=\{`\$\{t\("ldapBind\.change"\)\} \$\{label\}`\} aria-describedby=\{stateId\} onClick=\{openChange\}>/, "the change control is a small text button")
   const th = messages("th")
   assert.equal(at(th, "ldapBind.stored"), "•••••••• บันทึกไว้แล้ว")
   assert.equal(at(th, "ldapBind.notSet"), "ยังไม่ได้ตั้ง")
@@ -78,7 +78,7 @@ test("cancel returns to the stored state", () => {
   const submit = slice(f, "async function handleSubmit(", "async function handleLdapTest(")
   assert.match(submit, /router\.refresh\(\)\n\s+if \(bindPasswordTyped\) setValues\(\(current\) => \(\{ \.\.\.current, \[ldapBindPasswordKey\]: storedSecretPlaceholder \}\)\)\n\s+setBindPasswordEditing\(false\)/)
   const source = bind()
-  assert.match(source, /onClick=\{onCancel\}/)
+  assert.match(source, /onClick=\{cancelChange\}/)
   assert.match(source, /\{t\("ldapBind\.cancel"\)\}/)
 })
 
@@ -105,7 +105,7 @@ test("the test result shows next to the button for this visit", () => {
 
 test("preview and apply lock while LDAP edits are unsaved", () => {
   const f = form()
-  assert.match(f, /^import \{ dirtyCounts, ldapDirty, reviewValue \} from "@\/lib\/settings-page-model"$/m)
+  assert.match(f, /^import \{ LDAP_DEFAULT_ROLE_KEY, dirtyCounts, ldapDirty, reviewValue \} from "@\/lib\/settings-page-model"$/m)
   assert.match(f, /const ldapSyncLocked = ldapDirty\(\[\.\.\.changedKeys\]\)/)
   const buttons = slice(f, 'onClick={() => handleLdapSync("preview")}', "</FormSection>")
   assert.match(buttons, /aria-disabled=\{ldapSyncLocked \|\| undefined\}\n\s+aria-describedby=\{ldapSyncLocked \? "ldap-sync-locked" : undefined\}/)
@@ -132,11 +132,11 @@ test("apply opens a confirm with counts and sends expectedDeactivations", () => 
   assert.ok(source, "ldap-apply-confirm.tsx exists")
   assert.match(source, /^"use client"/)
   assert.match(source, /<AccessibleDialog/)
-  assert.match(source, /t\("ldapApply\.counts", \{ creates, updates, deactivates: deactivations\.length \}\)/)
+  assert.match(source, /t\("ldapApply\.counts", \{ creates, updates, deactivates: deactivating\.length \}\)/)
   assert.match(source, /<Notice tone="danger"/)
-  assert.match(source, /deactivations\.slice\(0, 5\)/)
-  assert.match(source, /t\("ldapApply\.more", \{ count: deactivations\.length - 5 \}\)/)
-  assert.match(source, /deactivations\.length > 0 \? t\("ldapApply\.confirmDeactivate", \{ count: deactivations\.length \}\) : t\("ldapApply\.confirm"\)/)
+  assert.match(source, /deactivating\.slice\(0, 5\)/)
+  assert.match(source, /t\("ldapApply\.more", \{ count: deactivating\.length - 5 \}\)/)
+  assert.match(source, /deactivating\.length > 0 \? t\("ldapApply\.confirmDeactivate", \{ count: deactivating\.length \}\) : t\("ldapApply\.confirm"\)/)
   assert.match(source, /<AccessibleDialogCancel \/>/)
   const th = messages("th")
   assert.equal(at(th, "ldapApply.counts"), "เพิ่ม {creates, number} · แก้ {updates, number} · ปิด {deactivates, number}")
@@ -169,4 +169,57 @@ test("plain LDAP fields show the changed marker; the bind password shows its own
   assert.doesNotMatch(f, /changeFor\("ldap_bind_password"\)/)
   // คืนค่าเดิม on the schedule puts its preset select back too.
   assert.match(f, /if \(key === "ldap_sync_schedule"\) setCustomScheduleSelected\(isCustomSchedule\(initialValues\[key\]\)\)/)
+})
+
+// Group 12 plan 5 final review.
+
+test("A: a save of LDAP settings drops the preview, the sync error and the test result", () => {
+  const submit = slice(form(), "async function handleSubmit(", "async function handleLdapTest(")
+  assert.match(
+    submit,
+    /setBindPasswordEditing\(false\)\n(?:\s*\/\/.*\n)*\s+if \(ldapDirty\(changedSettings\.map\(\(setting\) => setting\.key\)\)\) \{\n\s+setSyncPreview\(null\)\n\s+setSyncError\(null\)\n\s+setLdapTestResult\(null\)\n\s+\}/,
+  )
+  // Only after a successful save: the clear sits after the toast, not in the refusal path.
+  assert.ok(submit.indexOf("setSyncPreview(null)") > submit.indexOf("toast.success(labels.success)"))
+})
+
+test("B: with deactivate-missing off the confirm deactivates nobody", () => {
+  // The apply deactivates only while the saved switch is on.
+  assert.match(read("src/lib/ldap-sync.ts"), /if \(resolvedSettings\.ldap_sync_deactivate_missing === "true"\) \{/)
+  const f = form()
+  const usage = slice(f, "<LdapApplyConfirm", "/>")
+  assert.match(usage, /deactivations=\{syncPreview\?\.deactivates \?\? \[\]\}/)
+  assert.match(usage, /deactivateMissing=\{initialValues\.ldap_sync_deactivate_missing === "true"\}/, "the saved value, not the field on screen")
+  // The server still compares against the whole preview list.
+  assert.match(slice(f, "async function handleLdapSync(", "\n  return (\n"), /expectedDeactivations: syncPreview\.deactivates\.length/)
+  const source = confirmDialog()
+  assert.match(source, /deactivateMissing: boolean/)
+  assert.match(source, /const deactivating = deactivateMissing \? deactivations : \[\]/)
+  assert.match(source, /\{!deactivateMissing \? \(\n\s+<AccessibleDialogBody>\n\s+<p className="text-sm text-muted-foreground">\{t\("ldapApply\.deactivateOff"\)\}<\/p>/)
+  assert.doesNotMatch(source, /deactivations\.(?:length|slice)/, "counts, list and button read only deactivating")
+  assert.equal(at(messages("th"), "ldapApply.deactivateOff"), "ไม่ปิดบัญชีที่หายไปจาก AD (ปิดการตั้งค่านี้ไว้)")
+  assert.equal(typeof at(messages("en"), "ldapApply.deactivateOff"), "string")
+})
+
+test("C: focus follows the user's change and cancel on the bind password", () => {
+  const source = bind()
+  assert.match(source, /const inputRef = useRef<HTMLInputElement \| null>\(null\)/)
+  assert.match(source, /const changeRef = useRef<HTMLButtonElement \| null>\(null\)/)
+  assert.match(source, /const pendingFocus = useRef<"input" \| "change" \| null>\(null\)/)
+  const effect = slice(source, "useEffect(() => {", "}, [open])")
+  assert.match(effect, /pendingFocus\.current = null/, "a pending focus is used once")
+  assert.match(effect, /if \(target === "input" && open\) inputRef\.current\?\.focus\(\)/)
+  assert.match(effect, /if \(target === "change" && !open\) changeRef\.current\?\.focus\(\)/)
+  assert.match(slice(source, "const openChange = () => {", "\n  }\n"), /pendingFocus\.current = "input"\n\s+onOpen\(\)/)
+  assert.match(slice(source, "const cancelChange = () => {", "\n  }\n"), /pendingFocus\.current = "change"\n\s+onCancel\(\)/)
+  assert.match(source, /<Button ref=\{changeRef\} [^>]*onClick=\{openChange\}>/)
+  assert.match(source, /\{\.\.\.control\}\n\s+ref=\{inputRef\}/)
+  assert.match(source, /onClick=\{cancelChange\}/)
+  // A refusal opens the field through the open prop alone, so nothing here moves focus for it.
+  assert.doesNotMatch(source, /onClick=\{onOpen\}|onClick=\{onCancel\}/)
+})
+
+test("D: leaving change mode masks the password again", () => {
+  const source = bind()
+  assert.match(source, /const \[wasOpen, setWasOpen\] = useState\(open\)\n\s+if \(open !== wasOpen\) \{\n\s+setWasOpen\(open\)\n\s+if \(!open\) setShown\(false\)\n\s+\}/)
 })

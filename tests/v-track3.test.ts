@@ -282,7 +282,7 @@ test("the settings form shows every setting's error under its field, opens its t
   assert.match(submit, /body: JSON\.stringify\(\{ settings: submittedSettings \}\)/)
   assert.match(submit, /if \(!response\.ok\) \{\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.error\)\n\s+\}/)
   assert.match(form, /const fieldOrder = \[\.\.\.Object\.keys\(SETTING_FIELD_IDS\), \.\.\.generalSettings\.map\(\(setting\) => setting\.key\)\]\.map\(settingFieldKey\)/)
-  assert.match(form, /fieldErrors\.focusFirst\(fieldOrder, \{\n\s+idFor: \(field\) => settingFieldId\(settingKeyOf\(field\)\),\n\s+reveal: \(field\) => selectTab\(SETTING_FIELD_IDS\[settingKeyOf\(field\)\] \? getSystemSettingsTabForKey\(settingKeyOf\(field\)\) : "advanced"\),\n\s+\}\)/)
+  assert.match(form, /fieldErrors\.focusFirst\(fieldOrder, \{\n\s+idFor: \(field\) => settingFieldId\(settingKeyOf\(field\)\),\n\s+reveal: \(field\) => selectTab\(settingTab\(settingKeyOf\(field\)\)\),\n\s+\}\)/)
   // A change clears its setting's error; so does a change of the prefix groups.
   assert.match(form, /const setValue = \(key: string, value: string\) => \{\n\s+setValues\(\(current\) => \(\{ \.\.\.current, \[key\]: value \}\)\)\n\s+fieldErrors\.clear\(settingFieldKey\(key\)\)\n\s+\}/)
   assert.equal(form.split("fieldErrors.clear(settingFieldKey(assetTagCategoryPrefixesKey))").length - 1, 2)

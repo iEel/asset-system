@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,32 @@ export function LdapBindPasswordField({
   const t = useTranslations("systemSettingsPage")
   const tAuth = useTranslations("auth")
   const [shown, setShown] = useState(false)
+  // Leaving change mode (ยกเลิก, a save) masks the field again, so the next เปลี่ยน starts hidden.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (!open) setShown(false)
+  }
+  // เปลี่ยน and ยกเลิก swap the two states, which unmounts the control that had focus: focus moves to the new password
+  // after a user open and back to เปลี่ยน after a user cancel. A field opened by a server refusal leaves focus alone
+  // (the form's focusFirstError moves it there).
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const changeRef = useRef<HTMLButtonElement | null>(null)
+  const pendingFocus = useRef<"input" | "change" | null>(null)
+  useEffect(() => {
+    const target = pendingFocus.current
+    pendingFocus.current = null
+    if (target === "input" && open) inputRef.current?.focus()
+    if (target === "change" && !open) changeRef.current?.focus()
+  }, [open])
+  const openChange = () => {
+    pendingFocus.current = "input"
+    onOpen()
+  }
+  const cancelChange = () => {
+    pendingFocus.current = "change"
+    onCancel()
+  }
 
   if (!open) {
     const stateId = `${id}-state`
@@ -47,7 +73,7 @@ export function LdapBindPasswordField({
           <span id={stateId} className={cn("min-w-0", stored ? "text-foreground" : "text-muted-foreground")}>
             {stored ? t("ldapBind.stored") : t("ldapBind.notSet")}
           </span>
-          <Button variant="ghost" size="sm" className="text-primary" aria-label={`${t("ldapBind.change")} ${label}`} aria-describedby={stateId} onClick={onOpen}>
+          <Button ref={changeRef} variant="ghost" size="sm" className="text-primary" aria-label={`${t("ldapBind.change")} ${label}`} aria-describedby={stateId} onClick={openChange}>
             {t("ldapBind.change")}
           </Button>
         </div>
@@ -62,6 +88,7 @@ export function LdapBindPasswordField({
           <div className="relative min-w-0 flex-1">
             <Input
               {...control}
+              ref={inputRef}
               type={shown ? "text" : "password"}
               name="ldap-bind-password-new"
               autoComplete="new-password"
@@ -81,7 +108,7 @@ export function LdapBindPasswordField({
               {shown ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
             </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
+          <Button variant="ghost" size="sm" onClick={cancelChange}>
             {t("ldapBind.cancel")}
           </Button>
         </div>

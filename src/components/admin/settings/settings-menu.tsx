@@ -3,6 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
+import { ChevronRight } from "lucide-react"
 import { Field } from "@/components/ui/field"
 import { NativeSelect } from "@/components/ui/native-select"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -75,7 +76,7 @@ export function SettingsMenu({
                         onSelect(item.tab)
                       }}
                       className={cn(
-                        "block min-w-0 rounded-md px-2 py-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "block min-h-11 min-w-0 rounded-md px-2 py-2 transition-colors motion-reduce:transition-none md:min-h-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         selected ? "bg-primary-soft text-foreground forced-colors:border forced-colors:border-[CanvasText]" : "text-foreground hover:bg-row-hover",
                       )}
                     >
@@ -117,8 +118,12 @@ export function SettingsMenu({
             ))}
           </NativeSelect>
         </Field>
-        <details className="rounded-md border border-border px-2 py-2">
-          <summary className="cursor-pointer px-2 text-sm font-medium text-foreground">{t("menuShowAll")}</summary>
+        {/* The summary is a 44px row on a phone; flex drops the browser's marker, so a chevron stands in for it. */}
+        <details className="group rounded-md border border-border px-2 py-2">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-2 text-sm font-medium text-foreground md:min-h-0 [&::-webkit-details-marker]:hidden">
+            <ChevronRight aria-hidden="true" className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+            {t("menuShowAll")}
+          </summary>
           <div className="mt-3">{renderList("settings-menu-phone")}</div>
         </details>
       </div>

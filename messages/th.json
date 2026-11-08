@@ -6738,8 +6738,10 @@
       "deactivateTitle": "บัญชีที่จะปิด",
       "more": "และอีก {count, number} คน",
       "confirmDeactivate": "ซิงก์และปิดบัญชี {count, number} รายการ",
-      "confirm": "ซิงก์"
-    }
+      "confirm": "ซิงก์",
+      "deactivateOff": "ไม่ปิดบัญชีที่หายไปจาก AD (ปิดการตั้งค่านี้ไว้)"
+    },
+    "depreciationSummary": "อายุใช้งานเริ่มต้น {months, number} เดือน · กฎ {rules, number} ข้อ"
   },
   "transactionCancellation": {
     "action": "ยกเลิกรายการ",

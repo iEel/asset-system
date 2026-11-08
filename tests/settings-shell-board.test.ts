@@ -34,7 +34,7 @@ test("the menu groups the eleven tabs with summaries and unsaved badges", () => 
 
   const f = form()
   assert.match(f, /^import \{ SettingsMenu \} from "@\/components\/admin\/settings\/settings-menu"$/m)
-  assert.match(f, /const dirty = dirtyCounts\(changedSettings\.map\(\(setting\) => setting\.key\)\)/)
+  assert.match(f, /const dirty = dirtyCounts\(changedSettings\.map\(\(setting\) => setting\.key\), settingTab\)/)
   assert.match(f, /const tabSummaries: Record<SettingsTabId, React\.ReactNode> = \{/)
   for (const tab of ["asset-numbering", "label-template", "documents", "organization", "notifications", "workflow-approval", "automation", "governance", "ldap-login", "ldap-sync", "advanced"]) {
     assert.match(f, new RegExp(`\\n\\s+"?${tab}"?: `), `summary for ${tab}`)
@@ -120,7 +120,7 @@ test("the footer counts changes and keeps aria-disabled save", () => {
 test("the review table uses Thai names and formatted values", () => {
   const source = review()
   assert.ok(source, "settings-review-table.tsx exists")
-  assert.match(source, /import \{ LDAP_DEFAULT_ROLE_KEY, SETTING_LABEL_KEYS, SETTING_LABEL_NAMESPACE, reviewValue \} from "@\/lib\/settings-page-model"/)
+  assert.match(source, /import \{ SETTING_LABEL_KEYS, SETTING_LABEL_NAMESPACE, reviewValue \} from "@\/lib\/settings-page-model"/)
   assert.match(source, /useTranslations\(SETTING_LABEL_NAMESPACE\)/)
   assert.match(source, /SETTING_LABEL_KEYS\[row\.key\]/)
   assert.match(source, /<span className="block text-meta text-muted-foreground"><span className="tag">\{row\.key\}<\/span><\/span>/, "the key is small and mono")
@@ -155,4 +155,64 @@ test("kept: tab URLs and in-place switching, search, field errors open their tab
   assert.match(f, /addEventListener\("beforeunload", warnBeforeUnload\)/)
   assert.match(f, /toast\.success\(labels\.success\)\n\s+router\.refresh\(\)/)
   assert.match(f, /<div id="settings-workspace" className="min-w-0 space-y-6">/)
+})
+
+// Group 12 plan 5 final review.
+
+const between = (source: string, from: string, to: string) => {
+  const start = source.indexOf(from)
+  assert.notEqual(start, -1, `found ${from}`)
+  const end = source.indexOf(to, start + from.length)
+  assert.notEqual(end, -1, `found ${to} after ${from}`)
+  return source.slice(start, end)
+}
+
+test("E: a key edited in the advanced table counts and links on the advanced tab", () => {
+  const f = form()
+  // One rule: a key with its own control is on its prefix's tab, any other key is a row of the advanced table.
+  assert.match(f, /const settingTab = \(key: string\): SettingsTabId => \(friendlySettingKeys\.has\(key\) \? getSystemSettingsTabForKey\(key\) : "advanced"\)/)
+  assert.match(f, /const generalSettings = settings\.filter\(\(setting\) => !friendlySettingKeys\.has\(setting\.key\) && !retiredSystemSettingKeys\.has\(setting\.key\)\)/, "the advanced table is the keys that are not friendly")
+  assert.match(f, /dirtyCounts\(changedSettings\.map\(\(setting\) => setting\.key\), settingTab\)/)
+  assert.match(f, /reveal: \(field\) => selectTab\(settingTab\(settingKeyOf\(field\)\)\)/)
+  const rows = between(f, "<SettingsReviewTable", "/>")
+  assert.match(rows, /const tab = settingTab\(setting\.key\)/)
+  assert.equal((f.match(/getSystemSettingsTabForKey\(/g) ?? []).length, 1, "only settingTab reads the prefix rule")
+  // The model stays pure: the page passes its rule in.
+  const model = read("src/lib/settings-page-model.ts")
+  assert.match(model, /tabOf: \(key: string\) => SettingsTabId = tabOfSettingKey/)
+  assert.doesNotMatch(model, /friendlySettingKeys|system-settings-form/)
+})
+
+test("F: saved values read in words in the marker and the review table", () => {
+  const f = form()
+  const label = between(f, "const settingValueLabel = (key: string, text: string): string => {", "\n  }\n")
+  assert.match(label, /if \(key === "ldap_sync_mode"\) return ldapSyncModeLabels\[text\] \?\? text/)
+  assert.match(label, /ldapSchedulePresets\.find\(\(option\) => option\.value !== "custom" && option\.value === text\)/)
+  assert.match(label, /return preset \? labels\[preset\.labelKey\] : text/, "a custom cron stays as it is")
+  assert.match(label, /if \(key === LDAP_DEFAULT_ROLE_KEY\) return roleLabels\.get\(text\) \?\? text/)
+  assert.match(label, /assetLabelPresets\[text as AssetLabelTapeSize\]\?\.label \?\? text/)
+  assert.match(label, /labelLayoutNames\[text\] \?\? text/)
+  assert.match(label, /if \(key === assetTagCategoryPrefixesKey\) \{/)
+  assert.match(label, /prefixes\.join\(", "\)/, "the prefix groups as COM, NB, PR")
+  assert.match(label, /tPage\("depreciationSummary", \{ months: parsed\.policy\.defaultUsefulLifeMonths, rules: parsed\.policy\.rules\.length \}\)/)
+  const saved = between(f, "const savedDisplayValue = (key: string) => {", "\n  }\n")
+  assert.match(saved, /const shown = settingValueLabel\(key, text\)/)
+  assert.doesNotMatch(saved, /labelLayoutNames|assetLabelPresets/, "one label function")
+  assert.match(between(f, "<SettingsReviewTable", "/>"), /valueLabel=\{settingValueLabel\}/)
+  const source = review()
+  assert.match(source, /valueLabel: \(key: string, text: string\) => string/)
+  assert.match(source, /case "text":\n\s+if \(!value\.text\.trim\(\)\) return <Nil \/>\n\s+return valueLabel\(key, value\.text\)/)
+  assert.doesNotMatch(source, /roleLabels/)
+  const th = messages("th")
+  assert.equal(th.depreciationSummary, "อายุใช้งานเริ่มต้น {months, number} เดือน · กฎ {rules, number} ข้อ")
+  assert.equal(typeof messages("en").depreciationSummary, "string")
+})
+
+test("G: the phone menu's disclosure and links are 44px tap targets", () => {
+  const source = menu()
+  assert.match(source, /<summary className="flex min-h-11 cursor-pointer list-none items-center [^"]*md:min-h-0 \[&::-webkit-details-marker\]:hidden">/)
+  // flex drops the browser's marker, so a chevron stands in for it.
+  assert.match(source, /<details className="group /)
+  assert.match(source, /<ChevronRight aria-hidden="true" className="[^"]*group-open:rotate-90[^"]*" \/>/)
+  assert.match(source, /"block min-h-11 min-w-0 rounded-md px-2 py-2 [^"]*md:min-h-0 /)
 })

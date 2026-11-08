@@ -23,7 +23,12 @@ export function tabOfSettingKey(key: string): SettingsTabId {
   return getSystemSettingsTabForKey(key)
 }
 
-export function dirtyCounts(changedKeys: readonly string[]): {
+// tabOf says which tab a key is edited on; the page passes its own rule (a key it shows in the advanced table counts on
+// the advanced tab whatever its prefix), the default is the key's prefix rule.
+export function dirtyCounts(
+  changedKeys: readonly string[],
+  tabOf: (key: string) => SettingsTabId = tabOfSettingKey,
+): {
   byTab: Partial<Record<SettingsTabId, number>>
   byGroup: Partial<Record<SettingsGroupKey, number>>
   total: number
@@ -32,7 +37,7 @@ export function dirtyCounts(changedKeys: readonly string[]): {
   const byGroup: Partial<Record<SettingsGroupKey, number>> = {}
   const keys = new Set(changedKeys)
   for (const key of keys) {
-    const tab = tabOfSettingKey(key)
+    const tab = tabOf(key)
     byTab[tab] = (byTab[tab] ?? 0) + 1
     const group = groupOfTab.get(tab) ?? "other"
     byGroup[group] = (byGroup[group] ?? 0) + 1

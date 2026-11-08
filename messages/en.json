@@ -6738,8 +6738,10 @@
       "deactivateTitle": "Accounts to deactivate",
       "more": "and {count, number} more",
       "confirmDeactivate": "Sync and deactivate {count, plural, one {# account} other {# accounts}}",
-      "confirm": "Sync"
-    }
+      "confirm": "Sync",
+      "deactivateOff": "Accounts missing from AD stay active (this setting is off)"
+    },
+    "depreciationSummary": "Default useful life (months): {months, number} · Rules: {rules, number}"
   },
   "transactionCancellation": {
     "action": "Cancel transaction",

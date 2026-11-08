@@ -89,6 +89,15 @@ test("dirty counts by tab and group", () => {
   assert.deepEqual(dirtyCounts([]), { byTab: {}, byGroup: {}, total: 0 })
 })
 
+test("dirty counts take the page's tab rule (final review E)", () => {
+  // By prefix a digest status key belongs to automation, but the page edits it in the advanced table.
+  assert.equal(tabOfSettingKey("notification_digest_last_status"), "automation")
+  const pageTab = (key: string) => (key.startsWith("notification_digest_") ? "advanced" : tabOfSettingKey(key))
+  const counts = dirtyCounts(["notification_digest_last_status", "asset_tag_prefix"], pageTab)
+  assert.deepEqual(counts.byTab, { advanced: 1, "asset-numbering": 1 })
+  assert.deepEqual(counts.byGroup, { other: 1, assetsDocuments: 1 })
+})
+
 test("booleans read on or off, secrets never show, a deleted role is flagged", () => {
   const context = { roleNames: new Set(["asset_user", "asset_admin"]) }
   assert.deepEqual(reviewValue("ldap_enabled", "true", context), { kind: "bool", on: true })

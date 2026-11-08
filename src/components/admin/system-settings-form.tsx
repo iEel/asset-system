@@ -47,7 +47,7 @@ import {
   type AssetLabelTapeSize,
   type AssetLabelTemplates,
 } from "@/lib/asset-label-template"
-import { depreciationPolicySettingKey } from "@/lib/asset-depreciation"
+import { depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { CHECKIN_DEPARTMENT_SETTING_KEY } from "@/lib/checkin-department"
 import {
@@ -79,7 +79,7 @@ import {
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import { buildSystemSettingsTabHref, parseSystemSettingsTab } from "@/lib/system-settings-tabs"
 import { findSystemSettingsSearchResults, getSystemSettingsTabForKey } from "@/lib/settings-search"
-import { dirtyCounts, ldapDirty, reviewValue } from "@/lib/settings-page-model"
+import { LDAP_DEFAULT_ROLE_KEY, dirtyCounts, ldapDirty, reviewValue } from "@/lib/settings-page-model"
 import { ldapTestPasswordNeededError, storedSecretPlaceholder } from "@/lib/system-setting-secrets"
 import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
@@ -544,6 +544,10 @@ const SETTING_FIELD_IDS: Readonly<Record<string, string>> = {
   ldap_sync_schedule: "ldap-sync-custom-schedule",
 }
 const settingFieldId = (key: string) => SETTING_FIELD_IDS[key] ?? `setting-${key}`
+// The tab a setting is edited on (final review E): a key with its own control is on its prefix's tab; any other key is a
+// row of the advanced table, whatever its prefix (notification_digest_last_* would read as automation by prefix). The
+// menu's unsaved counts, the review table's links and a save's focus all use this.
+const settingTab = (key: string): SettingsTabId => (friendlySettingKeys.has(key) ? getSystemSettingsTabForKey(key) : "advanced")
 
 // noValidate turns the browser's check off, so this restates the controls' min, max and step, every rule the server
 // checks for the settings a save sends (with the server's own codes) and the prefix groups' rule (v-track M-R2, plan 3
@@ -749,7 +753,7 @@ export function SystemSettingsForm({
   )
   const changedCount = changedSettings.length
   // The menu's unsaved badges per tab and per group, and the footer's count (board AD-Settings, plan 5 Task 3).
-  const dirty = dirtyCounts(changedSettings.map((setting) => setting.key))
+  const dirty = dirtyCounts(changedSettings.map((setting) => setting.key), settingTab)
   const changedKeys = new Set(changedSettings.map((setting) => setting.key))
   // Preview and apply run on the stored LDAP settings, so they wait while an LDAP value is unsaved (board AD-Settings).
   const ldapSyncLocked = ldapDirty([...changedKeys])
@@ -859,7 +863,7 @@ export function SystemSettingsForm({
   const focusFirstError = () =>
     fieldErrors.focusFirst(fieldOrder, {
       idFor: (field) => settingFieldId(settingKeyOf(field)),
-      reveal: (field) => selectTab(SETTING_FIELD_IDS[settingKeyOf(field)] ? getSystemSettingsTabForKey(settingKeyOf(field)) : "advanced"),
+      reveal: (field) => selectTab(settingTab(settingKeyOf(field))),
     })
   // The menu's one-line summaries: the values the overview panel showed, which is gone (board AD-Settings). Day counts
   // and the sync mode in words, never an English "d" or a mode code (plan 2D-2 R14); a mode the labels do not know
@@ -924,8 +928,31 @@ export function SystemSettingsForm({
     "text-only": labels.labelLayoutTextOnly,
     "qr-only": labels.labelLayoutQrOnly,
   }
-  // "เดิม <saved value>" under a changed field: a switch in words, a secret never shown, a select's option in words, a
-  // long JSON value cut short. The review table formats the same values with reviewValue.
+  // A stored value in words (final review F): a select's option by its label, a preset schedule by its name (a custom
+  // cron stays as it is), the default role by its name, the prefix groups as their prefixes "COM, NB, PR" and the
+  // depreciation policy as its default life and rule count, never the raw JSON. The "เดิม" marker and the review table
+  // both use it.
+  const settingValueLabel = (key: string, text: string): string => {
+    if (key === "ldap_sync_mode") return ldapSyncModeLabels[text] ?? text
+    if (key === "ldap_sync_schedule") {
+      const preset = ldapSchedulePresets.find((option) => option.value !== "custom" && option.value === text)
+      return preset ? labels[preset.labelKey] : text
+    }
+    if (key === LDAP_DEFAULT_ROLE_KEY) return roleLabels.get(text) ?? text
+    if (key === "asset_label_default_tape_size") return assetLabelPresets[text as AssetLabelTapeSize]?.label ?? text
+    if (key.startsWith("asset_label_") && key.endsWith("_layout")) return labelLayoutNames[text] ?? text
+    if (key === assetTagCategoryPrefixesKey) {
+      const prefixes = [...new Set(parsePrefixRows(text).map((row) => normalizeCategoryPrefix(row.prefix)).filter(Boolean))]
+      return prefixes.length > 0 ? prefixes.join(", ") : tCommon("noValue")
+    }
+    if (key === depreciationPolicySettingKey) {
+      const parsed = parseDepreciationPolicySetting(text)
+      if (parsed.isValid) return tPage("depreciationSummary", { months: parsed.policy.defaultUsefulLifeMonths, rules: parsed.policy.rules.length })
+    }
+    return text
+  }
+  // "เดิม <saved value>" under a changed field: a switch in words, a secret never shown, the value in words
+  // (settingValueLabel), a long value cut short. The review table formats the same values with reviewValue.
   const savedDisplayValue = (key: string) => {
     const saved = normalizeSettingValue(key, initialValues[key])
     const value = reviewValue(key, saved, { roleNames })
@@ -936,9 +963,8 @@ export function SystemSettingsForm({
     if (value.kind === "missingRole") return value.name
     const text = value.text.trim()
     if (!text) return tCommon("noValue")
-    if (key === "asset_label_default_tape_size") return assetLabelPresets[text as AssetLabelTapeSize]?.label ?? text
-    if (key.startsWith("asset_label_") && key.endsWith("_layout")) return labelLayoutNames[text] ?? text
-    return text.length > 80 ? `${text.slice(0, 80)}…` : text
+    const shown = settingValueLabel(key, text)
+    return shown.length > 80 ? `${shown.slice(0, 80)}…` : shown
   }
   // คืนค่าเดิม on one field: its saved value back, its error from the last save gone.
   const restoreSetting = (key: string) => {
@@ -1012,6 +1038,13 @@ export function SystemSettingsForm({
       router.refresh()
       if (bindPasswordTyped) setValues((current) => ({ ...current, [ldapBindPasswordKey]: storedSecretPlaceholder }))
       setBindPasswordEditing(false)
+      // Saved LDAP settings make the preview, its error and the test result stale: Apply waits for a new preview, so its
+      // confirm never shows counts from the old settings while the server applies the new ones (final review A).
+      if (ldapDirty(changedSettings.map((setting) => setting.key))) {
+        setSyncPreview(null)
+        setSyncError(null)
+        setLdapTestResult(null)
+      }
     } catch (error) {
       apiError.toast(error instanceof Error ? error : labels.error)
     } finally {
@@ -2227,6 +2260,7 @@ export function SystemSettingsForm({
             creates={syncPreview?.creates.length ?? 0}
             updates={syncPreview?.updates.length ?? 0}
             deactivations={syncPreview?.deactivates ?? []}
+            deactivateMissing={initialValues.ldap_sync_deactivate_missing === "true"}
             returnFocusRef={applyButtonRef}
             onConfirm={confirmApply}
             onClose={() => setApplyConfirmOpen(false)}
@@ -2281,7 +2315,7 @@ export function SystemSettingsForm({
       {changedCount > 0 ? (
         <SettingsReviewTable
           rows={changedSettings.map((setting) => {
-            const tab = getSystemSettingsTabForKey(setting.key)
+            const tab = settingTab(setting.key)
             return {
               key: setting.key,
               before: normalizeSettingValue(setting.key, initialValues[setting.key]),
@@ -2291,7 +2325,7 @@ export function SystemSettingsForm({
             }
           })}
           roleNames={roleNames}
-          roleLabels={roleLabels}
+          valueLabel={settingValueLabel}
           onOpenTab={openSettingGroup}
         />
       ) : null}

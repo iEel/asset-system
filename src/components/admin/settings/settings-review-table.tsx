@@ -7,7 +7,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { Nil } from "@/components/ui/nil"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { LDAP_DEFAULT_ROLE_KEY, SETTING_LABEL_KEYS, SETTING_LABEL_NAMESPACE, reviewValue } from "@/lib/settings-page-model"
+import { SETTING_LABEL_KEYS, SETTING_LABEL_NAMESPACE, reviewValue } from "@/lib/settings-page-model"
 import type { SettingsTabId } from "@/lib/settings-information-architecture"
 
 export type SettingsReviewRow = {
@@ -22,17 +22,19 @@ export type SettingsReviewRow = {
 // The change review (board AD-Settings, group 12 plan 5 Task 3): the Thai setting name first with the key small in mono
 // (a link to its tab; a plain click switches in place), then the saved and the new value as reviewValue formats them:
 // เปิดใช้งาน / ปิดใช้งาน for a switch, a secret never shows (a new one reads เปลี่ยนรหัสผ่าน), and a default role that
-// no longer exists is tagged ไม่พบบทบาท. A key the page has no label for (the advanced table) shows the key alone.
+// no longer exists is tagged ไม่พบบทบาท, and any other value goes through the page's valueLabel (a select's option, a
+// preset schedule, a role by its name, the prefix groups and the depreciation policy in words, never raw codes or JSON).
+// A key the page has no label for (the advanced table) shows the key alone.
 export function SettingsReviewTable({
   rows,
   roleNames,
-  roleLabels,
+  valueLabel,
   onOpenTab,
 }: {
   rows: readonly SettingsReviewRow[]
   roleNames: Set<string>
-  // role name → its display label, for a role that exists.
-  roleLabels: ReadonlyMap<string, string>
+  // A stored value → its words on the page (the same function as the "เดิม" marker); a value it does not know stays.
+  valueLabel: (key: string, text: string) => string
   onOpenTab: (tab: SettingsTabId) => void
 }) {
   const t = useTranslations(SETTING_LABEL_NAMESPACE)
@@ -56,7 +58,7 @@ export function SettingsReviewTable({
         )
       case "text":
         if (!value.text.trim()) return <Nil />
-        return key === LDAP_DEFAULT_ROLE_KEY ? (roleLabels.get(value.text) ?? value.text) : value.text
+        return valueLabel(key, value.text)
     }
   }
 
