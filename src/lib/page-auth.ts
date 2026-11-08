@@ -26,7 +26,9 @@ export async function requirePagePermission(
   }
 
   if (!hasPermission(user, module, action)) {
-    redirect(buildAccessDeniedHref({ locale, module, action }))
+    // The page asked for (stamped by src/proxy.ts) names the blocked page on the denied page; display only, sanitized.
+    const headerList = await headers()
+    redirect(buildAccessDeniedHref({ locale, module, action, from: headerList.get(requestPathHeader) }))
   }
 
   return user

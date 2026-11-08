@@ -722,7 +722,8 @@ test("approval history: real pages and full counts from the database, two TabNav
   assert.match(source, /await withPerformanceTiming\("approval-history\.list-data", \(\) => Promise\.all\(\[\n\s+prisma\.systemLog\.findMany\(\{[\s\S]*?orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\],\n\s+skip,\n\s+take,\n\s+\}\),\n\s+prisma\.systemLog\.count\(\{ where \}\),\n\s+prisma\.systemLog\.groupBy\(\{ by: \["module", "action"\], where: allowedWhere, _count: \{ _all: true \} \}\),\n\s+\]\)\)/)
   assert.match(source, /const summary = summarizeApprovalDecisionCounts\(decisionCounts\)/, "the strip and the tab counts are full totals (spec 2B §5.9.3)")
   assert.doesNotMatch(source, /\btake: \d+|filterApprovalDecisionLogItems|getAllowedDecisionWhere/, "no fixed number of rows and no filter in JS")
-  assert.match(source, /^import \{ notFound, redirect \} from "next\/navigation"$/m)
+  // Page group 12 plan 1 Task 1: no approval right redirects to the denied page, so notFound is no longer imported.
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
   assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(logs\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
   assert.match(source, /const queryString = appendListPage\(query, listPage\)\.toString\(\)/)
   assert.match(source, /href: buildFilterHref\(locale, activeModule, activeDecision, param, option\.key, \{ pageSize \}\)/, "a tab goes back to page 1 and keeps the page size")

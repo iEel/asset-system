@@ -24,7 +24,9 @@ test("approvals page: one read model, the strip, tabs, rows and two panes", () =
   assert.match(source, /aria-current=\{query\.overdue \? "true" : undefined\}/)
   assert.doesNotMatch(source, /aria-pressed=/)
   assert.match(source, /hidden xl:block/)
-  assert.match(source, /notFound\(\)/)
+  // Page group 12 plan 1 Task 1: no approval right goes to the denied page (it was notFound()).
+  assert.match(source, /buildAccessDeniedHref\(\{ locale, module: APPROVAL_PERMISSION, action: "approve"/)
+  assert.doesNotMatch(source, /notFound\(\)/)
   assert.match(source, /redirectToLogin\(locale\)/)
   assert.doesNotMatch(source, /take: 50/)
   assert.doesNotMatch(source, /getApprovalInboxSnapshot|sortApprovalInboxItemsByAge|filterApprovalInboxItems/)

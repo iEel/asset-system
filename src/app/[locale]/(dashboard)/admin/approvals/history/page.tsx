@@ -1,9 +1,12 @@
 import Link from "next/link"
 import type React from "react"
-import { notFound, redirect } from "next/navigation"
+import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
 import { CheckCircle2, ClipboardList, History, RotateCcw, XCircle } from "lucide-react"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
+import { APPROVAL_PERMISSION, buildAccessDeniedHref } from "@/lib/access-denied"
+import { requestPathHeader } from "@/lib/login-redirect"
 import { redirectToLogin } from "@/lib/page-auth"
 import {
   approvalDecisionFilters,
@@ -49,7 +52,10 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
   if (!user) return redirectToLogin(locale)
 
   const access = getApprovalInboxAccess(user)
-  if (!access.canAnyApproval) notFound()
+  // Page group 12 §9: a viewer with no approval right lands on the denied page (it was a 404).
+  if (!access.canAnyApproval) {
+    redirect(buildAccessDeniedHref({ locale, module: APPROVAL_PERMISSION, action: "approve", from: (await headers()).get(requestPathHeader) }))
+  }
 
   const t = await getTranslations("approvalHistoryPage")
   const tCommon = await getTranslations("common")

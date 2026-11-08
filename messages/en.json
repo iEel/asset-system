@@ -562,11 +562,18 @@
     "heroRegister": "One register for every company and branch"
   },
   "accessDeniedPage": {
-    "title": "You do not have access to this page",
-    "description": "Your account does not have permission for this menu or action. Contact an administrator if you need access for your work.",
-    "requestedPermission": "Required permission: {permission}",
     "openWorkCenter": "Open Work Center",
-    "backHome": "Back to Home"
+    "backHome": "Back to Home",
+    "titleNamed": "You can't open {page}",
+    "thisPage": "this page",
+    "needs": "Required permission: {permission}",
+    "permissionWords": "{action} · {module}",
+    "approvalWords": "Approve · Disposal or Approve · Audit",
+    "yourRoles": "Your roles: {roles}",
+    "noRoles": "Your roles: none yet",
+    "reassure": "Nothing was lost or saved. If you need this page, ask a system administrator for access.",
+    "goBack": "Go back",
+    "yourHome": "Your home page: {home}"
   },
   "dashboard": {
     "title": "Dashboard",

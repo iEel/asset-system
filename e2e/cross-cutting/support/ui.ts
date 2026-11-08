@@ -2,9 +2,11 @@
 // not-found screens, the searchable pickers, and an error under a field (the V track's contract: the control is
 // marked invalid, its error line is <id>-error and is named by aria-describedby, and the first wrong field has focus
 // after a save).
+import { readFileSync } from "node:fs"
 import type { Locator, Page } from "@playwright/test"
 import { expect } from "../../support/fixtures.ts"
 import type { Measure } from "../../support/measure.ts"
+import { fromRoot } from "../../support/paths.ts"
 
 // The value of a stat strip cell, by its label ("ทรัพย์สินทั้งหมด" → "3").
 export function statValue(page: Page, label: string, scope = "main") {
@@ -14,14 +16,21 @@ export function statValue(page: Page, label: string, scope = "main") {
     .locator(".text-metric")
 }
 
+// The Thai words the access-denied page uses for a permission (messages/th.json adminRolesPage.actions / .modules,
+// joined as accessDeniedPage.permissionWords "{action} · {module}").
+const roleWords = (JSON.parse(readFileSync(fromRoot("messages/th.json"), "utf8")) as {
+  adminRolesPage: { actions: Record<string, string>; modules: Record<string, string> }
+}).adminRolesPage
+
 // requirePagePermission sends a person without the permission to the access-denied page (src/lib/access-denied.ts),
-// which names the permission they need.
+// which names the blocked page ("ไม่มีสิทธิ์เปิดหน้า …") and the permission they need, in Thai words.
 export async function expectAccessDenied(page: Page, permission: string) {
   const [moduleName, action] = permission.split(":")
   await expect(page).toHaveURL(new RegExp(`/th/access-denied\\?(?=.*module=${moduleName})(?=.*action=${action})`))
   // The screen's title is plain text, not a heading (findings, note N13).
-  await expect(page.getByRole("main").getByText("ไม่มีสิทธิ์เข้าหน้านี้", { exact: true })).toBeVisible()
-  await expect(page.getByRole("main").getByText(`สิทธิ์ที่ต้องใช้: ${permission}`)).toBeVisible()
+  await expect(page.getByRole("main").getByText(/^ไม่มีสิทธิ์เปิดหน้า /)).toBeVisible()
+  const words = `${roleWords.actions[action]} · ${roleWords.modules[moduleName]}`
+  await expect(page.getByRole("main").getByText(`สิทธิ์ที่ต้องใช้: ${words}`)).toBeVisible()
 }
 
 // Open a page the person may not use. The dashboard's loading.tsx streams every page, so requirePagePermission's

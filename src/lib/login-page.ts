@@ -8,7 +8,8 @@ export const LOGIN_LANGUAGES: readonly { locale: "th" | "en"; label: string }[] 
   { locale: "en", label: "English" },
 ]
 
-// Path segments after /<locale>, longest prefix first. "*" matches any one segment.
+// Path segments after /<locale>, longest prefix first. "*" matches any one segment. The access-denied page names the
+// blocked page from this table too (src/app/[locale]/(dashboard)/access-denied/page.tsx).
 const destinationRoutes: readonly { segments: readonly string[]; exact?: boolean; key: string }[] = [
   { segments: ["asset-management", "scan"], key: "nav.scanSearchAsset" },
   { segments: ["asset-management", "checkout"], key: "nav.checkout" },
@@ -22,6 +23,22 @@ const destinationRoutes: readonly { segments: readonly string[]; exact?: boolean
   { segments: ["audit", "rounds"], key: "nav.auditRound" },
   { segments: ["audit", "findings"], key: "nav.auditFinding" },
   { segments: ["admin", "approvals"], key: "nav.approvalInbox" },
+  { segments: ["admin", "users"], key: "nav.userManagement" },
+  { segments: ["admin", "roles"], key: "nav.rolePermission" },
+  { segments: ["admin", "settings"], key: "nav.systemSetting" },
+  { segments: ["admin", "logs"], key: "nav.systemLog" },
+  { segments: ["admin", "data-quality"], key: "nav.dataQuality" },
+  { segments: ["admin", "integrations"], key: "nav.integrationApi" },
+  { segments: ["admin", "storage"], key: "nav.fileStorage" },
+  { segments: ["admin", "readiness"], key: "nav.productionReadiness" },
+  { segments: ["master-data", "companies"], key: "nav.company" },
+  { segments: ["master-data", "branches"], key: "nav.branch" },
+  { segments: ["master-data", "departments"], key: "nav.department" },
+  { segments: ["master-data", "employees"], key: "nav.employee" },
+  { segments: ["master-data", "locations"], key: "nav.location" },
+  { segments: ["master-data", "categories"], key: "nav.category" },
+  { segments: ["master-data", "brands"], key: "nav.brandModel" },
+  { segments: ["master-data", "suppliers"], key: "nav.supplier" },
   { segments: ["assets"], exact: true, key: "nav.assetRegister" },
   { segments: ["dashboard"], key: "nav.dashboard" },
   { segments: ["work-center"], key: "nav.workCenter" },
@@ -29,6 +46,7 @@ const destinationRoutes: readonly { segments: readonly string[]; exact?: boolean
   { segments: ["maintenance"], key: "nav.maintenance" },
   { segments: ["disposal"], key: "nav.disposal" },
   { segments: ["reports"], key: "nav.reports" },
+  { segments: ["audit"], key: "nav.audit" },
   { segments: ["notifications"], key: "notifications.title" },
   { segments: ["admin"], key: "nav.administration" },
   { segments: ["master-data"], key: "nav.masterData" },

@@ -109,13 +109,15 @@ test("roles and permissions: each refused page and request needs a permission th
   const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
   const { classify } = await import("../e2e/support/measure-core.ts")
   // Each page: its file asks requirePagePermission for the permission listed, before it reads a record; the approval
-  // inbox is not found without disposal:approve or audit:approve.
+  // inbox redirects to the denied page without disposal:approve or audit:approve (page group 12 §9; it was a 404).
   for (const refusal of refusals.VIEWER_PAGE_REFUSALS) {
     const page = read(`src/app/[locale]/(dashboard)/${refusal.file}`)
     assert.ok(refusals.lacks("viewer", refusal.permission), `the viewer lacks ${refusal.permission}`)
     if (refusal.permission === "approve-inbox") {
-      assert.ok(page.includes("if (!getApprovalInboxAccess(user).canAnyApproval) notFound()"), refusal.file)
-      assert.ok(page.indexOf("notFound()") < page.indexOf("getApprovalInboxPage(user"), `${refusal.file}: the gate before the read`)
+      const gate = "if (!getApprovalInboxAccess(user).canAnyApproval) {"
+      const denied = 'redirect(buildAccessDeniedHref({ locale, module: APPROVAL_PERMISSION, action: "approve", from: (await headers()).get(requestPathHeader) }))'
+      assert.ok(page.includes(gate) && page.includes(denied), refusal.file)
+      assert.ok(page.indexOf(gate) < page.indexOf(denied) && page.indexOf(denied) < page.indexOf("getApprovalInboxPage(user"), `${refusal.file}: the gate before the read`)
       continue
     }
     const [moduleName, action] = refusal.permission.split(":")
@@ -183,12 +185,18 @@ test("roles and permissions: each refused page and request needs a permission th
   assert.ok(refusals.isWriteLink("/th/assets/abc/edit?returnTo=%2Fth%2Fassets") && refusals.isWriteLink("/th/audit/rounds/abc/scan"))
   assert.ok(!refusals.isWriteLink("/th/assets/abc") && !refusals.isWriteLink("/th/audit/rounds/new-look") && !refusals.isWriteLink("/th/asset-management/scan"))
   // The screens a refusal ends on (their titles are plain text: findings, note N13).
-  assert.equal((thai.accessDeniedPage as Record<string, string>).title, "ไม่มีสิทธิ์เข้าหน้านี้")
+  // Page group 12 plan 1 Task 1: the denied title names the blocked page ("ไม่มีสิทธิ์เปิดหน้า {page}") and the permission
+  // line is in Thai words, which the helper builds from adminRolesPage the way the page does.
+  assert.ok((thai.accessDeniedPage as Record<string, string>).titleNamed.startsWith("ไม่มีสิทธิ์เปิดหน้า "))
+  assert.equal((thai.accessDeniedPage as Record<string, string>).needs, "สิทธิ์ที่ต้องใช้: {permission}")
+  assert.equal((thai.accessDeniedPage as Record<string, string>).permissionWords, "{action} · {module}")
   assert.equal((thai.common as Record<string, string>).pageNotFoundTitle, "ไม่พบหน้าที่ต้องการ")
   // The refusal's permission line is read inside main: while the access-denied page streams in, a second copy can sit
   // outside #main for a moment (a strict-mode violation on phone-dark, menu B shell task 13B loop 1).
   const ui = read("e2e/cross-cutting/support/ui.ts")
-  assert.ok(ui.includes("await expect(page.getByRole(\"main\").getByText(`สิทธิ์ที่ต้องใช้: ${permission}`)).toBeVisible()"))
+  assert.ok(ui.includes("await expect(page.getByRole(\"main\").getByText(`สิทธิ์ที่ต้องใช้: ${words}`)).toBeVisible()"))
+  assert.ok(ui.includes("const words = `${roleWords.actions[action]} · ${roleWords.modules[moduleName]}`"))
+  assert.ok(ui.includes("await expect(page.getByRole(\"main\").getByText(/^ไม่มีสิทธิ์เปิดหน้า /)).toBeVisible()"))
   assert.ok(!ui.includes("await expect(page.getByText(`สิทธิ์ที่ต้องใช้:"), "never the whole page")
   // The reviewed allow-list entry for the shell's background requests that a navigation or the search's own abort
   // cancels: each cancelled one passes, the same fetch answered 500 still fails, any other cancelled request still fails.

@@ -1,10 +1,12 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ChevronRight, FileCheck2, History } from "lucide-react"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
+import { APPROVAL_PERMISSION, buildAccessDeniedHref } from "@/lib/access-denied"
 import { redirectToLogin } from "@/lib/page-auth"
 import {
   approvalInboxNeighbours,
@@ -21,6 +23,7 @@ import {
 } from "@/lib/approval-inbox"
 import { loadAuditRoundClosePanel, loadDisposalInboxPanel } from "@/lib/approval-inbox-panels"
 import { getApprovalInboxAccess, getApprovalInboxPage } from "@/lib/approval-inbox-query"
+import { requestPathHeader } from "@/lib/login-redirect"
 import { approvalInboxSelectionScope } from "@/lib/approval-inbox-selection"
 import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
@@ -88,7 +91,10 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
   const rawQuery = await searchParams
   const user = await getSessionUser()
   if (!user) return redirectToLogin(locale)
-  if (!getApprovalInboxAccess(user).canAnyApproval) notFound()
+  // Page group 12 §9: a viewer with no approval right lands on the denied page (it was a 404).
+  if (!getApprovalInboxAccess(user).canAnyApproval) {
+    redirect(buildAccessDeniedHref({ locale, module: APPROVAL_PERMISSION, action: "approve", from: (await headers()).get(requestPathHeader) }))
+  }
 
   const query = parseApprovalInboxQuery(rawQuery)
   const item = parseApprovalInboxItemParam(rawQuery.item)
