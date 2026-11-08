@@ -279,6 +279,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                         name={row.displayName}
                         menuLabel={tCommon("moreActionsFor", { code: row.username })}
                         next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
+                        nextWidth="auto"
                         groups={[]}
                       />
                     </DataTableCell>

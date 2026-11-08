@@ -148,7 +148,7 @@ test("suppliers: the page and its list view build on PageHeader, StatStrip, Data
 
 test("users: edit is the row's only command, so RowActions draws no ⋯, and create is a header button for who may create (spec 2B §5.3; 2D M13, D11)", () => {
   const source = read(`${D}admin/users/page.tsx`)
-  assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/)
+  assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\r?\n\s+nextWidth="auto"\r?\n\s+groups=\{\[\]\}\r?\n\s+\/>/)
   assert.doesNotMatch(source, /deleteAction=/)
   assert.match(source, /const canCreate = hasPermission\(currentUser, "user", "create"\)/)
   assert.match(source, /<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+canCreate \? \(\n\s+<Link href=\{`\$\{basePath\}\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)

@@ -51,6 +51,8 @@ test("the table has the board's columns and no sticky column", () => {
   assert.match(page, /<DataTableHead sort=\{sortBy\("displayName"\)\}>\{t\("columnUser"\)\}/)
   assert.match(page, /<DataTableHead sort=\{sortBy\("lastLoginAt"\)\}>\{t\("lastLoginAt"\)\}/)
   assert.match(page, /<DataTableCell align="right">\s*<RowActions/)
+  // แก้ไข is short: the next button takes its content's width so the table fits 1024 without the scroll hint.
+  assert.match(page, /<RowActions\b[^]*?\bnextWidth="auto"[^]*?\/>\s*<\/DataTableCell>/)
   assert.match(page, /range: t\("listRange", \{/)
   assert.match(page, /className="hidden space-y-4 md:block"/, "desktop only: Task 4 adds the phone list")
 })
@@ -91,7 +93,7 @@ test("kept: search by role names, every sort, page sizes, redirect past the end,
   assert.match(page, /const canCreate = hasPermission\(currentUser, "user", "create"\)/)
   assert.match(page, /requirePagePermission\(locale, "user", "view"\)/)
   assert.match(page, /<ClickableTableRow\b[\s\S]*?href=\{editHref\}/)
-  assert.match(page, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}/)
+  assert.match(page, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\r?\n\s+nextWidth="auto"\r?\n\s+groups=\{\[\]\}/)
 })
 
 test("page data: one holdings groupBy, counts per status in parallel, default role through getLdapConfig", () => {
