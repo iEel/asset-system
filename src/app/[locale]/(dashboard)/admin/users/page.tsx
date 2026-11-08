@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
+import { UserListCards } from "@/components/admin/users/user-list-cards"
 import { UserReviewWarning } from "@/components/admin/users/user-review-warning"
 import { UserRoleFilterChip } from "@/components/admin/users/user-role-filter-chip"
 import { UserRolesCell } from "@/components/admin/users/user-roles-cell"
@@ -45,7 +46,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
     allowedSorts: userSorts,
     defaultSort: "createdAt",
   })
-  const { rows, total, statusCounts, reviewTotal, roleOptions, filters } = await loadUsersPageData({
+  const { rows, total, grandTotal, statusCounts, reviewTotal, roleOptions, filters } = await loadUsersPageData({
     listState,
     filters: parseUserListFilters(rawSearchParams),
     viewerId: currentUser.id,
@@ -65,6 +66,56 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
     direction: listState.sort === field ? listState.direction : null,
   })
 
+  // One Pagination for the table's footer and under the phone cards.
+  const pagination =
+    total > 0 ? (
+      <Pagination
+        page={listState.page}
+        totalPages={totalPages}
+        previousHref={listHref({ page: listState.page - 1 })}
+        nextHref={listHref({ page: listState.page + 1 })}
+        pageSize={listState.pageSize}
+        pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+        labels={{
+          navigation: tCommon("pagination"),
+          previous: tCommon("previous"),
+          next: tCommon("next"),
+          pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+          range: t("listRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+          pageSizeGroup: tCommon("pageSizeLabel"),
+          rowsPerPage: tCommon("rowsPerPage"),
+        }}
+      />
+    ) : undefined
+  const searchForm = (
+    <MasterDataSearch
+      action={basePath}
+      defaultValue={listState.search}
+      placeholder={t("searchPlaceholder")}
+      submitLabel={tCommon("search")}
+      hiddenInputs={{
+        pageSize: listState.pageSize,
+        sort: listState.sort,
+        direction: listState.direction,
+        ...(filters.status !== "all" ? { status: filters.status } : {}),
+        ...(filters.roleId ? { role: filters.roleId } : {}),
+      }}
+    />
+  )
+  const statusChips = (className?: string) => (
+    <UserStatusChips value={filters.status} counts={statusCounts} hrefFor={(status) => listHref({ status, page: 1 })} className={className} />
+  )
+  const roleChip = (className?: string) => (
+    <UserRoleFilterChip
+      basePath={basePath}
+      state={listState}
+      filters={filters}
+      options={roleOptions}
+      labels={{ label: t("roleFilter"), all: t("roleFilterAll"), search: t("roleFilterSearch"), empty: t("roleFilterEmpty") }}
+      className={className}
+    />
+  )
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -80,62 +131,37 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
         }
       />
 
-      <UserReviewWarning count={reviewTotal} basePath={basePath} state={listState} filters={filters} />
+      <UserReviewWarning count={reviewTotal} basePath={basePath} state={listState} filters={filters} className="hidden md:grid" />
 
-      {/* Desktop only: Task 4 adds the phone list. */}
+      {/* Board US-Users-Phone, below md: the search (44px, 16px text), one sideways-scrolling row with the role chip
+          and the status chips (44px each), the warning as one tappable line, พบ n จาก N บัญชี, the cards and the
+          pagination. The row scrolls inside itself, so the page never scrolls sideways at 390. */}
+      <div data-slot="user-list-phone" className="min-w-0 space-y-3 md:hidden">
+        <div className="[&>form]:mb-0">{searchForm}</div>
+        <div role="group" aria-label={t("filtersLabel")} className="flex min-w-0 items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none]">
+          {roleChip("shrink-0")}
+          {statusChips("shrink-0 [&>ul]:flex-nowrap")}
+        </div>
+        <UserReviewWarning count={reviewTotal} basePath={basePath} state={listState} filters={filters} variant="short" />
+        <p className="num text-meta text-muted-foreground">{t("foundCount", { shown: total, total: formatCount(grandTotal) })}</p>
+        <UserListCards rows={rows} basePath={basePath} />
+        {pagination}
+      </div>
+
+      {/* Desktop: the toolbar and the table (board US-Users). */}
       <div className="hidden space-y-4 md:block">
         {/* Board US-Users: the status chips and the role chip on the left, the search on the right. The form's own
             bottom margin is dropped here: the row's gap spaces it. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <UserStatusChips value={filters.status} counts={statusCounts} hrefFor={(status) => listHref({ status, page: 1 })} />
-          <UserRoleFilterChip
-            basePath={basePath}
-            state={listState}
-            filters={filters}
-            options={roleOptions}
-            labels={{ label: t("roleFilter"), all: t("roleFilterAll"), search: t("roleFilterSearch"), empty: t("roleFilterEmpty") }}
-          />
-          <div className="min-w-72 flex-1 lg:ml-auto lg:max-w-md [&>form]:mb-0">
-            <MasterDataSearch
-              action={basePath}
-              defaultValue={listState.search}
-              placeholder={t("searchPlaceholder")}
-              submitLabel={tCommon("search")}
-              hiddenInputs={{
-                pageSize: listState.pageSize,
-                sort: listState.sort,
-                direction: listState.direction,
-                ...(filters.status !== "all" ? { status: filters.status } : {}),
-                ...(filters.roleId ? { role: filters.roleId } : {}),
-              }}
-            />
-          </div>
+          {statusChips()}
+          {roleChip()}
+          <div className="min-w-72 flex-1 lg:ml-auto lg:max-w-md [&>form]:mb-0">{searchForm}</div>
         </div>
 
         <DataTable
           caption={t("title")}
           scrollHint={tCommon("tableScrollHint")}
-          footer={
-            total > 0 ? (
-              <Pagination
-                page={listState.page}
-                totalPages={totalPages}
-                previousHref={listHref({ page: listState.page - 1 })}
-                nextHref={listHref({ page: listState.page + 1 })}
-                pageSize={listState.pageSize}
-                pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
-                labels={{
-                  navigation: tCommon("pagination"),
-                  previous: tCommon("previous"),
-                  next: tCommon("next"),
-                  pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
-                  range: t("listRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
-                  pageSizeGroup: tCommon("pageSizeLabel"),
-                  rowsPerPage: tCommon("rowsPerPage"),
-                }}
-              />
-            ) : undefined
-          }
+          footer={pagination}
         >
           <DataTableHeader>
             <tr>

@@ -98,3 +98,54 @@ test("page data: one holdings groupBy, counts per status in parallel, default ro
   assert.match(data, /userStatusWhere\(status, defaultRoleId\)/)
   assert.match(data, /resolveUserListFilters\(/)
 })
+
+// Task 4 (board US-Users-Phone; Review Focus 5): a phone at 390 with a long Thai name and five roles wraps, shows two
+// chips and "+3", and does not scroll sideways.
+test("user cards wrap and cap role chips", () => {
+  const cards = read(`${U}user-list-cards.tsx`)
+  assert.match(cards, /splitRoleChips\(/)
+  assert.match(cards, /\bflex-wrap\b/)
+  assert.match(cards, /\bmin-w-0\b/)
+  assert.match(cards, /\bbreak-words\b/)
+  assert.doesNotMatch(cards, /(?<![-\w])w-(\d|\[)/, "the cards have no fixed width")
+  assert.match(cards, /<Link\b[^>]*\baria-label=\{/, "each card is one link with an aria-label")
+  assert.match(cards, /t\("editUserLabel", \{ name: row\.displayName \}\)/)
+  assert.match(cards, /row\.isSelf \?/)
+  const page = read(PAGE)
+  assert.match(page, /<div\b[^>]*className="[^"]*\bmd:hidden\b[^"]*"[^>]*>[\s\S]*?<UserListCards\b/, "the page renders the cards inside md:hidden")
+  assert.match(page, /t\("foundCount", \{ shown: total, total: /)
+  assert.match(read(`${U}user-review-warning.tsx`), /t\("reviewShort"\)/, "the phone warning is one line")
+})
+
+// Task 4: the user list E2E spec (e2e/admin/users-list.spec.ts) reads the app's own words, opens the page with the seed
+// admin's saved session, writes only its three requests, and deletes nothing. These pins need no app.
+test("the user list E2E spec reads the app's words and writes only its three requests", async () => {
+  const { USERS_WORDS: W } = await import("../e2e/admin/users-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const page = th.adminUsersPage
+  assert.equal(W.title, page.title)
+  assert.equal(W.search, th.common.search)
+  assert.equal(W.statusNavigation, page.status.label)
+  assert.equal(W.statusAll, page.status.all)
+  assert.equal(W.statusActive, page.status.active)
+  assert.equal(W.statusInactive, page.status.inactive)
+  assert.equal(W.statusNever, page.status.never)
+  assert.equal(W.statusReview, page.status.review)
+  assert.equal(W.roleFilter, page.roleFilter)
+  assert.equal(W.roleFilterAll, page.roleFilterAll)
+  assert.equal(W.roleFilterSearch, page.roleFilterSearch)
+  assert.equal(W.employeeLeft, page.employeeLeft)
+  assert.equal(W.reviewTitle, page.reviewTitle)
+  assert.equal(W.reviewLink, page.reviewLink)
+  assert.equal(W.editUserLabel, page.editUserLabel)
+
+  const spec = read("e2e/admin/users-list.spec.ts")
+  assert.ok(spec.includes(`import { expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!spec.includes(`from "@playwright/test"`))
+  assert.ok(spec.includes("test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })"), "the seed admin's saved session")
+  assert.ok(spec.includes(`import { recordSettled } from "../audit/settle.ts"`) && !spec.includes("measure.recordPage("), "axe through recordSettled")
+  const writes = [...spec.matchAll(/admin\.(post|put|patch)\(\s*([`"][^`"]+[`"])/g)].map((match) => `${match[1]} ${match[2]}`)
+  assert.deepEqual(writes, ['post "/api/employees"', 'post "/api/admin/users"', "put `/api/employees/${employee.id}`"])
+  assert.doesNotMatch(spec, /page\.request\.(?:post|put|patch|delete)|\.delete\(|method:\s*["'`]|signInOnce\(|ldap-(?:sync|test)|\/api\/admin\/settings/)
+  assert.match(spec, /code: `\$\{runId\}-\$\{code\}-US`/, "the run's employee code pattern")
+})

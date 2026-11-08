@@ -5596,7 +5596,8 @@
     "listRange": "Users {from}–{to} of {total}",
     "foundCount": "{shown, plural, one {# of {total} account} other {# of {total} accounts}}",
     "lastLoginShort": "Last sign-in {time}",
-    "editUserLabel": "Edit user {name}"
+    "editUserLabel": "Edit user {name}",
+    "filtersLabel": "Filters"
   },
   "adminRolesPage": {
     "title": "Roles & Permissions",
