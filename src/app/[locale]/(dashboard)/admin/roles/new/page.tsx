@@ -1,5 +1,6 @@
+import { notFound } from "next/navigation"
 import { requirePagePermission } from "@/lib/page-auth"
-import { prisma } from "@/lib/db"
+import { loadRoleFormData } from "@/lib/role-form-data"
 import { RolePermissionForm } from "@/components/admin/role-permission-form"
 
 type NewRolePageProps = {
@@ -8,25 +9,9 @@ type NewRolePageProps = {
 
 export default async function NewRolePage({ params }: NewRolePageProps) {
   const { locale } = await params
-  await requirePagePermission(locale, "role", "create")
+  const actor = await requirePagePermission(locale, "role", "create")
+  const data = await loadRoleFormData({ roleId: null, actor })
+  if (!data) notFound()
 
-  const permissions = await prisma.permission.findMany({
-    select: { id: true, module: true, action: true },
-    orderBy: [{ module: "asc" }, { action: "asc" }],
-  })
-
-  return (
-    <RolePermissionForm
-      role={{
-        name: "",
-        displayName: "",
-        displayNameTh: "",
-        description: "",
-        isActive: true,
-        isSystem: false,
-      }}
-      permissions={permissions}
-      selectedPermissionIds={[]}
-    />
-  )
+  return <RolePermissionForm data={data} />
 }

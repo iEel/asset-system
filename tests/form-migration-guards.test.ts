@@ -82,6 +82,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}master-data/category-form.tsx`]: ["/th/master-data/categories/new", "/th/master-data/categories/sample-1/edit"],
   // Group 11 plan 2 Task 4: the user form's save bar with the note and the change count (board US-User-Edit).
   [`${C}admin/admin-user-form.tsx`]: ["/th/admin/users/new", "/th/admin/users/sample-1/edit"],
+  // Group 11 plan 3 Task 4: the role form's save bar with the note and the permission counts (board US-Role-Edit).
+  [`${C}admin/role-permission-form.tsx`]: ["/th/admin/roles/new", "/th/admin/roles/sample-1/edit"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
@@ -179,7 +181,12 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   // The role search (maxLength 100) and the close/reopen dialog's note (maxLength 500).
   [`${C}admin/user-form/user-roles-section.tsx`]: [0, 1, 0],
   [`${C}admin/user-form/user-status-dialog.tsx`]: [0, 1, 0],
-  [`${C}admin/role-permission-form.tsx`]: [2, 3, 0],
+  // Group 11 plan 3 Task 4: the role form split into role-form/; the key, display names and description kept their [2, 3, 0]
+  // in the details section, the form keeps the two note fields (maxLength 500), and the add-users dialog has its search
+  // (maxLength 100) and note (maxLength 500).
+  [`${C}admin/role-permission-form.tsx`]: [0, 2, 0],
+  [`${C}admin/role-form/role-details-section.tsx`]: [2, 3, 0],
+  [`${C}admin/role-form/role-add-users-dialog.tsx`]: [0, 2, 0],
   [`${C}admin/IntegrationClientManager.tsx`]: [3, 3, 1],
   [`${C}admin/asset-state-review-dialog.tsx`]: [1, 1, 1],
   [`${C}assets/asset-label-print.tsx`]: [0, 1, 0],

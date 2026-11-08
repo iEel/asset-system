@@ -33,7 +33,14 @@ async function created<T>(request: APIRequestContext, url: string, data: unknown
   return (await response.json()) as T
 }
 
-// One role on the role form, ticking exactly its permissions; the stored set is read back on the edit page.
+// The matrix folds ข้อมูลหลัก and ผู้ใช้และระบบ (board US-Role-Edit): open every folded group, so each module row shows.
+async function openAllGroups(page: Page) {
+  const folded = page.locator('#role-permission-matrix button[aria-expanded="false"]')
+  while ((await folded.count()) > 0) await folded.first().click()
+}
+
+// One role on the role form, ticking exactly its permissions; the stored set is read back on the edit page. A row is
+// found by its <span class="tag">{module}</span>, and a cell by its name "{action} {module}" (the Thai action first).
 async function createRole(page: Page, key: E2eUserKey, runId: string): Promise<{ id: string; name: string }> {
   const name = roleNameFor(key, runId)
   const display = roleDisplayFor(key, runId)
@@ -41,10 +48,11 @@ async function createRole(page: Page, key: E2eUserKey, runId: string): Promise<{
   await page.locator("#role-key").fill(name)
   await page.locator("#role-display-name").fill(display.displayName)
   await page.locator("#role-display-name-th").fill(display.displayNameTh)
+  await openAllGroups(page)
   for (const permission of E2E_ROLE_PERMISSIONS[key]) {
     const [moduleName, action] = permission.split(":")
     const row = page.locator("tr").filter({ has: page.locator("span.tag", { hasText: new RegExp(`^${moduleName}$`) }) })
-    await row.getByRole("checkbox", { name: ACTION_LABELS[action], exact: true }).check()
+    await row.getByRole("checkbox", { name: new RegExp("^" + ACTION_LABELS[action] + " ") }).check()
   }
   const saved = page.waitForResponse((response) => response.url().endsWith("/api/admin/roles") && response.request().method() === "POST")
   await page.getByRole("button", { name: "บันทึกสิทธิ์" }).click()
@@ -56,11 +64,14 @@ async function createRole(page: Page, key: E2eUserKey, runId: string): Promise<{
   // Read back: the edit page ticks exactly the stored permissions.
   await page.goto(`/th/admin/roles/${role.id}/edit`)
   await expect(page.locator("#role-key")).toHaveValue(name)
+  await openAllGroups(page)
   const ticked: string[] = []
   for (const row of await page.locator("tbody tr").all()) {
+    // A group's own header row has no module tag.
+    if ((await row.locator("span.tag").count()) === 0) continue
     const moduleName = (await row.locator("span.tag").first().textContent())?.trim()
     for (const [action, label] of Object.entries(ACTION_LABELS)) {
-      if (await row.getByRole("checkbox", { name: label, exact: true }).isChecked()) ticked.push(`${moduleName}:${action}`)
+      if (await row.getByRole("checkbox", { name: new RegExp("^" + label + " ") }).isChecked()) ticked.push(`${moduleName}:${action}`)
     }
   }
   expect(ticked.sort(), `the stored permissions of ${name}`).toEqual([...E2E_ROLE_PERMISSIONS[key]].sort())

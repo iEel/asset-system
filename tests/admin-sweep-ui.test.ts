@@ -66,13 +66,18 @@ test("the integration client manager: StatStrip, ContentPanel, DataTable, shared
 })
 
 test("the role permission form: two ContentPanels, the system-role guard as a neutral Notice, DataTable and the module key as a tag (spec 2D D7, M27)", () => {
-  const source = read(`${C}admin/role-permission-form.tsx`)
-  assert.match(source, /<ContentPanel divided title=\{t\("roleMetadata"\)\} description=\{t\("metadataSubtitle"\)\}>/)
-  assert.match(source, /\{isSystemRole \? <Notice tone="neutral" className="mb-5">\{permissionsLocked \? t\("systemAdminGuard"\) : t\("systemRoleGuard"\)\}<\/Notice> : null\}/)
-  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{t\("permissionSelection"\)\}/)
-  assert.match(source, /<DataTable framed=\{false\} caption=\{t\("permissionSelection"\)\}>/)
-  assert.match(source, /<span className="tag">\{moduleName\}<\/span>/)
-  assert.doesNotMatch(source, /rounded-lg border|font-mono|bg-info-soft|text-info\b|\bInfo\b/)
+  // Group 11 plan 3 Task 4 (board US-Role-Edit): ข้อมูลบทบาท moved to role-form/role-details-section.tsx and the matrix
+  // to role-form/role-permission-matrix.tsx; its panel title is เลือกสิทธิ์ (form.matrixTitle) and the table caption is
+  // still permissionSelection, passed in by the form.
+  const details = read(`${C}admin/role-form/role-details-section.tsx`)
+  const matrix = read(`${C}admin/role-form/role-permission-matrix.tsx`)
+  assert.match(details, /<ContentPanel divided title=\{t\("roleMetadata"\)\} description=\{t\("metadataSubtitle"\)\}>/)
+  assert.match(details, /\{isSystemRole \? <Notice tone="neutral" className="mb-5">\{permissionsLocked \? t\("systemAdminGuard"\) : t\("systemRoleGuard"\)\}<\/Notice> : null\}/)
+  assert.match(matrix, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{t\("form\.matrixTitle"\)\}/)
+  assert.match(matrix, /<DataTable framed=\{false\} caption=\{caption\}>/)
+  assert.match(read(`${C}admin/role-permission-form.tsx`), /caption=\{t\("permissionSelection"\)\}/)
+  assert.match(matrix, /<span className="tag">\{module\}<\/span>/)
+  for (const source of [details, matrix]) assert.doesNotMatch(source, /rounded-lg border|font-mono|bg-info-soft|text-info\b|\bInfo\b/)
 })
 
 const D = "src/app/[locale]/(dashboard)/"

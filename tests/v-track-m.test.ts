@@ -314,7 +314,13 @@ test("admin user: errors under the field, the password rule of create and edit, 
 })
 
 test("role: errors under the field, the role key's length and pattern restated, and one error above the permission table (v-track M8)", () => {
-  const source = read(`${C}admin/role-permission-form.tsx`)
+  // Group 11 plan 3 Task 4 (board US-Role-Edit) split the form: the fields are in role-form/role-details-section.tsx
+  // (onFieldChange is the form's setMetaField) and the matrix in role-form/role-permission-matrix.tsx (error is the
+  // form's fieldErrors.message("permissionIds")). The shape is checked over the three files read as one.
+  const form = read(`${C}admin/role-permission-form.tsx`)
+  const details = read(`${C}admin/role-form/role-details-section.tsx`)
+  const matrix = read(`${C}admin/role-form/role-permission-matrix.tsx`)
+  const source = [form, details, matrix].join("\n")
   assertMigratedForm(source, {
     ids: {
       name: "role-key",
@@ -325,23 +331,25 @@ test("role: errors under the field, the role key's length and pattern restated, 
     },
     messages: ["displayName", "displayNameTh", "description"],
   })
-  const rules = validateBody(source)
+  const rules = validateBody(form)
   for (const rule of [
     'check("name", required(values.name) ?? minLength(values.name, 2) ?? maxLength(values.name, 50) ?? pattern(values.name, /^[a-z][a-z0-9_]*$/))',
     'check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))',
     'check("displayNameTh", maxLength(values.displayNameTh, 200))',
     'check("description", maxLength(values.description, 500))',
   ]) assert.ok(rules.includes(rule), rule)
-  assert.match(source, /fieldErrors\.setErrors\(validate\(meta\)\)/)
-  assert.ok(source.includes("error={fieldErrors.errors.name ? validationMessage(fieldErrors.errors.name, { min: 2, max: 50 }) : undefined}"))
+  assert.match(form, /fieldErrors\.setErrors\(validate\(meta\)\)/)
+  assert.ok(details.includes("error={fieldErrors.errors.name ? validationMessage(fieldErrors.errors.name, { min: 2, max: 50 }) : undefined}"))
   // Every meta field goes through setMetaField, which clears its error.
   assert.equal(source.match(/setMeta\(\(current\) =>/g)?.length, 1, "only inside setMetaField")
-  assert.equal(source.match(/onChange=\{\(event\) => setMetaField\("\w+", event\.target\.(?:value|checked)\)\}/g)?.length, 5)
+  assert.match(form, /onFieldChange=\{setMetaField\}/)
+  assert.equal(details.match(/onChange=\{\(event\) => onFieldChange\("\w+", event\.target\.(?:value|checked)\)\}/g)?.length, 5)
   // "Invalid permission selection" lands above the table, tied to the group; a toggle clears it.
-  assert.ok(source.includes('<FieldError id="role-permissions-error" className="px-4 pt-3 md:px-5">{fieldErrors.message("permissionIds")}</FieldError>'))
-  assert.match(source, /<div\n\s+role="group"\n\s+aria-label=\{t\("permissionSelection"\)\}\n\s+aria-describedby=\{fieldErrors\.errors\.permissionIds \? "role-permissions-error" : undefined\}\n\s+>/)
-  assert.ok(source.includes('id={permission.id === firstPermissionId ? "role-permissions" : undefined}'))
-  assert.equal(source.match(/\n    fieldErrors\.clear\("permissionIds"\)\n/g)?.length, 2, "togglePermission and setModulePermissions")
+  assert.ok(matrix.includes('<FieldError id="role-permissions-error" className="px-4 pt-3 md:px-5">{error}</FieldError>'))
+  assert.ok(form.includes('error={fieldErrors.errors.permissionIds ? fieldErrors.message("permissionIds") : undefined}'))
+  assert.match(matrix, /<div\n\s+id="role-permission-matrix"\n\s+role="group"\n\s+aria-label=\{t\("permissionSelection"\)\}\n\s+aria-describedby=\{error \? "role-permissions-error" : undefined\}\n\s+>/)
+  assert.ok(matrix.includes('id={key === focusKey ? "role-permissions" : undefined}'))
+  assert.equal(form.match(/\n    fieldErrors\.clear\("permissionIds"\)\n/g)?.length, 2, "togglePermission and setPermissions (a row or a column)")
 })
 
 test("integration clients: create and edit show errors under the field, at least one scope is an error on submit, and the server's reason is no longer thrown away (v-track M9)", () => {

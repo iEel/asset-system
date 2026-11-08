@@ -43,10 +43,14 @@ test("the user and role forms: PageHeader and PageBackLink, and the role create 
   assert.match(user, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{t\("formSubtitle"\)\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
   assert.match(user, /\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>\n\s+<UserStatusDialog /, "the edit header keeps the back link")
   assert.match(read(`${C}admin/admin-user-form.tsx`), /<UserFormHeader title=\{title\} backHref=\{backHref\} /)
-  const role = read(`${C}admin/role-permission-form.tsx`)
-  assert.ok(role.includes(HEADER_IMPORT), "role-permission-form.tsx imports PageHeader and PageBackLink")
-  assert.match(role, /<PageHeader\n\s+title=\{isCreate \? t\("createTitle"\) : t\("editTitle"\)\}\n/, "the create page reads เพิ่มบทบาท, not แก้ไขสิทธิ์บทบาท")
-  assert.match(role, /\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  // Group 11 plan 3 Task 4: the role form's header is RoleFormHeader (role-form/role-form-header.tsx). On create it is the
+  // title and the subtitle as before; on edit "แก้ไขสิทธิ์บทบาท · {name}" with the badges and อื่น ๆ, with the same back link.
+  const role = read(`${C}admin/role-form/role-form-header.tsx`)
+  assert.ok(role.includes(HEADER_IMPORT), "role-form-header.tsx imports PageHeader and PageBackLink")
+  assert.match(role, /<PageHeader\n\s+title=\{t\("createTitle"\)\}\n\s+meta=\{t\("createSubtitle"\)\}\n/, "the create page reads เพิ่มบทบาท, not แก้ไขสิทธิ์บทบาท")
+  assert.match(role, /<PageHeader\n\s+title=\{t\("form\.editTitle", \{ name: role\.displayNameTh \|\| role\.displayName \}\)\}\n/)
+  assert.equal(role.match(/\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/g)?.length, 2, "both headers keep the back link")
+  assert.match(read(`${C}admin/role-permission-form.tsx`), /<RoleFormHeader\n\s+role=\{role\}\n\s+backHref=\{backHref\}/)
   for (const source of [user, role]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b/)
 })
 

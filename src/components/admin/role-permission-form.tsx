@@ -7,41 +7,27 @@ import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { ContentPanel } from "@/components/ui/content-panel"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
-import { Field, FieldError } from "@/components/ui/field"
-import { checkboxVariants } from "@/components/ui/field-variants"
-import { Input } from "@/components/ui/input"
-import { Notice } from "@/components/ui/notice"
-import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { Field } from "@/components/ui/field"
+import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
+import { RoleChangeSummary } from "@/components/admin/role-form/role-change-summary"
+import { RoleDetailsSection, type RoleField, type RoleMeta } from "@/components/admin/role-form/role-details-section"
+import { RoleFormHeader } from "@/components/admin/role-form/role-form-header"
+import { RolePeopleSection } from "@/components/admin/role-form/role-people-section"
+import { RolePermissionMatrix } from "@/components/admin/role-form/role-permission-matrix"
+import { getPanelClasses } from "@/lib/design-system"
+import { PERMISSION_GROUPS, type PermissionGroupKey } from "@/lib/permission-groups"
+import { permissionMarks, setMany } from "@/lib/role-editor-model"
+import type { RoleFormData } from "@/lib/role-form-data"
+import { cn } from "@/lib/utils"
 import { maxLength, minLength, pattern, required } from "@/lib/validation-rules"
 
-type RoleFormValue = {
-  id?: string
-  name: string
-  displayName: string
-  displayNameTh?: string | null
-  description?: string | null
-  isSystem?: boolean
-  isActive?: boolean
-}
-
-type PermissionOption = {
-  id: string
-  module: string
-  action: string
-}
-
-type RoleMeta = {
-  name: string
-  displayName: string
-  displayNameTh: string
-  description: string
-  isActive: boolean
-}
+// Page group 11 plan 3 task 4 (spec §7; board US-Role-Edit): the create and edit role form. The parts are in role-form/:
+// the header, ข้อมูลบทบาท, the grouped permission matrix, the change summary with the segregation warning (edit), and
+// the people in the role (edit, user:view). Below sm the note is the form's last section; from sm it sits in the footer
+// with its visible label. Both note fields share one state and only one is displayed at a time.
 
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
 const FIELD_IDS = {
@@ -51,8 +37,10 @@ const FIELD_IDS = {
   description: "role-description",
   permissionIds: "role-permissions",
 } as const
-type RoleField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as RoleField[]
+
+// The two long groups start folded unless they hold a change (spec §7.2).
+const FOLDED_GROUPS: readonly PermissionGroupKey[] = ["masterData", "system"]
 
 // noValidate turns the browser's check off, so this restates the controls' required, maxLength and pattern, and
 // the server's length of the role key (v-track M-R2).
@@ -68,20 +56,13 @@ function validate(values: RoleMeta) {
   return errors
 }
 
-export function RolePermissionForm({
-  role,
-  permissions,
-  selectedPermissionIds,
-}: {
-  role: RoleFormValue
-  permissions: PermissionOption[]
-  selectedPermissionIds: string[]
-}) {
+export function RolePermissionForm({ data, usersHref = "" }: { data: RoleFormData; usersHref?: string }) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("adminRolesPage")
   const tCommon = useTranslations("common")
   const apiError = useApiError()
+  const role = data.role
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<RoleField>()
   const validationMessage = useValidationMessage()
@@ -90,58 +71,71 @@ export function RolePermissionForm({
     displayName: role.displayName,
     displayNameTh: role.displayNameTh ?? "",
     description: role.description ?? "",
-    isActive: role.isActive ?? true,
+    isActive: role.isActive,
   })
-  const [values, setValues] = useState(() => new Set(selectedPermissionIds))
+  const [note, setNote] = useState("")
+  // Permissions as "module:action" keys; the save maps them back to ids.
+  const idByKey = useMemo(
+    () => new Map(data.permissions.map((permission) => [`${permission.module}:${permission.action}`, permission.id])),
+    [data.permissions],
+  )
+  const [initialKeys] = useState<ReadonlySet<string>>(() => {
+    const selected = new Set(data.selectedIds)
+    return new Set(data.permissions.filter((permission) => selected.has(permission.id)).map((permission) => `${permission.module}:${permission.action}`))
+  })
+  const [values, setValues] = useState<Set<string>>(() => new Set(initialKeys))
+  const [openGroups, setOpenGroups] = useState<Partial<Record<PermissionGroupKey, boolean>>>({})
   const backHref = `/${locale}/admin/roles`
   const isCreate = !role.id
-  const isSystemRole = Boolean(role.isSystem)
+  const isSystemRole = role.isSystem
   const permissionsLocked = role.name === "system_admin"
-  const groupedPermissions = useMemo(() => {
-    const groups = new Map<string, PermissionOption[]>()
-    for (const permission of permissions) {
-      const current = groups.get(permission.module) ?? []
-      current.push(permission)
-      groups.set(permission.module, current)
-    }
-    return Array.from(groups.entries())
-  }, [permissions])
-  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
-  const firstPermissionId = groupedPermissions[0]?.[1][0]?.id
+  const lockedKeys = useMemo(() => new Set(data.lockedKeys), [data.lockedKeys])
+  const isLocked = (key: string) => permissionsLocked || lockedKeys.has(key)
+  const { added, removed } = permissionMarks(initialKeys, values)
+  const changedKeys = new Set([...added, ...removed])
+  const groupHasChange = (key: PermissionGroupKey) =>
+    (PERMISSION_GROUPS.find((group) => group.key === key)?.modules ?? []).some((module) =>
+      [...changedKeys].some((changed) => changed.startsWith(`${module}:`)),
+    )
+  const isOpen = (key: PermissionGroupKey) => openGroups[key] ?? (groupHasChange(key) || !FOLDED_GROUPS.includes(key))
+
+  // A permissions error opens every group first, so the cell focus goes to is shown.
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(FIELD_ORDER, {
+      idFor: (key) => FIELD_IDS[key],
+      reveal: (key) => {
+        if (key === "permissionIds") setOpenGroups(Object.fromEntries(PERMISSION_GROUPS.map((group) => [group.key, true])))
+      },
+    })
 
   function setMetaField<K extends keyof RoleMeta>(field: K, value: RoleMeta[K]) {
     setMeta((current) => ({ ...current, [field]: value }))
     if (field in FIELD_IDS) fieldErrors.clear(field as RoleField)
   }
 
-function togglePermission(permissionId: string) {
-    if (permissionsLocked) return
+  function togglePermission(key: string) {
+    if (isLocked(key)) return
     setValues((current) => {
       const next = new Set(current)
-      if (next.has(permissionId)) {
-        next.delete(permissionId)
+      if (next.has(key)) {
+        next.delete(key)
       } else {
-        next.add(permissionId)
+        next.add(key)
       }
       return next
     })
     fieldErrors.clear("permissionIds")
   }
 
-  function setModulePermissions(modulePermissions: PermissionOption[], checked: boolean) {
+  // A row or a column at once; locked keys keep their state.
+  function setPermissions(keys: string[], on: boolean) {
     if (permissionsLocked) return
-    setValues((current) => {
-      const next = new Set(current)
-      for (const permission of modulePermissions) {
-        if (checked) {
-          next.add(permission.id)
-        } else {
-          next.delete(permission.id)
-        }
-      }
-      return next
-    })
+    setValues((current) => setMany(current, keys, on, isLocked))
     fieldErrors.clear("permissionIds")
+  }
+
+  function toggleGroup(key: PermissionGroupKey) {
+    setOpenGroups((current) => ({ ...current, [key]: !isOpen(key) }))
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -160,7 +154,8 @@ function togglePermission(permissionId: string) {
           displayNameTh: meta.displayNameTh || null,
           description: meta.description || null,
           isActive: meta.isActive,
-          permissionIds: Array.from(values),
+          permissionIds: [...values].flatMap((key) => idByKey.get(key) ?? []),
+          note: note.trim() || null,
         }),
       })
       const payload = await response.json().catch(() => null)
@@ -181,147 +176,107 @@ function togglePermission(permissionId: string) {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader
-        title={isCreate ? t("createTitle") : t("editTitle")}
-        meta={isCreate ? t("createSubtitle") : `${role.displayNameTh || role.displayName} · ${role.name}`}
-        className="mb-6"
-        back={<PageBackLink href={backHref} label={tCommon("back")} />}
+      <RoleFormHeader
+        role={role}
+        backHref={backHref}
+        userCount={data.userCount}
+        canViewUsers={data.canViewUsers}
+        canViewLogs={data.canViewLogs}
       />
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        <ContentPanel divided title={t("roleMetadata")} description={t("metadataSubtitle")}>
-          {/* D7: a condition before acting is a neutral Notice (it was a teal info box). */}
-          {isSystemRole ? <Notice tone="neutral" className="mb-5">{permissionsLocked ? t("systemAdminGuard") : t("systemRoleGuard")}</Notice> : null}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field
-              label={t("roleKey")}
-              id="role-key"
-              required
-              error={fieldErrors.errors.name ? validationMessage(fieldErrors.errors.name, { min: 2, max: 50 }) : undefined}
-            >
-              <Input
-                value={meta.name}
-                required
-                pattern="[a-z][a-z0-9_]*"
-                disabled={isSystemRole}
-                onChange={(event) => setMetaField("name", event.target.value)}
-              />
-            </Field>
-            <Field label={t("displayName")} id="role-display-name" required error={fieldErrors.message("displayName")}>
-              <Input
-                value={meta.displayName}
-                required
-                maxLength={200}
-                onChange={(event) => setMetaField("displayName", event.target.value)}
-              />
-            </Field>
-            <Field label={t("displayNameTh")} id="role-display-name-th" error={fieldErrors.message("displayNameTh")}>
-              <Input
-                value={meta.displayNameTh}
-                maxLength={200}
-                onChange={(event) => setMetaField("displayNameTh", event.target.value)}
-              />
-            </Field>
-            <label className="flex min-h-11 items-center gap-2 self-end text-sm font-medium text-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground">
-              <input
-                type="checkbox"
-                checked={meta.isActive}
-                disabled={isSystemRole}
-                onChange={(event) => setMetaField("isActive", event.target.checked)}
-                className={checkboxVariants()}
-              />
-              {tCommon("active")}
-            </label>
-            <div className="md:col-span-2">
-              <Field label={t("description")} id="role-description" error={fieldErrors.message("description")}>
-                <Textarea
-                  value={meta.description}
-                  rows={3}
-                  maxLength={500}
-                  onChange={(event) => setMetaField("description", event.target.value)}
-                />
-              </Field>
-            </div>
-          </div>
-        </ContentPanel>
+        <RoleDetailsSection
+          meta={meta}
+          fieldErrors={fieldErrors}
+          validationMessage={validationMessage}
+          isSystemRole={isSystemRole}
+          permissionsLocked={permissionsLocked}
+          onFieldChange={setMetaField}
+        />
 
-        <ContentPanel
-          divided
-          flush
-          className="overflow-hidden"
-          title={t("permissionSelection")}
-          description={permissionsLocked ? t("permissionLockedSubtitle") : t("formSubtitle")}
+        <RolePermissionMatrix
+          permissions={data.permissions}
+          initial={initialKeys}
+          current={values}
+          isLocked={isLocked}
+          allLocked={permissionsLocked}
+          isOpen={isOpen}
+          error={fieldErrors.errors.permissionIds ? fieldErrors.message("permissionIds") : undefined}
+          caption={t("permissionSelection")}
+          onToggleGroup={toggleGroup}
+          onToggle={togglePermission}
+          onSetMany={setPermissions}
+        />
+
+        {isCreate ? null : (
+          <RoleChangeSummary
+            initial={initialKeys}
+            current={values}
+            userCount={data.userCount}
+            people={data.people}
+            canViewUsers={data.canViewUsers}
+            disposalSegregationOn={data.disposalSegregationOn}
+          />
+        )}
+
+        <section className={cn(getPanelClasses(), "p-4 sm:hidden")}>
+          <Field label={t("form.noteOptional")} id="role-note-phone">
+            <Textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              rows={2}
+              maxLength={500}
+              placeholder={t("form.notePlaceholder")}
+              className="field-sizing-content max-h-32 min-h-11"
+            />
+          </Field>
+        </section>
+
+        <StickyFormFooter
+          status={
+            <span role="status" className="num block sm:whitespace-normal">
+              {t("form.footerStatus", {
+                count: values.size,
+                total: idByKey.size,
+                added: added.length,
+                removed: removed.length,
+                users: data.userCount,
+              })}
+            </span>
+          }
         >
-          {/* The permissions are one group with one error above the table; focus goes to the first permission (v-track M-R8). */}
-          {fieldErrors.errors.permissionIds ? (
-            <FieldError id="role-permissions-error" className="px-4 pt-3 md:px-5">{fieldErrors.message("permissionIds")}</FieldError>
-          ) : null}
-          <div
-            role="group"
-            aria-label={t("permissionSelection")}
-            aria-describedby={fieldErrors.errors.permissionIds ? "role-permissions-error" : undefined}
-          >
-            <DataTable framed={false} caption={t("permissionSelection")}>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{t("module")}</DataTableHead>
-                  <DataTableHead>{t("permissions")}</DataTableHead>
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
-                  {groupedPermissions.map(([moduleName, modulePermissions]) => (
-                    <DataTableRow key={moduleName}>
-                      <DataTableCell className="whitespace-nowrap">
-                        <div className="font-medium text-foreground">{t(`modules.${moduleName}`)}</div>
-                        <div className="mt-1 text-xs text-muted-foreground"><span className="tag">{moduleName}</span></div>
-                        <label className="mt-3 inline-flex min-h-11 items-center gap-2 text-xs text-muted-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground">
-                          <input
-                            type="checkbox"
-                            checked={modulePermissions.every((permission) => values.has(permission.id))}
-                            disabled={permissionsLocked}
-                            onChange={(event) => setModulePermissions(modulePermissions, event.target.checked)}
-                            className={checkboxVariants()}
-                          />
-                          {t("selectModule")}
-                        </label>
-                      </DataTableCell>
-                      <DataTableCell>
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-                          {modulePermissions.map((permission) => (
-                            <label
-                              key={permission.id}
-                              className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 has-disabled:cursor-not-allowed has-disabled:text-faint-foreground"
-                            >
-                              <input
-                                id={permission.id === firstPermissionId ? "role-permissions" : undefined}
-                                type="checkbox"
-                                checked={values.has(permission.id)}
-                                disabled={permissionsLocked}
-                                onChange={() => togglePermission(permission.id)}
-                                className={checkboxVariants()}
-                              />
-                              <span className="text-sm">{t(`actions.${permission.action}`)}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))}
-              </DataTableBody>
-            </DataTable>
+          <Field label={t("form.noteOptional")} id="role-note" className="hidden sm:grid sm:w-80">
+            <Textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              rows={1}
+              maxLength={500}
+              placeholder={t("form.notePlaceholder")}
+              className="field-sizing-content max-h-32 min-h-11 md:min-h-9"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-2 sm:contents">
+            <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
+              {tCommon("cancel")}
+            </Link>
+            <Button type="submit" busy={saving}>
+              <Save aria-hidden="true" />
+              {t("savePermissions")}
+            </Button>
           </div>
-        </ContentPanel>
-
-        <div className="flex justify-end gap-3">
-          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
-            {tCommon("cancel")}
-          </Link>
-          <Button type="submit" busy={saving}>
-            <Save aria-hidden="true" />
-            {t("savePermissions")}
-          </Button>
-        </div>
+        </StickyFormFooter>
       </form>
+
+      {role.id && data.canViewUsers ? (
+        <RolePeopleSection
+          roleId={role.id}
+          roleActive={role.isActive}
+          people={data.people}
+          userCount={data.userCount}
+          canEditUsers={data.canEditUsers}
+          usersHref={usersHref}
+        />
+      ) : null}
     </div>
   )
 }

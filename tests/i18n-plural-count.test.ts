@@ -97,7 +97,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // The group 11 plan 2 look step added 1: the role list's "แสดงทั้งหมด n บทบาท" (keyed on count).
   // Group 11 plan 3 Task 3 added 2: the role list's inactive-role warning (keyed on count; users is a plural too) and a
   // role's "ยังมีผู้ใช้ n คน" (count).
-  assert.equal(pluralKeys.size, 187,[...pluralKeys.keys()].join(", "))
+  // Group 11 plan 3 Task 4 added 9: the role editor's users in the role, a group line (modules), the applies-to lines
+  // with and without names (count), the footer status (users), and the add dialog's picked, confirm, done and refused (count).
+  assert.equal(pluralKeys.size, 196,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

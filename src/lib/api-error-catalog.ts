@@ -334,6 +334,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Uploaded file failed malware scan": "fileMalwareDetected",
   "Used license seats cannot exceed total seats": "licenseSeatsExceeded",
   "User not found": "userNotFound",
+  "User not found or inactive": "userNotFoundOrInactive",
   "Username already exists": "usernameExists",
   "VALIDATION_FAILED": "validationFailed",
   "Vendor not found or inactive": "vendorNotFound",
@@ -346,8 +347,14 @@ export type ApiErrorDescription = { message: string; detail: string | null }
 
 const thaiText = /[\u0E00-\u0E7F]/
 
+// Server messages that carry a value (a permission key), matched by pattern after the exact table (group 11 plan 3).
+export const apiErrorKeyByPattern: readonly (readonly [RegExp, string])[] = [
+  [/^Forbidden: cannot grant \S+ without holding it$/, "grantPermissionForbidden"],
+]
+
 export function getApiErrorKey(raw: string): string | null {
-  return apiErrorKeyByMessage[raw.trim().replace(/ · ref [0-9a-f]{8}$/, "")] ?? null
+  const text = raw.trim().replace(/ · ref [0-9a-f]{8}$/, "")
+  return apiErrorKeyByMessage[text] ?? apiErrorKeyByPattern.find(([pattern]) => pattern.test(text))?.[1] ?? null
 }
 
 /**
