@@ -621,22 +621,26 @@ test("my asset page: PageHeader with the back link to My Assets, the facts as a 
 
 // Plan 2B-5 Task 1 (spec 2B §5.6 row admin/roles, §4.4.6, R-d, R-q): the role list and the permission matrix on the
 // list primitives. Edit is the row's only command, so RowActions draws no ⋯. Plan 2D-2 (M13, D11) moved the floating
-// create button into the header, after the export (the primary action last).
-test("roles: PageHeader, one StatStrip, and the role list and permission matrix on DataTable, with edit through RowActions (spec 2B §5.6)", () => {
+// create button into the header, after the export (the primary action last). Group 11 plan 3 task 3 (board US-Roles):
+// the StatStrip is gone (its facts are in the chips and the warning, pinned in tests/admin-roles-board.test.ts), the
+// matrix moved to its own tab (still a flush DataTable in its panel), and the list is a framed DataTable with a footer
+// pagination that hides รายละเอียด below xl instead of a sticky action column, so 1024 needs no sideways scroll.
+test("roles: PageHeader, the role list and the permission matrix on DataTable, with edit through RowActions (spec 2B §5.6)", () => {
   const source = read(`${D}admin/roles/page.tsx`)
-  for (const part of ["<PageHeader", "<StatStrip", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow colSpan={7}>", "<ClickableTableRow", "<DataTableRow", "<RowActions"]) {
+  for (const part of ["<PageHeader", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow colSpan={7}>", "<ClickableTableRow", "<DataTableRow", "<RowActions"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
   assert.match(source, /<a href="\/api\/admin\/roles\/export" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.equal(source.match(/<ContentPanel divided flush className="overflow-hidden"/g)?.length, 2)
-  assert.equal(source.match(/<DataTable framed=\{false\} caption=\{t\("(?:roleSummary|permissionMatrix)"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/g)?.length, 2, "both tables sit flush in their panel and scroll sideways with the hint (B6)")
-  assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/, "edit is the only command: no ⋯ (spec 2B §5.6)")
+  assert.equal(source.match(/<ContentPanel divided flush className="overflow-hidden"/g)?.length, 1, "the matrix keeps its panel")
+  assert.match(source, /<DataTable framed=\{false\} caption=\{t\("permissionMatrix"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/, "the matrix sits flush in its panel and scrolls sideways with the hint (B6)")
+  assert.match(source, /<DataTable caption=\{t\("roleSummary"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\} footer=\{pagination\}>/)
+  assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+nextWidth="auto"\n\s+groups=\{\[\]\}\n\s+\/>/, "edit is the only command: no ⋯ (spec 2B §5.6)")
   assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: role\.name \}\)\}/)
-  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
-  assert.match(source, /attention: inactiveRolesWithUsers\.length > 0,/, "inactive roles that still have users need action (R-d)")
+  assert.match(source, /<DataTableHead align="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /<RoleInactiveWarning roles=\{inactiveWithUsers\}/, "inactive roles that still have users need action (R-d)")
   assert.match(source, /\{canCreate \? \(\n\s+<Link href=\{`\/\$\{locale\}\/admin\/roles\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/, "M13: create is the header's primary md button")
-  assert.doesNotMatch(source, /\bfixed bottom-|shadow-lg|\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-</)
+  assert.doesNotMatch(source, /\bfixed bottom-|shadow-lg|\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-<|<StatStrip\b/)
 })
 
 // Plan 2B-5 Task 2 (spec 2B §5.6 row admin/logs, §5.9.2 row 1, §6.5 row 9, B4): the system log pages for real (it

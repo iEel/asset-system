@@ -20,6 +20,7 @@ function role(overrides: Partial<RoleListItem> & { id: string }): RoleListItem {
   return {
     name: overrides.id,
     label: `label-${overrides.id}`,
+    displayName: `display-${overrides.id}`,
     description: null,
     isSystem: false,
     isActive: true,
@@ -81,6 +82,16 @@ test("search matches key, label and description, case-insensitive, and counts fo
   assert.deepEqual(filterRoles(roles, { ...defaults, search: "ตรวจนับ" }).map((r) => r.id), ["c"])
   assert.deepEqual(roleListCounts(roles, "VIEW"), { all: 1, system: 0, custom: 1, highRisk: 0, noUsers: 0, inactive: 0 })
   assert.deepEqual(filterRoles(roles, { ...defaults, type: "system", search: "viewer" }), [])
+})
+
+// Ruling (plan 3 task 3): the search also matches the English display name, which the label hides when a Thai name exists.
+test("search matches the English display name too", () => {
+  const roles = [
+    role({ id: "a", name: "asset_manager", label: "ผู้จัดการทรัพย์สิน", displayName: "Asset Manager" }),
+    role({ id: "b", name: "viewer", label: "ผู้ดู", displayName: "Read Only" }),
+  ]
+  assert.deepEqual(filterRoles(roles, { ...defaults, search: "read only" }).map((r) => r.id), ["b"])
+  assert.equal(roleListCounts(roles, "ASSET MAN").all, 1)
 })
 
 test("high risk means delete, approve or export", () => {

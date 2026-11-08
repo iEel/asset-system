@@ -26,6 +26,8 @@ export type RoleListItem = {
   name: string
   // displayNameTh || displayName
   label: string
+  // The English display name: the search matches it too, though the label hides it when a Thai name exists.
+  displayName: string
   description: string | null
   isSystem: boolean
   isActive: boolean
@@ -64,7 +66,7 @@ export function isHighRiskRole(permissionKeys: readonly string[]): boolean {
 function matchesSearch(role: RoleListItem, search: string): boolean {
   const needle = search.trim().toLocaleLowerCase()
   if (!needle) return true
-  return [role.name, role.label, role.description ?? ""].some((text) => text.toLocaleLowerCase().includes(needle))
+  return [role.name, role.label, role.displayName, role.description ?? ""].some((text) => text.toLocaleLowerCase().includes(needle))
 }
 
 function matchesType(role: RoleListItem, type: RoleTypeFilter): boolean {

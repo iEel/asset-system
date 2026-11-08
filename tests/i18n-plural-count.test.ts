@@ -95,7 +95,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 11 plan 2 Task 4 added 4: the user form's held assets, "เลือกไว้ n บทบาท", a role's "n สิทธิ์" and the footer's
   // "เปลี่ยน n อย่าง" (all keyed on count).
   // The group 11 plan 2 look step added 1: the role list's "แสดงทั้งหมด n บทบาท" (keyed on count).
-  assert.equal(pluralKeys.size, 185,[...pluralKeys.keys()].join(", "))
+  // Group 11 plan 3 Task 3 added 2: the role list's inactive-role warning (keyed on count; users is a plural too) and a
+  // role's "ยังมีผู้ใช้ n คน" (count).
+  assert.equal(pluralKeys.size, 187,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
@@ -176,6 +178,8 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   assert.equal(pluralKeys.get("common.searchSelectResultCount"), "count")
   assert.equal(pluralKeys.get("session.idleWarningSr"), "minutes")
   assert.equal(pluralKeys.get("adminUsersPage.foundCount"), "total")
+  assert.equal(pluralKeys.get("adminRolesPage.inactiveWarning"), "count")
+  assert.equal(pluralKeys.get("adminRolesPage.stillHasUsers"), "count")
 })
 
 test("no source call passes formatCount(…) into a message whose en value is a plural", () => {
