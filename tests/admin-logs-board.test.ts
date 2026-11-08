@@ -180,3 +180,53 @@ test("kept: quick tabs, recordId chip, paging, last-page redirect, perf timing",
   assert.match(bar, /\{pageSize !== LIST_PAGE_SIZES\[0\] \? <input type="hidden" name="pageSize" value=\{pageSize\} \/> : null\}/)
   assert.match(bar, /\{recordId \? <input type="hidden" name="recordId" value=\{recordId\} \/> : null\}/)
 })
+
+// Task 5: the E2E spec (e2e/admin/logs.spec.ts) reads the app's own words, opens the logs page with the seed admin's
+// saved session (no run role holds system:view) and approval history as the run IT head, and writes only the run asset.
+// These pins need no app.
+test("the logs E2E spec reads the app's words and writes only the run asset", async () => {
+  const { LOGS_WORDS: W, APPROVAL_HISTORY_WORDS: A } = await import("../e2e/admin/logs-words.ts")
+  const all = JSON.parse(readFileSync("messages/th.json", "utf8")) as Record<string, Record<string, string>>
+  const log = all.systemLogPage
+  assert.equal(W.title, log.title)
+  assert.equal(W.filterForm, log.filterLabel)
+  assert.equal(W.tagSearch, log.tagSearch)
+  assert.equal(W.submit, log.filter)
+  assert.equal(W.tagNotFound, log.tagNotFound)
+  assert.equal(W.tagSingleMatch, log.tagSingleMatch)
+  assert.equal(W.assetHistoryLink, log.assetHistoryLink)
+  assert.equal(W.headerLine, log.headerLine)
+  assert.equal(W.rangeAll, log.rangeAll)
+  assert.equal(W.rangeBetween, log.rangeBetween)
+  assert.equal(W.actionCreate, log.action_create)
+  assert.equal(W.expandRow, log.expandRow)
+  assert.equal(W.collapseRow, log.collapseRow)
+  assert.equal(W.changesCaption, log.changesCaption)
+  assert.equal(W.before, log.before)
+  assert.equal(W.after, log.after)
+  assert.equal(W.user, log.user)
+  assert.equal(W.userAll, log.userAll)
+  assert.equal(W.userSearch, log.userSearch)
+  assert.equal(W.emptyFiltered, log.emptyFiltered)
+  assert.equal(W.dateRange, log.dateRange)
+  assert.equal(W.dateRangeApplied, log.dateRangeApplied)
+  assert.equal(W.presetToday, log.presetToday)
+  const history = all.approvalHistoryPage
+  assert.equal(A.title, history.title)
+  assert.equal(A.breadcrumb, all.common.breadcrumb)
+  assert.equal(A.breadcrumbInbox, history.breadcrumbInbox)
+  assert.equal(A.breadcrumbHistory, history.breadcrumbHistory)
+  assert.equal(A.actor, history.actor)
+  assert.equal(A.actorAll, history.actorAll)
+  assert.equal(A.today, history.today)
+  assert.equal(A.emptyTitle, history.emptyTitle)
+
+  const spec = read("e2e/admin/logs.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  assert.ok(spec.includes("test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })"), "the seed admin's saved session")
+  assert.ok(spec.includes(`asUser("itHead")`), "approval history as the run IT head")
+  assert.ok(spec.includes(`import { recordSettled } from "../audit/settle.ts"`) && !spec.includes("measure.recordPage("), "axe through recordSettled")
+  // The one write: createTxAsset (POST /api/assets inside tx-support). No other request, no DELETE, no settings, no LDAP.
+  assert.equal([...spec.matchAll(/createTxAsset\(/g)].length, 1, "called once")
+  assert.doesNotMatch(spec, /\.request\.|\.(?:post|put|patch|delete)\(|method:\s*["'`]|signInOnce\(|ldap-(?:sync|test)|\/api\/admin\/settings|admin\/settings/)
+})
