@@ -26,7 +26,18 @@ export async function GET() {
     const user = await requireAuth()
     requirePermission(user, "setting", "view")
 
-    const data = await listIntegrationClients()
+    const clients = await listIntegrationClients()
+
+    // Creator names in one query; an id that is not a user id simply finds no user and stays null.
+    const creatorIds = [...new Set(clients.map((client) => client.createdBy).filter((id): id is string => Boolean(id)))]
+    const creators = creatorIds.length
+      ? await prisma.user.findMany({ where: { id: { in: creatorIds } }, select: { id: true, displayName: true } })
+      : []
+    const namesById = new Map(creators.map((creator) => [creator.id, creator.displayName]))
+    const data = clients.map((client) => ({
+      ...client,
+      createdByName: (client.createdBy && namesById.get(client.createdBy)) || null,
+    }))
 
     return NextResponse.json({ data })
   } catch (error) {

@@ -19,6 +19,8 @@ export type IntegrationClientDto = {
   scopes: IntegrationScope[]
   enabled: boolean
   createdBy: string | null
+  /** The creator's display name, looked up by the list GET; null when unknown or not looked up. */
+  createdByName: string | null
   createdAt: Date
   updatedBy: string | null
   updatedAt: Date
@@ -117,7 +119,8 @@ export function parseIntegrationScopesJson(value: unknown): IntegrationScope[] {
 
 export function toIntegrationClientDto(
   record: IntegrationApiClientRecord,
-  operations: IntegrationClientOperationSummary = emptyIntegrationOperationSummary()
+  operations: IntegrationClientOperationSummary = emptyIntegrationOperationSummary(),
+  createdByName: string | null = null
 ): IntegrationClientDto {
   return {
     id: record.id,
@@ -127,6 +130,7 @@ export function toIntegrationClientDto(
     scopes: parseIntegrationScopesJson(record.scopesJson),
     enabled: record.enabled,
     createdBy: record.createdBy,
+    createdByName,
     createdAt: record.createdAt,
     updatedBy: record.updatedBy,
     updatedAt: record.updatedAt,
