@@ -6441,7 +6441,8 @@
     "batchCheckinSignatureRequired": "A signature is required before saving.",
     "batchCheckinDuplicateAsset": "This asset is listed more than once.",
     "handoverModeMissing": "The handover has no custody type. Ask an administrator to check the data.",
-    "handoverStatusMismatch": "The asset status does not match the custody type. Ask an administrator to check before returning."
+    "handoverStatusMismatch": "The asset status does not match the custody type. Ask an administrator to check before returning.",
+    "ownAccountStatus": "Cannot change the status of your own account"
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

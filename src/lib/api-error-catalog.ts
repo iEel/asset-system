@@ -90,6 +90,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Branch not found": "branchNotFound",
   "Brand name already exists": "brandNameExists",
   "Brand not found": "brandNotFound",
+  "Cannot change the status of your own account": "ownAccountStatus",
   "Cannot generate a unique operation document number": "documentNumberFailed",
   "Cannot generate a unique transfer document number": "documentNumberFailed",
   "Cannot remove or deactivate the last active system administrator": "lastSystemAdmin",

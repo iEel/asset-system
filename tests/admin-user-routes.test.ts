@@ -15,6 +15,9 @@ type AdminUserRouteState = {
   roles: Array<{ id: string; name: string; isActive: boolean; rolePermissions: Array<{ permission: { module: string; action: string } }> }>
   activeSystemAdminCount: number
   writes: string[]
+  audits: Array<Record<string, unknown>>
+  userCreateData: Record<string, unknown> | null
+  userUpdateData: Record<string, unknown> | null
 }
 
 const state: AdminUserRouteState = createState()
@@ -29,6 +32,9 @@ function createState(): AdminUserRouteState {
     roles: [],
     activeSystemAdminCount: 2,
     writes: [],
+    audits: [],
+    userCreateData: null,
+    userUpdateData: null,
   }
 }
 
@@ -52,7 +58,7 @@ const mockedModuleSources = new Map<string, string>([
       if (!hasPermission(user, module, action)) throw new Error("Forbidden: insufficient permissions")
     }
   `],
-  ["@/lib/audit-log", `export async function logAudit() {}`],
+  ["@/lib/audit-log", `export async function logAudit(entry) { globalThis.__adminUserRouteState.audits.push(entry) }`],
   ["@/lib/session-access-cache", `
     export function invalidateUserAccess(userId) { globalThis.__adminUserRouteState.writes.push("invalidate:" + userId) }
     export function invalidateAllAccess() { globalThis.__adminUserRouteState.writes.push("invalidate:all") }
@@ -61,8 +67,8 @@ const mockedModuleSources = new Map<string, string>([
     const state = () => globalThis.__adminUserRouteState
     const tx = {
       user: {
-        create: async () => { state().writes.push("user.create"); return { ...state().createdRow } },
-        update: async () => { state().writes.push("user.update"); return { ...state().updatedRow } },
+        create: async (args) => { state().writes.push("user.create"); state().userCreateData = args?.data ?? null; return { ...state().createdRow } },
+        update: async (args) => { state().writes.push("user.update"); state().userUpdateData = args?.data ?? null; return { ...state().updatedRow } },
       },
       userRole: { createMany: async () => ({ count: 1 }), deleteMany: async () => ({ count: 1 }) },
     }
@@ -70,8 +76,9 @@ const mockedModuleSources = new Map<string, string>([
       user: {
         findMany: async () => state().listRows.map((row) => ({ ...row })),
         findUnique: async () => null,
-        findFirst: async (args) => (args?.where?.id && !args?.where?.id?.not ? { ...state().existingRow } : null),
+        findFirst: async (args) => (args?.where?.id && !args?.where?.id?.not && state().existingRow ? { ...state().existingRow } : null),
         count: async () => state().activeSystemAdminCount,
+        update: async (args) => { state().writes.push("user.update"); state().userUpdateData = args?.data ?? null; return { ...state().updatedRow } },
       },
       role: {
         findMany: async (args) => {
@@ -111,6 +118,16 @@ const usersRoute = await import(pathToFileURL("src/app/api/admin/users/route.ts"
 }
 const userRoute = await import(pathToFileURL("src/app/api/admin/users/[id]/route.ts").href) as {
   PUT(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response>
+}
+
+const statusRoutePath = "src/app/api/admin/users/[id]/status/route.ts"
+const statusRoute = existsSync(statusRoutePath)
+  ? await import(pathToFileURL(statusRoutePath).href) as {
+    PATCH(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response>
+  }
+  : null
+const { getApiErrorKey } = await import(pathToFileURL("src/lib/api-error-catalog.ts").href) as {
+  getApiErrorKey(raw: string): string | null
 }
 
 const employeeRole = {
@@ -261,4 +278,176 @@ test("editing a user refreshes that user's live session access", async () => {
 
   assert.equal(response.status, 200)
   assert.ok(state.writes.includes("invalidate:u4"))
+})
+
+function patchStatus(id: string, body: Record<string, unknown>) {
+  assert.ok(statusRoute, "the status route exists")
+  return statusRoute.PATCH(
+    new Request(`http://localhost/api/admin/users/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    { params: Promise.resolve({ id }) },
+  )
+}
+
+const employeeUserRole = {
+  roleId: "role-employee",
+  role: { id: "role-employee", name: "employee", isActive: true, rolePermissions: [{ permission: { module: "asset", action: "view" } }] },
+}
+
+test("create with authMode ad needs no password and stores a random hash", async () => {
+  state.createdRow = { id: "u5", username: "ad.user", displayName: "AD" }
+
+  const response = await usersRoute.POST(jsonRequest({
+    username: "ad.user",
+    authMode: "ad",
+    password: "ignored-password",
+    displayName: "AD",
+    email: "",
+    roleIds: ["role-employee"],
+    note: "New starter",
+  }))
+
+  assert.equal(response.status, 201)
+  const hash = state.userCreateData?.passwordHash as string
+  assert.match(hash, /^\$2[aby]\$12\$/)
+  const bcrypt = (await import("bcryptjs")).default
+  assert.equal(await bcrypt.compare("ignored-password", hash), false)
+  assert.equal(state.audits.length, 1)
+  const newValue = state.audits[0].newValue as Record<string, unknown>
+  assert.equal(newValue.authMode, "ad")
+  assert.equal(newValue.note, "New starter")
+  assert.equal(newValue.password, undefined)
+  assert.equal(JSON.stringify(state.audits[0]).includes("ignored-password"), false)
+})
+
+test("create with authMode ad and no password at all is accepted", async () => {
+  state.createdRow = { id: "u6", username: "ad.two", displayName: "AD 2" }
+
+  const response = await usersRoute.POST(jsonRequest({
+    username: "ad.two",
+    authMode: "ad",
+    displayName: "AD 2",
+    email: "",
+    roleIds: ["role-employee"],
+  }))
+
+  assert.equal(response.status, 201)
+  assert.match(state.userCreateData?.passwordHash as string, /^\$2[aby]\$12\$/)
+})
+
+test("create without authMode still needs a password", async () => {
+  const response = await usersRoute.POST(jsonRequest({
+    username: "local.user",
+    displayName: "Local",
+    email: "",
+    roleIds: ["role-employee"],
+  }))
+  const payload = await response.json() as { fieldErrors?: Record<string, string> }
+
+  assert.equal(response.status, 400)
+  assert.equal(payload.fieldErrors?.password, "required")
+  assert.deepEqual(state.writes, [])
+})
+
+test("create with authMode local still needs a password", async () => {
+  const response = await usersRoute.POST(jsonRequest({
+    username: "local.user",
+    authMode: "local",
+    displayName: "Local",
+    email: "",
+    roleIds: ["role-employee"],
+  }))
+  const payload = await response.json() as { fieldErrors?: Record<string, string> }
+
+  assert.equal(response.status, 400)
+  assert.equal(payload.fieldErrors?.password, "required")
+})
+
+test("update logs the note", async () => {
+  state.existingRow = { id: "u4", username: "staff", displayName: "Staff", isActive: true, userRoles: [employeeUserRole] }
+  state.updatedRow = { id: "u4", username: "staff", displayName: "Staff" }
+
+  const response = await putUser("u4", { username: "staff", displayName: "Staff", roleIds: ["role-employee"], note: "Moved to IT" })
+
+  assert.equal(response.status, 200)
+  assert.equal((state.audits[0].newValue as Record<string, unknown>).note, "Moved to IT")
+})
+
+test("status route closes and reopens, logging old and new", async () => {
+  state.existingRow = { id: "u4", username: "staff", displayName: "Staff", isActive: true, userRoles: [employeeUserRole] }
+  state.updatedRow = { id: "u4", username: "staff", displayName: "Staff", isActive: false, passwordHash: "$2a$12$x" }
+
+  const closed = await patchStatus("u4", { isActive: false, note: "Left the company" })
+  const closedPayload = await closed.json() as Record<string, unknown>
+
+  assert.equal(closed.status, 200)
+  assert.equal(closedPayload.isActive, false)
+  assert.equal("passwordHash" in closedPayload, false)
+  assert.deepEqual(state.userUpdateData, { isActive: false })
+  assert.ok(state.writes.includes("invalidate:u4"))
+  assert.equal(state.audits[0].action, "update")
+  assert.equal(state.audits[0].module, "user")
+  assert.equal(state.audits[0].recordId, "u4")
+  assert.deepEqual(state.audits[0].oldValue, { isActive: true })
+  assert.deepEqual(state.audits[0].newValue, { isActive: false, note: "Left the company" })
+
+  state.existingRow = { ...state.existingRow, isActive: false }
+  state.updatedRow = { id: "u4", username: "staff", displayName: "Staff", isActive: true }
+  const reopened = await patchStatus("u4", { isActive: true })
+
+  assert.equal(reopened.status, 200)
+  assert.deepEqual(state.userUpdateData, { isActive: true })
+  assert.deepEqual(state.audits[1].oldValue, { isActive: false })
+  assert.equal((state.audits[1].newValue as Record<string, unknown>).isActive, true)
+})
+
+test("status route refuses your own account", async () => {
+  state.existingRow = { id: "actor-1", username: "me", displayName: "Me", isActive: true, userRoles: [employeeUserRole] }
+
+  const response = await patchStatus("actor-1", { isActive: false })
+  const payload = await response.json() as { error: string }
+
+  assert.equal(response.status, 400)
+  assert.equal(payload.error, "Cannot change the status of your own account")
+  assert.equal(getApiErrorKey(payload.error), "ownAccountStatus")
+  assert.deepEqual(state.writes, [])
+})
+
+test("status route keeps the last-admin rule", async () => {
+  state.roles = [employeeRole, adminRole]
+  state.activeSystemAdminCount = 0
+  state.existingRow = {
+    id: "admin-9",
+    username: "admin",
+    displayName: "Admin",
+    isActive: true,
+    userRoles: [{ roleId: "role-admin", role: { id: "role-admin", name: "system_admin", isActive: true, rolePermissions: [] } }],
+  }
+
+  const response = await patchStatus("admin-9", { isActive: false })
+
+  assert.equal(response.status, 409)
+  assert.deepEqual(state.writes, [])
+})
+
+test("status route needs user:edit", async () => {
+  state.actor = { id: "viewer-1", roles: ["helpdesk"], permissions: ["user:view"], employeeId: null }
+  state.existingRow = { id: "u4", username: "staff", displayName: "Staff", isActive: true, userRoles: [employeeUserRole] }
+
+  const response = await patchStatus("u4", { isActive: false })
+
+  assert.equal(response.status, 403)
+  assert.deepEqual(state.writes, [])
+})
+
+test("status route gives 404 for a missing user", async () => {
+  state.existingRow = null as unknown as MockUserRow
+
+  const response = await patchStatus("ghost", { isActive: false })
+
+  assert.equal(response.status, 404)
+  assert.deepEqual(state.writes, [])
 })

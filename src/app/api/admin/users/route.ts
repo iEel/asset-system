@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomUUID } from "node:crypto"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
@@ -40,7 +41,10 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "user", "create")
 
     const input = adminUserSchema.parse(await request.json())
-    if (!input.password) {
+    // An AD account signs in through LDAP: any password sent is ignored and the stored hash is random, as auth.ts's
+    // LDAP auto-create does.
+    const passwordToHash = input.authMode === "ad" ? randomUUID() : input.password
+    if (!passwordToHash) {
       return fieldErrorResponse({ status: 400, error: "Password is required", fieldErrors: { password: "required" } })
     }
     const accessError = getUserAccessChangeError({
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
     await assertUniqueUsername(input.username)
     await assertEmployeeAvailable(input.employeeId)
 
-    const passwordHash = await bcrypt.hash(input.password, 12)
+    const passwordHash = await bcrypt.hash(passwordToHash, 12)
     const created = await prisma.$transaction(async (tx) => {
       const record = await tx.user.create({
         data: {
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       module: "user",
       recordId: created.id,
-      newValue: { ...input, password: undefined },
+      newValue: { ...input, password: undefined, note: input.note ?? null },
     })
 
     return NextResponse.json(toAdminUserResponse(created), { status: 201 })

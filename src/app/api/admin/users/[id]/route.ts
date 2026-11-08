@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
         isActive: existing.isActive,
         roleIds: existing.userRoles.map((role) => role.roleId),
       },
-      newValue: { ...input, password: input.password ? "[changed]" : undefined },
+      newValue: { ...input, password: input.password ? "[changed]" : undefined, note: input.note ?? null },
     })
 
     return NextResponse.json(toAdminUserResponse(updated))
