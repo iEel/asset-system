@@ -108,7 +108,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // The group 12 plan 2 final review added 1: approval history's "{count} รายการ" (approvalHistoryPage.filteredCount).
   // Group 12 plan 3 Task 4 added 3: the storage tile foot "ไม่ใช้งาน {count}" (count), the file check's equation
   // "ไฟล์ในโฟลเดอร์ {disk} = …" (keyed on disk) and "แสดง {shown} จาก {total}" (keyed on total).
-  assert.equal(pluralKeys.size, 211,[...pluralKeys.keys()].join(", "))
+  // The group 12 plan 3 final review added 3: the data-quality card link "ดูทรัพย์สิน {count} รายการ" (count), the bar
+  // segment's title (count) and the distribution summary (keyed on total).
+  assert.equal(pluralKeys.size, 214,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
@@ -192,6 +194,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   assert.equal(pluralKeys.get("adminRolesPage.inactiveWarning"), "count")
   assert.equal(pluralKeys.get("adminRolesPage.stillHasUsers"), "count")
   assert.equal(pluralKeys.get("adminRolesPage.form.addUsersAlreadyHeld"), "count")
+  assert.equal(pluralKeys.get("dataQualityPage.viewAssets"), "count")
+  assert.equal(pluralKeys.get("dataQualityPage.segmentTitle"), "count")
+  assert.equal(pluralKeys.get("dataQualityPage.distributionSummary"), "total")
 })
 
 test("no source call passes formatCount(…) into a message whose en value is a plural", () => {

@@ -58,6 +58,20 @@ test("builds dry-run storage governance actions from database and filesystem dif
   assert.deepEqual(dryRun.actions.map((item) => item.action), ["review_missing_db_file", "archive_orphan_file", "archive_orphan_file"])
 })
 
+test("a missing-file action names its attachment when the input has an id, one per record sharing a path", () => {
+  const dryRun = buildStorageGovernanceDryRun({
+    attachments: [
+      { id: "att-a", module: "asset", filePath: "uploads/shared.pdf", fileSize: 1, isActive: true },
+      { id: "att-b", module: "asset", filePath: "uploads/shared.pdf", fileSize: 1, isActive: true },
+    ],
+    files: [],
+  })
+  assert.deepEqual(
+    dryRun.actions.map((item) => (item.action === "review_missing_db_file" ? item.attachmentId : null)),
+    ["att-a", "att-b"]
+  )
+})
+
 test("matches active absolute attachment paths under the upload root to scanned relative files", () => {
   const uploadRoot = path.join(os.tmpdir(), "asset-storage-root")
   const dryRun = buildStorageGovernanceDryRun({

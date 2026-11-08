@@ -14,10 +14,10 @@ test("the data-quality rule form names each severity select after its rule and u
   const source = read("src/components/admin/data-quality-rule-form.tsx")
   const card = read("src/components/admin/data-quality/rule-card.tsx")
   assert.match(card, /\n  severity: string\n  warning: string\n  danger: string\n/)
-  assert.match(card, /<h3 id=\{nameId\} className=\{cn\("font-semibold", rule\.enabled \? "text-foreground" : "text-muted-foreground"\)\}>\{name\}<\/h3>/)
+  assert.match(card, /<h3 id=\{nameId\} className=\{cn\("font-semibold", rule\.enabled \? "text-foreground" : "text-muted-foreground"\)\}>\n\s+<label htmlFor=\{switchId\} className="cursor-pointer">\{name\}<\/label>\n\s+<\/h3>/)
   assert.match(card, /<article aria-labelledby=\{nameId\}/)
-  assert.match(card, /<FieldGroup legend=\{labels\.severity\} id=\{severityId\} error=\{error\}>\n\s+<Segmented\n\s+labelledBy=\{`\$\{severityId\}-legend`\}\n\s+value=\{rule\.severity\}/)
-  assert.match(card, /<input\n\s+type="checkbox"\n\s+role="switch"\n\s+checked=\{rule\.enabled\}\n\s+aria-labelledby=\{nameId\}/)
+  assert.match(card, /<FieldGroup legend=\{labels\.severity\} id=\{severityId\} error=\{error\}>\n\s+<Segmented\n\s+labelledBy=\{`\$\{severityId\}-legend \$\{nameId\}`\}\n\s+value=\{rule\.severity\}/)
+  assert.match(card, /<input\n\s+type="checkbox"\n\s+role="switch"\n\s+id=\{switchId\}\n\s+checked=\{rule\.enabled\}\n\s+aria-labelledby=\{nameId\}/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{labels\.saveRules\}\n\s+<\/Button>/)
   assert.doesNotMatch(source + card, /<select|<button|rounded border-border|focus:border-ring|NativeSelect/)
 

@@ -27,6 +27,8 @@ const focusTaskRoutes = [
   // master data (brand models included) are focus tasks. Their list and detail pages keep the bottom navigation.
   /^\/admin\/settings$/,
   // Page group 12 plan 3 Task 2: the data-quality page's rule cards end in a sticky save bar (board AD-DataQuality).
+  // Known cost (final review, accepted): the route is matched on the path only, so the review tab (?tab=review) and a
+  // viewer without setting:edit, neither of which has the bar, also lose the bottom navigation and use the menu.
   /^\/admin\/data-quality$/,
   /^\/(?:admin\/(?:users|roles)|maintenance\/pm|master-data\/(?:brands\/models|[^/]+))\/(?:new|[^/]+\/edit)$/,
 ]

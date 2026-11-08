@@ -470,7 +470,7 @@ test("data quality: PageHeader with the reports link, one StatStrip for the thre
   // Group 12 plan 3 Task 2 (board AD-DataQuality): the StatStrip is gone; the tab ข้อมูลไม่ครบ and the distribution
   // summary carry its numbers (enabled rules, all rules, issues of the enabled rules).
   assert.ok(!source.includes("<StatStrip"), "the StatStrip is gone")
-  assert.ok(source.includes('t("distributionSummary", { enabled: formatCount(enabledCount), all: formatCount(rules.length), total: formatCount(issues.total) })'))
+  assert.ok(source.includes('t("distributionSummary", { enabled: enabledCount, all: rules.length, total: issues.total })'))
   assert.match(source, /pagination: tCommon\("pagination"\),\n\s+pageOf: tCommon\.raw\("pageOf"\),\n\s+tableScrollHint: tCommon\("tableScrollHint"\),/, "the review queue's page bar and scroll hint use the common words")
   assert.doesNotMatch(source, /toLocaleString\(/, "counts go through formatCount")
   assert.ok(source.includes("<AssetStateReviewWorkspace") && source.includes("<DataQualityRuleForm"), "the review queue and the rule form stay on the page")
@@ -683,14 +683,15 @@ test("system log: real pages counted in the same timed Promise.all, TabNav quick
 // DataTables are left. The review list names the module and the asset instead of the raw reference id.
 test("storage: PageHeader, one StatStrip and two DataTables that scroll sideways, with every module code as its label (spec 2B §5.6, §5.10 #6, #10)", () => {
   const source = read(`${D}admin/storage/page.tsx`)
-  for (const part of ["<PageHeader", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={4}>", "<TableEmptyRow colSpan={5}>", "<EmptyNote>"]) {
+  for (const part of ["<PageHeader", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={4}>", "<EmptyNote>"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.equal(source.match(/<StatStrip\b/g)?.length, 1, "the summary tiles")
   assert.equal(source.match(/<DataTable framed=\{false\} caption=\{t\("(?:moduleBreakdown|largestFiles)"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/g)?.length, 2, "two tables in padded panels, flush, with the scroll hint (B6)")
   assert.match(source, /attention: reviewNeededCount > 0,/)
-  assert.match(source, /\{moduleLabel\(item\.module\)\}\n\s+\{asset \?/, "bug §5.10 #10: the review list names the module, not its code, then the asset")
-  assert.doesNotMatch(source, /item\.referenceId\}<\/span>/)
+  assert.match(source, /\{moduleLabel\(item\.module\)\}\n\s+\{" · "\}\n\s+\{recordRef\(item\)\}/, "bug §5.10 #10: the review list names the module, not its code, then the record")
+  // The raw reference id is only the fallback when no asset, batch, document or model names the record (group 12 plan 3 final review).
+  assert.equal(source.match(/item\.referenceId\}<\/span>/g)?.length, 1)
   assert.match(source, /\{orNil\(item\.filePath\)\}/)
   assert.equal(source.match(/<StorageRow key=\{row\.key\} row=\{row\} canArchive=\{canArchiveStorageFiles\} \/>/g)?.length, 1)
   assert.doesNotMatch(source, /getTableShellClasses|getEmptyStateClasses|function SummaryCard\b|<thead\b|<th\b|<td colSpan|toLocaleString\(|"-"|\buppercase\b/)

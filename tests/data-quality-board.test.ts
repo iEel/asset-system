@@ -29,7 +29,16 @@ test("rule cards use a switch and a two-choice severity", () => {
   const source = card()
   assert.match(source, /<input\n\s+type="checkbox"\n\s+role="switch"/)
   assert.match(source, /checked=\{rule\.enabled\}/)
-  assert.match(source, /<Segmented\n\s+labelledBy=\{`\$\{severityId\}-legend`\}/)
+  // The group is named by the legend and the rule, so six groups do not all read ระดับความรุนแรง (final review).
+  assert.match(source, /<Segmented\n\s+labelledBy=\{`\$\{severityId\}-legend \$\{nameId\}`\}/)
+  // A 44px hit area on phones around the 24x40 drawing, and the rule name is its label (final review).
+  assert.match(source, /<label htmlFor=\{switchId\} className="-m-2\.5 inline-flex shrink-0 cursor-pointer p-2\.5 md:m-0 md:p-0">/)
+  assert.match(source, /<label htmlFor=\{switchId\} className="cursor-pointer">\{name\}<\/label>/)
+  // The off knob and track use strong tokens (3:1 in both themes); the on knob is the surface on primary.
+  assert.match(source, /border-muted-foreground/)
+  assert.match(source, /before:bg-muted-foreground/)
+  assert.match(source, /checked:before:bg-primary-foreground/)
+  assert.doesNotMatch(source, /before:bg-surface/)
   assert.match(source, /options=\{\[\n\s+\{ value: "warning", label: labels\.warning \},\n\s+\{ value: "danger", label: labels\.danger \},\n\s+\]\}/)
   assert.match(form(), /<DataQualityRuleCard\n/)
 })
@@ -38,12 +47,22 @@ test("off rules show no count; unsaved on rules say นับหลังบั�
   const source = card()
   assert.match(source, /countState === "off"/)
   assert.match(source, /countState === "afterSave"/)
-  assert.match(source, /labels\.viewAssets\.replace\("\{count\}", formatCount\(count\)\)/)
+  // An ICU plural with the number, not a .replace of a formatted string (final review).
+  assert.match(source, /const viewText = t\("viewAssets", \{ count \}\)/)
+  assert.doesNotMatch(source, /viewAssets\.replace/)
   assert.match(source, /!rule\.enabled && "bg-background"/, "an off rule is dimmed: canvas fill and muted words")
   assert.match(source, /rule\.enabled \? "text-foreground" : "text-muted-foreground"/)
   assert.match(form(), /countsAfterSave\(rule, savedByKey\.get\(rule\.key\)\)/)
   assert.equal(messages("th").countAfterSave, "นับหลังบันทึก")
-  assert.equal(messages("th").viewAssets, "ดูทรัพย์สิน {count} รายการ")
+  assert.equal(messages("th").viewAssets, "ดูทรัพย์สิน {count, number} รายการ")
+  assert.equal(messages("en").viewAssets, "View {count, plural, one {# asset} other {# assets}}")
+  assert.equal(messages("en").segmentTitle, "{rule}: {count, plural, one {# item} other {# items}}")
+  assert.equal(messages("en").distributionSummary, "{enabled, number} of {all, number} rules enabled · {total, plural, one {# item} other {# items}} in all")
+  assert.equal(messages("th").segmentTitle, "{rule} {count, number} รายการ")
+  assert.equal(messages("th").distributionSummary, "กฎที่เปิดใช้งาน {enabled, number} จาก {all, number} · รวม {total, number} รายการ")
+  // Numbers, not formatCount strings, go into the plurals.
+  assert.match(page(), /t\("distributionSummary", \{ enabled: enabledCount, all: rules\.length, total: issues\.total \}\)/)
+  assert.match(page(), /t\("segmentTitle", \{ rule: ruleLabel\(segment\.key\), count: segment\.count \}\)/)
 })
 
 test("the save bar summarises the change and refreshes after save", () => {
@@ -79,4 +98,11 @@ test("kept: report link, rule register links, review workspace untouched, field 
   assert.match(form(), /severityId=\{severityId\(rule\.key\)\}\n\s+error=\{fieldErrors\.message\(`\$\{rule\.key\}\.severity`\)\}/)
   assert.match(form(), /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return/)
   assert.match(card(), /<FieldGroup legend=\{labels\.severity\} id=\{severityId\} error=\{error\}>/)
+})
+
+test("the review tab's pending count follows a scan, resolve or dismiss (final review)", () => {
+  const source = read("src/components/admin/asset-state-review-workspace.tsx")
+  assert.match(source, /const router = useRouter\(\)/)
+  assert.match(source, /await load\(1\)\n\s+router\.refresh\(\)/)
+  assert.match(source, /await load\(result\.page\)\n\s+router\.refresh\(\)/)
 })

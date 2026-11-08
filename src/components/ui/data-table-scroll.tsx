@@ -19,6 +19,10 @@ export function DataTableScrollArea({ hint, label, children }: { hint: string; l
     const observer = new ResizeObserver(measure)
     observer.observe(element)
     if (element.firstElementChild) observer.observe(element.firstElementChild)
+    // Measure at once and again once the web fonts are in, rather than wait for the first observer callback: an axe
+    // check right after hydration found a box that overflowed but was not yet a focusable region (group 12 plan 3 final review).
+    measure()
+    void document.fonts?.ready.then(measure)
     return () => observer.disconnect()
   }, [])
 

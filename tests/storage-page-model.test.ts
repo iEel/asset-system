@@ -9,6 +9,7 @@ import {
   buildStorageRows,
   filterStorageRows,
   parseStorageFilter,
+  storageFolderLabelKey,
   storageModuleLabelKey,
   type AssetRef,
   type StorageRefs,
@@ -19,11 +20,11 @@ import {
 const now = new Date("2026-11-09T03:00:00.000Z")
 
 function emptyRefs(): StorageRefs {
-  return { assetByPath: new Map(), batchByPath: new Map() }
+  return { assetById: new Map(), batchById: new Map() }
 }
 
-function missing(filePath: string, module = "asset", expectedSizeBytes = 100): StorageGovernanceDryRunAction {
-  return { action: "review_missing_db_file", filePath, module, expectedSizeBytes }
+function missing(filePath: string, module = "asset", expectedSizeBytes = 100, attachmentId: string = `att:${filePath}`): StorageGovernanceDryRunAction {
+  return { action: "review_missing_db_file", filePath, module, expectedSizeBytes, attachmentId }
 }
 
 function orphan(relativePath: string, sizeBytes = 50): StorageGovernanceDryRunAction {
@@ -89,11 +90,11 @@ test("clean storage has no rows and no show-all", () => {
 test("unknown or missing asset resolves to null", () => {
   const asset: AssetRef = { id: "asset-1", name: "Notebook", assetTag: "NB-001" }
   const refs: StorageRefs = {
-    assetByPath: new Map<string, AssetRef | null>([
-      ["uploads/known.jpg", asset],
-      ["uploads/gone.jpg", null],
+    assetById: new Map<string, AssetRef | null>([
+      ["att:uploads/known.jpg", asset],
+      ["att:uploads/gone.jpg", null],
     ]),
-    batchByPath: new Map(),
+    batchById: new Map(),
   }
   const rows = buildStorageRows(
     [missing("uploads/known.jpg"), missing("uploads/gone.jpg", "maintenance"), missing("uploads/other.jpg", "asset_model")],
@@ -117,8 +118,8 @@ test("unknown or missing asset resolves to null", () => {
 
 test("disposal batch shows the batch, not an asset", () => {
   const refs: StorageRefs = {
-    assetByPath: new Map<string, AssetRef | null>([["uploads/batch.pdf", { id: "a", name: "x", assetTag: "X" }]]),
-    batchByPath: new Map([["uploads/batch.pdf", { id: "batch-1", number: "DPB-2026-0001" }]]),
+    assetById: new Map<string, AssetRef | null>([["att:uploads/batch.pdf", { id: "a", name: "x", assetTag: "X" }]]),
+    batchById: new Map([["att:uploads/batch.pdf", { id: "batch-1", number: "DPB-2026-0001" }]]),
   }
   const [row] = buildStorageRows([missing("uploads/batch.pdf", "disposal_batch")], refs, now)
   assert.equal(row.kind, "missing")
@@ -131,6 +132,63 @@ test("disposal batch shows the batch, not an asset", () => {
   assert.ok(unresolved.kind === "missing")
   assert.equal(unresolved.batch, null)
   assert.equal(unresolved.asset, null)
+})
+
+test("records that share one missing path each keep their own asset or batch (final review)", () => {
+  const first: AssetRef = { id: "asset-x", name: "Notebook X", assetTag: "X-1" }
+  const second: AssetRef = { id: "asset-y", name: "Printer Y", assetTag: "Y-1" }
+  const refs: StorageRefs = {
+    assetById: new Map<string, AssetRef | null>([
+      ["att-a", first],
+      ["att-b", second],
+    ]),
+    batchById: new Map([["att-c", { id: "batch-9", number: "DPB-2026-0009" }]]),
+  }
+  const rows = buildStorageRows(
+    [
+      missing("uploads/shared.pdf", "asset", 100, "att-a"),
+      missing("uploads/shared.pdf", "asset", 100, "att-b"),
+      missing("uploads/shared.pdf", "disposal_batch", 100, "att-c"),
+    ],
+    refs,
+    now
+  )
+  assert.deepEqual(
+    rows.map((row) => (row.kind === "missing" ? [row.attachmentId, row.asset?.id ?? null, row.batch?.number ?? null] : null)),
+    [
+      ["att-a", "asset-x", null],
+      ["att-b", "asset-y", null],
+      ["att-c", null, "DPB-2026-0009"],
+    ]
+  )
+  // An action without an attachment id resolves nothing.
+  const [bare] = buildStorageRows([{ action: "review_missing_db_file", filePath: "uploads/shared.pdf", module: "asset", expectedSizeBytes: 1 }], refs, now)
+  assert.ok(bare.kind === "missing")
+  assert.equal(bare.attachmentId, null)
+  assert.equal(bare.asset, null)
+})
+
+test("an orphan's top upload folder has a Thai source name (final review deferred minor)", () => {
+  assert.equal(storageFolderLabelKey("asset/2026/05/a.jpg"), "moduleAsset")
+  assert.equal(storageFolderLabelKey("asset-purchase/2026/05/a.pdf"), "moduleAssetPurchase")
+  assert.equal(storageFolderLabelKey("audit-findings/2026/05/a.jpg"), "moduleAuditFinding")
+  assert.equal(storageFolderLabelKey("disposal/2026/05/a.pdf"), "moduleDisposal")
+  assert.equal(storageFolderLabelKey("disposal/batches/2026/05/a.pdf"), "moduleDisposalBatch")
+  assert.equal(storageFolderLabelKey(String.raw`maintenance\2026\05\a.pdf`), "moduleMaintenance")
+  assert.equal(storageFolderLabelKey("asset-model/2026/05/a.pdf"), "moduleAssetModel")
+  assert.equal(storageFolderLabelKey("purchase-documents/2026/05/a.pdf"), "modulePurchaseDocument")
+  assert.equal(storageFolderLabelKey("asset-components/2026/05/a.jpg"), "folderAssetComponents")
+  assert.equal(storageFolderLabelKey("operations/checkout/2026/05/a.jpg"), "folderOperationsCheckout")
+  assert.equal(storageFolderLabelKey("operations/checkin/2026/05/a.jpg"), "folderOperationsCheckin")
+  assert.equal(storageFolderLabelKey("operations/other/a.jpg"), "folderOperations")
+  assert.equal(storageFolderLabelKey("top.png"), null)
+  assert.equal(storageFolderLabelKey("unknown/a.jpg"), null)
+  const th = JSON.parse(readFileSync(new URL("../messages/th.json", import.meta.url), "utf8")) as { storagePage: Record<string, string> }
+  const en = JSON.parse(readFileSync(new URL("../messages/en.json", import.meta.url), "utf8")) as { storagePage: Record<string, string> }
+  for (const key of ["folderAssetComponents", "folderOperationsCheckout", "folderOperationsCheckin", "folderOperations"]) {
+    assert.ok(th.storagePage[key]?.trim(), `no Thai label storagePage.${key}`)
+    assert.ok(en.storagePage[key]?.trim(), `no English label storagePage.${key}`)
+  }
 })
 
 test("every module key has a Thai label", () => {

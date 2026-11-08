@@ -17,9 +17,11 @@ import {
   filterStorageRows,
   parseStorageFilter,
   STORAGE_ROWS_PREVIEW,
+  storageFolderLabelKey,
   storageModuleLabelKey,
   type AssetRef,
   type StorageFilter,
+  type StorageRefs,
   type StorageRow as StorageRowModel,
 } from "@/lib/storage-page-model"
 import { getUploadRoot } from "@/lib/uploads"
@@ -91,24 +93,15 @@ export default async function StorageGovernancePage({ params, searchParams }: St
     .slice(0, 20)
   const reviewNeededCount = summary.duplicatePathCount + summary.missingPathCount + dryRun.orphanFiles.length + dryRun.missingFiles.length
 
-  // Names for the files the page shows: the missing files, the review list and the largest files.
-  // A missing file's action carries the raw Attachment.filePath; the first active attachment with that path names it.
-  const missingPaths = new Set(dryRun.actions.flatMap((action) => (action.action === "review_missing_db_file" ? [action.filePath] : [])))
-  const missingByPath = new Map<string, StorageAttachmentItem>()
-  for (const attachment of attachments) {
-    const key = attachment.filePath ?? ""
-    if (attachment.isActive && missingPaths.has(key) && !missingByPath.has(key)) missingByPath.set(key, attachment)
-  }
-  const resolved = await resolveAttachmentRefs([...missingByPath.values(), ...reviewItems, ...largeFiles])
-  const refs = {
-    assetByPath: new Map<string, AssetRef | null>([...missingByPath].map(([filePath, attachment]) => [filePath, resolved.assetById.get(attachment.id) ?? null])),
-    batchByPath: new Map(
-      [...missingByPath].flatMap(([filePath, attachment]) => {
-        const batch = resolved.batchById.get(attachment.id)
-        return batch ? [[filePath, batch] as const] : []
-      })
-    ),
-  }
+  // Names for the files the page shows: the missing files, the review list and the largest files. Each missing-file
+  // action names its attachment, so records that share one stored path each show their own file name, asset or batch.
+  const attachmentById = new Map(attachments.map((attachment) => [attachment.id, attachment]))
+  const missingAttachments = dryRun.missingFiles.flatMap((item) => {
+    const attachment = item.id ? attachmentById.get(item.id) : undefined
+    return attachment ? [attachment] : []
+  })
+  const resolved = await resolveAttachmentRefs([...missingAttachments, ...reviewItems, ...largeFiles])
+  const refs: StorageRefs = { assetById: resolved.assetById, batchById: resolved.batchById }
 
   const rows = buildStorageRows(dryRun.actions, refs, now)
   const visible = filterStorageRows(rows, filter, showAll)
@@ -130,8 +123,33 @@ export default async function StorageGovernancePage({ params, searchParams }: St
     return key ? t(key) : module
   }
   const assetHref = (asset: AssetRef) => `/${locale}/assets/${asset.id}`
-  const rowViews = visible.rows.map((row, index) => toRowView(row, index, { uploadRoot, missingByPath, moduleLabel, assetHref, locale }))
+  const folderLabel = (key: string) => t(key)
+  const rowViews = visible.rows.map((row, index) => toRowView(row, index, { uploadRoot, attachmentById, moduleLabel, folderLabel, assetHref, locale }))
   const share = (bytes: number) => (summary.totalBytes > 0 ? Math.round((bytes / summary.totalBytes) * 1000) / 10 : 0)
+  const reviewCounts = {
+    orphans: dryRun.orphanFiles.length,
+    missing: dryRun.missingFiles.length,
+    duplicate: summary.duplicatePathCount,
+    empty: summary.missingPathCount,
+  }
+  // Which record holds a file: the asset (name and tag), the disposal batch, the purchase document or model, else the
+  // raw reference id as the old review list showed it, so every row still says where to look.
+  const recordRef = (item: StorageAttachmentItem) => {
+    const asset = resolved.assetById.get(item.id)
+    if (asset) {
+      return (
+        <>
+          <Link href={assetHref(asset)} className={linkVariants({ size: "inherit" })}>{asset.name}</Link>{" "}
+          <span className="tag">{asset.assetTag}</span>
+        </>
+      )
+    }
+    const batch = resolved.batchById.get(item.id)
+    if (batch) return <span className="tag">{batch.number}</span>
+    const record = resolved.recordById.get(item.id)
+    if (record) return record
+    return <span className="tag">{item.referenceId}</span>
+  }
 
   return (
     <div className="space-y-6">
@@ -156,12 +174,14 @@ export default async function StorageGovernancePage({ params, searchParams }: St
             key: "reviewNeeded",
             label: t("reviewNeeded"),
             value: formatCount(reviewNeededCount),
-            foot: t("reviewBreakdown", {
-              orphans: dryRun.orphanFiles.length,
-              missing: dryRun.missingFiles.length,
-              duplicate: summary.duplicatePathCount,
-              empty: summary.missingPathCount,
-            }),
+            // Two short lines so all four counts fit the foot's two-line clamp on a phone; the title has the sentence.
+            foot: (
+              <>
+                <span className="block">{t("reviewBreakdownFiles", reviewCounts)}</span>
+                <span className="block">{t("reviewBreakdownPaths", reviewCounts)}</span>
+              </>
+            ),
+            footTitle: t("reviewBreakdown", reviewCounts),
             attention: reviewNeededCount > 0,
           },
         ]}
@@ -212,7 +232,7 @@ export default async function StorageGovernancePage({ params, searchParams }: St
             <DataTableHeader>
               <tr>
                 <DataTableHead>{t("module")}</DataTableHead>
-                <DataTableHead>{t("shareOfSize")}</DataTableHead>
+                <DataTableHead className="hidden md:table-cell">{t("shareOfSize")}</DataTableHead>
                 <DataTableHead align="right">{t("fileCount")}</DataTableHead>
                 <DataTableHead align="right">{t("size")}</DataTableHead>
               </tr>
@@ -224,8 +244,15 @@ export default async function StorageGovernancePage({ params, searchParams }: St
                 <>
                   {summary.byModule.map((item) => (
                     <DataTableRow key={item.module}>
-                      <DataTableCell className="font-medium text-foreground">{moduleLabel(item.module)}</DataTableCell>
-                      <DataTableCell className="min-w-24">
+                      <DataTableCell className="font-medium text-foreground">
+                        {moduleLabel(item.module)}
+                        {/* Below md the share column is hidden (the table then fits a phone), so the bar sits under the name. */}
+                        <div aria-hidden="true" className="mt-1.5 h-1.5 w-full rounded-xs bg-muted md:hidden">
+                          <div className="h-full rounded-xs bg-primary" style={{ width: `${share(item.totalBytes)}%` }} />
+                        </div>
+                        <span className="sr-only md:hidden">{` ${share(item.totalBytes)}%`}</span>
+                      </DataTableCell>
+                      <DataTableCell className="hidden min-w-24 md:table-cell">
                         <div className="h-2 w-full rounded-xs bg-muted" title={`${share(item.totalBytes)}%`}>
                           <div className="h-full rounded-xs bg-primary" style={{ width: `${share(item.totalBytes)}%` }} />
                         </div>
@@ -237,7 +264,7 @@ export default async function StorageGovernancePage({ params, searchParams }: St
                   ))}
                   <DataTableRow>
                     <DataTableCell className="font-semibold text-foreground">{t("total")}</DataTableCell>
-                    <DataTableCell />
+                    <DataTableCell className="hidden md:table-cell" />
                     <DataTableCell numeric className="font-semibold text-foreground">{formatCount(summary.activeFiles)}</DataTableCell>
                     <DataTableCell numeric className="font-semibold text-foreground">{formatStorageSize(summary.totalBytes)}</DataTableCell>
                   </DataTableRow>
@@ -257,27 +284,15 @@ export default async function StorageGovernancePage({ params, searchParams }: St
                 const duplicate = itemPath ? pathCounts.get(itemPath)! > 1 : false
                 const previous = index > 0 ? reviewItems[index - 1] : null
                 const sameAsAbove = duplicate && previous?.filePath?.trim() ? normalizePath(previous.filePath) === itemPath : false
-                const asset = resolved.assetById.get(item.id) ?? null
-                const batch = resolved.batchById.get(item.id) ?? null
                 return (
                   <div key={item.id} className="rounded-md border border-border bg-background p-3">
                     <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-foreground" title={item.originalName}>{item.originalName}</div>
-                        <div className="mt-1 text-meta text-muted-foreground">
+                        <div className="mt-1 break-words text-meta text-muted-foreground">
                           {moduleLabel(item.module)}
-                          {asset ? (
-                            <>
-                              {" · "}
-                              <Link href={assetHref(asset)} className={linkVariants({ size: "inherit" })}>{asset.name}</Link>{" "}
-                              <span className="tag">{asset.assetTag}</span>
-                            </>
-                          ) : batch ? (
-                            <>
-                              {" · "}
-                              <span className="tag">{batch.number}</span>
-                            </>
-                          ) : null}
+                          {" · "}
+                          {recordRef(item)}
                           {sameAsAbove ? ` · ${t("samePathAsAbove")}` : null}
                         </div>
                       </div>
@@ -292,48 +307,55 @@ export default async function StorageGovernancePage({ params, searchParams }: St
         </ContentPanel>
       </section>
 
+      {/* No empty table (a scroll box with nothing to focus), and no five-column table on a phone: below md the files
+          are stacked rows like the file check's, the table starts at md (group 12 plan 3 final review). */}
       <ContentPanel title={t("largestFiles")} description={t("largestFilesHelp")}>
-        <DataTable framed={false} caption={t("largestFiles")} scrollHint={tCommon("tableScrollHint")}>
-          <DataTableHeader>
-            <tr>
-              <DataTableHead>{t("file")}</DataTableHead>
-              <DataTableHead>{t("module")}</DataTableHead>
-              <DataTableHead>{t("asset")}</DataTableHead>
-              <DataTableHead align="right">{t("size")}</DataTableHead>
-              <DataTableHead align="right">{t("uploadedAt")}</DataTableHead>
-            </tr>
-          </DataTableHeader>
-          <DataTableBody>
-            {largeFiles.length === 0 ? (
-              <TableEmptyRow colSpan={5}>{t("emptyLargeFiles")}</TableEmptyRow>
-            ) : (
-              largeFiles.map((item) => {
-                const asset = resolved.assetById.get(item.id) ?? null
-                const batch = resolved.batchById.get(item.id) ?? null
-                return (
-                  <DataTableRow key={item.id}>
-                    <DataTableCell className="max-w-sm truncate font-medium text-foreground">{item.originalName}</DataTableCell>
-                    <DataTableCell className="text-muted-foreground">{moduleLabel(item.module)}</DataTableCell>
-                    <DataTableCell className="text-muted-foreground">
-                      {asset ? (
-                        <>
-                          <Link href={assetHref(asset)} className={linkVariants({ size: "inherit" })}>{asset.name}</Link>{" "}
-                          <span className="tag">{asset.assetTag}</span>
-                        </>
-                      ) : batch ? (
-                        <span className="tag">{batch.number}</span>
-                      ) : (
-                        orNil(null)
-                      )}
-                    </DataTableCell>
-                    <DataTableCell numeric className="text-muted-foreground">{formatStorageSize(item.fileSize)}</DataTableCell>
-                    <DataTableCell align="right" className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.uploadedAt)}</DataTableCell>
-                  </DataTableRow>
-                )
-              })
-            )}
-          </DataTableBody>
-        </DataTable>
+        {largeFiles.length === 0 ? (
+          <EmptyNote>{t("emptyLargeFiles")}</EmptyNote>
+        ) : (
+          <>
+            <ul className="divide-y divide-border-soft md:hidden">
+              {largeFiles.map((item) => (
+                <li key={item.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 truncate font-medium text-foreground" title={item.originalName}>{item.originalName}</span>
+                    <span className="num shrink-0 text-meta text-muted-foreground">{formatStorageSize(item.fileSize)}</span>
+                  </div>
+                  <div className="mt-1 break-words text-meta text-muted-foreground">
+                    {moduleLabel(item.module)}
+                    {" · "}
+                    {recordRef(item)}
+                  </div>
+                  <div className="mt-0.5 text-meta text-muted-foreground">{formatDateTime(item.uploadedAt)}</div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block">
+              <DataTable framed={false} caption={t("largestFiles")} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("file")}</DataTableHead>
+                    <DataTableHead>{t("module")}</DataTableHead>
+                    <DataTableHead>{t("asset")}</DataTableHead>
+                    <DataTableHead align="right">{t("size")}</DataTableHead>
+                    <DataTableHead align="right">{t("uploadedAt")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {largeFiles.map((item) => (
+                    <DataTableRow key={item.id}>
+                      <DataTableCell className="max-w-sm truncate font-medium text-foreground">{item.originalName}</DataTableCell>
+                      <DataTableCell className="text-muted-foreground">{moduleLabel(item.module)}</DataTableCell>
+                      <DataTableCell className="text-muted-foreground">{recordRef(item)}</DataTableCell>
+                      <DataTableCell numeric className="text-muted-foreground">{formatStorageSize(item.fileSize)}</DataTableCell>
+                      <DataTableCell align="right" className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.uploadedAt)}</DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
+            </div>
+          </>
+        )}
       </ContentPanel>
     </div>
   )
@@ -356,31 +378,41 @@ const CHECKOUT_MODULES = new Set(["checkout_photo_before", "checkout_receiver_si
 const CHECKIN_MODULES = new Set(["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"])
 
 // Spec §15 item 10: Attachment.assetId where it is set; otherwise a checkout or checkin file names the record's asset
-// through referenceId, and a disposal_batch file names its batch. One query per kind of record.
+// through referenceId, and a disposal_batch file names its batch. A purchase_document or asset_model file has no asset:
+// it names its document number or model name (final review). One query per kind of record.
 async function resolveAttachmentRefs(items: StorageAttachmentItem[]) {
   const assetById = new Map<string, AssetRef>()
   const batchById = new Map<string, { id: string; number: string }>()
+  const recordById = new Map<string, string>()
   const checkoutIds = new Set<string>()
   const checkinIds = new Set<string>()
   const batchIdSet = new Set<string>()
+  const documentIds = new Set<string>()
+  const modelIds = new Set<string>()
 
   for (const item of items) {
     if (item.module === "disposal_batch") batchIdSet.add(item.referenceId)
     else if (item.asset) assetById.set(item.id, item.asset)
     else if (CHECKOUT_MODULES.has(item.module)) checkoutIds.add(item.referenceId)
     else if (CHECKIN_MODULES.has(item.module)) checkinIds.add(item.referenceId)
+    else if (item.module === "purchase_document") documentIds.add(item.referenceId)
+    else if (item.module === "asset_model") modelIds.add(item.referenceId)
   }
 
   const assetSelect = { select: { id: true, name: true, assetTag: true } } as const
   const batchIds = [...batchIdSet]
-  const [checkouts, checkins, batches] = await Promise.all([
+  const [checkouts, checkins, batches, documents, models] = await Promise.all([
     checkoutIds.size > 0 ? prisma.assetCheckout.findMany({ where: { id: { in: [...checkoutIds] } }, select: { id: true, asset: assetSelect } }) : [],
     checkinIds.size > 0 ? prisma.assetCheckin.findMany({ where: { id: { in: [...checkinIds] } }, select: { id: true, asset: assetSelect } }) : [],
     batchIds.length > 0 ? prisma.disposalBatch.findMany({ where: { id: { in: batchIds } }, select: { id: true, batchNo: true } }) : [],
+    documentIds.size > 0 ? prisma.purchaseDocument.findMany({ where: { id: { in: [...documentIds] } }, select: { id: true, documentNo: true } }) : [],
+    modelIds.size > 0 ? prisma.assetModel.findMany({ where: { id: { in: [...modelIds] } }, select: { id: true, name: true } }) : [],
   ])
   const checkoutAsset = new Map(checkouts.map((record) => [record.id, record.asset]))
   const checkinAsset = new Map(checkins.map((record) => [record.id, record.asset]))
   const batchNumber = new Map(batches.map((batch) => [batch.id, batch.batchNo]))
+  const documentNumber = new Map(documents.map((document) => [document.id, document.documentNo]))
+  const modelName = new Map(models.map((model) => [model.id, model.name]))
 
   for (const item of items) {
     if (item.module === "disposal_batch") {
@@ -389,9 +421,11 @@ async function resolveAttachmentRefs(items: StorageAttachmentItem[]) {
     } else if (!item.asset) {
       const asset = CHECKOUT_MODULES.has(item.module) ? checkoutAsset.get(item.referenceId) : CHECKIN_MODULES.has(item.module) ? checkinAsset.get(item.referenceId) : undefined
       if (asset) assetById.set(item.id, asset)
+      const record = item.module === "purchase_document" ? documentNumber.get(item.referenceId) : item.module === "asset_model" ? modelName.get(item.referenceId) : undefined
+      if (record) recordById.set(item.id, record)
     }
   }
-  return { assetById, batchById }
+  return { assetById, batchById, recordById }
 }
 
 function toRowView(
@@ -399,21 +433,24 @@ function toRowView(
   index: number,
   context: {
     uploadRoot: string
-    missingByPath: Map<string, StorageAttachmentItem>
+    attachmentById: Map<string, StorageAttachmentItem>
     moduleLabel: (module: string) => string
+    folderLabel: (key: string) => string
     assetHref: (asset: AssetRef) => string
     locale: string
   }
 ): StorageRowView {
   if (row.kind === "orphan") {
     const folder = path.posix.dirname(row.relativePath.replace(/\\/g, "/"))
+    // A folder the upload routes write reads as its Thai name; anything else stays the raw top folder.
+    const folderKey = storageFolderLabelKey(row.relativePath)
     return {
       key: `orphan-${index}-${row.relativePath}`,
       kind: "orphan",
       fileName: path.posix.basename(row.relativePath.replace(/\\/g, "/")),
       folder: folder === "." ? "/" : `${folder}/`,
-      source: folder === "." ? "/" : folder.split("/")[0],
-      sourceIsCode: true,
+      source: folderKey ? context.folderLabel(folderKey) : folder === "." ? "/" : folder.split("/")[0],
+      sourceIsCode: !folderKey,
       size: formatStorageSize(row.sizeBytes),
       path: row.relativePath,
       asset: null,
@@ -424,7 +461,7 @@ function toRowView(
 
   const relative = pathInUploadRoot(row.filePath, context.uploadRoot)
   const folder = path.posix.dirname(relative)
-  const attachment = context.missingByPath.get(row.filePath)
+  const attachment = row.attachmentId ? context.attachmentById.get(row.attachmentId) : undefined
   return {
     key: `missing-${index}-${row.filePath}`,
     kind: "missing",

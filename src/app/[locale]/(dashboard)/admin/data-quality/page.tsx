@@ -148,7 +148,7 @@ export default async function DataQualityPage({ params, searchParams }: DataQual
         />
       ) : (
         <>
-          <ContentPanel title={t("distributionTitle")} description={t("distributionSummary", { enabled: formatCount(enabledCount), all: formatCount(rules.length), total: formatCount(issues.total) })}>
+          <ContentPanel title={t("distributionTitle")} description={t("distributionSummary", { enabled: enabledCount, all: rules.length, total: issues.total })}>
             {issues.segments.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("noIssues")}</p>
             ) : (
@@ -159,7 +159,7 @@ export default async function DataQualityPage({ params, searchParams }: DataQual
                     count: segment.count,
                     tone: severityByKey.get(segment.key) ?? "warning",
                     href: buildDataQualityRuleHref(locale, segment.key),
-                    title: t("segmentTitle", { rule: ruleLabel(segment.key), count: formatCount(segment.count) }),
+                    title: t("segmentTitle", { rule: ruleLabel(segment.key), count: segment.count }),
                   }))}
                 />
                 {/* The legend names every rule in the bar with its count and opens its register list (the bar is hidden
@@ -196,7 +196,6 @@ export default async function DataQualityPage({ params, searchParams }: DataQual
               danger: t("danger"),
               inactive: tCommon("inactive"),
               countAfterSave: t("countAfterSave"),
-              viewAssets: t.raw("viewAssets"),
               changeTurnedOn: t.raw("changeTurnedOn"),
               changeTurnedOff: t.raw("changeTurnedOff"),
               changeEnabled: t.raw("changeEnabled"),

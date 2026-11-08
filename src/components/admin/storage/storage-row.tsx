@@ -18,7 +18,8 @@ export type StorageRowView = {
   kind: "missing" | "orphan"
   fileName: string
   folder: string
-  // The Thai module label for a missing file; an orphan has no record, so the source is its top folder (sourceIsCode).
+  // The Thai module label for a missing file; an orphan has no record, so the source is its upload folder's Thai name, or
+  // the raw top folder (sourceIsCode) when the app does not know it.
   source: string
   sourceIsCode: boolean
   size: string
@@ -29,7 +30,8 @@ export type StorageRowView = {
   destination: string
 }
 
-// The board's row grid from md: finding, file, source, size, action, expand. Below md the parts stack.
+// The board's row grid from md: finding, file, source, size, action, expand. Below md the parts stack, with the actions
+// and the expand button on one line.
 export const storageRowGridClasses = "md:grid md:grid-cols-[6.5rem_minmax(0,1fr)_minmax(0,11rem)_5.5rem_minmax(0,auto)_2.75rem] md:items-center md:gap-x-3"
 
 // Board AD-Storage (group 12 spec §8): the file name on one line with an ellipsis, its folder or the asset it belongs
@@ -75,42 +77,44 @@ export function StorageRow({ row, canArchive }: { row: StorageRowView; canArchiv
           )}
         </div>
         <div className="min-w-0 text-meta text-muted-foreground">
-          <span className="sr-only md:hidden">{t("source")}: </span>
+          <span className="md:hidden">{t("source")}: </span>
           {row.sourceIsCode ? <span className="tag">{row.source}</span> : row.source}
         </div>
         <div className="num hidden text-right text-meta text-muted-foreground md:block">{row.size}</div>
-        <div className="flex flex-wrap items-center gap-2 md:justify-end">
-          {row.kind === "missing" ? (
-            <>
-              {row.asset ? (
-                <Link href={row.asset.href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
-                  {t("openAsset")}
-                </Link>
-              ) : row.batch ? (
-                <Link href={row.batch.href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
-                  {t("openBatch")}
-                </Link>
-              ) : null}
+        <div className="flex items-center justify-between gap-2 md:contents">
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
+            {row.kind === "missing" ? (
+              <>
+                {row.asset ? (
+                  <Link href={row.asset.href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                    {t("openAsset")}
+                  </Link>
+                ) : row.batch ? (
+                  <Link href={row.batch.href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                    {t("openBatch")}
+                  </Link>
+                ) : null}
+                <StatusBadge label={t("archiveUnavailable")} tone="muted" />
+              </>
+            ) : row.kind === "orphan" && canArchive ? (
+              <StorageArchiveButton relativePath={row.path} />
+            ) : (
               <StatusBadge label={t("archiveUnavailable")} tone="muted" />
-            </>
-          ) : row.kind === "orphan" && canArchive ? (
-            <StorageArchiveButton relativePath={row.path} />
-          ) : (
-            <StatusBadge label={t("archiveUnavailable")} tone="muted" />
-          )}
-        </div>
-        <div className="flex md:justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-expanded={open}
-            aria-controls={detailId}
-            aria-label={t("showDetails", { file: row.fileName })}
-            onClick={() => setOpen((value) => !value)}
-          >
-            <ChevronDown aria-hidden="true" className={cn("transition-transform motion-reduce:transition-none", open && "rotate-180")} />
-          </Button>
+            )}
+          </div>
+          <div className="flex md:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-expanded={open}
+              aria-controls={detailId}
+              aria-label={t("showDetails", { file: row.fileName })}
+              onClick={() => setOpen((value) => !value)}
+            >
+              <ChevronDown aria-hidden="true" className={cn("transition-transform motion-reduce:transition-none", open && "rotate-180")} />
+            </Button>
+          </div>
         </div>
       </div>
       <div id={detailId} hidden={!open} className="space-y-2 border-t border-border-soft bg-background px-4 py-3 text-meta md:px-5">

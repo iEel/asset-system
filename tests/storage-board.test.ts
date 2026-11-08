@@ -12,7 +12,12 @@ const messages = (locale: "th" | "en") => JSON.parse(read(`messages/${locale}.js
 test("tiles show the review breakdown and the equation", () => {
   const source = page()
   assert.match(source, /foot: t\("inactiveFiles", \{ count: summary\.inactiveFiles \}\)/)
-  assert.match(source, /foot: t\("reviewBreakdown", \{\n?\s*orphans: dryRun\.orphanFiles\.length,\n?\s*missing: dryRun\.missingFiles\.length,\n?\s*duplicate: summary\.duplicatePathCount,\n?\s*empty: summary\.missingPathCount,?\n?\s*\}\)/)
+  // The breakdown keeps all four counts on a phone: two short lines inside the foot's two-line clamp, and the full
+  // sentence as footTitle (final review).
+  assert.match(source, /const reviewCounts = \{\n?\s*orphans: dryRun\.orphanFiles\.length,\n?\s*missing: dryRun\.missingFiles\.length,\n?\s*duplicate: summary\.duplicatePathCount,\n?\s*empty: summary\.missingPathCount,?\n?\s*\}/)
+  assert.match(source, /<span className="block">\{t\("reviewBreakdownFiles", reviewCounts\)\}<\/span>/)
+  assert.match(source, /<span className="block">\{t\("reviewBreakdownPaths", reviewCounts\)\}<\/span>/)
+  assert.match(source, /footTitle: t\("reviewBreakdown", reviewCounts\),/)
   assert.match(source, /attention: reviewNeededCount > 0,/)
   assert.match(source, /t\("equation", \{ disk: filesystemFiles\.length, inUse: dryRun\.matchedFiles\.length, orphans: dryRun\.orphanFiles\.length \}\)/)
   // The header shows the upload folder (the readiness page shows the same value to the same gate).
@@ -20,6 +25,8 @@ test("tiles show the review breakdown and the equation", () => {
   const th = messages("th")
   assert.equal(th.inactiveFiles, "ไม่ใช้งาน {count, number}")
   assert.equal(th.reviewBreakdown, "หลุด {orphans, number} · หาย {missing, number} · path ซ้ำ {duplicate, number} · path ว่าง {empty, number}")
+  assert.equal(th.reviewBreakdownFiles, "หลุด {orphans, number} · หาย {missing, number}")
+  assert.equal(th.reviewBreakdownPaths, "path ซ้ำ {duplicate, number} · ว่าง {empty, number}")
   assert.match(th.equation, /\{disk, number\} = .*\{inUse, number\} \+ .*\{orphans, number\}/)
   assert.match(messages("en").inactiveFiles, /\{count, plural,/)
 })
@@ -110,8 +117,11 @@ test("kept: module breakdown, review list, largest files, setting:view gate", ()
   assert.match(source, /storageModuleLabelKey\(module\)/)
   assert.match(source, /style=\{\{ width: `\$\{share\(item\.totalBytes\)\}%` \}\}/)
   assert.match(source, /t\("total"\)/)
-  // Review list: asset name and tag, not the raw reference id, and the same-file note.
-  assert.doesNotMatch(source, /item\.referenceId\}<\/span>/)
+  // Review list: the asset name and tag, the batch, the purchase document or model, else the raw reference id as the old
+  // list showed it (final review), and the same-file note.
+  assert.match(source, /prisma\.purchaseDocument\.findMany\(/)
+  assert.match(source, /prisma\.assetModel\.findMany\(/)
+  assert.match(source, /<span className="tag">\{item\.referenceId\}<\/span>/)
   assert.match(source, /t\("samePathAsAbove"\)/)
   assert.equal(messages("th").samePathAsAbove, "ชี้ไฟล์เดียวกับรายการบน")
   // Largest files: module, asset and date.
@@ -119,4 +129,36 @@ test("kept: module breakdown, review list, largest files, setting:view gate", ()
   assert.match(source, /formatDateTime\(item\.uploadedAt\)/)
   // Thai words replace Dry-run, flag and Archive.
   for (const value of Object.values(messages("th"))) assert.doesNotMatch(value, /dry-run|flag|archive/i)
+})
+
+test("missing rows are keyed by attachment, not by path (final review)", () => {
+  const source = page()
+  assert.doesNotMatch(source, /missingByPath|assetByPath|batchByPath/)
+  assert.match(source, /const refs: StorageRefs = \{ assetById: resolved\.assetById, batchById: resolved\.batchById \}/)
+  assert.match(source, /const attachment = row\.attachmentId \? context\.attachmentById\.get\(row\.attachmentId\) : undefined/)
+})
+
+test("largest files: an empty note, not an empty table; stacked rows on a phone, the table from md (final review)", () => {
+  const source = page()
+  assert.match(source, /largeFiles\.length === 0 \? \(\n\s+<EmptyNote>\{t\("emptyLargeFiles"\)\}<\/EmptyNote>/)
+  assert.doesNotMatch(source, /<TableEmptyRow colSpan=\{5\}>/)
+  assert.match(source, /<ul className="divide-y divide-border-soft md:hidden">/)
+  assert.match(source, /<div className="hidden md:block">\n\s+<DataTable framed=\{false\} caption=\{t\("largestFiles"\)\}/)
+  // The module table drops its share column below md and draws the bar under the module name instead.
+  assert.match(source, /<DataTableHead className="hidden md:table-cell">\{t\("shareOfSize"\)\}<\/DataTableHead>/)
+  assert.match(source, /<DataTableCell className="hidden min-w-24 md:table-cell">/)
+})
+
+test("phone rows: the source has its visible label, the actions and the expand button share a line (final review)", () => {
+  const source = row()
+  assert.match(source, /<span className="md:hidden">\{t\("source"\)\}: <\/span>/)
+  assert.doesNotMatch(source, /sr-only md:hidden/)
+  assert.match(source, /<div className="flex items-center justify-between gap-2 md:contents">/)
+  // An orphan's top folder reads as its Thai name when the app knows it.
+  assert.match(page(), /storageFolderLabelKey\(row\.relativePath\)/)
+})
+
+test("the scroll area measures at once and after fonts load, not only on the first observer callback (final review)", () => {
+  const source = read("src/components/ui/data-table-scroll.tsx")
+  assert.match(source, /measure\(\)\n\s+void document\.fonts\?\.ready\.then\(measure\)/)
 })

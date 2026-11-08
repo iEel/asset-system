@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ScanSearch } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -62,6 +63,8 @@ export function AssetStateReviewWorkspace({
   issueTypes: Record<string, string>
 }) {
   const apiError = useApiError()
+  // The page's tab count (สถานะไม่สอดคล้อง รอตรวจสอบ n) is the server's: a scan, resolve or dismiss refreshes it.
+  const router = useRouter()
   const [result, setResult] = useState(initialData)
   const [reviewStatus, setReviewStatus] = useState("pending")
   const [severity, setSeverity] = useState("")
@@ -95,6 +98,7 @@ export function AssetStateReviewWorkspace({
       const summary = await response.json() as { scannedAssets: number; created: number }
       toast.success(labels.scanSuccess.replace("{scanned}", String(summary.scannedAssets)).replace("{created}", String(summary.created)))
       await load(1)
+      router.refresh()
     } catch {
       toast.error(labels.scanError)
     } finally {
@@ -122,6 +126,7 @@ export function AssetStateReviewWorkspace({
       toast.success(dialog.mode === "resolve" ? labels.resolveSuccess : labels.dismissSuccess)
       setDialog(null)
       await load(result.page)
+      router.refresh()
     } catch {
       toast.error(labels.saveError)
     } finally {

@@ -6,6 +6,8 @@ import path from "node:path"
 const ARCHIVE_DIRECTORY_NAME = ".archive"
 
 export type StorageGovernanceAttachmentInput = {
+  // The Attachment id, when the caller has it: a missing-file action then names its record (records can share a path).
+  id?: string
   module: string
   filePath: string | null
   fileSize: number
@@ -29,6 +31,7 @@ export type StorageGovernanceDryRunAction =
       filePath: string
       module: string
       expectedSizeBytes: number
+      attachmentId?: string
     }
 
 export type StorageGovernanceOptions = {
@@ -102,6 +105,7 @@ export function buildStorageGovernanceDryRun({
       filePath: attachment.filePath ?? "",
       module: attachment.module,
       expectedSizeBytes: attachment.fileSize,
+      ...(attachment.id ? { attachmentId: attachment.id } : {}),
     })),
     ...orphanFiles.map((file) => ({
       action: "archive_orphan_file" as const,
