@@ -99,11 +99,18 @@ test("users: role chips are the shared Chip and the status is a StatusBadge (spe
   assert.doesNotMatch(cell, /ActiveBadge|bg-info-soft|text-white/)
 })
 
-test("the admin user form is a panel with the shared panel classes and shows role keys as tags (spec 2D D9, M33)", () => {
+// Group 11 plan 2 Task 4 (board US-User-Edit): the form is four panels in two columns, each with the shared panel classes
+// and ContentPanel's padding; the role list shows each role's name and permission count (the board), and the login name
+// in the edit header is the code-like value shown as a tag.
+test("the admin user form's panels use the shared panel classes and the login name is a tag (spec 2D D9, M33)", () => {
   const source = read(`${C}admin/admin-user-form.tsx`)
-  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
-  assert.match(source, /<span className="mt-1 block text-xs text-muted-foreground"><span className="tag">\{role\.name\}<\/span><\/span>/)
-  assert.doesNotMatch(source, /rounded-lg border|font-mono/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate>/)
+  assert.equal(source.match(/<section className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\} aria-labelledby="admin-user-(?:account|employee)-heading">/g)?.length, 2)
+  const roles = read(`${C}admin/user-form/user-roles-section.tsx`)
+  const preview = read(`${C}admin/user-form/user-access-preview.tsx`)
+  for (const part of [roles, preview]) assert.match(part, /className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}/)
+  assert.match(read(`${C}admin/user-form/user-form-header.tsx`), /<span className="tag">\{user\.username\}<\/span>/)
+  for (const part of [source, roles, preview]) assert.doesNotMatch(part, /rounded-lg border|font-mono/)
 })
 
 test("the storage archive button is an outline sm Button that stays busy while it archives (spec 2D M14)", () => {

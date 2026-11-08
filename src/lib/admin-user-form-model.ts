@@ -121,13 +121,13 @@ export function accessPreview(
     .filter((key) => !beforeKeys.has(key) && HIGH_RISK_ACTIONS.includes(splitKey(key).action))
     .sort(compareKeys)
 
-  // A removed role is covered when every permission it grants (none, if it is inactive) is still held after.
+  // A removed role is covered when it granted something (active, with at least one permission) and every permission
+  // it grants is still held after. An inactive or empty role granted nothing, so it gets no "loses nothing" note.
   const { removed } = roleChangeMarks(beforeIds, afterIds)
   const coveredRemovals = removed.flatMap((id) => {
     const role = rolesById.get(id)
-    if (!role) return []
-    const granted = role.isActive ? role.permissionKeys : []
-    return granted.every((key) => afterKeys.has(key)) ? [role.label] : []
+    if (!role || !role.isActive || role.permissionKeys.length === 0) return []
+    return role.permissionKeys.every((key) => afterKeys.has(key)) ? [role.label] : []
   })
 
   return { beforeCount: beforeKeys.size, afterCount: afterKeys.size, rows, highRiskGained, coveredRemovals }

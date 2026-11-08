@@ -35,9 +35,14 @@ test("the 9 master-data forms: PageHeader with the subtitle as meta and the back
 })
 
 test("the user and role forms: PageHeader and PageBackLink, and the role create page names itself (2B-1 task 22, I32)", () => {
-  const user = read(`${C}admin/admin-user-form.tsx`)
-  assert.ok(user.includes(HEADER_IMPORT), "admin-user-form.tsx imports PageHeader and PageBackLink")
+  // Group 11 plan 2 Task 4: the user form's header is UserFormHeader (user-form/user-form-header.tsx). On create it is the
+  // title and the subtitle as before; on edit the meta holds the status and sign-in facts and the actions hold อื่น ๆ,
+  // with the same back link.
+  const user = read(`${C}admin/user-form/user-form-header.tsx`)
+  assert.ok(user.includes(HEADER_IMPORT), "user-form-header.tsx imports PageHeader and PageBackLink")
   assert.match(user, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{t\("formSubtitle"\)\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  assert.match(user, /\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>\n\s+<UserStatusDialog /, "the edit header keeps the back link")
+  assert.match(read(`${C}admin/admin-user-form.tsx`), /<UserFormHeader title=\{title\} backHref=\{backHref\} /)
   const role = read(`${C}admin/role-permission-form.tsx`)
   assert.ok(role.includes(HEADER_IMPORT), "role-permission-form.tsx imports PageHeader and PageBackLink")
   assert.match(role, /<PageHeader\n\s+title=\{isCreate \? t\("createTitle"\) : t\("editTitle"\)\}\n/, "the create page reads เพิ่มบทบาท, not แก้ไขสิทธิ์บทบาท")

@@ -54,6 +54,14 @@ test("a removed role covered by another loses nothing", () => {
   assert.deepEqual(operations?.lost, ["approve"])
 })
 
+// Plan 2 task 4 ruling: the "loses nothing" note is only for a removed role that granted something, so an inactive
+// role (it grants nothing) and a role with no permission keys never produce it.
+test("an inactive or empty removed role is not a covered removal", () => {
+  const empty = role("empty", [])
+  const preview = accessPreview([...roles, empty], ["r1", "inactive", "empty"], ["r1"])
+  assert.deepEqual(preview.coveredRemovals, [])
+})
+
 test("system_admin locks for non-admins", () => {
   assert.equal(
     grantLockReason({ name: "system_admin", permissionKeys: ["asset:view"] }, { roles: ["it"], permissions: ["asset:view"] }),

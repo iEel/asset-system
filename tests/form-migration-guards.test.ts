@@ -80,6 +80,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}master-data/location-form.tsx`]: ["/th/master-data/locations/new", "/th/master-data/locations/sample-1/edit"],
   // Group 8 plan 2 Task 3: the category form's save bar with the change summary (board MD-Category-Edit).
   [`${C}master-data/category-form.tsx`]: ["/th/master-data/categories/new", "/th/master-data/categories/sample-1/edit"],
+  // Group 11 plan 2 Task 4: the user form's save bar with the note and the change count (board US-User-Edit).
+  [`${C}admin/admin-user-form.tsx`]: ["/th/admin/users/new", "/th/admin/users/sample-1/edit"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
@@ -170,7 +172,13 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}master-data/supplier-form.tsx`]: [2, 6, 0],
   [`${C}audit/audit-round-form.tsx`]: [6, 1, 0],
   [`${C}audit/audit-round-cancel-button.tsx`]: [1, 0, 0],
-  [`${C}admin/admin-user-form.tsx`]: [3, 4, 1],
+  // Group 11 plan 2 Task 4: the user form split into user-form/; username, display name and password kept their
+  // [3, 4, 1] in the account section, and the form keeps the footer note's maxLength 500.
+  [`${C}admin/admin-user-form.tsx`]: [0, 1, 0],
+  [`${C}admin/user-form/user-account-section.tsx`]: [3, 4, 1],
+  // The role search (maxLength 100) and the close/reopen dialog's note (maxLength 500).
+  [`${C}admin/user-form/user-roles-section.tsx`]: [0, 1, 0],
+  [`${C}admin/user-form/user-status-dialog.tsx`]: [0, 1, 0],
   [`${C}admin/role-permission-form.tsx`]: [2, 3, 0],
   [`${C}admin/IntegrationClientManager.tsx`]: [3, 3, 1],
   [`${C}admin/asset-state-review-dialog.tsx`]: [1, 1, 1],

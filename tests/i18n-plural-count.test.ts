@@ -92,7 +92,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 11 plan 1 Task 2 added 5: the user list's warning title and link (count), a left employee's held assets
   // (count), the +N roles label (count) and the phone list's "พบ {shown} จาก {total} บัญชี" (keyed on total since the plan 1 final review, so English
   // reads "1 of 5 accounts": the noun follows the total, not the shown count).
-  assert.equal(pluralKeys.size, 180,[...pluralKeys.keys()].join(", "))
+  // Group 11 plan 2 Task 4 added 4: the user form's held assets, "เลือกไว้ n บทบาท", a role's "n สิทธิ์" and the footer's
+  // "เปลี่ยน n อย่าง" (all keyed on count).
+  assert.equal(pluralKeys.size, 184,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

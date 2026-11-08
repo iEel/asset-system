@@ -1,55 +1,40 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Field, FieldError } from "@/components/ui/field"
-import { checkboxVariants } from "@/components/ui/field-variants"
-import { Input } from "@/components/ui/input"
-import { NativeSelect } from "@/components/ui/native-select"
-import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { Field } from "@/components/ui/field"
+import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
-import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { UserAccessPreview } from "@/components/admin/user-form/user-access-preview"
+import { UserAccountSection } from "@/components/admin/user-form/user-account-section"
+import { UserEmployeeSection } from "@/components/admin/user-form/user-employee-section"
+import { UserFormHeader } from "@/components/admin/user-form/user-form-header"
+import { UserRolesSection } from "@/components/admin/user-form/user-roles-section"
+import type { UserFormData, UserFormEmployee } from "@/lib/admin-user-form-data"
+import { fillFromEmployee, roleChangeMarks } from "@/lib/admin-user-form-model"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { atLeastOne, email, maxLength, minLength, required } from "@/lib/validation-rules"
 
-type RoleOption = {
-  id: string
-  name: string
-  displayName: string
-  displayNameTh?: string | null
-}
+// Page group 11 plan 2 task 4 (spec §5; board US-User-Edit): the create and edit user form. Two columns from lg:
+// account then linked employee on the left, roles then the access preview on the right. The parts are in user-form/.
 
-type EmployeeOption = {
-  id: string
-  code: string
-  fullNameTh: string
-}
-
-type AdminUserFormValues = {
-  id?: string
+export type AdminUserFormValues = {
   username: string
   password: string
   displayName: string
-  email?: string | null
-  employeeId?: string | null
+  email: string
+  employeeId: string
   roleIds: string[]
-  isActive: boolean
-}
-
-const emptyUser: AdminUserFormValues = {
-  username: "",
-  password: "",
-  displayName: "",
-  email: "",
-  employeeId: "",
-  roleIds: [],
-  isActive: true,
+  // Create only: an AD account has no password of its own (the server stores a random hash).
+  authMode: "ad" | "local"
 }
 
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
@@ -61,8 +46,10 @@ const FIELD_IDS = {
   employeeId: "admin-user-employee",
   roleIds: "admin-user-roles",
 } as const
-type AdminUserField = keyof typeof FIELD_IDS
+export type AdminUserField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as AdminUserField[]
+
+export type AdminUserFieldErrors = ReturnType<typeof useFieldErrors<AdminUserField>>
 
 // noValidate turns the browser's check off, so this restates the controls' required, minLength, maxLength and
 // type="email", and the server's rule of at least one role (v-track M-R2).
@@ -72,41 +59,78 @@ function validate(values: AdminUserFormValues, isEdit: boolean) {
     if (code) errors[key] = code
   }
   check("username", required(values.username) ?? maxLength(values.username, 100))
-  // A new user needs a password; an edit keeps the old one when the field stays empty.
-  check("password", (isEdit ? null : required(values.password)) ?? minLength(values.password, 8) ?? maxLength(values.password, 100))
+  // A new local account needs a password; an AD account has none, and an edit keeps the old one when the field stays empty.
+  check("password", (isEdit || values.authMode === "ad" ? null : required(values.password)) ?? minLength(values.password, 8) ?? maxLength(values.password, 100))
   check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))
   check("email", email(values.email) ?? maxLength(values.email, 200))
   check("roleIds", atLeastOne(values.roleIds))
   return errors
 }
 
-export function AdminUserForm({
-  user,
-  employees,
-  roles,
-}: {
-  user?: AdminUserFormValues
-  employees: EmployeeOption[]
-  roles: RoleOption[]
-}) {
+// The fields that differ from the loaded values; a typed password is always a change.
+function changedFields(initial: AdminUserFormValues, values: AdminUserFormValues) {
+  const keys = ["username", "displayName", "email", "employeeId"] as const
+  return keys.filter((key) => initial[key].trim() !== values[key].trim()).length + (values.password !== "" ? 1 : 0)
+}
+
+export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; canViewAssets: boolean }) {
   const locale = useLocale()
   const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("adminUsersPage")
   const tCommon = useTranslations("common")
-  const [values, setValues] = useState<AdminUserFormValues>(user ?? emptyUser)
+  const user = data.user
+  const isEdit = Boolean(user)
+  const [initialValues] = useState<AdminUserFormValues>(() => ({
+    username: user?.username ?? "",
+    password: "",
+    displayName: user?.displayName ?? "",
+    email: user?.email ?? "",
+    employeeId: user?.employeeId ?? "",
+    roleIds: user?.roleIds ?? [],
+    authMode: "ad",
+  }))
+  const [values, setValues] = useState<AdminUserFormValues>(initialValues)
+  const [note, setNote] = useState("")
+  const [roleQuery, setRoleQuery] = useState("")
+  const [usernameSuggested, setUsernameSuggested] = useState(false)
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<AdminUserField>()
-  const validationMessage = useValidationMessage()
-  const isEdit = Boolean(user?.id)
   const backHref = `/${locale}/admin/users`
-  const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
+  const title = user ? `${t("editTitle")} · ${user.displayName}` : t("createTitle")
+  const { added, removed } = roleChangeMarks(initialValues.roleIds, values.roleIds)
+  const changeCount = changedFields(initialValues, values) + added.length + removed.length
 
-  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+  // A filtered role list may hide the first checkbox: the search clears before focus moves to it.
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(FIELD_ORDER, {
+      idFor: (key) => FIELD_IDS[key],
+      reveal: (key) => {
+        if (key === "roleIds") setRoleQuery("")
+      },
+    })
 
   function setField<K extends keyof AdminUserFormValues>(field: K, value: AdminUserFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field === "username") setUsernameSuggested(false)
     if (field in FIELD_IDS) fieldErrors.clear(field as AdminUserField)
+  }
+
+  function changeAuthMode(mode: AdminUserFormValues["authMode"]) {
+    setValues((current) => ({ ...current, authMode: mode, password: mode === "ad" ? "" : current.password }))
+    fieldErrors.clear("password")
+  }
+
+  // On create a chosen employee fills the empty fields; a typed field is never overwritten (spec §5.2).
+  function changeEmployee(next: UserFormEmployee | null) {
+    if (!isEdit && next) {
+      const filled = fillFromEmployee({ displayName: values.displayName, email: values.email, username: values.username }, next)
+      setUsernameSuggested(values.username.trim() === "" && filled.username !== values.username)
+      setValues((current) => ({ ...current, ...filled, employeeId: next.id }))
+      fieldErrors.clear("employeeId", "username", "displayName", "email")
+      return
+    }
+    setField("employeeId", next?.id ?? "")
   }
 
   function toggleRole(roleId: string) {
@@ -126,17 +150,20 @@ export function AdminUserForm({
     setSaving(true)
 
     try {
-      const response = await fetch(isEdit ? `/api/admin/users/${user?.id}` : "/api/admin/users", {
-        method: isEdit ? "PUT" : "POST",
+      const response = await fetch(user ? `/api/admin/users/${user.id}` : "/api/admin/users", {
+        method: user ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: values.username,
-          password: values.password || null,
           displayName: values.displayName,
           email: values.email || null,
           employeeId: values.employeeId || null,
           roleIds: values.roleIds,
-          isActive: values.isActive,
+          // The status changes only through the อื่น ๆ menu (the status route); a new account is active.
+          isActive: user ? user.isActive : true,
+          note: note.trim() || null,
+          ...(isEdit ? { password: values.password || null } : { authMode: values.authMode }),
+          ...(!isEdit && values.authMode === "local" ? { password: values.password } : {}),
         }),
       })
       const payload = await response.json().catch(() => null)
@@ -156,111 +183,64 @@ export function AdminUserForm({
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <PageHeader
-        title={title}
-        meta={t("formSubtitle")}
-        className="mb-6"
-        back={<PageBackLink href={backHref} label={tCommon("back")} />}
-      />
+    <div className="mx-auto max-w-6xl">
+      <UserFormHeader title={title} backHref={backHref} user={user} canViewLogs={data.canViewLogs} dirty={changeCount > 0} />
 
-      {/* The form is the panel (D9): the panel classes and ContentPanel's own padding, since a <form> cannot be ContentPanel. */}
-      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("username")} id="admin-user-username" required error={fieldErrors.message("username")}>
-            <Input
-              value={values.username}
-              onChange={(event) => setField("username", event.target.value)}
-              required
-              maxLength={100}
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+          <div className="grid min-w-0 gap-5">
+            <section className={cn(getPanelClasses(), "p-4 sm:p-5")} aria-labelledby="admin-user-account-heading">
+              <UserAccountSection
+                isEdit={isEdit}
+                values={values}
+                fieldErrors={fieldErrors}
+                usernameSuggested={usernameSuggested}
+                onFieldChange={setField}
+                onAuthModeChange={changeAuthMode}
+              />
+            </section>
+            <section className={cn(getPanelClasses(), "p-4 sm:p-5")} aria-labelledby="admin-user-employee-heading">
+              <UserEmployeeSection
+                employees={data.employees}
+                value={values.employeeId}
+                error={fieldErrors.message("employeeId")}
+                canViewAssets={canViewAssets}
+                onChange={changeEmployee}
+              />
+            </section>
+          </div>
+          <div className="grid min-w-0 gap-5">
+            <UserRolesSection
+              roles={data.roles}
+              initialIds={initialValues.roleIds}
+              currentIds={values.roleIds}
+              query={roleQuery}
+              error={fieldErrors.errors.roleIds ? fieldErrors.message("roleIds") : undefined}
+              onQueryChange={setRoleQuery}
+              onToggle={toggleRole}
             />
-          </Field>
-          <Field
-            label={isEdit ? t("newPassword") : t("password")}
-            id="admin-user-password"
-            required={!isEdit}
-            error={fieldErrors.errors.password ? validationMessage(fieldErrors.errors.password, { min: 8, max: 100 }) : undefined}
-          >
-            <Input
-              type="password"
-              value={values.password}
-              onChange={(event) => setField("password", event.target.value)}
-              required={!isEdit}
-              minLength={8}
-              maxLength={100}
-            />
-          </Field>
-          <Field label={t("displayName")} id="admin-user-display-name" required error={fieldErrors.message("displayName")}>
-            <Input
-              value={values.displayName}
-              onChange={(event) => setField("displayName", event.target.value)}
-              required
-              maxLength={200}
-            />
-          </Field>
-          <Field label={t("email")} id="admin-user-email" error={fieldErrors.message("email")}>
-            <Input
-              type="email"
-              value={values.email ?? ""}
-              onChange={(event) => setField("email", event.target.value)}
-              maxLength={200}
-            />
-          </Field>
-          <Field label={t("employee")} id="admin-user-employee" error={fieldErrors.message("employeeId")}>
-            <NativeSelect
-              value={values.employeeId ?? ""}
-              onChange={(event) => setField("employeeId", event.target.value)}
-            >
-              <option value="">{t("noEmployee")}</option>
-              {employees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.code} - {employee.fullNameTh}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm md:self-end">
-            <input
-              type="checkbox"
-              checked={values.isActive}
-              onChange={(event) => setField("isActive", event.target.checked)}
-              className={checkboxVariants()}
-            />
-            {tCommon("active")}
-          </label>
+            <UserAccessPreview roles={data.roles} initialIds={initialValues.roleIds} currentIds={values.roleIds} />
+          </div>
         </div>
 
-        {/* The roles are one group with one error under it; focus goes to its first checkbox (v-track M-R8). */}
-        <section
-          className="mt-6 border-t border-border pt-5"
-          role="group"
-          aria-labelledby="admin-user-roles-label"
-          aria-describedby={fieldErrors.errors.roleIds ? "admin-user-roles-error" : undefined}
+        <StickyFormFooter
+          className="mt-5"
+          status={
+            <span role="status" className="break-words">
+              {changeCount > 0 ? t("form.changes", { count: changeCount }) : t("form.noChanges")}
+            </span>
+          }
         >
-          <div id="admin-user-roles-label" className="mb-3 text-sm font-medium text-foreground">{t("roles")}</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {roles.map((role, index) => (
-              <label key={role.id} className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm">
-                <input
-                  id={index === 0 ? "admin-user-roles" : undefined}
-                  type="checkbox"
-                  checked={values.roleIds.includes(role.id)}
-                  onChange={() => toggleRole(role.id)}
-                  className={cn(checkboxVariants(), "mt-0.5")}
-                />
-                <span>
-                  <span className="block font-medium text-foreground">{role.displayNameTh || role.displayName}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground"><span className="tag">{role.name}</span></span>
-                </span>
-              </label>
-            ))}
-          </div>
-          {fieldErrors.errors.roleIds ? (
-            <FieldError id="admin-user-roles-error" className="mt-2">{fieldErrors.message("roleIds")}</FieldError>
-          ) : null}
-        </section>
-
-        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
+          <Field label={t("form.note")} hideLabel id="admin-user-note" className="sm:w-80">
+            <Textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              rows={1}
+              maxLength={500}
+              placeholder={t("form.notePlaceholder")}
+              className="field-sizing-content max-h-32 min-h-11 md:min-h-9"
+            />
+          </Field>
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
@@ -268,7 +248,7 @@ export function AdminUserForm({
             <Save aria-hidden="true" />
             {tCommon("save")}
           </Button>
-        </div>
+        </StickyFormFooter>
       </form>
     </div>
   )
