@@ -6,6 +6,10 @@
 
 ## 2026-11-08
 
+### กลุ่มหน้า 11 merge แล้ว
+
+- `feat/group11-users-roles` fast-forward เข้า master ที่ `78e7fc04` และ push ทั้ง origin และ company (2026-11-08 ผู้ใช้สั่ง) · unit test บน master 5,083/0 · ไม่มี migration · ยังไม่ deploy
+
 ### กลุ่มหน้า 11 แผน 3: บทบาท (บอร์ด US-Roles, US-Role-Edit) · กลุ่ม 11 ครบ
 
 plan `docs/superpowers/plans/2026-11-08-group11-roles.md` · branch `feat/group11-users-roles`
