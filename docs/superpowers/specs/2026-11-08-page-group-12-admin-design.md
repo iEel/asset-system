@@ -432,3 +432,63 @@ example).
    the apply confirm, and the review table's Thai labels. Split in two if the form diff is too big.
 
 No migration in any plan.
+
+## 15. Builder-check answers (2026-11-08)
+
+These override the sections above where they differ. All are **(my call)** unless marked.
+
+### Settings and LDAP (§11)
+
+1. **The apply confirm must match what apply does.**
+   - Apply sends the deactivation count from the preview the user confirmed (`expectedDeactivations`).
+   - The server re-previews as today. If its deactivation count differs from the expected one, it refuses with 409
+     `"LDAP sync result changed"` (Thai: "ผลซิงก์เปลี่ยนไปจากตัวอย่าง กรุณาดูตัวอย่างอีกครั้ง") and changes nothing.
+   - This is a small extension of the existing `ldap-sync` route, not a new API. It stays covered by unit tests only,
+     because E2E never calls it.
+2. **The empty bind password is guarded on the server too.** Settings PUT ignores an empty `ldap_bind_password` and
+   keeps the stored value. Clearing is never possible through the API. Unit test.
+3. **A changed URL or Bind DN needs a new password to save, not only to test.** If `ldap_url` or `ldap_bind_dn`
+   changes and the password is the stored placeholder, PUT refuses with a field error on the password (Thai
+   "เปลี่ยนที่อยู่หรือบัญชี LDAP แล้ว ต้องใส่รหัสผ่านใหม่"). This stops the stored password being sent to a new host.
+4. **The bind password input** uses `autocomplete="new-password"` and its own field name, so the browser never fills
+   in the admin's own password.
+
+### System history (§4)
+
+5. **Tag search covers asset logs only** (`module: "asset"`, `recordId` in the matched asset ids), which is one
+   indexed query.
+   - The results header links to the asset's own history tab on its detail page, "ดูประวัติทุกเรื่องของทรัพย์สินนี้".
+     Disposal, repair and audit records live there.
+   - The user's question was "who changed which asset", and asset logs answer it.
+6. **Logs with no user:**
+   - `integration_api` rows show "Integration API · {client display name}", taken from the client id in the log.
+   - Other rows with no user show "ระบบ · งานตามเวลา".
+   - The user filter has two separate options: "ระบบ (งานตามเวลา)", which excludes `integration_api`, and
+     "Integration API".
+
+### Denied page (§9)
+
+7. **Approvals denial shows the permission as** "อนุมัติ · ตัดจำหน่าย หรือ อนุมัติ · ตรวจนับ". To do this,
+   `buildAccessDeniedHref` accepts a special `approval` value, which the page maps to that sentence.
+8. **`from` carries the path only, with the query dropped.** It must start with `/<locale>/` and contain no `//`, no
+   `\` and no protocol. Anything else is ignored.
+
+### Corrections to the recon
+
+9. **The date-range control:**
+   - `RepairDateRangeChip` uses `dateFrom` and `dateTo` and has no quick presets.
+   - Plan 2 extends it with optional presets, or wraps it, and keeps the repair list's behaviour.
+   - The logs and approval-history URLs use `dateFrom` and `dateTo` too, for consistency.
+10. **Storage asset names:**
+    - Use `Attachment.assetId` where it is set.
+    - Resolve through `referenceId` only for modules that lack it.
+    - A `disposal_batch` attachment shows the batch number instead of an asset.
+
+### E2E (§12)
+
+11. **The Integrations fake-data pin:**
+    - The spec may only `fulfill` the GET, and `fallback` anything that is not a GET.
+    - `continue` and `fetch` are banned.
+    - The `tests/e2e-review.test.ts` source guard gets one named exception for that spec file.
+12. **Approvals denial:** E2E checks in `e2e/approvals` that expect a 404 for denied viewers change to expect the
+    denied page.
