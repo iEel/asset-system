@@ -126,7 +126,9 @@ test("the storage archive button is an outline sm Button that stays busy while i
 
 test("storage: its four panels are ContentPanel, with no icon box (spec 2D D9)", () => {
   const source = read(`${D}admin/storage/page.tsx`)
-  assert.equal(source.match(/<ContentPanel title=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} description=\{(?:t\("(?:filesystemDryRunHelp|moduleBreakdownHelp)"\)|description)\}>/g)?.length, 4)
+  // Group 12 plan 3 Task 4: the file check panel is divided and flush (its rows run edge to edge, board AD-Storage), and
+  // the review list and largest files are written inline instead of through title/description helpers.
+  assert.equal(source.match(/<ContentPanel (?:divided flush className="overflow-hidden" )?title=\{t\("(?:filesystemDryRun|moduleBreakdown|reviewList|largestFiles)"\)\} description=\{t\("(?:filesystemDryRunHelp|moduleBreakdownHelp|reviewListHelp|largestFilesHelp)"\)\}>/g)?.length, 4)
   assert.doesNotMatch(source, /getPanelClasses|FolderOpen|bg-primary-soft|<section className=\{`/)
 })
 

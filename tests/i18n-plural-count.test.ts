@@ -106,7 +106,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 12 plan 2 Task 3 added 2: the system log's header line "{range} · {count} รายการ · ใหม่สุดก่อน" and the tag
   // search's cap note "แสดงเฉพาะ {count} รายการแรกที่ตรง" (both keyed on count).
   // The group 12 plan 2 final review added 1: approval history's "{count} รายการ" (approvalHistoryPage.filteredCount).
-  assert.equal(pluralKeys.size, 208,[...pluralKeys.keys()].join(", "))
+  // Group 12 plan 3 Task 4 added 3: the storage tile foot "ไม่ใช้งาน {count}" (count), the file check's equation
+  // "ไฟล์ในโฟลเดอร์ {disk} = …" (keyed on disk) and "แสดง {shown} จาก {total}" (keyed on total).
+  assert.equal(pluralKeys.size, 211,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

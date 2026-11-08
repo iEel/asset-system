@@ -678,18 +678,21 @@ test("system log: real pages counted in the same timed Promise.all, TabNav quick
 // Plan 2B-5 Task 3 (spec 2B §5.6 row admin/storage, bugs §5.10 #6 and #10, R-d): the three storage tables scroll
 // sideways inside their DataTable shell (getTableShellClasses() clipped them with overflow-hidden), the tiles are two
 // StatStrips with no tone fill, counts go through formatCount, and every module code reads as its label.
-test("storage: PageHeader, two StatStrips and three DataTables that scroll sideways, with every module code as its label (spec 2B §5.6, §5.10 #6, #10)", () => {
+// Group 12 plan 3 Task 4 (board AD-Storage): the dry-run StatStrip became the equation line and the filter chips, and
+// the dry-run table became expandable StorageRow items (tests/storage-board.test.ts), so one StatStrip and two
+// DataTables are left. The review list names the module and the asset instead of the raw reference id.
+test("storage: PageHeader, one StatStrip and two DataTables that scroll sideways, with every module code as its label (spec 2B §5.6, §5.10 #6, #10)", () => {
   const source = read(`${D}admin/storage/page.tsx`)
-  for (const part of ["<PageHeader", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={4}>", "<TableEmptyRow colSpan={3}>", "<EmptyNote>"]) {
+  for (const part of ["<PageHeader", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={4}>", "<TableEmptyRow colSpan={5}>", "<EmptyNote>"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
-  assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the summary and the dry-run counts")
-  // The panels are ContentPanel since plan 2D-2: only the dry-run table, under its StatStrip, keeps a top margin.
-  assert.equal(source.match(/<DataTable framed=\{false\}(?: className="mt-4")? caption=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} scrollHint=\{(?:tCommon\("tableScrollHint"\)|scrollHint)\}>/g)?.length, 3, "three tables in padded panels, flush, with the scroll hint (B6)")
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 1, "the summary tiles")
+  assert.equal(source.match(/<DataTable framed=\{false\} caption=\{t\("(?:moduleBreakdown|largestFiles)"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/g)?.length, 2, "two tables in padded panels, flush, with the scroll hint (B6)")
   assert.match(source, /attention: reviewNeededCount > 0,/)
-  assert.match(source, /\{moduleLabel\(item\.module, t\)\} · <span className="tag">\{item\.referenceId\}<\/span>/, "bug §5.10 #10: the review list names the module, not its code")
+  assert.match(source, /\{moduleLabel\(item\.module\)\}\n\s+\{asset \?/, "bug §5.10 #10: the review list names the module, not its code, then the asset")
+  assert.doesNotMatch(source, /item\.referenceId\}<\/span>/)
   assert.match(source, /\{orNil\(item\.filePath\)\}/)
-  assert.equal(source.match(/<StorageArchiveButton relativePath=\{action\.relativePath\} \/>/g)?.length, 1)
+  assert.equal(source.match(/<StorageRow key=\{row\.key\} row=\{row\} canArchive=\{canArchiveStorageFiles\} \/>/g)?.length, 1)
   assert.doesNotMatch(source, /getTableShellClasses|getEmptyStateClasses|function SummaryCard\b|<thead\b|<th\b|<td colSpan|toLocaleString\(|"-"|\buppercase\b/)
 })
 
