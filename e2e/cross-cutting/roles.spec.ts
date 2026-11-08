@@ -5,7 +5,7 @@ import { expect, test, asUser } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createAsset, handOver, projectMarker, readAssetChoices, registerAssetsAsItStaff } from "./support/records.ts"
 import { APPROVE_API_REFUSALS, isWriteLink, lacks, READ_ONLY_LISTS, REVIEW_BUTTON_NAMES, VIEWER_API_REFUSALS, VIEWER_PAGE_REFUSALS } from "./support/refusals.ts"
-import { expectApprovalInboxNotFound, expectRefused, readOnlyUrl, writeControls } from "./support/roles-ui.ts"
+import { expectApprovalInboxDenied, expectRefused, readOnlyUrl, writeControls } from "./support/roles-ui.ts"
 import { expectNotFound, visitRefused } from "./support/ui.ts"
 import { controlNames, detailWriteControls, openMoreActionsIfShown, readMenuEntries } from "../asset-detail/detail-steps.ts"
 import { DETAIL_VIEWS, DETAIL_WORDS } from "../asset-detail/detail-words.ts"
@@ -21,7 +21,7 @@ test.describe("the viewer", () => {
     for (const refusal of VIEWER_PAGE_REFUSALS) {
       expect(lacks("viewer", refusal.permission), refusal.path).toBe(true)
       if (refusal.permission === "approve-inbox") {
-        await expectApprovalInboxNotFound(page, measure, "the viewer")
+        await expectApprovalInboxDenied(page, measure, "the viewer")
         continue
       }
       await visitRefused(page, measure, refusal.path.replace(":asset", desk.assets[0].id), refusal.permission, `refused: ${refusal.path}`)
@@ -97,7 +97,7 @@ test.describe("IT staff", () => {
   test("IT staff are refused the approve and review actions, and their own request shows no decision", async ({ page, measure }, testInfo) => {
     for (const refusal of APPROVE_API_REFUSALS) expect(lacks("itStaff", refusal.permission), refusal.path).toBe(true)
     await expectRefused(page.request, APPROVE_API_REFUSALS)
-    await expectApprovalInboxNotFound(page, measure, "IT staff")
+    await expectApprovalInboxDenied(page, measure, "IT staff")
 
     // Their own disposal request: they may ask, not decide.
     const choices = await readAssetChoices(page, measure)

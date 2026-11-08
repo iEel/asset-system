@@ -137,3 +137,43 @@ test("approvals pages redirect to the denied page", () => {
     assert.doesNotMatch(source, /canAnyApproval\)? notFound\(\)/, path)
   }
 })
+
+// Task 4: the E2E spec's words are the app's own, and the spec writes nothing.
+test("the denied and readiness E2E words match the messages, and the spec writes nothing", async () => {
+  const { DENIED_WORDS: D, READINESS_WORDS: R } = await import("../e2e/admin/denied-readiness-words.ts")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const denied = th.accessDeniedPage
+  assert.equal(D.titleNamed, denied.titleNamed)
+  assert.equal(D.needs, denied.needs)
+  assert.equal(D.permissionWords, denied.permissionWords)
+  assert.equal(D.approvalWords, denied.approvalWords)
+  assert.equal(D.yourRoles, denied.yourRoles)
+  assert.equal(D.goBack, denied.goBack)
+  assert.equal(D.backHome, denied.backHome)
+  assert.equal(D.readinessPage, th.nav.productionReadiness)
+  assert.equal(getLoginDestinationKey("th", "/th/admin/readiness"), "nav.productionReadiness")
+  // The readiness page asks for the same setting:view as the settings page, whose path the suite never names.
+  assert.match(readFileSync("src/app/[locale]/(dashboard)/admin/readiness/page.tsx", "utf8"), /requirePagePermission\(locale, "setting", "view"\)/)
+  assert.equal(D.actionView, th.adminRolesPage.actions.view)
+  assert.equal(D.moduleSetting, th.adminRolesPage.modules.setting)
+  const readiness = th.productionReadinessPage
+  assert.equal(R.title, readiness.title)
+  assert.deepEqual([...R.groups], ["access", "backupJobs", "workflowData", "filesApp"].map((key) => readiness[`group_${key}`]))
+  assert.equal(R.filterLabel, readiness.filterLabel)
+  assert.equal(R.filterAll, readiness.filter_all)
+  assert.equal(R.filterFail, readiness.filter_fail)
+  assert.equal(R.filterWarning, readiness.filter_warning)
+  assert.equal(R.filterPass, readiness.filter_pass)
+  assert.equal(R.statusFail, readiness.status_fail)
+  assert.equal(R.filterEmpty, readiness.filterEmpty)
+  assert.equal(readiness.sumLine, "{fail, number} + {warning, number} + {pass, number} = {total, number}")
+
+  const spec = readFileSync("e2e/admin/denied-readiness.spec.ts", "utf8")
+  assert.ok(spec.includes(`import { asUser, expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!/^import \{[^}]*\} from "@playwright\/test"/m.test(spec), "only a type import from @playwright/test")
+  assert.ok(!/\.(post|put|patch|delete)\(/.test(spec), "no write request")
+  assert.ok(spec.includes("test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })") && spec.includes(`asUser("viewer")`))
+  const roles = readFileSync("e2e/cross-cutting/support/roles-ui.ts", "utf8")
+  assert.ok(roles.includes("export async function expectApprovalInboxDenied(") && !roles.includes("expectNotFound"))
+  assert.ok(!readFileSync("e2e/cross-cutting/roles.spec.ts", "utf8").includes("expectApprovalInboxNotFound"))
+})

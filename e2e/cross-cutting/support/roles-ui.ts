@@ -1,11 +1,11 @@
-// Roles and permissions in the browser (spec §6.6): the requests refused, the approval inbox not found, and the
+// Roles and permissions in the browser (spec §6.6): the requests refused, the approval inbox refused, and the
 // controls a read-only list must not offer. The pages and requests themselves are refusals.ts's.
 import type { APIRequestContext, Page, TestInfo } from "@playwright/test"
 import { expect } from "../../support/fixtures.ts"
 import type { Measure } from "../../support/measure.ts"
 import { projectMarker } from "./records.ts"
 import { isWriteLink, WRITE_BUTTON_NAMES, WRITE_LINK_NAMES, WRITE_MENU_NAMES, type ApiRefusal } from "./refusals.ts"
-import { expectNotFound } from "./ui.ts"
+import { DENIED_WORDS } from "../../admin/denied-readiness-words.ts"
 
 // Each request answers 403, listed together so one run shows every answer.
 export async function expectRefused(request: APIRequestContext, refusals: readonly ApiRefusal[]) {
@@ -17,10 +17,17 @@ export async function expectRefused(request: APIRequestContext, refusals: readon
   expect(answers).toEqual(refusals.map((refusal) => `${refusal.method} ${refusal.path} 403`))
 }
 
-// The approval inbox is not found for a person who may approve nothing (src/app/[locale]/(dashboard)/admin/approvals).
-export async function expectApprovalInboxNotFound(page: Page, measure: Measure, label: string) {
-  await measure.visit("/th/admin/approvals", `approval inbox (${label})`)
-  await expectNotFound(page)
+// The approval inbox sends a person who may approve nothing to the denied page (src/app/[locale]/(dashboard)/admin/
+// approvals; page group 12 §9, it was a 404): the permission line reads either approve in Thai words. The redirect
+// reaches the browser after the streamed first load, as visitRefused's (ui.ts) does.
+export async function expectApprovalInboxDenied(page: Page, measure: Measure, label: string, path = "/th/admin/approvals") {
+  await page.goto(path, { waitUntil: "load" })
+  await expect(page).toHaveURL(new RegExp(`/th/access-denied\\?(?=.*module=approval)(?=.*action=approve)(?=.*from=${encodeURIComponent(path)}(?:&|$))`))
+  const main = page.getByRole("main")
+  await expect(main.getByText(/^ไม่มีสิทธิ์เปิดหน้า /)).toBeVisible()
+  await expect(main.getByText(DENIED_WORDS.needs.replace("{permission}", DENIED_WORDS.approvalWords), { exact: true })).toBeVisible()
+  await page.waitForLoadState("load")
+  await measure.recordPage(`approval inbox refused (${label})`)
 }
 
 // The controls on screen that lead to an action the person cannot take: links to a create, edit or approve page, and

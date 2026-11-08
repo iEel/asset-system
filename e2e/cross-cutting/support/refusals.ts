@@ -14,8 +14,8 @@ export type PageRefusal = {
   path: string
   // The page file under src/app/[locale]/(dashboard)/.
   file: string
-  // The permission requirePagePermission asks for, or "approve-inbox" for the approval inbox (a 404 without
-  // disposal:approve or audit:approve, src/lib/approval-inbox-query.ts).
+  // The permission requirePagePermission asks for, or "approve-inbox" for the approval inbox (the denied page
+  // without disposal:approve or audit:approve, src/lib/approval-inbox-query.ts; a 404 before page group 12).
   permission: string
 }
 
