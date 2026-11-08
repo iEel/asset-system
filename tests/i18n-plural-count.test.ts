@@ -99,7 +99,8 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // role's "ยังมีผู้ใช้ n คน" (count).
   // Group 11 plan 3 Task 4 added 9: the role editor's users in the role, a group line (modules), the applies-to lines
   // with and without names (count), the footer status (users), and the add dialog's picked, confirm, done and refused (count).
-  assert.equal(pluralKeys.size, 196,[...pluralKeys.keys()].join(", "))
+  // The plan 3 final review added 1: the add dialog's "อยู่ในบทบาทนี้แล้ว n คน" (count).
+  assert.equal(pluralKeys.size, 197,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
@@ -182,6 +183,7 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   assert.equal(pluralKeys.get("adminUsersPage.foundCount"), "total")
   assert.equal(pluralKeys.get("adminRolesPage.inactiveWarning"), "count")
   assert.equal(pluralKeys.get("adminRolesPage.stillHasUsers"), "count")
+  assert.equal(pluralKeys.get("adminRolesPage.form.addUsersAlreadyHeld"), "count")
 })
 
 test("no source call passes formatCount(…) into a message whose en value is a plural", () => {

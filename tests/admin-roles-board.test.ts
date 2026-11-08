@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
+import { IntlMessageFormat } from "intl-messageformat"
 
 // Page group 11 plan 3 task 3 (spec §6, §9; board US-Roles): the /admin/roles list. Sources are read with \r stripped,
 // so a regex here may hold \n.
@@ -33,7 +34,15 @@ test("the warning links to the users of the first inactive role", () => {
   assert.match(warning, /users: roles\.reduce\(\(sum, role\) => sum \+ role\.userCount, 0\)/, "the users are summed")
   assert.match(warning, /t\("inactiveWarningLink"\)/)
   const page = read(PAGE)
-  assert.match(page, /<RoleInactiveWarning roles=\{inactiveWithUsers\} usersHref=\{usersHref\}/)
+  assert.match(page, /<RoleInactiveWarning roles=\{inactiveWithUsers\} usersHref=\{usersHref\} canViewUsers=\{canViewUsers\} \/>/)
+  // The link opens the user list, which needs user:view, so it shows only with user:view (as the users column).
+  assert.match(warning, /action=\{\n?\s*canViewUsers \? \(\n\s+<Link href=\{usersHref\(roles\[0\]\.id\)\}/)
+  assert.match(warning, /\) : undefined\n\s+\}/)
+  // English: the verb agrees with the roles, the users only count the noun.
+  const en = JSON.parse(read("messages/en.json")).adminRolesPage.inactiveWarning as string
+  const format = (count: number, users: number, names: string) => new IntlMessageFormat(en, "en").format({ count, users, names }) as string
+  assert.equal(format(1, 3, "Auditor"), "1 inactive role still has users · Auditor is still linked to 3 users. Move the users out of this role.")
+  assert.equal(format(2, 1, "Auditor, Viewer"), "2 inactive roles still have users · Auditor, Viewer are still linked to 1 user. Move the users out of these roles.")
   // buildUserListQuery with the user list's defaults, so the link opens exactly role=<id>.
   assert.match(page, /buildUserListQuery\(USER_LIST_DEFAULT_STATE, USER_LIST_DEFAULT_FILTERS, \{ roleId \}\)/)
   assert.match(read(DATA), /inactiveWithUsers: inactiveRolesWithUsers\(roles\)/)
@@ -74,6 +83,21 @@ test("user counts link to the user list only with user:view", () => {
   assert.match(page, /t\("stillHasUsers", \{ count: role\.userCount \}\)/)
   assert.match(page, /t\("footnote"\)/)
   assert.match(read(DATA), /prisma\.permission\.count\(\)/)
+})
+
+test("the role table fits 718px from md to xl, with its actions pinned", () => {
+  const page = read(PAGE)
+  // The role cell has a small minimum, and its key may break below xl (.tag never wraps on its own).
+  assert.match(page, /<DataTableCell className="min-w-32 max-w-80">/)
+  assert.doesNotMatch(page, /min-w-48/)
+  assert.match(page, /<span className="tag max-xl:whitespace-normal max-xl:break-all">\{role\.name\}<\/span>/)
+  // สิทธิ์: the สิทธิ์สูง badge wraps under the count.
+  assert.match(page, /<DataTableCell>\n\s+<span className="flex flex-wrap items-center gap-1\.5">\n\s+<span className="num font-semibold whitespace-nowrap text-foreground">\{t\("permissionsOf"/)
+  // สถานะ may wrap its "ยังมีผู้ใช้ n คน" line.
+  assert.match(page, /<DataTableCell>\n\s+<StatusBadge label=\{role\.isActive/)
+  // แก้ไข stays in view, as on the old page.
+  assert.match(page, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(page, /<DataTableCell align="right" sticky="right">\n\s+<RowActions/)
 })
 
 test("kept: export and create gates, protected chip, ordering, matrix content", () => {

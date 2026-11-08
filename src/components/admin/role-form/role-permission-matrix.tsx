@@ -8,13 +8,17 @@ import { DataTable, DataTableBody, DataTableHead, DataTableHeader, dataTableCell
 import { FieldError } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import type { RoleFormPermission } from "@/lib/role-form-data"
-import { columnState, groupSummary, permissionMarks } from "@/lib/role-editor-model"
+import { bulkSelect, groupSummary, permissionMarks } from "@/lib/role-editor-model"
 import { PERMISSION_ACTION_ORDER, PERMISSION_GROUPS, type PermissionGroupKey } from "@/lib/permission-groups"
 import { cn } from "@/lib/utils"
 
 // The group header row is a whole-row disclosure button (its N3 EXEMPT row), in a rowgroup header cell.
 // The 40–44px target every matrix checkbox sits in (44 below md, 40 from md).
 const TARGET = "relative inline-flex size-11 items-center justify-center rounded-md md:size-10 has-disabled:cursor-not-allowed"
+// One shared description per reason a cell is locked, so a screen reader hears why (a title alone never reaches it, nor
+// a phone).
+const LOCKED_REASON_ID = "role-locked-reason"
+const PROTECTED_REASON_ID = "role-protected-reason"
 
 function MatrixCheckbox({
   id,
@@ -23,6 +27,7 @@ function MatrixCheckbox({
   indeterminate = false,
   disabled,
   title,
+  describedBy,
   className,
   onChange,
   children,
@@ -33,6 +38,7 @@ function MatrixCheckbox({
   indeterminate?: boolean
   disabled: boolean
   title?: string
+  describedBy?: string
   className?: string
   onChange: () => void
   children?: ReactNode
@@ -49,6 +55,7 @@ function MatrixCheckbox({
         id={id}
         type="checkbox"
         aria-label={label}
+        aria-describedby={describedBy}
         checked={checked}
         disabled={disabled}
         onChange={onChange}
@@ -64,8 +71,10 @@ function MatrixCheckbox({
 // PERMISSION_GROUPS entry is a <tbody> whose first row folds it; a folded group's rows stay in the DOM, hidden, and its
 // header row adds the per-action counts and the module names. A module row carries <span class="tag">{module}</span>
 // (the E2E setup finds rows by it), the row checkbox with "{n}/6", and the six cells named "{action} {module}", with
-// "(เพิ่มใหม่)" or "(เอาออก)" on a changed cell. Locked cells are disabled with a title that says why. The table scrolls
-// sideways inside its own box on small screens.
+// "(เพิ่มใหม่)" or "(เอาออก)" on a changed cell. Locked cells are disabled; a title and a shared description say why
+// (system_admin's are protected; any other is a permission the editor does not hold). A row or column checkbox counts
+// only the cells that can change, so a click clears them once they are all on. The table scrolls sideways inside its
+// own box on small screens.
 export function RolePermissionMatrix({
   permissions,
   initial,
@@ -115,7 +124,7 @@ export function RolePermissionMatrix({
       keys,
       rows: keys.length,
       selected: keys.filter((key) => current.has(key)).length,
-      state: columnState(current, action, keys.map((key) => key.slice(0, key.indexOf(":")))),
+      ...bulkSelect(current, keys, isLocked),
     }
   })
   const columnCount = 2 + PERMISSION_ACTION_ORDER.length
@@ -130,6 +139,8 @@ export function RolePermissionMatrix({
       actions={<span className="num text-meta text-muted-foreground">{t("form.selectedOf", { count: current.size, total: keySet.size })}</span>}
     >
       {/* The permissions are one group with one error above the table; focus goes to the first cell that can change (v-track M-R8). */}
+      <span id={LOCKED_REASON_ID} className="sr-only">{t("form.lockedCell")}</span>
+      <span id={PROTECTED_REASON_ID} className="sr-only">{t("form.protectedCell")}</span>
       {error ? (
         <FieldError id="role-permissions-error" className="px-4 pt-3 md:px-5">{error}</FieldError>
       ) : null}
@@ -154,7 +165,7 @@ export function RolePermissionMatrix({
                       checked={column.state === "all"}
                       indeterminate={column.state === "some"}
                       disabled={allLocked || column.keys.every(isLocked)}
-                      onChange={() => onSetMany(column.keys, column.state !== "all")}
+                      onChange={() => onSetMany(column.keys, column.on)}
                     />
                   </span>
                 </DataTableHead>
@@ -195,6 +206,7 @@ export function RolePermissionMatrix({
                 {group.shown.map((module) => {
                   const rowKeys = rowKeysOf(module)
                   const held = rowKeys.filter((key) => current.has(key)).length
+                  const row = bulkSelect(current, rowKeys, isLocked)
                   const changed = rowKeys.some((key) => added.has(key) || removed.has(key))
                   return (
                     <tr key={module} hidden={!open} className={dataTableRowClasses}>
@@ -211,10 +223,10 @@ export function RolePermissionMatrix({
                         <span className="flex items-center justify-center gap-1">
                           <MatrixCheckbox
                             label={t("form.selectRow", { module: moduleName(module) })}
-                            checked={rowKeys.length > 0 && held === rowKeys.length}
-                            indeterminate={held > 0 && held < rowKeys.length}
+                            checked={row.state === "all"}
+                            indeterminate={row.state === "some"}
                             disabled={allLocked || rowKeys.every(isLocked)}
-                            onChange={() => onSetMany(rowKeys, held !== rowKeys.length)}
+                            onChange={() => onSetMany(rowKeys, row.on)}
                           />
                           <span className="num text-meta text-muted-foreground">{held}/{rowKeys.length}</span>
                         </span>
@@ -240,6 +252,7 @@ export function RolePermissionMatrix({
                               added={isAdded}
                               removed={isRemoved}
                               locked={locked}
+                              protectedRole={allLocked}
                               checked={current.has(key)}
                               actionName={actionName}
                               moduleName={moduleName}
@@ -267,6 +280,7 @@ function CellCheckbox({
   added,
   removed,
   locked,
+  protectedRole,
   checked,
   actionName,
   moduleName,
@@ -278,6 +292,7 @@ function CellCheckbox({
   added: boolean
   removed: boolean
   locked: boolean
+  protectedRole: boolean
   checked: boolean
   actionName: (action: string) => string
   moduleName: (module: string) => string
@@ -285,6 +300,8 @@ function CellCheckbox({
 }) {
   const t = useTranslations("adminRolesPage")
   const cellName = added ? "form.cellAdded" : removed ? "form.cellRemoved" : "form.cell"
+  // system_admin's cells are locked because its permissions are protected, not because the editor lacks them.
+  const reasonKey = protectedRole ? "form.protectedCell" : "form.lockedCell"
 
   return (
     <MatrixCheckbox
@@ -292,7 +309,8 @@ function CellCheckbox({
       label={t(cellName, { action: actionName(action), module: moduleName(module) })}
       checked={checked}
       disabled={locked}
-      title={locked ? t("form.lockedCell") : undefined}
+      title={locked ? t(reasonKey) : undefined}
+      describedBy={locked ? (protectedRole ? PROTECTED_REASON_ID : LOCKED_REASON_ID) : undefined}
       className={cn(added && "bg-success-soft", removed && "bg-danger-soft")}
       onChange={onToggle}
     >

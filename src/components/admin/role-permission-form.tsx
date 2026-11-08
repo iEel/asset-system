@@ -12,7 +12,7 @@ import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
-import { RoleChangeSummary } from "@/components/admin/role-form/role-change-summary"
+import { RoleChangeSummary, RoleSegregationNotice } from "@/components/admin/role-form/role-change-summary"
 import { RoleDetailsSection, type RoleField, type RoleMeta } from "@/components/admin/role-form/role-details-section"
 import { RoleFormHeader } from "@/components/admin/role-form/role-form-header"
 import { RolePeopleSection } from "@/components/admin/role-form/role-people-section"
@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils"
 import { maxLength, minLength, pattern, required } from "@/lib/validation-rules"
 
 // Page group 11 plan 3 task 4 (spec §7; board US-Role-Edit): the create and edit role form. The parts are in role-form/:
-// the header, ข้อมูลบทบาท, the grouped permission matrix, the change summary with the segregation warning (edit), and
+// the header, ข้อมูลบทบาท, the grouped permission matrix, the change summary (edit), the segregation warning (create and edit), and
 // the people in the role (edit, user:view). Below sm the note is the form's last section; from sm it sits in the footer
 // with its visible label. Both note fields share one state and only one is displayed at a time.
 
@@ -215,9 +215,9 @@ export function RolePermissionForm({ data, usersHref = "" }: { data: RoleFormDat
             userCount={data.userCount}
             people={data.people}
             canViewUsers={data.canViewUsers}
-            disposalSegregationOn={data.disposalSegregationOn}
           />
         )}
+        <RoleSegregationNotice current={values} disposalSegregationOn={data.disposalSegregationOn} />
 
         <section className={cn(getPanelClasses(), "p-4 sm:hidden")}>
           <Field label={t("form.noteOptional")} id="role-note-phone">

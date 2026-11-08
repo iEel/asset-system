@@ -5775,8 +5775,8 @@
       "closeGroup": "ซ่อน",
       "lockedCell": "ให้สิทธิ์นี้ไม่ได้ เพราะคุณไม่มีสิทธิ์นี้",
       "summaryTitle": "การเปลี่ยนแปลง {before, number} → {after, number}",
-      "summaryAdd": "เพิ่ม {action} · {module}",
-      "summaryRemove": "เอาออก {action} · {module}",
+      "summaryAdd": "เพิ่มสิทธิ์ {action} · {module}",
+      "summaryRemove": "เอาสิทธิ์ {action} ออก · {module}",
       "appliesTo": "มีผลทันทีกับผู้ใช้ {count, number} คนในบทบาทนี้",
       "appliesToNames": "มีผลทันทีกับผู้ใช้ {count, number} คนในบทบาทนี้: {names}",
       "sodTitle": "ทำรายการและอนุมัติได้ในบทบาทเดียว",
@@ -5799,7 +5799,9 @@
       "more": "อื่น ๆ",
       "note": "หมายเหตุ",
       "noteOptional": "หมายเหตุ (ไม่บังคับ)",
-      "notePlaceholder": "เช่น หัวหน้าฝ่ายไอทีขอทางอีเมล 8 พ.ย."
+      "notePlaceholder": "เช่น หัวหน้าฝ่ายไอทีขอทางอีเมล 8 พ.ย.",
+      "protectedCell": "สิทธิ์ของ System Administrator ถูกล็อก",
+      "addUsersAlreadyHeld": "อยู่ในบทบาทนี้แล้ว {count, number} คน"
     }
   },
   "dataQualityPage": {

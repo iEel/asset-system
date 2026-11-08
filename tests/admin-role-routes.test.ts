@@ -256,6 +256,7 @@ test("bulk add saves the allowed users and names the refused", async () => {
   assert.equal(response.status, 200)
   assert.deepEqual(await response.json(), {
     added: ["user-a"],
+    alreadyHeld: [],
     refused: [{ userId: "user-b", reason: "Forbidden: cannot modify a user who has access you do not hold" }],
   })
   assert.deepEqual(state.writes, ["userRole.create:user-a", "invalidate:user-a"])
@@ -270,7 +271,7 @@ test("bulk add saves the allowed users and names the refused", async () => {
   assert.deepEqual(roleLogs[0].newValue, { addedUserIds: ["user-a"], note: "team move" })
 })
 
-test("bulk add skips a user who already holds the role and refuses a missing user", async () => {
+test("bulk add lists a user who already holds the role apart from the added, and refuses a missing user", async () => {
   state.actor = { id: "admin-1", roles: ["system_admin"], permissions: [], employeeId: null }
   state.users = { "user-a": { id: "user-a", isActive: true, userRoles: [heldRole("role-warehouse", "warehouse", [["asset", "view"]])] } }
 
@@ -278,7 +279,8 @@ test("bulk add skips a user who already holds the role and refuses a missing use
 
   assert.equal(response.status, 200)
   assert.deepEqual(await response.json(), {
-    added: ["user-a"],
+    added: [],
+    alreadyHeld: ["user-a"],
     refused: [{ userId: "user-gone", reason: "User not found or inactive" }],
   })
   assert.deepEqual(state.writes, [])

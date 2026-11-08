@@ -33,7 +33,7 @@ test("one header row with column select in fixed action order", () => {
   assert.equal(matrix.match(/<DataTableHeader>/g)?.length, 1, "one header for the whole table")
   assert.match(matrix, /<DataTableHeader>\n\s+<tr>\n\s+<DataTableHead[^>]*>\{t\("module"\)\}<\/DataTableHead>\n\s+<DataTableHead[^>]*>\{t\("form\.wholeRow"\)\}<\/DataTableHead>\n\s+\{columns\.map\(/)
   assert.match(matrix, /const columns = PERMISSION_ACTION_ORDER\.map\(\(action\) =>/)
-  assert.match(matrix, /state: columnState\(current, action, /)
+  assert.match(matrix, /\.\.\.bulkSelect\(current, keys, isLocked\)/, "the column state counts the keys that can change")
   assert.match(matrix, /<span className="num">\{column\.selected\}\/\{column\.rows\}<\/span>/)
   assert.match(matrix, /label=\{t\("form\.selectColumn", \{ action: actionName\(column\.action\) \}\)\}/)
   assert.match(matrix, /indeterminate=\{column\.state === "some"\}/)
@@ -41,6 +41,16 @@ test("one header row with column select in fixed action order", () => {
   assert.match(matrix, /column\.action === "delete" && "text-warning"/, "ลบ is last, in the warning tone")
   assert.equal(thForm().wholeRow, "ทั้งแถว")
   assert.equal(thForm().selectColumn, "เลือกทั้งคอลัมน์ {action}")
+})
+
+test("row and column select clear past locked cells", () => {
+  const matrix = read(MATRIX)
+  assert.match(matrix, /onChange=\{\(\) => onSetMany\(column\.keys, column\.on\)\}/)
+  assert.match(matrix, /const row = bulkSelect\(current, rowKeys, isLocked\)/)
+  assert.match(matrix, /checked=\{row\.state === "all"\}/)
+  assert.match(matrix, /indeterminate=\{row\.state === "some"\}/)
+  assert.match(matrix, /onChange=\{\(\) => onSetMany\(rowKeys, row\.on\)\}/)
+  assert.doesNotMatch(matrix, /column\.state !== "all"|held !== rowKeys\.length/, "no target state from every key, locked ones included")
 })
 
 test("groups fold with aria-expanded and keep their rows in the DOM", () => {
@@ -87,7 +97,16 @@ test("locked cells are disabled and kept by setMany", () => {
   const matrix = read(MATRIX)
   assert.match(matrix, /const locked = isLocked\(key\)/)
   assert.match(matrix, /disabled=\{locked\}/)
-  assert.match(matrix, /title=\{locked \? t\("form\.lockedCell"\) : undefined\}/)
+  // The reason is the title and, for screen readers, a shared description; system_admin's cells say they are protected.
+  assert.match(matrix, /const reasonKey = protectedRole \? "form\.protectedCell" : "form\.lockedCell"/)
+  assert.match(matrix, /title=\{locked \? t\(reasonKey\) : undefined\}/)
+  assert.match(matrix, /describedBy=\{locked \? \(protectedRole \? PROTECTED_REASON_ID : LOCKED_REASON_ID\) : undefined\}/)
+  assert.match(matrix, /aria-describedby=\{describedBy\}/)
+  assert.match(matrix, /<span id=\{LOCKED_REASON_ID\} className="sr-only">\{t\("form\.lockedCell"\)\}<\/span>/)
+  assert.match(matrix, /<span id=\{PROTECTED_REASON_ID\} className="sr-only">\{t\("form\.protectedCell"\)\}<\/span>/)
+  assert.match(matrix, /protectedRole=\{allLocked\}/)
+  assert.equal(thForm().protectedCell, "สิทธิ์ของ System Administrator ถูกล็อก")
+  assert.equal(messages("en").adminRolesPage?.form?.protectedCell, "System Administrator permissions are locked")
   const form = read(FORM)
   assert.match(form, /setValues\(\(current\) => setMany\(current, keys, on, isLocked\)\)/)
   assert.match(form, /const isLocked = \(key: string\) => permissionsLocked \|\| lockedKeys\.has\(key\)/)
@@ -117,6 +136,9 @@ test("the summary names up to three users only with user:view", () => {
   assert.match(data, /take: 10/)
   assert.match(data, /orderBy: \{ displayName: "asc" \}/)
   assert.match(read(FORM), /\{isCreate \? null : \(\n\s+<RoleChangeSummary/)
+  // A line names the action as a permission, so เพิ่ม · ตรวจนับ never reads "เพิ่ม เพิ่ม".
+  assert.equal(thForm().summaryAdd, "เพิ่มสิทธิ์ {action} · {module}")
+  assert.equal(thForm().summaryRemove, "เอาสิทธิ์ {action} ออก · {module}")
 })
 
 test("segregation warning reads the setting", () => {
@@ -125,6 +147,11 @@ test("segregation warning reads the setting", () => {
   assert.match(data, /where: \{ key: \{ in: \[\.\.\.workflowApprovalSettingKeys\] \} \}/)
   const summary = read(SUMMARY)
   assert.match(summary, /segregationWarnings\(current, disposalSegregationOn\)/)
+  // The warning is its own component, shown on create and edit; the change summary stays edit-only.
+  assert.match(summary, /export function RoleSegregationNotice\(/)
+  const form = read(FORM)
+  assert.match(form, /\n\s+<RoleSegregationNotice current=\{values\} disposalSegregationOn=\{data\.disposalSegregationOn\} \/>/)
+  assert.doesNotMatch(form, /\{isCreate \? null : \(\n\s+<RoleSegregationNotice/)
   assert.match(summary, /<Notice tone="warning" title=\{t\("form\.sodTitle"\)\}/)
   assert.match(summary, /warning\.settingOn \? t\("form\.sodDisposalOn"\) : t\("form\.sodDisposalOff"\)/)
   assert.match(summary, /t\("form\.sodAudit"\)/)
@@ -137,6 +164,7 @@ test("people section and add dialog are gated by user:view and user:edit", () =>
   assert.match(form, /\{role\.id && data\.canViewUsers \? \(\n\s+<RolePeopleSection/)
   const header = read(HEADER)
   assert.match(header, /canViewUsers \? <a href="#role-people"/, "usersInRole jumps to the people section only when it is there")
+  assert.match(header, /<a href="#role-people" className=\{cn\(linkVariants\(\), "num inline-flex min-h-11 items-center md:min-h-0"\)\}>/, "a 44px target below md")
   const people = read(PEOPLE)
   assert.match(people, /<section id="role-people"/)
   assert.match(people, /canEditUsers \? \(\n\s+<Link href=\{`\/\$\{locale\}\/admin\/users\/\$\{person\.id\}\/edit`\}/)
@@ -154,6 +182,11 @@ test("people section and add dialog are gated by user:view and user:edit", () =>
   assert.match(dialog, /body: JSON\.stringify\(\{ userIds: \[\.\.\.picked\], note: note\.trim\(\) \|\| null \}\)/)
   assert.match(dialog, /apiError\.describe\(refusal\.reason\)\.message/, "every refusal reads in Thai through the catalog")
   assert.match(dialog, /router\.refresh\(\)/)
+  // People added, or found already in the role, leave the list at once; the already-held are counted apart.
+  assert.match(dialog, /const gone = new Set\(\[\.\.\.done\.added, \.\.\.done\.alreadyHeld\]\)/)
+  assert.match(dialog, /setCandidates\(\(current\) => current\?\.filter\(\(candidate\) => !gone\.has\(candidate\.id\)\) \?\? null\)/)
+  assert.match(dialog, /t\("form\.addUsersAlreadyHeld", \{ count: result\.alreadyHeld\.length \}\)/)
+  assert.equal(thForm().addUsersAlreadyHeld, "อยู่ในบทบาทนี้แล้ว {count, number} คน")
   assert.doesNotMatch(dialog, /<form\b/)
   // Every refusal the route can send has a catalog key.
   const catalog = read("src/lib/api-error-catalog.ts")

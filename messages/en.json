@@ -5749,7 +5749,7 @@
     "checkNoUsers": "No users",
     "checkInactive": "Inactive",
     "searchPlaceholder": "Search roles",
-    "inactiveWarning": "{count, plural, one {# inactive role still has users} other {# inactive roles still have users}} · {names} {users, plural, one {is still linked to # user} other {are still linked to # users}}. Move the users out of this role.",
+    "inactiveWarning": "{count, plural, one {# inactive role still has users} other {# inactive roles still have users}} · {count, plural, one {{names} is} other {{names} are}} still linked to {users, plural, one {# user} other {# users}}. {count, plural, one {Move the users out of this role.} other {Move the users out of these roles.}}",
     "inactiveWarningLink": "View users in this role",
     "permissionsOf": "{count, number} / {total, number}",
     "highRiskBadge": "High-risk",
@@ -5799,7 +5799,9 @@
       "more": "More",
       "note": "Note",
       "noteOptional": "Note (optional)",
-      "notePlaceholder": "For example: the IT manager asked by email on 8 Nov"
+      "notePlaceholder": "For example: the IT manager asked by email on 8 Nov",
+      "protectedCell": "System Administrator permissions are locked",
+      "addUsersAlreadyHeld": "{count, plural, one {# person was already in this role} other {# people were already in this role}}"
     }
   },
   "dataQualityPage": {

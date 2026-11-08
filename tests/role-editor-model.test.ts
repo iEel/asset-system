@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  bulkSelect,
   columnState,
   groupSummary,
   permissionMarks,
@@ -66,4 +67,24 @@ test("segregation warning says whether the setting is on", () => {
   ])
   assert.deepEqual(segregationWarnings(new Set(["disposal:create"]), true), [])
   assert.deepEqual(segregationWarnings(new Set(["audit:approve"]), false), [])
+})
+
+test("bulk select decides from the keys that can change", () => {
+  const keys = ["asset:delete", "setting:delete", "user:delete"]
+  const locked = (key: string) => key === "setting:delete"
+  // Every grantable key held: checked, and the next click clears them.
+  assert.deepEqual(bulkSelect(new Set(["asset:delete", "user:delete"]), keys, locked), { state: "all", on: false })
+  assert.deepEqual(bulkSelect(new Set(["asset:delete"]), keys, locked), { state: "some", on: true })
+  assert.deepEqual(bulkSelect(new Set(), keys, locked), { state: "none", on: true })
+  // Nothing locked: the plain state over every key.
+  const free = () => false
+  assert.deepEqual(bulkSelect(new Set(keys), keys, free), { state: "all", on: false })
+  assert.deepEqual(bulkSelect(new Set(["asset:delete"]), keys, free), { state: "some", on: true })
+  // Every key locked (system_admin): the state of the keys themselves; the checkbox is disabled anyway.
+  const all = () => true
+  assert.deepEqual(bulkSelect(new Set(keys), keys, all), { state: "all", on: false })
+  assert.deepEqual(bulkSelect(new Set(), [], free), { state: "none", on: true })
+  // A click with on=false then clears every grantable key, and the locked one keeps its state.
+  const cleared = setMany(new Set(["asset:delete", "user:delete"]), keys, false, locked)
+  assert.deepEqual([...cleared], [])
 })

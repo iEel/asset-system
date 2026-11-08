@@ -11,13 +11,15 @@ type RoleInactiveWarningProps = {
   roles: readonly RoleListItem[]
   // The user list filtered to one role (/admin/users?role=<id>), built by the page.
   usersHref: (roleId: string) => string
+  // The user list needs user:view; without it the warning has no link (as the users column).
+  canViewUsers: boolean
   className?: string
 }
 
 // Spec §6 (replaces the StatStrip's "inactive role with users"): "บทบาทปิดใช้งานแต่ยังมีผู้ใช้ {n} บทบาท · {names}
 // ยังผูกกับผู้ใช้ {users} คน …". The names list every such role and the users are their sum; the link opens the user list
 // for the first one (my call in the spec). Server-safe.
-export function RoleInactiveWarning({ roles, usersHref, className }: RoleInactiveWarningProps) {
+export function RoleInactiveWarning({ roles, usersHref, canViewUsers, className }: RoleInactiveWarningProps) {
   const t = useTranslations("adminRolesPage")
   if (roles.length === 0) return null
 
@@ -27,10 +29,12 @@ export function RoleInactiveWarning({ roles, usersHref, className }: RoleInactiv
       role="note"
       data-slot="role-inactive-warning"
       action={
-        <Link href={usersHref(roles[0].id)} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
-          {t("inactiveWarningLink")}
-          <ArrowRight aria-hidden="true" className="size-3.5" />
-        </Link>
+        canViewUsers ? (
+          <Link href={usersHref(roles[0].id)} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
+            {t("inactiveWarningLink")}
+            <ArrowRight aria-hidden="true" className="size-3.5" />
+          </Link>
+        ) : undefined
       }
       className={className}
     >

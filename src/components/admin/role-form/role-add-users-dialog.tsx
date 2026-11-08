@@ -16,12 +16,14 @@ export const MAX_PICK = 50
 
 type Candidate = { id: string; displayName: string; username: string }
 type ListedUser = Candidate & { isActive: boolean; userRoles: { roleId: string }[] }
-type AddResult = { added: string[]; refused: { userId: string; reason: string }[] }
+type AddResult = { added: string[]; alreadyHeld: string[]; refused: { userId: string; reason: string }[] }
 
 // เพิ่มผู้ใช้เข้าบทบาทนี้ (spec §7.3): the active accounts not in the role (GET /api/admin/users, fetched once per open),
 // a search over name and login name, up to 50 ticks and an optional หมายเหตุ, then POST /api/admin/roles/[id]/users.
-// The route checks each person as the user form does; the dialog then says how many were added and names each refusal
-// with its reason in Thai (through the api-error catalog), and the page refreshes. No form element: the confirm is a button.
+// The route checks each person as the user form does; the dialog then says how many were added, how many were already
+// in the role (added by someone else meanwhile), and names each refusal with its reason in Thai (through the api-error
+// catalog). The added and the already-held leave the list at once, and the page refreshes. No form element: the confirm
+// is a button.
 export function RoleAddUsersDialog({
   roleId,
   open,
@@ -104,7 +106,10 @@ export function RoleAddUsersDialog({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
-      setResult(payload as AddResult)
+      const done = payload as AddResult
+      setResult(done)
+      const gone = new Set([...done.added, ...done.alreadyHeld])
+      setCandidates((current) => current?.filter((candidate) => !gone.has(candidate.id)) ?? null)
       setPicked(new Set())
       router.refresh()
     } catch (error) {
@@ -132,7 +137,12 @@ export function RoleAddUsersDialog({
       <AccessibleDialogBody className="grid gap-4">
         {result ? (
           <div role="status" className="grid gap-2">
-            <Notice tone="success">{t("form.addUsersDone", { count: result.added.length })}</Notice>
+            {result.added.length > 0 || (result.alreadyHeld.length === 0 && result.refused.length === 0) ? (
+              <Notice tone="success">{t("form.addUsersDone", { count: result.added.length })}</Notice>
+            ) : null}
+            {result.alreadyHeld.length > 0 ? (
+              <Notice tone="neutral">{t("form.addUsersAlreadyHeld", { count: result.alreadyHeld.length })}</Notice>
+            ) : null}
             {result.refused.length > 0 ? (
               <Notice tone="warning" title={t("form.addUsersRefused", { count: result.refused.length })}>
                 <ul className="grid gap-1">

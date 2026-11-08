@@ -35,6 +35,24 @@ export function columnState(current: ReadonlySet<string>, action: string, module
   return held === modules.length ? "all" : "some"
 }
 
+/**
+ * A row or column checkbox: its state and what the next click sets, worked out over the keys that can change. A locked
+ * key is never held (it is locked because the actor cannot grant it), so counting it would keep the box mixed for good
+ * and every click would only add. When every key is locked (system_admin), the keys themselves count; the box is
+ * disabled then.
+ */
+export function bulkSelect(
+  current: ReadonlySet<string>,
+  keys: readonly string[],
+  locked: (key: string) => boolean
+): { state: "all" | "some" | "none"; on: boolean } {
+  const editable = keys.filter((key) => !locked(key))
+  const scope = editable.length > 0 ? editable : keys
+  const held = scope.filter((key) => current.has(key)).length
+  const state = held === 0 ? "none" : held === scope.length ? "all" : "some"
+  return { state, on: state !== "all" }
+}
+
 /** Turns keys on or off in a new set; locked keys keep their state. */
 export function setMany(
   current: ReadonlySet<string>,

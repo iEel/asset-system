@@ -13,7 +13,8 @@ type RoleUsersRouteContext = {
 }
 
 // Adds several users to one role (group 11 plan 3). Each user passes the same access checks as the user form; the
-// ones refused are named with the reason, the rest are saved.
+// ones refused are named with the reason, the rest are saved. Someone who already holds the role is listed apart in
+// alreadyHeld: nothing is written for them, so they are neither added nor in the role log.
 export async function POST(request: NextRequest, context: RoleUsersRouteContext) {
   try {
     const actor = await requireAuth()
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest, context: RoleUsersRouteContext)
     if (!role.isActive) return NextResponse.json({ error: "Role is inactive" }, { status: 400 })
 
     const added: string[] = []
-    const written: string[] = []
+    const alreadyHeld: string[] = []
     const refused: { userId: string; reason: string }[] = []
 
     for (const userId of Array.from(new Set(input.userIds))) {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest, context: RoleUsersRouteContext)
 
       const storedRoleIds = user.userRoles.map((userRole) => userRole.roleId)
       if (storedRoleIds.includes(roleId)) {
-        added.push(userId)
+        alreadyHeld.push(userId)
         continue
       }
 
@@ -73,20 +74,19 @@ export async function POST(request: NextRequest, context: RoleUsersRouteContext)
       })
       invalidateUserAccess(userId)
       added.push(userId)
-      written.push(userId)
     }
 
-    if (written.length > 0) {
+    if (added.length > 0) {
       await logAudit({
         userId: actor.id,
         action: "update",
         module: "role",
         recordId: roleId,
-        newValue: { addedUserIds: written, note },
+        newValue: { addedUserIds: added, note },
       })
     }
 
-    return NextResponse.json({ added, refused })
+    return NextResponse.json({ added, alreadyHeld, refused })
   } catch (error) {
     return errorResponse(error, 400)
   }

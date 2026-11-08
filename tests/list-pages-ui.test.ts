@@ -637,7 +637,8 @@ test("roles: PageHeader, the role list and the permission matrix on DataTable, w
   assert.match(source, /<DataTable caption=\{t\("roleSummary"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\} footer=\{pagination\}>/)
   assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+nextWidth="auto"\n\s+groups=\{\[\]\}\n\s+\/>/, "edit is the only command: no ⋯ (spec 2B §5.6)")
   assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: role\.name \}\)\}/)
-  assert.match(source, /<DataTableHead align="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  // The actions column is pinned again (group 11 plan 3 final review), as before task 3.
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
   assert.match(source, /<RoleInactiveWarning roles=\{inactiveWithUsers\}/, "inactive roles that still have users need action (R-d)")
   assert.match(source, /\{canCreate \? \(\n\s+<Link href=\{`\/\$\{locale\}\/admin\/roles\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/, "M13: create is the header's primary md button")
   assert.doesNotMatch(source, /\bfixed bottom-|shadow-lg|\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-<|<StatStrip\b/)

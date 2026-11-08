@@ -214,7 +214,7 @@ export default async function RolesPage({ params, searchParams }: RolesPageProps
         </ContentPanel>
       ) : (
         <>
-          <RoleInactiveWarning roles={inactiveWithUsers} usersHref={usersHref} />
+          <RoleInactiveWarning roles={inactiveWithUsers} usersHref={usersHref} canViewUsers={canViewUsers} />
 
           {/* Phone (spec §6, my call; the user list's phone pattern): the search, one sideways-scrolling row with the
               chips (44px each), the cards and the pagination. The row scrolls inside itself, so the page never scrolls
@@ -251,7 +251,7 @@ export default async function RolesPage({ params, searchParams }: RolesPageProps
                   <DataTableHead>{t("permissions")}</DataTableHead>
                   <DataTableHead>{t("type")}</DataTableHead>
                   <DataTableHead>{tCommon("status")}</DataTableHead>
-                  <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+                  <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
                 </tr>
               </DataTableHeader>
               <DataTableBody>
@@ -263,9 +263,11 @@ export default async function RolesPage({ params, searchParams }: RolesPageProps
                     const permissionCount = role.permissionKeys.length
                     return (
                       <ClickableTableRow key={role.id} href={editHref} label={`${tCommon("edit")}: ${role.label}`}>
-                        <DataTableCell className="min-w-48 max-w-80">
+                        {/* Below xl the table must fit 718px (1024 with the sidebar, and 768–1023): a small minimum here, the
+                            key may break, the สิทธิ์สูง badge wraps under the count, สถานะ may wrap, and แก้ไข is pinned. */}
+                        <DataTableCell className="min-w-32 max-w-80">
                           <div className="break-words font-medium text-foreground">{role.label}</div>
-                          <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag">{role.name}</span></div>
+                          <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag max-xl:whitespace-normal max-xl:break-all">{role.name}</span></div>
                           {role.description ? (
                             <div className="mt-1 line-clamp-2 break-words text-meta text-muted-foreground xl:hidden">{role.description}</div>
                           ) : null}
@@ -282,9 +284,9 @@ export default async function RolesPage({ params, searchParams }: RolesPageProps
                             <span className="font-semibold text-foreground">{formatCount(role.userCount)}</span>
                           )}
                         </DataTableCell>
-                        <DataTableCell className="whitespace-nowrap">
-                          <span className="flex items-center gap-1.5">
-                            <span className="num font-semibold text-foreground">{t("permissionsOf", { count: permissionCount, total: permissionTotal })}</span>
+                        <DataTableCell>
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className="num font-semibold whitespace-nowrap text-foreground">{t("permissionsOf", { count: permissionCount, total: permissionTotal })}</span>
                             {isHighRiskRole(role.permissionKeys) ? <StatusBadge label={t("highRiskBadge")} tone="warning" /> : null}
                           </span>
                           {/* A thin data bar; the words beside it carry the numbers. */}
@@ -302,13 +304,13 @@ export default async function RolesPage({ params, searchParams }: RolesPageProps
                             {role.name === "system_admin" ? <Chip>{t("protectedRole")}</Chip> : null}
                           </div>
                         </DataTableCell>
-                        <DataTableCell className="whitespace-nowrap">
+                        <DataTableCell>
                           <StatusBadge label={role.isActive ? tCommon("active") : tCommon("inactive")} tone={role.isActive ? "success" : "muted"} />
                           {!role.isActive && role.userCount > 0 ? (
                             <div className="mt-1 text-meta text-warning">{t("stillHasUsers", { count: role.userCount })}</div>
                           ) : null}
                         </DataTableCell>
-                        <DataTableCell align="right">
+                        <DataTableCell align="right" sticky="right">
                           <RowActions
                             code={role.name}
                             name={role.label}

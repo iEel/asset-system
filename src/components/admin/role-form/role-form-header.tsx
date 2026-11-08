@@ -54,7 +54,7 @@ export function RoleFormHeader({
           <StatusBadge label={role.isActive ? tCommon("active") : tCommon("inactive")} tone={role.isActive ? "success" : "muted"} />
           <StatusBadge label={role.isSystem ? t("systemRole") : t("customRole")} tone={role.isSystem ? "info" : "neutral"} />
           <span className="tag">{role.name}</span>
-          {canViewUsers ? <a href="#role-people" className={cn(linkVariants(), "num")}>{users}</a> : <span className="num">{users}</span>}
+          {canViewUsers ? <a href="#role-people" className={cn(linkVariants(), "num inline-flex min-h-11 items-center md:min-h-0")}>{users}</a> : <span className="num">{users}</span>}
         </span>
       }
       actions={
