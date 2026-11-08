@@ -110,11 +110,28 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   const importAllowed = ["e2e/assets/import-export.spec.ts", "e2e/assets/import-file.ts", "e2e/cross-cutting/support/refusals.ts"]
   for (const file of importAllowed) assert.ok(sources.includes(file), `${file} is a file of the suite`)
   assert.deepEqual(sources.filter((file) => /import-(?:preview|confirm)/.test(read(file))).sort(), ["e2e/assets/import-export.spec.ts", "e2e/cross-cutting/support/refusals.ts"])
+  // The Integration API admin page (group 12 plan 4 task 3): only its spec may name the client list's path, and only to
+  // serve fake clients from the browser. The GET is fulfilled with fake data; anything else falls back to the
+  // fixtures' context abort (a hazard, the test fails). It never lets a request reach the app, and it never names the
+  // Integration API itself.
+  const integrationClientsAllowed = "e2e/admin/integrations.spec.ts"
+  assert.ok(sources.includes(integrationClientsAllowed), `${integrationClientsAllowed} is a file of the suite`)
+  assert.deepEqual(sources.filter((file) => /integration-clients/.test(read(file))), [integrationClientsAllowed])
+  const integrationsSpec = read(integrationClientsAllowed)
+  assert.match(integrationsSpec, /page\.route\("\*\*\/api\/admin\/integration-clients", /)
+  assert.match(integrationsSpec, /if \(request\.method\(\)\.toUpperCase\(\) === "GET"\) return route\.fulfill\(\{ json: \{ data: FAKE_CLIENTS \} \}\)/)
+  assert.match(integrationsSpec, /return route\.fallback\(\)/)
+  assert.doesNotMatch(integrationsSpec, /\.continue\(|\.fetch\(|route\.continue|route\.fetch/)
+  assert.match(integrationsSpec, /expect\(attempted, "no request but the GET reached the client list"\)\.toEqual\(\[\]\)/)
   for (const file of sources) {
     const source = read(file)
     for (const [what, pattern] of banned) {
       if (guards[file] === what) continue
       if (what === "Excel import" && importAllowed.includes(file)) continue
+      if (what === "the integration API" && file === integrationClientsAllowed) {
+        assert.doesNotMatch(source, /\/api\/integrations/, `${file}: the Integration API itself`)
+        continue
+      }
       assert.doesNotMatch(source, pattern, `${file}: ${what}`)
     }
     // The settings are read with a GET only (the global setup's approval check).
