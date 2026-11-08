@@ -23,6 +23,10 @@ export const adminUserSchema = z.object({
 
 export type AdminUserInput = z.infer<typeof adminUserSchema>
 
+// The edit (PUT): isActive is optional and an absent one keeps the stored status, so a stale form never reopens an
+// account someone closed meanwhile; the status changes through PATCH /status (group 11 plan 2 final review).
+export const adminUserUpdateSchema = adminUserSchema.extend({ isActive: z.boolean().optional() })
+
 export const adminUserStatusSchema = z.object({
   isActive: z.boolean(),
   note: z.string().trim().max(500).nullable().optional(),

@@ -28,8 +28,8 @@ const systemAdminRole = { id: "role-admin", name: "system_admin", isActive: true
 const accountingRole = { id: "role-accounting", name: "accounting", isActive: true, permissionKeys: ["asset:view", "report:export"] }
 const retiredRole = { id: "role-retired", name: "retired", isActive: false, permissionKeys: [] }
 
-const employeeTarget = { id: "user-2", roleNames: ["employee"], permissionKeys: ["asset:view"], isActive: true }
-const adminTarget = { id: "user-9", roleNames: ["system_admin"], permissionKeys: [], isActive: true }
+const employeeTarget = { id: "user-2", roleNames: ["employee"], activeRoleNames: ["employee"], permissionKeys: ["asset:view"], isActive: true }
+const adminTarget = { id: "user-9", roleNames: ["system_admin"], activeRoleNames: ["system_admin"], permissionKeys: [], isActive: true }
 
 function userChange(overrides: Partial<Parameters<typeof getUserAccessChangeError>[0]>) {
   return getUserAccessChangeError({
@@ -51,7 +51,7 @@ test("a non-admin may manage a user whose access is within their own", () => {
 
 test("a non-admin cannot grant the system_admin role, including to themselves", () => {
   assert.equal(
-    userChange({ target: { id: "helpdesk-1", roleNames: ["helpdesk"], permissionKeys: helpdesk.permissions, isActive: true }, requestedRoleIds: ["role-admin"], requestedRoles: [systemAdminRole] }),
+    userChange({ target: { id: "helpdesk-1", roleNames: ["helpdesk"], activeRoleNames: ["helpdesk"], permissionKeys: helpdesk.permissions, isActive: true }, requestedRoleIds: ["role-admin"], requestedRoles: [systemAdminRole] }),
     "Forbidden: only system_admin can grant the system_admin role",
   )
 })
@@ -69,7 +69,7 @@ test("a non-admin cannot edit or reset the password of a more privileged user", 
     "Forbidden: cannot modify a user who has access you do not hold",
   )
   assert.equal(
-    userChange({ target: { id: "user-3", roleNames: ["accounting"], permissionKeys: accountingRole.permissionKeys, isActive: true } }),
+    userChange({ target: { id: "user-3", roleNames: ["accounting"], activeRoleNames: ["accounting"], permissionKeys: accountingRole.permissionKeys, isActive: true } }),
     "Forbidden: cannot modify a user who has access you do not hold",
   )
 })
@@ -147,7 +147,10 @@ test("a new inactive role is still refused", () => {
   )
 })
 
-test("inactive roles do not count as the target's access", () => {
+// Final review ruling (reverses the Task 1 ruling): every role the target holds, active or inactive, counts for the
+// "more access" check, so a dormant high-permission role cannot be taken over and switched back on later. Only the
+// last-active-system-admin test reads the active role names.
+test("a held inactive role still counts as the target's access", () => {
   const actor = { id: "actor-2", roles: ["helpdesk"], permissions: ["asset:view"] }
   const target = toExistingUserAccess({
     id: "user-5",
@@ -162,7 +165,9 @@ test("inactive roles do not count as the target's access", () => {
       },
     ],
   })
-  assert.deepEqual(target.permissionKeys, [])
+  assert.deepEqual(target.permissionKeys, ["asset:delete"])
+  assert.deepEqual(target.roleNames, ["old_role"])
+  assert.deepEqual(target.activeRoleNames, [])
 
   assert.equal(
     userChange({
@@ -172,6 +177,19 @@ test("inactive roles do not count as the target's access", () => {
       requestedRoleIds: ["old", "r1"],
       requestedRoles: [oldRole, r1Role],
     }),
+    "Forbidden: cannot modify a user who has access you do not hold",
+  )
+})
+
+test("a held inactive system_admin role blocks a non-admin but is not an active admin for the last-admin rule", () => {
+  const target = toExistingUserAccess({
+    id: "user-6",
+    isActive: true,
+    userRoles: [{ role: { name: "system_admin", isActive: false, rolePermissions: [] } }],
+  })
+  assert.equal(userChange({ target }), "Forbidden: cannot modify a user who has access you do not hold")
+  assert.equal(
+    userChange({ actor: systemAdmin, target, currentRoleIds: ["role-admin"], requestedRoleIds: ["role-employee"], requestedRoles: [employeeRole], otherActiveSystemAdminCount: 0 }),
     null,
   )
 })

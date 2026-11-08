@@ -5,7 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { FieldRefusalError } from "@/lib/field-errors"
-import { adminUserSchema } from "@/lib/validations/admin-user"
+import { adminUserUpdateSchema } from "@/lib/validations/admin-user"
 import { invalidateUserAccess } from "@/lib/session-access-cache"
 import { adminUserSecretOmit, toAdminUserResponse } from "@/lib/admin-user-response"
 import { getUserAccessChangeError } from "@/lib/admin-access-policy"
@@ -27,13 +27,14 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
     requirePermission(sessionUser, "user", "edit")
 
     const { id } = await context.params
-    const input = adminUserSchema.parse(await request.json())
+    const input = adminUserUpdateSchema.parse(await request.json())
     const existing = await prisma.user.findFirst({
       where: { id },
       omit: adminUserSecretOmit,
       include: userAccessInclude,
     })
     if (!existing) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    const nextIsActive = input.isActive ?? existing.isActive
 
     const accessError = getUserAccessChangeError({
       actor: sessionUser,
@@ -41,7 +42,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
       requestedRoleIds: input.roleIds,
       requestedRoles: await loadGrantableRoles(input.roleIds),
       currentRoleIds: existing.userRoles.map((userRole) => userRole.roleId),
-      nextIsActive: input.isActive,
+      nextIsActive,
       otherActiveSystemAdminCount: await countOtherActiveSystemAdmins(id),
     })
     if (accessError) {
@@ -61,7 +62,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
           displayName: input.displayName,
           email: input.email,
           employeeId: input.employeeId,
-          isActive: input.isActive,
+          ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         },
         omit: adminUserSecretOmit,
       })

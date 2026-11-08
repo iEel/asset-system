@@ -4,7 +4,9 @@ type AccessActor = { id: string; roles: string[]; permissions: string[] }
 
 type GrantableRole = { id: string; name: string; isActive: boolean; permissionKeys: string[] }
 
-type ExistingUserAccess = { id: string; roleNames: string[]; permissionKeys: string[]; isActive: boolean }
+// roleNames and permissionKeys cover every held role, active or inactive (the "more access" check); activeRoleNames
+// only the active ones (the last-active-system-admin test).
+type ExistingUserAccess = { id: string; roleNames: string[]; permissionKeys: string[]; activeRoleNames: string[]; isActive: boolean }
 
 export type UserAccessChangeInput = {
   actor: AccessActor
@@ -43,7 +45,7 @@ export function getUserAccessChangeError(input: UserAccessChangeInput): string |
     if (ungranted) return `Forbidden: cannot grant ${ungranted} without holding it`
   }
 
-  const targetIsActiveSystemAdmin = input.target?.isActive === true && input.target.roleNames.includes(systemAdminRole)
+  const targetIsActiveSystemAdmin = input.target?.isActive === true && input.target.activeRoleNames.includes(systemAdminRole)
   const remainsActiveSystemAdmin = input.nextIsActive && grantingRoles.some((role) => role.name === systemAdminRole)
   if (targetIsActiveSystemAdmin && !remainsActiveSystemAdmin && input.otherActiveSystemAdminCount === 0) {
     return "Cannot remove or deactivate the last active system administrator"

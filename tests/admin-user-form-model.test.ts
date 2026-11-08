@@ -5,6 +5,7 @@ import {
   accessPreview,
   fillFromEmployee,
   grantLockReason,
+  pickEmployee,
   roleChangeMarks,
   suggestUsername,
   type FormRole,
@@ -94,4 +95,57 @@ test("no suggestion without an email", () => {
   assert.equal(suggestUsername("abc"), null)
   assert.equal(suggestUsername("@x"), null)
   assert.equal(suggestUsername("  somchai.k@x.com "), "somchai.k")
+})
+
+// Final review: a group row reads เหมือนเดิม only when its permission keys are equal. New module rights for an action the
+// group already had show as module gains (for example +แก้ไข (ผู้ใช้)), lost ones as module losses.
+test("new module rights for an action already held are not Unchanged", () => {
+  const roleEditor = role("re", ["role:edit"])
+  const userEditor = role("ue", ["user:edit"])
+  const userManager = role("um", ["user:create", "user:edit"])
+  const all = [roleEditor, userEditor, userManager]
+
+  const widened = accessPreview(all, ["re"], ["re", "ue"]).rows.find((row) => row.group === "system")
+  assert.ok(widened)
+  assert.deepEqual(widened.gained, [])
+  assert.deepEqual(widened.moduleGains, [{ action: "edit", modules: ["user"] }])
+  assert.deepEqual(widened.moduleLosses, [])
+
+  const managed = accessPreview(all, ["re"], ["re", "um"]).rows.find((row) => row.group === "system")
+  assert.deepEqual(managed?.gained, ["create"])
+  assert.deepEqual(managed?.moduleGains, [{ action: "edit", modules: ["user"] }])
+
+  const narrowed = accessPreview(all, ["re", "ue"], ["re"]).rows.find((row) => row.group === "system")
+  assert.deepEqual(narrowed?.lost, [])
+  assert.deepEqual(narrowed?.moduleLosses, [{ action: "edit", modules: ["user"] }])
+
+  const same = accessPreview(all, ["re"], ["re"]).rows.find((row) => row.group === "system")
+  assert.deepEqual([same?.gained, same?.lost, same?.moduleGains, same?.moduleLosses], [[], [], [], []])
+})
+
+// Final review: values a pick filled count as auto-filled, so a new pick (or เลิกผูก) replaces (or clears) them; a field
+// the administrator typed, or changed after the fill, stays.
+test("re-picking an employee replaces the previous auto-filled fields", () => {
+  const a = { fullNameTh: "สมชาย ก", email: "somchai.k@x.com" }
+  const b = { fullNameTh: "สมหญิง ข", email: "somying.b@x.com" }
+  const empty = { displayName: "", email: "", username: "" }
+
+  const first = pickEmployee(empty, {}, a)
+  assert.deepEqual(first.values, { displayName: "สมชาย ก", email: "somchai.k@x.com", username: "somchai.k" })
+  assert.deepEqual(first.autoFilled, first.values)
+
+  const second = pickEmployee(first.values, first.autoFilled, b)
+  assert.deepEqual(second.values, { displayName: "สมหญิง ข", email: "somying.b@x.com", username: "somying.b" })
+
+  const typed = pickEmployee({ ...first.values, displayName: "ชื่อที่พิมพ์" }, first.autoFilled, b)
+  assert.equal(typed.values.displayName, "ชื่อที่พิมพ์")
+  assert.equal("displayName" in typed.autoFilled, false)
+  assert.equal(typed.values.username, "somying.b")
+
+  const unlinked = pickEmployee(first.values, first.autoFilled, null)
+  assert.deepEqual(unlinked, { values: empty, autoFilled: {} })
+
+  // B has no email: A's email and the username made from it are cleared, not kept.
+  const noEmail = pickEmployee(first.values, first.autoFilled, { fullNameTh: "สมหญิง ข", email: null })
+  assert.deepEqual(noEmail.values, { displayName: "สมหญิง ข", email: "", username: "" })
 })

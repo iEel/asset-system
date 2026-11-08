@@ -18,7 +18,7 @@ import { UserEmployeeSection } from "@/components/admin/user-form/user-employee-
 import { UserFormHeader } from "@/components/admin/user-form/user-form-header"
 import { UserRolesSection } from "@/components/admin/user-form/user-roles-section"
 import type { UserFormData, UserFormEmployee } from "@/lib/admin-user-form-data"
-import { fillFromEmployee, roleChangeMarks } from "@/lib/admin-user-form-model"
+import { pickEmployee, roleChangeMarks, type AutoFilled } from "@/lib/admin-user-form-model"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { atLeastOne, email, maxLength, minLength, required } from "@/lib/validation-rules"
@@ -26,7 +26,8 @@ import { atLeastOne, email, maxLength, minLength, required } from "@/lib/validat
 // Page group 11 plan 2 task 4 (spec §5; board US-User-Edit): the create and edit user form. Two columns from lg:
 // account then linked employee on the left, roles then the access preview on the right. The parts are in user-form/.
 // Below sm the note is the form's last section and the footer is one status line over ยกเลิก and บันทึก side by side;
-// from sm the note sits in the footer. Both note fields share one state and only one is displayed at a time.
+// from sm the note sits in the footer with its visible label. Both note fields share one state and only one is
+// displayed at a time.
 
 export type AdminUserFormValues = {
   username: string
@@ -42,9 +43,9 @@ export type AdminUserFormValues = {
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
 const FIELD_IDS = {
   username: "admin-user-username",
-  password: "admin-user-password",
   displayName: "admin-user-display-name",
   email: "admin-user-email",
+  password: "admin-user-password",
   employeeId: "admin-user-employee",
   roleIds: "admin-user-roles",
 } as const
@@ -96,6 +97,8 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
   const [note, setNote] = useState("")
   const [roleQuery, setRoleQuery] = useState("")
   const [usernameSuggested, setUsernameSuggested] = useState(false)
+  // The values the last employee pick filled in; a field the admin changes leaves it (final review).
+  const [autoFilled, setAutoFilled] = useState<AutoFilled>({})
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<AdminUserField>()
   const backHref = `/${locale}/admin/users`
@@ -115,6 +118,13 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
   function setField<K extends keyof AdminUserFormValues>(field: K, value: AdminUserFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "username") setUsernameSuggested(false)
+    if (field === "displayName" || field === "email" || field === "username") {
+      setAutoFilled((current) => {
+        const rest = { ...current }
+        delete rest[field as "displayName" | "email" | "username"]
+        return rest
+      })
+    }
     if (field in FIELD_IDS) fieldErrors.clear(field as AdminUserField)
   }
 
@@ -123,12 +133,14 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
     fieldErrors.clear("password")
   }
 
-  // On create a chosen employee fills the empty fields; a typed field is never overwritten (spec §5.2).
+  // On create a chosen employee fills the empty fields; a typed field is never overwritten (spec §5.2). A field still
+  // holding the previous pick's value is replaced by a new pick and cleared by เลิกผูก (final review).
   function changeEmployee(next: UserFormEmployee | null) {
-    if (!isEdit && next) {
-      const filled = fillFromEmployee({ displayName: values.displayName, email: values.email, username: values.username }, next)
-      setUsernameSuggested(values.username.trim() === "" && filled.username !== values.username)
-      setValues((current) => ({ ...current, ...filled, employeeId: next.id }))
+    if (!isEdit) {
+      const picked = pickEmployee({ displayName: values.displayName, email: values.email, username: values.username }, autoFilled, next)
+      setAutoFilled(picked.autoFilled)
+      setUsernameSuggested(picked.autoFilled.username !== undefined)
+      setValues((current) => ({ ...current, ...picked.values, employeeId: next?.id ?? "" }))
       fieldErrors.clear("employeeId", "username", "displayName", "email")
       return
     }
@@ -161,8 +173,8 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
           email: values.email || null,
           employeeId: values.employeeId || null,
           roleIds: values.roleIds,
-          // The status changes only through the อื่น ๆ menu (the status route); a new account is active.
-          isActive: user ? user.isActive : true,
+          // No status: it changes only through the อื่น ๆ menu (the status route). An edit keeps the stored one, so a
+          // close made meanwhile is not undone; a new account is active (final review).
           note: note.trim() || null,
           ...(isEdit ? { password: values.password || null } : { authMode: values.authMode }),
           ...(!isEdit && values.authMode === "local" ? { password: values.password } : {}),
@@ -245,7 +257,7 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
             </span>
           }
         >
-          <Field label={t("form.note")} hideLabel id="admin-user-note" className="hidden sm:grid sm:w-80">
+          <Field label={t("form.noteOptional")} id="admin-user-note" className="hidden sm:grid sm:w-80">
             <Textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}

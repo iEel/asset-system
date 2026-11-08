@@ -46,13 +46,16 @@ export function toExistingUserAccess(user: {
   isActive: boolean
   userRoles: Array<{ role: { name: string; isActive: boolean; rolePermissions: RolePermissionRows } }>
 }) {
-  // Only active roles count as the user's access; session-access drops inactive roles too.
-  const activeRoles = user.userRoles.map(({ role }) => role).filter((role) => role.isActive)
+  // Every held role counts for the "more access than you" check, active or not: a dormant role can be switched back on,
+  // so editing (or resetting the password of) its holder would hand its permissions over (final review ruling). Only
+  // the last-active-system-admin test reads activeRoleNames; session-access drops inactive roles.
+  const heldRoles = user.userRoles.map(({ role }) => role)
   return {
     id: user.id,
     isActive: user.isActive,
-    roleNames: activeRoles.map((role) => role.name),
-    permissionKeys: activeRoles.flatMap((role) => toPermissionKeys(role.rolePermissions)),
+    roleNames: heldRoles.map((role) => role.name),
+    permissionKeys: heldRoles.flatMap((role) => toPermissionKeys(role.rolePermissions)),
+    activeRoleNames: heldRoles.filter((role) => role.isActive).map((role) => role.name),
   }
 }
 

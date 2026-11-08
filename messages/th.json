@@ -5664,7 +5664,11 @@
       "lastLogin": "เข้าสู่ระบบล่าสุด {time}",
       "createdAt": "สร้างเมื่อ {date}",
       "showAllRoles": "แสดงทั้งหมด {count, number} บทบาท",
-      "noteOptional": "หมายเหตุ (ไม่บังคับ)"
+      "noteOptional": "หมายเหตุ (ไม่บังคับ)",
+      "roleSearchClear": "ล้างคำค้นหา",
+      "roleSearchEmpty": "ไม่พบบทบาทที่ตรงกับคำค้นหา",
+      "permissionName": "{action}{module}",
+      "actionInModules": "{action} ({modules})"
     }
   },
   "adminRolesPage": {

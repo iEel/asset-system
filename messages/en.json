@@ -5664,7 +5664,11 @@
       "lastLogin": "Last sign-in {time}",
       "createdAt": "Created {date}",
       "showAllRoles": "{count, plural, one {Show all # role} other {Show all # roles}}",
-      "noteOptional": "Note (optional)"
+      "noteOptional": "Note (optional)",
+      "roleSearchClear": "Clear role search",
+      "roleSearchEmpty": "No role matches the search",
+      "permissionName": "{action} {module}",
+      "actionInModules": "{action} ({modules})"
     }
   },
   "adminRolesPage": {

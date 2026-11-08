@@ -49,14 +49,15 @@ test("the employee card links holdings exactly and shows a left badge", () => {
   assert.match(source, /\{t\("form\.unlink"\)\}/)
   // On create a chosen employee fills the empty fields; a suggested login name says so under the field.
   const main = form()
-  assert.match(main, /if \(!isEdit && next\) \{\n\s+const filled = fillFromEmployee\(/)
+  assert.match(main, /if \(!isEdit\) \{\n\s+const picked = pickEmployee\(/)
   assert.match(account(), /usernameSuggested \? t\("form\.usernameSuggested"\) : undefined/)
 })
 
 test("role chips mark new and removed with undo", () => {
   const source = roles()
   assert.match(source, /const \{ added, removed \} = roleChangeMarks\(initialIds, currentIds\)/)
-  assert.match(source, /const chipIds = \[\.\.\.currentIds, \.\.\.removed\]/)
+  // A removed chip keeps its place (held order, then added), so its button keeps focus (final review).
+  assert.match(source, /const chipIds = \[\.\.\.initialIds, \.\.\.added\]/)
   assert.match(source, /t\("form\.rolesChosen", \{ count: currentIds\.length \}\)/)
   assert.match(source, /isAdded \? <StatusBadge label=\{t\("form\.roleNew"\)\} tone="info" \/> : null/)
   assert.match(source, /isRemoved \? <StatusBadge label=\{t\("form\.roleRemoved"\)\} tone="danger" \/> : null/)
@@ -148,7 +149,8 @@ test("the footer carries the note and the change count", () => {
 test("no isActive checkbox in the form", () => {
   const source = form()
   assert.doesNotMatch(source, /setField\("isActive"|tCommon\("active"\)|checkboxVariants/)
-  assert.match(source, /isActive: user \? user\.isActive : true,/, "an edit keeps the stored status; a new account is active")
+  // Final review: the save sends no isActive; the edit keeps the stored status, a new account is active by default.
+  assert.doesNotMatch(source, /isActive:/)
 })
 
 test("kept: field errors focus the first field", () => {
@@ -168,13 +170,16 @@ test("kept: field errors focus the first field", () => {
 test("the role list shows 12 per group with show all, held and ticked roles first", () => {
   const source = roles()
   assert.match(source, /const ROLE_CAP = 12\n/)
-  // Held, chosen and ticked-this-session roles are pinned to the front and always shown.
-  assert.match(source, /const pinned = new Set\(\[\.\.\.initialIds, \.\.\.currentIds, \.\.\.touched\]\)/)
+  // Held, chosen and ticked-this-session roles are pinned to the front and always shown. The pinned set is taken when
+  // the search or the expansion changes, not on every tick, so a ticked card never jumps under the pointer (final review).
+  assert.match(source, /const pinKey = `\$\{needle\}\|\$\{expanded\.join\(","\)\}`/)
+  assert.match(source, /if \(pinSnapshot\.key !== pinKey\) \{\n\s+setPinSnapshot\(\{ key: pinKey, ids: \[\.\.\.initialIds, \.\.\.currentIds, \.\.\.touched\] \}\)/)
+  assert.match(source, /const pinned = new Set\(pinSnapshot\.ids\)/)
   assert.match(source, /\[\.\.\.group\.roles\.filter\(\(role\) => pinned\.has\(role\.id\)\), \.\.\.group\.roles\.filter\(\(role\) => !pinned\.has\(role\.id\)\)\]/)
   // A search shows every match; without one a group is capped until it is expanded, which lasts the session.
   assert.match(source, /const capped = needle === "" && !expanded\.includes\(group\.key\)/)
   assert.match(source, /capped \? ordered\.slice\(0, Math\.max\(ROLE_CAP, pinnedCount\)\) : ordered/)
-  assert.match(source, /setExpanded\(\(current\) => \[\.\.\.current, group\.key\]\)/)
+  assert.match(source, /setExpanded\(\(current\) => \[\.\.\.current, groupKey\]\)/)
   assert.match(source, /t\("form\.showAllRoles", \{ count: group\.roles\.length \}\)/)
   // The header count stays the group's total; a group with no match is not rendered.
   assert.match(source, /<span className="num">· \{group\.roles\.length\}<\/span>/)
@@ -190,7 +195,9 @@ test("the phone footer is compact and the note moves into the form", () => {
   const source = form()
   // Below sm the note is the form's last section; from sm it stays in the footer. One state, one visible field.
   assert.match(source, /<section className=\{cn\(getPanelClasses\(\), "p-4 sm:hidden"\)\}>\n\s+<Field label=\{t\("form\.noteOptional"\)\} id="admin-user-note-phone">\n\s+<Textarea\n\s+value=\{note\}/)
-  assert.match(source, /<Field label=\{t\("form\.note"\)\} hideLabel id="admin-user-note" className="hidden sm:grid sm:w-80">\n\s+<Textarea\n\s+value=\{note\}/)
+  // From sm the footer note has a visible label too (final review, WCAG 3.3.2).
+  assert.match(source, /<Field label=\{t\("form\.noteOptional"\)\} id="admin-user-note" className="hidden sm:grid sm:w-80">\n\s+<Textarea\n\s+value=\{note\}/)
+  assert.doesNotMatch(source, /hideLabel/)
   assert.equal(source.match(/onChange=\{\(event\) => setNote\(event\.target\.value\)\}/g)?.length, 2)
   // ยกเลิก and บันทึก side by side on the phone, as they were from sm.
   assert.match(source, /<div className="grid grid-cols-2 gap-2 sm:contents">\n\s+<Link href=\{backHref\}/)
@@ -252,4 +259,69 @@ test("the user form E2E spec reads the app's words and writes only the employee 
   assert.doesNotMatch(spec, /page\.request\.(?:post|put|patch|delete)|\.delete\(|method:\s*["'`]|signInOnce\(|ldap-(?:sync|test)|\/api\/admin\/settings/)
   assert.match(spec, /code: `\$\{runId\}-\$\{code\}-UF`/, "the run's employee code pattern, one per project")
   assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/, "the edit test builds on the create test")
+})
+
+// Final review fixes (group 11 plan 2).
+test("focus goes to the first error in the rendered order", () => {
+  const source = form()
+  assert.match(
+    source,
+    /const FIELD_IDS = \{\n\s+username: "admin-user-username",\n\s+displayName: "admin-user-display-name",\n\s+email: "admin-user-email",\n\s+password: "admin-user-password",\n\s+employeeId: "admin-user-employee",\n\s+roleIds: "admin-user-roles",\n\} as const/,
+  )
+  const ids = [...account().matchAll(/id="(admin-user-(?:username|display-name|email|password))"/g)].map((match) => match[1])
+  assert.deepEqual(ids, ["admin-user-username", "admin-user-display-name", "admin-user-email", "admin-user-password"])
+})
+
+test("the role search does not submit on Enter and names its clear button", () => {
+  const source = roles()
+  assert.match(source, /import \{ ChoiceCard, preventEnterSubmit \} from "@\/components\/ui\/choice-card"/)
+  assert.match(source, /<SearchField\b[^>]*?onKeyDown=\{preventEnterSubmit\}/)
+  assert.match(source, /clearLabel=\{t\("form\.roleSearchClear"\)\}/)
+  const th = JSON.parse(read("messages/th.json"))
+  const en = JSON.parse(read("messages/en.json"))
+  assert.equal(th.adminUsersPage.form.roleSearchClear, "ล้างคำค้นหา")
+  assert.equal(en.adminUsersPage.form.roleSearchClear, "Clear role search")
+})
+
+test("a role search with no match says so", () => {
+  const source = roles()
+  // The status line is always there (a live region must exist before its text) and hidden while empty.
+  assert.match(source, /<p role="status" className="text-meta text-muted-foreground empty:hidden">\n\s+\{needle !== "" && shownGroups\.length === 0 \? t\("form\.roleSearchEmpty"\) : null\}\n\s+<\/p>/)
+  const th = JSON.parse(read("messages/th.json"))
+  assert.equal(th.adminUsersPage.form.roleSearchEmpty, "ไม่พบบทบาทที่ตรงกับคำค้นหา")
+})
+
+test("show all and chip removal keep keyboard focus", () => {
+  const source = roles()
+  // Show all moves focus to the first role it reveals; removing a chip focuses the next chip, or the search.
+  assert.match(source, /function showAll\(groupKey: string, firstHiddenId: string \| undefined\)/)
+  assert.match(source, /setPendingFocus\(firstHiddenId \? \{ kind: "role", id: firstHiddenId \} : \{ kind: "heading", id: groupKey \}\)/)
+  assert.match(source, /onClick=\{\(\) => showAll\(group\.key, group\.firstHiddenId\)\}/)
+  assert.match(source, /onClick=\{\(\) => removeChip\(id\)\}/)
+  assert.match(source, /function removeChip\(id: string\)/)
+  assert.match(source, /setPendingFocus\(next \? \{ kind: "chip", id: next \} : \{ kind: "search" \}\)/)
+  assert.match(source, /data-chip-id=\{id\}/)
+  assert.match(source, /data-role-id=\{role\.id\}/)
+  assert.match(source, /id="admin-user-role-search"/)
+})
+
+test("choosing or unlinking an employee keeps keyboard focus", () => {
+  const source = employee()
+  assert.match(source, /const changeButtonRef = useRef<HTMLButtonElement>\(null\)/)
+  assert.match(source, /ref=\{changeButtonRef\}/)
+  assert.match(source, /setPendingFocus\("card"\)/)
+  assert.match(source, /setPendingFocus\("picker"\)/)
+  assert.match(source, /document\.getElementById\("admin-user-employee"\)\?\.focus\(\)/)
+})
+
+test("the high-risk note and module gains name each permission through a message", () => {
+  const source = preview()
+  assert.match(source, /t\("form\.permissionName", \{ action: actionName\(action\), module: moduleName\(module\) \}\)/)
+  assert.match(source, /t\("form\.actionInModules", \{/)
+  assert.match(source, /row\.moduleGains/)
+  assert.match(source, /row\.moduleLosses/)
+  const th = JSON.parse(read("messages/th.json"))
+  const en = JSON.parse(read("messages/en.json"))
+  assert.equal(th.adminUsersPage.form.permissionName, "{action}{module}")
+  assert.equal(en.adminUsersPage.form.permissionName, "{action} {module}")
 })

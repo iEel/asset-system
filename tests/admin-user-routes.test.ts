@@ -451,3 +451,50 @@ test("status route gives 404 for a missing user", async () => {
   assert.equal(response.status, 404)
   assert.deepEqual(state.writes, [])
 })
+
+// Final review (group 11 plan 2): the edit form no longer sends isActive, so an edit keeps the stored status (a
+// close by another admin is not undone by a stale form); the status changes only through PATCH /status.
+test("an edit without isActive keeps the stored status", async () => {
+  state.existingRow = { id: "u4", username: "staff", displayName: "Staff", isActive: false, userRoles: [employeeUserRole] }
+  state.updatedRow = { id: "u4", username: "staff", displayName: "Staff 2", isActive: false }
+
+  const response = await putUser("u4", { username: "staff", displayName: "Staff 2", roleIds: ["role-employee"] })
+
+  assert.equal(response.status, 200)
+  assert.ok(state.userUpdateData)
+  assert.equal("isActive" in state.userUpdateData, false)
+})
+
+// Final review ruling: a role the target holds while it is switched off still counts for "more access than you".
+const dormantUserRole = {
+  roleId: "role-it-manager",
+  role: {
+    id: "role-it-manager",
+    name: "it_manager",
+    isActive: false,
+    rolePermissions: [{ permission: { module: "setting", action: "edit" } }, { permission: { module: "user", action: "delete" } }],
+  },
+}
+
+test("a non-admin cannot reset the password of a user holding an inactive role they lack", async () => {
+  state.actor = helpdeskActor
+  state.roles = [employeeRole, { ...dormantUserRole.role }]
+  state.existingRow = { id: "t-1", username: "target", displayName: "Target", isActive: true, userRoles: [employeeUserRole, dormantUserRole] }
+
+  const response = await putUser("t-1", { username: "target", password: "NewPass123", displayName: "Target", roleIds: ["role-employee", "role-it-manager"] })
+
+  assert.equal(response.status, 403)
+  assert.equal(((await response.json()) as { error: string }).error, "Forbidden: cannot modify a user who has access you do not hold")
+  assert.deepEqual(state.writes, [])
+})
+
+test("a non-admin cannot close a user holding an inactive role they lack", async () => {
+  state.actor = helpdeskActor
+  state.roles = [employeeRole, { ...dormantUserRole.role }]
+  state.existingRow = { id: "t-1", username: "target", displayName: "Target", isActive: true, userRoles: [employeeUserRole, dormantUserRole] }
+
+  const response = await patchStatus("t-1", { isActive: false })
+
+  assert.equal(response.status, 403)
+  assert.deepEqual(state.writes, [])
+})

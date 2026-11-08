@@ -32,13 +32,17 @@ export function roleChangeMarks(
 }
 
 // One row per permission group; the arrays are action names in PERMISSION_ACTION_ORDER. An action is present in a
-// group when any module of the group has it.
+// group when any module of the group has it. moduleGains and moduleLosses list, for an action present both before and
+// after, the modules that gained or lost it, so a row is unchanged only when its permission keys are equal (final review).
+export type ModuleChange = { action: string; modules: string[] }
 export type AccessGroupRow = {
   group: PermissionGroupKey
   before: string[]
   after: string[]
   gained: string[]
   lost: string[]
+  moduleGains: ModuleChange[]
+  moduleLosses: ModuleChange[]
 }
 
 function splitKey(key: string): { module: string; action: string } {
@@ -64,6 +68,19 @@ function groupActions(keys: ReadonlySet<string>, modules: readonly string[]): st
     if (modules.includes(module)) present.add(action)
   }
   return orderActions(present)
+}
+
+// For each action in both lists, the group's modules (in group order) that have it in `from` but not in `against`.
+function moduleChanges(
+  from: ReadonlySet<string>,
+  against: ReadonlySet<string>,
+  actions: readonly string[],
+  modules: readonly string[]
+): ModuleChange[] {
+  return actions.flatMap((action) => {
+    const changed = modules.filter((module) => from.has(`${module}:${action}`) && !against.has(`${module}:${action}`))
+    return changed.length > 0 ? [{ action, modules: changed }] : []
+  })
 }
 
 function orderActions(actions: ReadonlySet<string>): string[] {
@@ -108,12 +125,15 @@ export function accessPreview(
   const rows: AccessGroupRow[] = PERMISSION_GROUPS.map((group) => {
     const before = groupActions(beforeKeys, group.modules)
     const after = groupActions(afterKeys, group.modules)
+    const kept = after.filter((action) => before.includes(action))
     return {
       group: group.key,
       before,
       after,
       gained: after.filter((action) => !before.includes(action)),
       lost: before.filter((action) => !after.includes(action)),
+      moduleGains: moduleChanges(afterKeys, beforeKeys, kept, group.modules),
+      moduleLosses: moduleChanges(beforeKeys, afterKeys, kept, group.modules),
     }
   })
 
@@ -164,4 +184,29 @@ export function fillFromEmployee(
   const email = values.email.trim() === "" ? (employee.email ?? values.email) : values.email
   const username = values.username.trim() === "" ? (suggestUsername(email) ?? values.username) : values.username
   return { displayName, email, username }
+}
+
+export type AutoFillField = "displayName" | "email" | "username"
+const AUTO_FILL_FIELDS: readonly AutoFillField[] = ["displayName", "email", "username"]
+// The values the last employee pick put into each field; a field the administrator has changed since is not in it.
+export type AutoFilled = Partial<Record<AutoFillField, string>>
+
+// A pick on create (spec §5.2, final review): a field still holding the previous pick's auto-filled value counts as
+// empty, so a new pick replaces it and เลิกผูก (employee null) clears it. Typed fields are never touched.
+export function pickEmployee(
+  values: { displayName: string; email: string; username: string },
+  autoFilled: AutoFilled,
+  employee: { fullNameTh: string; email: string | null } | null
+): { values: { displayName: string; email: string; username: string }; autoFilled: AutoFilled } {
+  const cleared = { ...values }
+  for (const field of AUTO_FILL_FIELDS) {
+    if (autoFilled[field] !== undefined && values[field] === autoFilled[field]) cleared[field] = ""
+  }
+  if (!employee) return { values: cleared, autoFilled: {} }
+  const filled = fillFromEmployee(cleared, employee)
+  const nextAutoFilled: AutoFilled = {}
+  for (const field of AUTO_FILL_FIELDS) {
+    if (cleared[field].trim() === "" && filled[field].trim() !== "") nextAutoFilled[field] = filled[field]
+  }
+  return { values: filled, autoFilled: nextAutoFilled }
 }

@@ -276,12 +276,13 @@ test("admin user: errors under the field, the password rule of create and edit, 
   const form = read(`${C}admin/admin-user-form.tsx`)
   const roles = read(`${C}admin/user-form/user-roles-section.tsx`)
   const source = [form, ...["user-account-section", "user-employee-section"].map((name) => read(`${C}admin/user-form/${name}.tsx`)), roles].join("\n")
+  // Group 11 plan 2 final review: the password now renders after the email, so FIELD_IDS follows that order.
   assertMigratedForm(source, {
     ids: {
       username: "admin-user-username",
-      password: "admin-user-password",
       displayName: "admin-user-display-name",
       email: "admin-user-email",
+      password: "admin-user-password",
       employeeId: "admin-user-employee",
       roleIds: "admin-user-roles",
     },

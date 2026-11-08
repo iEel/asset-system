@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils"
 // พนักงานที่ผูก (spec §5.2). The picker offers only employees who still work here and have no account; the employee
 // already linked is loaded even when they have left and shows as the card, with a "พนักงานลาออกแล้ว" badge. The card
 // has เปลี่ยน (back to the picker) and เลิกผูก. A refusal under the field (employeeHasUser) opens the picker again.
+// Choosing unmounts the picker and เลิกผูก unmounts the card, so focus moves to the card's เปลี่ยน or to the picker's
+// trigger once it is there, never to the page body (final review, WCAG 2.4.3).
 export function UserEmployeeSection({
   employees,
   value,
@@ -32,6 +34,8 @@ export function UserEmployeeSection({
   const t = useTranslations("adminUsersPage")
   const tCommon = useTranslations("common")
   const [picking, setPicking] = useState(false)
+  const [pendingFocus, setPendingFocus] = useState<"card" | "picker" | null>(null)
+  const changeButtonRef = useRef<HTMLButtonElement>(null)
   const selected = employees.find((employee) => employee.id === value) ?? null
   const showPicker = !selected || picking || Boolean(error)
   const options = employees
@@ -43,9 +47,26 @@ export function UserEmployeeSection({
       keywords: employee.code,
     }))
 
+  // A frame after the render, so the popover has finished closing and the new control is mounted.
+  useEffect(() => {
+    if (!pendingFocus) return
+    const frame = requestAnimationFrame(() => {
+      if (pendingFocus === "card") changeButtonRef.current?.focus()
+      else document.getElementById("admin-user-employee")?.focus()
+      setPendingFocus(null)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [pendingFocus])
+
   function choose(id: string) {
     setPicking(false)
     onChange(employees.find((employee) => employee.id === id) ?? null)
+    setPendingFocus("card")
+  }
+
+  function unlink() {
+    onChange(null)
+    setPendingFocus("picker")
   }
 
   return (
@@ -82,10 +103,10 @@ export function UserEmployeeSection({
               ) : null}
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPicking(true)}>
+              <Button ref={changeButtonRef} variant="outline" size="sm" onClick={() => setPicking(true)}>
                 {t("form.change")}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => onChange(null)}>
+              <Button variant="ghost" size="sm" onClick={unlink}>
                 {t("form.unlink")}
               </Button>
             </div>
