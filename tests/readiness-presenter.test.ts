@@ -158,6 +158,12 @@ test("final review: the next-steps card keeps what to do, the status column fits
   assert.match(page, /<Link href=\{`\/\$\{locale\}\$\{check\.href\}`\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
   // The status column fits "ควรตรวจ"; the fix button wraps inside its column.
   assert.match(page, /<col className="w-36" \/>/)
+  // Look step at 1024: a long token (AUTH_URL/NEXTAUTH_URL, a URL, an env name) wraps inside its cell, never over the next.
+  assert.match(page, /<DataTableCell className="\[overflow-wrap:anywhere\]">\n\s+<div className="font-medium text-foreground">\{labels\.title\}<\/div>/)
+  assert.match(page, /<DataTableCell className="\[overflow-wrap:anywhere\]">\{labels\.value\}<\/DataTableCell>/)
+  assert.match(page, /<DataTableCell className="\[overflow-wrap:anywhere\]">\n\s+<ReadinessFix /)
+  // The env names are mono .tag spans (white-space: nowrap); they break anywhere in the fix column.
+  assert.match(page, /<span key=\{name\} className="tag whitespace-normal break-all">\{name\}<\/span>/)
   assert.doesNotMatch(page, /<col className="w-28" \/>/)
   assert.match(page, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "md" \}\), "h-auto whitespace-normal py-2 text-left md:h-auto md:min-h-9"\)\}/)
   for (const locale of ["th", "en"]) {

@@ -742,7 +742,7 @@ test("readiness: PageHeader with the checked-at line, counts on the chips, env n
   assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{\n\s+<>\n\s+<span>\{t\("subtitle"\)\}<\/span>\n\s+<span>\{t\("checkedAt", \{ time: checkedAt \}\)\}<\/span>/)
   assert.match(source, /const checkedAt = formatDateTime\(new Date\(\)\)/)
   assert.match(source, /<ReadinessFilterChips value=\{filter\} counts=\{summary\} hrefFor=\{hrefFor\} \/>/)
-  assert.match(source, /<span key=\{name\} className="tag">\{name\}<\/span>/)
+  assert.match(source, /<span key=\{name\} className="tag whitespace-normal break-all">\{name\}<\/span>/)
   assert.doesNotMatch(source, /<StatStrip\b|check\.value\b|<h1\b|function (?:SummaryCard|summaryClass)\b|toLocaleString\(|font-mono/)
 })
 

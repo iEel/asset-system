@@ -260,12 +260,13 @@ function ReadinessGroupSection({
                 <DataTableCell>
                   <StatusBadge label={labels.status} tone={checkTone(check.status)} />
                 </DataTableCell>
-                <DataTableCell>
+                {/* Look step at 1024: long tokens (AUTH_URL/NEXTAUTH_URL, URLs, env names) wrap inside their cell. */}
+                <DataTableCell className="[overflow-wrap:anywhere]">
                   <div className="font-medium text-foreground">{labels.title}</div>
                   <p className="mt-1 text-meta text-muted-foreground">{labels.description}</p>
                 </DataTableCell>
                 <DataTableCell className="[overflow-wrap:anywhere]">{labels.value}</DataTableCell>
-                <DataTableCell>
+                <DataTableCell className="[overflow-wrap:anywhere]">
                   <ReadinessFix check={check} locale={locale} labels={labels} fixEnvLead={tableLabels.fixEnvLead} />
                 </DataTableCell>
               </DataTableRow>
@@ -329,7 +330,7 @@ function ReadinessFix({ check, locale, labels, fixEnvLead }: { check: Production
           <p className="text-xs text-muted-foreground">{fixEnvLead}</p>
           <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-foreground">
             {check.fixEnv.map((name) => (
-              <span key={name} className="tag">{name}</span>
+              <span key={name} className="tag whitespace-normal break-all">{name}</span>
             ))}
           </p>
         </>
