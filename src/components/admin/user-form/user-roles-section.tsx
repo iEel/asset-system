@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { Undo2, X } from "lucide-react"
@@ -18,7 +19,11 @@ import { cn } from "@/lib/utils"
 // struck through with เอาออก and เลิกทำ, and a held inactive role says ปิดใช้งาน (it may be kept, it grants nothing).
 // Then a search over two groups of active roles. A role the viewer cannot grant is disabled with its reason; the server
 // check stays the authority (§9). The section is one group with one error under it; focus goes to its first checkbox
-// that can be used (v-track M-R8).
+// that can be used (v-track M-R8). Without a search each group shows ROLE_CAP roles, the held, chosen and
+// ticked-this-session ones first, with a button that shows the whole group for the rest of the session; a search
+// shows every match.
+const ROLE_CAP = 12
+
 export function UserRolesSection({
   roles,
   initialIds,
@@ -38,6 +43,8 @@ export function UserRolesSection({
 }) {
   const locale = useLocale()
   const t = useTranslations("adminUsersPage")
+  const [expanded, setExpanded] = useState<string[]>([])
+  const [touched, setTouched] = useState<string[]>([])
   const rolesById = new Map(roles.map((role) => [role.id, role]))
   const initial = new Set(initialIds)
   const { added, removed } = roleChangeMarks(initialIds, currentIds)
@@ -48,8 +55,20 @@ export function UserRolesSection({
     { key: "system", title: t("form.systemRoles"), roles: listed.filter((role) => role.isSystem) },
     { key: "custom", title: t("form.customRoles"), roles: listed.filter((role) => !role.isSystem) },
   ].filter((group) => group.roles.length > 0)
+  const pinned = new Set([...initialIds, ...currentIds, ...touched])
+  const shownGroups = groups.map((group) => {
+    const ordered = [...group.roles.filter((role) => pinned.has(role.id)), ...group.roles.filter((role) => !pinned.has(role.id))]
+    const pinnedCount = group.roles.filter((role) => pinned.has(role.id)).length
+    const capped = needle === "" && !expanded.includes(group.key)
+    return { ...group, shown: capped ? ordered.slice(0, Math.max(ROLE_CAP, pinnedCount)) : ordered }
+  })
   const isLocked = (role: FormRole) => role.lockReason !== null && !initial.has(role.id)
-  const focusRoleId = groups.flatMap((group) => group.roles).find((role) => !isLocked(role))?.id
+  const focusRoleId = shownGroups.flatMap((group) => group.shown).find((role) => !isLocked(role))?.id
+
+  function toggle(roleId: string) {
+    if (!touched.includes(roleId)) setTouched((current) => [...current, roleId])
+    onToggle(roleId)
+  }
 
   return (
     <section
@@ -115,13 +134,13 @@ export function UserRolesSection({
             maxLength={100}
           />
 
-          {groups.map((group) => (
+          {shownGroups.map((group) => (
             <div key={group.key} className="grid gap-2">
               <h3 className="text-meta font-medium text-muted-foreground">
                 {group.title} <span className="num">· {group.roles.length}</span>
               </h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {group.roles.map((role) => {
+                {group.shown.map((role) => {
                   const locked = isLocked(role)
                   return (
                     <ChoiceCard
@@ -130,7 +149,7 @@ export function UserRolesSection({
                       id={role.id === focusRoleId ? "admin-user-roles" : undefined}
                       checked={currentIds.includes(role.id)}
                       disabled={locked}
-                      onChange={() => onToggle(role.id)}
+                      onChange={() => toggle(role.id)}
                       label={role.label}
                       description={
                         locked
@@ -141,6 +160,11 @@ export function UserRolesSection({
                   )
                 })}
               </div>
+              {group.shown.length < group.roles.length ? (
+                <Button variant="outline" size="sm" className="justify-self-start" onClick={() => setExpanded((current) => [...current, group.key])}>
+                  {t("form.showAllRoles", { count: group.roles.length })}
+                </Button>
+              ) : null}
             </div>
           ))}
 

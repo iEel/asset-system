@@ -32,11 +32,11 @@ test("the admin user form uses the shared fields, checkboxes and a busy save but
   // Each Field names its control and shows its error (v-track plan 1 M7).
   assert.match(account, /<Field\n\s+label=\{t\("username"\)\}\n\s+id="admin-user-username"\n\s+required\n[^\n]*\n\s+error=\{fieldErrors\.message\("username"\)\}\n\s+>\n\s+<Input\n/)
   assert.match(account, /<Field label=\{t\("displayName"\)\} id="admin-user-display-name" required hint=\{adSyncedHint\} error=\{fieldErrors\.message\("displayName"\)\}>\n\s+<Input\n/)
-  assert.match(account, /<Field\n\s+label=\{isEdit \? t\("newPassword"\) : t\("password"\)\}\n\s+id="admin-user-password"\n\s+required=\{!isEdit\}\n[^\n]*\n[^\n]*\n\s+>\n\s+<Input\n\s+type="password"\n/)
+  assert.match(account, /<Field\n\s+label=\{isEdit \? t\("newPassword"\) : t\("password"\)\}\n\s+id="admin-user-password"\n\s+required=\{!isEdit\}\n[^\n]*\n[^\n]*\n\s+>\n\s+\{\(control\) => \(\n\s+<div className="relative">\n\s+<Input\n\s+\{\.\.\.control\}\n\s+type=\{showPassword \? "text" : "password"\}\n/)
   assert.match(account, /<Field label=\{t\("email"\)\} id="admin-user-email" hint=\{adSyncedHint\} error=\{fieldErrors\.message\("email"\)\}>\n\s+<Input\n\s+type="email"\n/)
   assert.match(employee, /<SearchableSelect\n\s+id="admin-user-employee"\n\s+label=\{t\("employee"\)\}[\s\S]*?error=\{error\}/)
   assert.match(source, /error=\{fieldErrors\.message\("employeeId"\)\}/)
-  assert.match(roles, /onChange=\{\(\) => onToggle\(role\.id\)\}/)
+  assert.match(roles, /onChange=\{\(\) => toggle\(role\.id\)\}/)
   assert.match(source, /<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{tCommon\("cancel"\)\}\n\s+<\/Link>/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{tCommon\("save"\)\}\n\s+<\/Button>/)
 })

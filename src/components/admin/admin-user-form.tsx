@@ -25,6 +25,8 @@ import { atLeastOne, email, maxLength, minLength, required } from "@/lib/validat
 
 // Page group 11 plan 2 task 4 (spec §5; board US-User-Edit): the create and edit user form. Two columns from lg:
 // account then linked employee on the left, roles then the access preview on the right. The parts are in user-form/.
+// Below sm the note is the form's last section and the footer is one status line over ยกเลิก and บันทึก side by side;
+// from sm the note sits in the footer. Both note fields share one state and only one is displayed at a time.
 
 export type AdminUserFormValues = {
   username: string
@@ -221,17 +223,29 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
             />
             <UserAccessPreview roles={data.roles} initialIds={initialValues.roleIds} currentIds={values.roleIds} />
           </div>
+          <section className={cn(getPanelClasses(), "p-4 sm:hidden")}>
+            <Field label={t("form.noteOptional")} id="admin-user-note-phone">
+              <Textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder={t("form.notePlaceholder")}
+                className="field-sizing-content max-h-32 min-h-11"
+              />
+            </Field>
+          </section>
         </div>
 
         <StickyFormFooter
           className="mt-5"
           status={
-            <span role="status" className="break-words">
+            <span role="status" className="block truncate sm:whitespace-normal">
               {changeCount > 0 ? t("form.changes", { count: changeCount }) : t("form.noChanges")}
             </span>
           }
         >
-          <Field label={t("form.note")} hideLabel id="admin-user-note" className="sm:w-80">
+          <Field label={t("form.note")} hideLabel id="admin-user-note" className="hidden sm:grid sm:w-80">
             <Textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
@@ -241,13 +255,15 @@ export function AdminUserForm({ data, canViewAssets }: { data: UserFormData; can
               className="field-sizing-content max-h-32 min-h-11 md:min-h-9"
             />
           </Field>
-          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
-            {tCommon("cancel")}
-          </Link>
-          <Button type="submit" busy={saving}>
-            <Save aria-hidden="true" />
-            {tCommon("save")}
-          </Button>
+          <div className="grid grid-cols-2 gap-2 sm:contents">
+            <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
+              {tCommon("cancel")}
+            </Link>
+            <Button type="submit" busy={saving}>
+              <Save aria-hidden="true" />
+              {tCommon("save")}
+            </Button>
+          </div>
         </StickyFormFooter>
       </form>
     </div>

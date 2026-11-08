@@ -305,7 +305,7 @@ test("admin user: errors under the field, the password rule of create and edit, 
   assert.match(roles, /<section\n\s+className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}\n\s+role="group"\n\s+aria-labelledby="admin-user-roles-label"\n\s+aria-describedby=\{error \? "admin-user-roles-error" : undefined\}\n\s+>/)
   assert.match(roles, /<span id="admin-user-roles-label">\n\s+\{t\("form\.rolesSection"\)\}/)
   assert.match(roles, /<ChoiceCard\n\s+key=\{role\.id\}\n\s+type="checkbox"\n\s+id=\{role\.id === focusRoleId \? "admin-user-roles" : undefined\}/)
-  assert.match(roles, /const focusRoleId = groups\.flatMap\(\(group\) => group\.roles\)\.find\(\(role\) => !isLocked\(role\)\)\?\.id/)
+  assert.match(roles, /const focusRoleId = shownGroups\.flatMap\(\(group\) => group\.shown\)\.find\(\(role\) => !isLocked\(role\)\)\?\.id/)
   assert.match(form, /reveal: \(key\) => \{\n\s+if \(key === "roleIds"\) setRoleQuery\(""\)/)
   assert.ok(roles.includes('{error ? <FieldError id="admin-user-roles-error" className="mt-2">{error}</FieldError> : null}'))
   assert.match(form, /error=\{fieldErrors\.errors\.roleIds \? fieldErrors\.message\("roleIds"\) : undefined\}/)

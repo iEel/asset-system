@@ -164,6 +164,59 @@ test("kept: field errors focus the first field", () => {
   assert.match(edit, /if \(!data\.user\) notFound\(\)/)
 })
 
+// Look step (look-fix-brief.md): the dev DB has over a thousand custom roles, so the list is capped per group.
+test("the role list shows 12 per group with show all, held and ticked roles first", () => {
+  const source = roles()
+  assert.match(source, /const ROLE_CAP = 12\n/)
+  // Held, chosen and ticked-this-session roles are pinned to the front and always shown.
+  assert.match(source, /const pinned = new Set\(\[\.\.\.initialIds, \.\.\.currentIds, \.\.\.touched\]\)/)
+  assert.match(source, /\[\.\.\.group\.roles\.filter\(\(role\) => pinned\.has\(role\.id\)\), \.\.\.group\.roles\.filter\(\(role\) => !pinned\.has\(role\.id\)\)\]/)
+  // A search shows every match; without one a group is capped until it is expanded, which lasts the session.
+  assert.match(source, /const capped = needle === "" && !expanded\.includes\(group\.key\)/)
+  assert.match(source, /capped \? ordered\.slice\(0, Math\.max\(ROLE_CAP, pinnedCount\)\) : ordered/)
+  assert.match(source, /setExpanded\(\(current\) => \[\.\.\.current, group\.key\]\)/)
+  assert.match(source, /t\("form\.showAllRoles", \{ count: group\.roles\.length \}\)/)
+  // The header count stays the group's total; a group with no match is not rendered.
+  assert.match(source, /<span className="num">· \{group\.roles\.length\}<\/span>/)
+  assert.match(source, /\]\.filter\(\(group\) => group\.roles\.length > 0\)/)
+  assert.match(source, /group\.shown\.map\(\(role\) =>/)
+  const th = JSON.parse(read("messages/th.json"))
+  const en = JSON.parse(read("messages/en.json"))
+  assert.equal(th.adminUsersPage.form.showAllRoles, "แสดงทั้งหมด {count, number} บทบาท")
+  assert.match(en.adminUsersPage.form.showAllRoles, /\{count, plural, one \{.*#.*\} other \{.*#.*\}\}/)
+})
+
+test("the phone footer is compact and the note moves into the form", () => {
+  const source = form()
+  // Below sm the note is the form's last section; from sm it stays in the footer. One state, one visible field.
+  assert.match(source, /<section className=\{cn\(getPanelClasses\(\), "p-4 sm:hidden"\)\}>\n\s+<Field label=\{t\("form\.noteOptional"\)\} id="admin-user-note-phone">\n\s+<Textarea\n\s+value=\{note\}/)
+  assert.match(source, /<Field label=\{t\("form\.note"\)\} hideLabel id="admin-user-note" className="hidden sm:grid sm:w-80">\n\s+<Textarea\n\s+value=\{note\}/)
+  assert.equal(source.match(/onChange=\{\(event\) => setNote\(event\.target\.value\)\}/g)?.length, 2)
+  // ยกเลิก and บันทึก side by side on the phone, as they were from sm.
+  assert.match(source, /<div className="grid grid-cols-2 gap-2 sm:contents">\n\s+<Link href=\{backHref\}/)
+  assert.match(source, /<span role="status" className="block truncate sm:whitespace-normal">/)
+  const th = JSON.parse(read("messages/th.json"))
+  assert.equal(th.adminUsersPage.form.noteOptional, "หมายเหตุ (ไม่บังคับ)")
+  // The E2E finds the visible note field by its label.
+  assert.match(read("e2e/admin/user-form.spec.ts"), /page\.getByLabel\(W\.note\)\.filter\(\{ visible: true \}\)\.fill\(/)
+})
+
+test("the password field has a show and hide button", () => {
+  const source = account()
+  assert.match(source, /const \[showPassword, setShowPassword\] = useState\(false\)/)
+  assert.match(source, /type=\{showPassword \? "text" : "password"\}/)
+  assert.match(source, /aria-label=\{showPassword \? tAuth\("hidePassword"\) : tAuth\("showPassword"\)\}/)
+  assert.match(source, /aria-controls="admin-user-password"/)
+  assert.match(source, /size="icon-sm"/)
+})
+
+test("the form subtitle no longer mentions the status", () => {
+  const th = JSON.parse(read("messages/th.json"))
+  const en = JSON.parse(read("messages/en.json"))
+  assert.equal(th.adminUsersPage.formSubtitle, "กำหนดบัญชีเข้าสู่ระบบ พนักงานที่ผูก และบทบาทการใช้งาน")
+  assert.doesNotMatch(en.adminUsersPage.formSubtitle, /status/i)
+})
+
 // Task 5: the user form E2E spec (e2e/admin/user-form.spec.ts) reads the app's own words, opens the pages with the seed
 // admin's saved session, and writes only the employee POST through the API (the user create, edit and status change go
 // through the page). These pins need no app.

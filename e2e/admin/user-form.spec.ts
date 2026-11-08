@@ -182,7 +182,7 @@ test.describe("the user form as the seed admin (group 11 plan 2)", () => {
     await expect(preview.getByText(/^\+/).first()).toBeVisible()
     await recordSettled(page, measure, "user form, create filled")
 
-    await page.locator("#admin-user-note").fill("E2E สร้างบัญชี AD จากพนักงาน")
+    await page.getByLabel(W.note).filter({ visible: true }).fill("E2E สร้างบัญชี AD จากพนักงาน")
     await save(page, "POST", "/api/admin/users")
 
     const row = await listRow(page, measure, account.username)

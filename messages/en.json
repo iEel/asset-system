@@ -5556,7 +5556,7 @@
     "subtitle": "Review user accounts, roles, status, and recent sign-in activity",
     "createTitle": "Create User",
     "editTitle": "Edit User",
-    "formSubtitle": "Configure sign-in account, linked employee, status, and assigned roles",
+    "formSubtitle": "Configure the sign-in account, linked employee and assigned roles",
     "username": "Username",
     "password": "Password",
     "newPassword": "New Password",
@@ -5662,7 +5662,9 @@
       "changes": "{count, plural, one {# change} other {# changes}}",
       "noChanges": "No changes yet",
       "lastLogin": "Last sign-in {time}",
-      "createdAt": "Created {date}"
+      "createdAt": "Created {date}",
+      "showAllRoles": "{count, plural, one {Show all # role} other {Show all # roles}}",
+      "noteOptional": "Note (optional)"
     }
   },
   "adminRolesPage": {

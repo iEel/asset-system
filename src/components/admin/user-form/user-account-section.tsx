@@ -1,6 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { Eye, EyeOff } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
 import { Field } from "@/components/ui/field"
 import { FieldGroup } from "@/components/ui/field-group"
@@ -11,7 +14,8 @@ import type { AdminUserFieldErrors, AdminUserFormValues } from "@/components/adm
 
 // บัญชีเข้าสู่ระบบ (spec §5.1). On create the AD/local choice comes first; the password shows on edit (to change it) or
 // for a local account (required). On edit the name and email say that an AD sign-in overwrites them (§5.4: the system
-// cannot tell an AD account from a local one, so it is a hint, not a lock).
+// cannot tell an AD account from a local one, so it is a hint, not a lock). The password has a show/hide button inside
+// the field (§5.1), with the login page's words.
 export function UserAccountSection({
   isEdit,
   values,
@@ -28,6 +32,8 @@ export function UserAccountSection({
   onAuthModeChange: (mode: AdminUserFormValues["authMode"]) => void
 }) {
   const t = useTranslations("adminUsersPage")
+  const tAuth = useTranslations("auth")
+  const [showPassword, setShowPassword] = useState(false)
   const validationMessage = useValidationMessage()
   const adSyncedHint = isEdit ? t("form.adSyncedHint") : undefined
 
@@ -98,15 +104,31 @@ export function UserAccountSection({
               hint={isEdit ? t("form.passwordEditHint") : undefined}
               error={fieldErrors.errors.password ? validationMessage(fieldErrors.errors.password, { min: 8, max: 100 }) : undefined}
             >
-              <Input
-                type="password"
-                value={values.password}
-                onChange={(event) => onFieldChange("password", event.target.value)}
-                required={!isEdit}
-                minLength={8}
-                maxLength={100}
-                autoComplete="new-password"
-              />
+              {(control) => (
+                <div className="relative">
+                  <Input
+                    {...control}
+                    type={showPassword ? "text" : "password"}
+                    value={values.password}
+                    onChange={(event) => onFieldChange("password", event.target.value)}
+                    required={!isEdit}
+                    minLength={8}
+                    maxLength={100}
+                    autoComplete="new-password"
+                    className="pr-12 md:pr-10"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={showPassword ? tAuth("hidePassword") : tAuth("showPassword")}
+                    aria-controls="admin-user-password"
+                    className="absolute top-1/2 right-0.5 -translate-y-1/2"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                  </Button>
+                </div>
+              )}
             </Field>
           ) : null}
         </div>
