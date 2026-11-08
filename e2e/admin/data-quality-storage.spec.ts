@@ -37,12 +37,16 @@ async function open(page: Page, measure: Measure, path: string, title: string, l
   await recordSettled(page, measure, label)
 }
 
+const SESSION_KEEP_ALIVE = "/api/session/keep-alive"
+
 // Every request that could write: anything but a GET or a HEAD to an /api/ path. The spec expects none.
 function watchWrites(page: Page) {
   const writes: string[] = []
   page.on("request", (request) => {
     const method = request.method().toUpperCase()
     const path = new URL(request.url()).pathname
+    // The shell's session keep-alive (POST /api/session/keep-alive) is app-wide, not a page write (E2E-1109C).
+    if (path === SESSION_KEEP_ALIVE) return
     if (method !== "GET" && method !== "HEAD" && path.startsWith("/api/")) writes.push(`${method} ${path}`)
   })
   return writes
