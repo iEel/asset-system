@@ -100,7 +100,10 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 11 plan 3 Task 4 added 9: the role editor's users in the role, a group line (modules), the applies-to lines
   // with and without names (count), the footer status (users), and the add dialog's picked, confirm, done and refused (count).
   // The plan 3 final review added 1: the add dialog's "อยู่ในบทบาทนี้แล้ว n คน" (count).
-  assert.equal(pluralKeys.size, 197,[...pluralKeys.keys()].join(", "))
+  // Group 12 plan 1 Task 3 added 8: the readiness values "ตั้งแล้ว {have} จาก {total} ค่า" and its five siblings
+  // (approvers, rules, admins, master data, files; keyed on have or total), the scanner's "หมดเวลา {seconds} วินาที"
+  // and the next-steps title "แก้ {count} รายการ".
+  assert.equal(pluralKeys.size, 205,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

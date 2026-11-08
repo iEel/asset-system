@@ -2,6 +2,7 @@ import { summarizeRetentionPolicy } from "./retention-policy.ts"
 import type { SettingsTabId } from "./settings-information-architecture.ts"
 import { buildSystemSettingsTabHref } from "./system-settings-tabs.ts"
 import { getUploadScanReadiness } from "./upload-virus-scan.ts"
+import { formatDateTime } from "./utils.ts"
 
 export type ProductionReadinessStatus = "pass" | "warning" | "fail"
 export type ProductionReadinessCheckKey =
@@ -78,10 +79,27 @@ export type ProductionReadinessDeploymentInput = {
   }
 }
 
+// The fixed words a display argument can take, read from productionReadinessPage.words.<word>. They stand in for ICU
+// select, which the message rules only allow on counts (tests/i18n-plural-count.test.ts).
+export type ProductionReadinessWord = "notSet" | "success" | "failed" | "neverRun" | "missing" | "noRecord"
+
+// A detected value as a message key under productionReadinessPage.values plus its arguments (group 12 spec §6): raw
+// values, and words the page translates into more arguments. Secrets (AUTH_SECRET, the DB password and URL, the
+// scheduler tokens) never go into either: only whether they are set.
+export type ProductionReadinessDisplay = {
+  key: string
+  values?: Record<string, string | number>
+  words?: Record<string, ProductionReadinessWord>
+}
+
 export type ProductionReadinessCheck = {
   key: ProductionReadinessCheckKey
   status: ProductionReadinessStatus
+  // The English value, kept for compatibility; the page shows display.
   value: string
+  display: ProductionReadinessDisplay
+  // The env var names to set on the server: [] when the check is fixed in the app (href) or by a new deploy.
+  fixEnv: string[]
   // null: the value is set on the server (env file or the deployed files), outside the app, so the card says how to fix it instead of linking.
   href: string | null
 }
@@ -118,104 +136,220 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
     timeoutMs: input.deployment?.uploadScanTimeoutMs,
   })
 
+  const deployment = input.deployment
+  const authSecretStatus = getAuthSecretStatus(deployment)
+  const uploadDir = deployment?.uploadDir?.trim() ?? ""
+  const missingTokens = getMissingSchedulerTokens(deployment)
+
   return [
     {
       key: "publicQrBaseUrl",
       status: getPublicQrStatus(publicQrBaseUrl),
       value: publicQrBaseUrl || "-",
+      display: publicQrBaseUrl ? { key: "text", values: { text: publicQrBaseUrl } } : { key: "notConfigured" },
+      fixEnv: [],
       href: settingsTab("label-template"),
     },
     {
       key: "workflowApprovers",
       status: missingApprovers > 0 ? "fail" : thinApprovers > 0 ? "warning" : "pass",
       value: `${input.approverMatrix.length - missingApprovers}/${input.approverMatrix.length}`,
+      display: { key: "approversOf", values: { have: input.approverMatrix.length - missingApprovers, total: input.approverMatrix.length } },
+      fixEnv: [],
       href: "/admin/approvals",
     },
     {
       key: "notificationRules",
       status: notificationReadyCount === notificationKeys.length ? "pass" : "fail",
       value: `${notificationReadyCount}/${notificationKeys.length}`,
+      display: { key: "rulesOf", values: { have: notificationReadyCount, total: notificationKeys.length } },
+      fixEnv: [],
       href: settingsTab("notifications"),
     },
     {
       key: "adminCoverage",
       status: input.activeAdminUsers === 0 ? "fail" : input.activeAdminUsers === 1 ? "warning" : "pass",
       value: `${input.activeAdminUsers}/${input.activeUserCount}`,
+      display: { key: "adminsOf", values: { have: input.activeAdminUsers, total: input.activeUserCount } },
+      fixEnv: [],
       href: "/admin/users",
     },
     {
       key: "masterData",
       status: readyMasterDataCount === masterDataKeys.length ? "pass" : "warning",
       value: `${readyMasterDataCount}/${masterDataKeys.length}`,
-      href: "/admin/data-quality",
+      display: { key: "masterDataOf", values: { have: readyMasterDataCount, total: masterDataKeys.length } },
+      fixEnv: [],
+      // Board AD-Readiness: master data, not data quality. There is no /master-data index page; companies is the first.
+      href: "/master-data/companies",
     },
     {
       key: "appBaseUrl",
-      status: getAppBaseUrlStatus(input.deployment),
-      value: getAppBaseUrlValue(input.deployment),
+      status: getAppBaseUrlStatus(deployment),
+      value: getAppBaseUrlValue(deployment),
+      display: getAppBaseUrlDisplay(deployment),
+      fixEnv: ["AUTH_URL", "NEXTAUTH_URL"],
       href: null,
     },
     {
       key: "authSecret",
-      status: getAuthSecretStatus(input.deployment),
-      value: getSecretValue(input.deployment),
+      status: authSecretStatus,
+      value: getSecretValue(deployment),
+      display: { key: authSecretStatus === "pass" ? "secretHidden" : authSecretStatus === "warning" ? "secretShort" : "secretNotReady" },
+      fixEnv: ["AUTH_SECRET", "NEXTAUTH_SECRET"],
       href: null,
     },
     {
       key: "uploadDir",
-      status: getUploadDirStatus(input.deployment?.uploadDir),
-      value: input.deployment?.uploadDir?.trim() || "-",
+      status: getUploadDirStatus(deployment?.uploadDir),
+      value: uploadDir || "-",
+      display: uploadDir ? { key: "text", values: { text: uploadDir } } : { key: "notConfigured" },
+      fixEnv: ["UPLOAD_DIR"],
       href: null,
     },
     {
       key: "databaseConfig",
-      status: getDatabaseConfigStatus(input.deployment),
-      value: getDatabaseConfigValue(input.deployment),
+      status: getDatabaseConfigStatus(deployment),
+      value: getDatabaseConfigValue(deployment),
+      display: { key: "configuredOf", values: { have: countConfiguredDatabaseValues(deployment), total: 4 } },
+      fixEnv: ["DB_SERVER", "DB_USER", "DB_PASSWORD", "DATABASE_URL"],
       href: null,
     },
     {
       key: "schedulerTokens",
-      status: getSchedulerTokensStatus(input.deployment),
-      value: getSchedulerTokensValue(input.deployment),
+      status: getSchedulerTokensStatus(deployment),
+      value: getSchedulerTokensValue(deployment),
+      display: missingTokens.length > 0
+        ? { key: "tokensMissing", values: { names: missingTokens.join(" · ") } }
+        : { key: "configuredOf", values: { have: schedulerTokenEnv.length, total: schedulerTokenEnv.length } },
+      fixEnv: missingTokens.length > 0 ? missingTokens : [...schedulerTokenEnv],
       href: null,
     },
     {
       key: "uploadScanner",
       status: uploadScanner.status,
       value: uploadScanner.value,
+      display: getUploadScannerDisplay(uploadScanner, deployment),
+      fixEnv: ["UPLOAD_SCAN_COMMAND", "UPLOAD_SCAN_ARGS", "UPLOAD_SCAN_TIMEOUT_MS"],
       href: null,
     },
     {
       key: "schedulerRuns",
-      status: getSchedulerRunsStatus(input.deployment),
-      value: getSchedulerRunsValue(input.deployment),
+      status: getSchedulerRunsStatus(deployment),
+      value: getSchedulerRunsValue(deployment),
+      display: getSchedulerRunsDisplay(deployment),
+      fixEnv: [],
       href: settingsTab("automation"),
     },
     {
       key: "backupStatus",
-      status: getBackupStatus(input.deployment),
-      value: getBackupValue(input.deployment),
+      status: getBackupStatus(deployment),
+      value: getBackupValue(deployment),
+      display: getBackupDisplay(deployment),
+      fixEnv: ["BACKUP_STATUS", "BACKUP_LAST_RUN_AT"],
       href: null,
     },
     {
       key: "backupRestoreDrill",
-      status: getBackupRestoreDrillStatus(input.deployment),
-      value: getBackupRestoreDrillValue(input.deployment),
+      status: getBackupRestoreDrillStatus(deployment),
+      value: getBackupRestoreDrillValue(deployment),
+      display: getBackupRestoreDrillDisplay(deployment),
+      fixEnv: ["BACKUP_LAST_RESTORE_TEST_AT"],
       href: null,
     },
     {
       key: "retentionPolicy",
       status: retentionPolicy.invalidKeys.length > 0 ? "fail" : "pass",
       value: `${retentionPolicy.configured}/${retentionPolicy.total} configured`,
+      display: { key: "configuredOf", values: { have: retentionPolicy.configured, total: retentionPolicy.total } },
+      fixEnv: [],
       href: settingsTab("governance"),
     },
     {
       key: "pwaAssets",
-      status: getPwaAssetsStatus(input.deployment),
-      value: getPwaAssetsValue(input.deployment),
+      status: getPwaAssetsStatus(deployment),
+      value: getPwaAssetsValue(deployment),
+      display: { key: "filesOf", values: { have: deployment?.pwaAssets?.available ?? 0, total: deployment?.pwaAssets?.total ?? 0 } },
+      // The files ship with the app: a new build and deploy fixes them, not an env var.
+      fixEnv: [],
       href: null,
     },
   ]
+}
+
+const schedulerTokenEnv = ["LDAP_SYNC_TOKEN", "NOTIFICATION_DIGEST_TOKEN"] as const
+
+// Per token, by env name: the row names the missing one (board AD-Readiness). Only set or not set, never the token.
+function getMissingSchedulerTokens(deployment?: ProductionReadinessDeploymentInput): string[] {
+  const configured: Record<(typeof schedulerTokenEnv)[number], boolean> = {
+    LDAP_SYNC_TOKEN: isConfiguredSecret(deployment?.ldapSyncToken),
+    NOTIFICATION_DIGEST_TOKEN: isConfiguredSecret(deployment?.notificationDigestToken),
+  }
+  return schedulerTokenEnv.filter((name) => !configured[name])
+}
+
+// Splits the arguments of a display into raw values and fixed words: an argument whose text is one of the known words
+// goes to words (the page reads productionReadinessPage.words.<word>), any other text stays a raw value.
+function withWords(key: string, args: Record<string, string>, known: readonly ProductionReadinessWord[]): ProductionReadinessDisplay {
+  const values: Record<string, string> = {}
+  const words: Record<string, ProductionReadinessWord> = {}
+  for (const [name, text] of Object.entries(args)) {
+    const word = known.find((candidate) => candidate === text)
+    if (word) words[name] = word
+    else values[name] = text
+  }
+  return { key, ...(Object.keys(values).length > 0 ? { values } : {}), ...(Object.keys(words).length > 0 ? { words } : {}) }
+}
+
+// The URLs are not secret; an empty one reads ยังไม่ได้ตั้ง.
+function getAppBaseUrlDisplay(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessDisplay {
+  const authUrl = deployment?.authUrl?.trim() ?? ""
+  const nextAuthUrl = deployment?.nextAuthUrl?.trim() ?? ""
+  if (!authUrl && !nextAuthUrl) return { key: "notConfigured" }
+  return withWords("authUrls", { authUrl: authUrl || "notSet", nextAuthUrl: nextAuthUrl || "notSet" }, ["notSet"])
+}
+
+function countConfiguredDatabaseValues(deployment?: ProductionReadinessDeploymentInput) {
+  return [deployment?.databaseUrl, deployment?.dbServer, deployment?.dbUser, deployment?.dbPassword].filter((value) => Boolean(value?.trim())).length
+}
+
+// The scanner command is a server path, not shown: the board says only set, and the timeout in seconds.
+function getUploadScannerDisplay(
+  scanner: { status: ProductionReadinessStatus; value: string },
+  deployment?: ProductionReadinessDeploymentInput,
+): ProductionReadinessDisplay {
+  if (scanner.value === "disabled") return { key: "notConfigured" }
+  if (scanner.value === "invalid timeout") return { key: "scannerBadTimeout" }
+  if (scanner.status === "warning") return { key: "scannerArgsNoFile" }
+  const timeoutMs = Number(deployment?.uploadScanTimeoutMs?.trim() || "30000")
+  return { key: "scannerOn", values: { seconds: Math.round(timeoutMs / 100) / 10 } }
+}
+
+// Group 12 plan 1 Task 3: the two scheduled jobs the page reports, each as success / failed / neverRun or its raw
+// status. Any other job name is left out of the Thai line.
+function getSchedulerRunsDisplay(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessDisplay {
+  const runs = deployment?.schedulerRunStatuses ?? []
+  if (runs.length === 0) return { key: "noRunsYet" }
+  const statusOf = (name: string) => runs.find((run) => run.name === name)?.status?.trim() || "neverRun"
+  return withWords("runs", { ldapSync: statusOf("ldap_sync"), notificationDigest: statusOf("notification_digest") }, ["success", "failed", "neverRun"])
+}
+
+function getBackupDisplay(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessDisplay {
+  const status = deployment?.backupStatus?.trim().toLowerCase() || "notSet"
+  const lastRunAt = deployment?.backupLastRunAt?.trim() ?? ""
+  return withWords("backup", { status, lastRunAt: lastRunAt ? formatEnvDate(lastRunAt) : "noRecord" }, ["success", "failed", "missing", "notSet", "noRecord"])
+}
+
+function getBackupRestoreDrillDisplay(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessDisplay {
+  const lastRestoreTestAt = deployment?.backupLastRestoreTestAt?.trim() ?? ""
+  if (!lastRestoreTestAt) return { key: "restoreNever" }
+  if (Number.isNaN(Date.parse(lastRestoreTestAt))) return { key: "dateInvalid", values: { text: lastRestoreTestAt } }
+  return { key: "restoreAt", values: { date: formatEnvDate(lastRestoreTestAt) } }
+}
+
+// A date from the env reads in the app's date format; text that is not a date stays as written.
+function formatEnvDate(value: string) {
+  return Number.isNaN(Date.parse(value)) ? value : formatDateTime(value)
 }
 
 export function summarizeProductionReadiness(checks: ProductionReadinessCheck[]) {

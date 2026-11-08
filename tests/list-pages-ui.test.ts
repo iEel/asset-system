@@ -734,12 +734,16 @@ test("approval history: real pages and full counts from the database, two TabNav
 
 // Plan 2B-5 Task 6 (spec 2B §4.4.6, §5.6 "หน้าสรุป" row readiness, R-d, R-p): the readiness header is PageHeader, the
 // four tinted SummaryCards are one StatStrip, and the detected value of a check reads as a code. The check cards stay.
-test("readiness: PageHeader, one StatStrip, and each detected value as a code (spec 2B §4.4.6, §5.6)", () => {
+// Group 12 plan 1 Task 3 (board AD-Readiness) replaced the StatStrip with the filter chips, which carry the counts, and
+// put the checked-at time in the header's meta row. The detected value is now Thai text from check.display, so it left
+// the code font; the env names in แก้ที่ไหน take it instead (tests/readiness-presenter.test.ts).
+test("readiness: PageHeader with the checked-at line, counts on the chips, env names as code (spec 2B §4.4.6, group 12 spec §6)", () => {
   const source = read(`${D}admin/readiness/page.tsx`)
-  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>\n\n\s+<StatStrip\n/)
-  assert.equal(source.match(/value: formatCount\(summary\.(?:total|pass|warning|fail)\)/g)?.length, 4)
-  assert.match(source, /<span className="tag">\{check\.value\}<\/span>/)
-  assert.doesNotMatch(source, /<h1\b|function (?:SummaryCard|summaryClass)\b|toLocaleString\(|font-mono/)
+  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{\n\s+<>\n\s+<span>\{t\("subtitle"\)\}<\/span>\n\s+<span>\{t\("checkedAt", \{ time: checkedAt \}\)\}<\/span>/)
+  assert.match(source, /const checkedAt = formatDateTime\(new Date\(\)\)/)
+  assert.match(source, /<ReadinessFilterChips value=\{filter\} counts=\{summary\} hrefFor=\{hrefFor\} \/>/)
+  assert.match(source, /<span key=\{name\} className="tag">\{name\}<\/span>/)
+  assert.doesNotMatch(source, /<StatStrip\b|check\.value\b|<h1\b|function (?:SummaryCard|summaryClass)\b|toLocaleString\(|font-mono/)
 })
 
 // Plan 2B-5 Task 6 (spec 2B §4.4.6, §8.9 row 5): only the settings header changes. The form, its tab row (O7, 2C plan 5)

@@ -253,7 +253,8 @@ test("each check links to the page that fixes it, or has no link when it is set 
     workflowApprovers: "/admin/approvals",
     notificationRules: "/admin/settings?tab=notifications",
     adminCoverage: "/admin/users",
-    masterData: "/admin/data-quality",
+    // Group 12 plan 1 Task 3 (board AD-Readiness): master data links to master data (companies; no index page).
+    masterData: "/master-data/companies",
     appBaseUrl: null,
     authSecret: null,
     uploadDir: null,

@@ -19,7 +19,8 @@ test("the error page retries with Button, and ActionButton is gone (spec 2D M3)"
 test("the readiness links are outline md links and import-export has no back link, neither on the old safe-link helpers (spec 2D M5, group 4 plan 5)", () => {
   const readiness = read(`${D}admin/readiness/page.tsx`)
   assert.match(readiness, /<Link\n\s+href=\{`\/\$\{locale\}\$\{check\.href\}`\}\n\s+className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}\n\s+aria-label=\{`\$\{labels\.action\}: \$\{labels\.title\}`\}\n\s+>\n\s+\{labels\.action\}\n\s+<ArrowRight aria-hidden="true" \/>\n\s+<\/Link>/)
-  assert.match(readiness, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
+  // Group 12 plan 1 Task 3: the "ขั้นถัดไป" card's links are text links, so linkVariants joins the import.
+  assert.match(readiness, /import \{ buttonVariants, linkVariants \} from "@\/components\/ui\/button-variants"/)
   // Group 4 plan 5 Task 5 (board): the import-export page's "กลับ" link went; the sidebar and the register's menu lead there.
   const importExport = read(`${D}asset-management/import-export/page.tsx`)
   assert.doesNotMatch(importExport, /tCommon\("back"\)|buttonVariants/)

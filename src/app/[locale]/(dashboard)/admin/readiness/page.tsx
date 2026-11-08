@@ -6,29 +6,52 @@ import { getTranslations } from "next-intl/server"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
 import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { prisma } from "@/lib/db"
-import { formatCount } from "@/lib/display-format"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildProductionReadinessChecks, summarizeProductionReadiness, type ProductionReadinessCheck } from "@/lib/production-readiness"
-import { buttonVariants } from "@/components/ui/button-variants"
+import {
+  groupReadiness,
+  nextSteps,
+  parseReadinessFilter,
+  type ReadinessFilter,
+  type ReadinessGroup,
+} from "@/lib/readiness-presenter"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import {
   ldapSyncLastStatusKey,
   notificationDigestLastStatusKey,
   systemSettingDefaults,
 } from "@/lib/system-setting-defaults"
+import { formatDateTime } from "@/lib/utils"
 import { parseWorkflowApprovalPolicy } from "@/lib/workflow-approval"
+import { ReadinessFilterChips } from "@/components/admin/readiness/readiness-filter-chips"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
-import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 
 type ProductionReadinessPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ filter?: string | string[] }>
 }
 
-export default async function ProductionReadinessPage({ params }: ProductionReadinessPageProps) {
+type CheckLabels = {
+  title: string
+  description: string
+  status: string
+  value: string
+  action: string | null
+  fix: string | null
+}
+
+// Group 12 plan 1 Task 3 (spec §6, board AD-Readiness): the checked-at line, the "ขั้นถัดไป" card for the ต้องแก้ items,
+// the status chips with the sum line, then the four groups (a table from md, a card per check below). The StatStrip
+// went: the chips carry the counts. Nothing on the page shows a secret: the values come from check.display only.
+export default async function ProductionReadinessPage({ params, searchParams }: ProductionReadinessPageProps) {
   const { locale } = await params
   await requirePagePermission(locale, "setting", "view")
+  const filter = parseReadinessFilter((await searchParams).filter)
 
   const t = await getTranslations("productionReadinessPage")
   const savedSettingsPromise = prisma.systemSetting.findMany({ select: { key: true, value: true } })
@@ -76,35 +99,64 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
     masterDataCounts,
   })
   const summary = summarizeProductionReadiness(checks)
+  const groups = groupReadiness(checks, filter)
+  const steps = nextSteps(checks)
+  const checkedAt = formatDateTime(new Date())
+  const basePath = `/${locale}/admin/readiness`
+  const hrefFor = (value: ReadinessFilter) => (value === "all" ? basePath : `${basePath}?filter=${value}`)
+  const labelsFor = (check: ProductionReadinessCheck): CheckLabels => ({
+    title: t(`check_${check.key}_title`),
+    description: t(`check_${check.key}_description`),
+    status: t(`status_${check.status}`),
+    value: t(`values.${check.display.key}`, {
+      ...check.display.values,
+      ...Object.fromEntries(Object.entries(check.display.words ?? {}).map(([name, word]) => [name, t(`words.${word}`)])),
+    }),
+    action: check.href ? t(`check_${check.key}_action`) : null,
+    fix: check.href ? null : t(`check_${check.key}_fix`),
+  })
+  const tableLabels = { status: t("col_status"), check: t("col_check"), value: t("value"), fix: t("col_fix"), fixEnvLead: t("fixEnvLead") }
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")} meta={t("subtitle")} />
-
-      <StatStrip
-        items={[
-          { key: "total", label: t("summaryTotal"), value: formatCount(summary.total) },
-          { key: "pass", label: t("summaryPass"), value: formatCount(summary.pass) },
-          { key: "warning", label: t("summaryWarning"), value: formatCount(summary.warning) },
-          { key: "fail", label: t("summaryFail"), value: formatCount(summary.fail) },
-        ]}
+      <PageHeader
+        title={t("title")}
+        meta={
+          <>
+            <span>{t("subtitle")}</span>
+            <span>{t("checkedAt", { time: checkedAt })}</span>
+          </>
+        }
       />
 
+      {steps.length > 0 ? (
+        <ReadinessNextSteps
+          steps={steps}
+          locale={locale}
+          title={t("nextStepsTitle", { count: steps.length })}
+          serverNote={steps.some((check) => check.fixEnv.length > 0) ? t("nextStepsServerNote") : null}
+          lineFor={(check) => ({
+            title: t(`check_${check.key}_title`),
+            env: check.fixEnv.length > 0 ? t("nextStepEnv", { names: check.fixEnv.join(" · ") }) : null,
+            action: check.href ? t(`check_${check.key}_action`) : null,
+            fix: check.href || check.fixEnv.length > 0 ? null : t(`check_${check.key}_fix`),
+          })}
+        />
+      ) : null}
+
       <ContentPanel title={t("checklistTitle")} description={t("checklistDescription")}>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {checks.map((check) => (
-            <ReadinessCheckCard
-              key={check.key}
-              check={check}
+        <div className="space-y-6">
+          <ReadinessFilterChips value={filter} counts={summary} hrefFor={hrefFor} />
+          {groups.length === 0 ? <EmptyNote role="status">{t("filterEmpty")}</EmptyNote> : null}
+          {groups.map((group) => (
+            <ReadinessGroupSection
+              key={group.key}
+              group={group}
               locale={locale}
-              labels={{
-                title: t(`check_${check.key}_title`),
-                description: t(`check_${check.key}_description`),
-                status: t(`status_${check.status}`),
-                value: t("value"),
-                action: check.href ? t(`check_${check.key}_action`) : null,
-                fix: check.href ? null : t(`check_${check.key}_fix`),
-              }}
+              heading={t(`group_${group.key}`)}
+              countsLine={groupCountsLine(group, (status, count) => t("groupCount", { label: t(`status_${status}`), count }), t("groupTotal", { count: group.counts.fail + group.counts.warning + group.counts.pass }))}
+              tableLabels={tableLabels}
+              labelsFor={labelsFor}
             />
           ))}
         </div>
@@ -118,49 +170,180 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
   )
 }
 
+// The group heading's counts: only the statuses it has, then the total (board: "ต้องแก้ 1 · ควรตรวจ 1 · พร้อม 2 · รวม 4").
+function groupCountsLine(group: ReadinessGroup, part: (status: ProductionReadinessCheck["status"], count: number) => string, total: string) {
+  const statuses: ProductionReadinessCheck["status"][] = ["fail", "warning", "pass"]
+  return [...statuses.filter((status) => group.counts[status] > 0).map((status) => part(status, group.counts[status])), total].join(" · ")
+}
+
+function ReadinessNextSteps({
+  steps,
+  locale,
+  title,
+  serverNote,
+  lineFor,
+}: {
+  steps: ProductionReadinessCheck[]
+  locale: string
+  title: string
+  serverNote: string | null
+  lineFor: (check: ProductionReadinessCheck) => { title: string; env: string | null; action: string | null; fix: string | null }
+}) {
+  return (
+    <Notice tone="danger" title={title} data-slot="readiness-next-steps">
+      <ul className="space-y-1.5 text-foreground">
+        {steps.map((check) => {
+          const line = lineFor(check)
+          return (
+            <li key={check.key} className="break-words">
+              <span className="font-medium">{line.title}</span>
+              {" · "}
+              {line.env ?? line.fix}
+              {check.href ? (
+                <Link href={`/${locale}${check.href}`} className={linkVariants({ size: "inherit" })}>
+                  {line.action}
+                </Link>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+      {serverNote ? <p className="mt-2">{serverNote}</p> : null}
+    </Notice>
+  )
+}
+
+function ReadinessGroupSection({
+  group,
+  locale,
+  heading,
+  countsLine,
+  tableLabels,
+  labelsFor,
+}: {
+  group: ReadinessGroup
+  locale: string
+  heading: string
+  countsLine: string
+  tableLabels: { status: string; check: string; value: string; fix: string; fixEnvLead: string }
+  labelsFor: (check: ProductionReadinessCheck) => CheckLabels
+}) {
+  return (
+    <section aria-label={heading} className="min-w-0 space-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="font-semibold text-foreground">{heading}</h3>
+        <p className="num text-meta text-muted-foreground">{countsLine}</p>
+      </div>
+
+      <DataTable caption={heading} layout="fixed" className="max-md:hidden">
+        <colgroup>
+          <col className="w-28" />
+          <col />
+          <col className="w-[28%]" />
+          <col className="w-[30%]" />
+        </colgroup>
+        <DataTableHeader>
+          <tr>
+            <DataTableHead>{tableLabels.status}</DataTableHead>
+            <DataTableHead>{tableLabels.check}</DataTableHead>
+            <DataTableHead>{tableLabels.value}</DataTableHead>
+            <DataTableHead>{tableLabels.fix}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {group.checks.map((check) => {
+            const labels = labelsFor(check)
+            return (
+              <DataTableRow key={check.key}>
+                <DataTableCell>
+                  <StatusBadge label={labels.status} tone={checkTone(check.status)} />
+                </DataTableCell>
+                <DataTableCell>
+                  <div className="font-medium text-foreground">{labels.title}</div>
+                  <p className="mt-1 text-meta text-muted-foreground">{labels.description}</p>
+                </DataTableCell>
+                <DataTableCell className="[overflow-wrap:anywhere]">{labels.value}</DataTableCell>
+                <DataTableCell>
+                  <ReadinessFix check={check} locale={locale} labels={labels} fixEnvLead={tableLabels.fixEnvLead} />
+                </DataTableCell>
+              </DataTableRow>
+            )
+          })}
+        </DataTableBody>
+      </DataTable>
+
+      <ul className="space-y-3 md:hidden">
+        {group.checks.map((check) => (
+          <li key={check.key}>
+            <ReadinessCheckCard check={check} locale={locale} labels={labelsFor(check)} valueLabel={tableLabels.value} fixEnvLead={tableLabels.fixEnvLead} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// Below md, one card per check: title, badge, why it matters, the detected value, then where to fix it.
 function ReadinessCheckCard({
   check,
   locale,
   labels,
+  valueLabel,
+  fixEnvLead,
 }: {
   check: ProductionReadinessCheck
   locale: string
-  labels: {
-    title: string
-    description: string
-    status: string
-    value: string
-    action: string | null
-    fix: string | null
-  }
+  labels: CheckLabels
+  valueLabel: string
+  fixEnvLead: string
 }) {
   return (
     <article className="min-w-0 rounded-md border border-border bg-background p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-foreground">{labels.title}</h3>
+          <h4 className="font-semibold text-foreground">{labels.title}</h4>
           <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
         </div>
         <StatusBadge label={labels.status} tone={checkTone(check.status)} />
       </div>
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-xs font-medium text-muted-foreground">{labels.value}</div>
-          <div className="mt-1 break-all text-xs text-foreground"><span className="tag">{check.value}</span></div>
-          {labels.fix ? <p className="mt-2 text-xs text-muted-foreground">{labels.fix}</p> : null}
-        </div>
-        {check.href ? (
-          <Link
-            href={`/${locale}${check.href}`}
-            className={buttonVariants({ variant: "outline", size: "md" })}
-            aria-label={`${labels.action}: ${labels.title}`}
-          >
-            {labels.action}
-            <ArrowRight aria-hidden="true" />
-          </Link>
-        ) : null}
+      <div className="mt-4">
+        <div className="text-xs font-medium text-muted-foreground">{valueLabel}</div>
+        <div className="mt-1 text-sm text-foreground [overflow-wrap:anywhere]">{labels.value}</div>
+      </div>
+      <div className="mt-4">
+        <ReadinessFix check={check} locale={locale} labels={labels} fixEnvLead={fixEnvLead} />
       </div>
     </article>
+  )
+}
+
+// Where to fix: the env names in the code font, then the fix line (it ends in แล้วรีสตาร์ตแอป), or the link to the page
+// that fixes it in the app (critique 2026-10-20 F1).
+function ReadinessFix({ check, locale, labels, fixEnvLead }: { check: ProductionReadinessCheck; locale: string; labels: CheckLabels; fixEnvLead: string }) {
+  return (
+    <div className="min-w-0">
+      {check.fixEnv.length > 0 ? (
+        <>
+          <p className="text-xs text-muted-foreground">{fixEnvLead}</p>
+          <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-foreground">
+            {check.fixEnv.map((name) => (
+              <span key={name} className="tag">{name}</span>
+            ))}
+          </p>
+        </>
+      ) : null}
+      {labels.fix ? <p className="mt-2 text-xs text-muted-foreground">{labels.fix}</p> : null}
+      {check.href ? (
+        <Link
+          href={`/${locale}${check.href}`}
+          className={buttonVariants({ variant: "outline", size: "md" })}
+          aria-label={`${labels.action}: ${labels.title}`}
+        >
+          {labels.action}
+          <ArrowRight aria-hidden="true" />
+        </Link>
+      ) : null}
+    </div>
   )
 }
 
