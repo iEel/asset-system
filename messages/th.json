@@ -6719,7 +6719,27 @@
     "approvalSummary": "ผู้อนุมัติ {approvers, number} · SLA {days, number} วัน · {sod}",
     "reviewSetting": "การตั้งค่า",
     "reviewSecretChanged": "เปลี่ยนรหัสผ่าน",
-    "reviewRoleMissing": "ไม่พบบทบาท"
+    "reviewRoleMissing": "ไม่พบบทบาท",
+    "ldapBind": {
+      "stored": "•••••••• บันทึกไว้แล้ว",
+      "notSet": "ยังไม่ได้ตั้ง",
+      "change": "เปลี่ยน",
+      "cancel": "ยกเลิก",
+      "keepHint": "ว่างไว้จะใช้รหัสผ่านเดิม"
+    },
+    "ldapTest": {
+      "passed": "ทดสอบผ่าน {time}",
+      "failed": "ทดสอบไม่ผ่าน {time} · {reason}"
+    },
+    "ldapSyncLocked": "บันทึกค่า LDAP ก่อน",
+    "ldapApply": {
+      "title": "ยืนยันการซิงก์ LDAP",
+      "counts": "เพิ่ม {creates, number} · แก้ {updates, number} · ปิด {deactivates, number}",
+      "deactivateTitle": "บัญชีที่จะปิด",
+      "more": "และอีก {count, number} คน",
+      "confirmDeactivate": "ซิงก์และปิดบัญชี {count, number} รายการ",
+      "confirm": "ซิงก์"
+    }
   },
   "transactionCancellation": {
     "action": "ยกเลิกรายการ",

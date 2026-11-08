@@ -70,6 +70,9 @@ export function getRestrictedSettingChangeError(changedKeys: string[], actorRole
 
 type LdapTestSettings = Record<string, string>
 
+// The test's refusal when the target changed and no new password was typed; the settings form shows it under the field.
+export const ldapTestPasswordNeededError = "Enter the bind password to test a different LDAP server or bind account"
+
 export type LdapTestSettingsResolution =
   | { ok: true; settings: LdapTestSettings }
   | { ok: false; error: string }
@@ -88,7 +91,7 @@ export function resolveLdapTestSettings(
   if (!sameTarget) {
     return {
       ok: false,
-      error: "Enter the bind password to test a different LDAP server or bind account",
+      error: ldapTestPasswordNeededError,
     }
   }
 

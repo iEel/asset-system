@@ -115,7 +115,8 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 12 plan 5 Task 3 added 6: the settings menu's unsaved badge "แก้ {n}", an LDAP section's "แก้ {n} ค่า", the
   // footer's "เปลี่ยน {n} ค่า ยังไม่บันทึก", "บันทึก {n} ค่า", the discard confirm's title (all keyed on count) and the
   // approval summary "ผู้อนุมัติ {n} · SLA {n} วัน · …" (keyed on approvers; days is a plural too).
-  assert.equal(pluralKeys.size, 224,[...pluralKeys.keys()].join(", "))
+  // Group 12 plan 5 Task 4 added 1: the LDAP apply confirm's "ซิงก์และปิดบัญชี {n} รายการ" (keyed on count).
+  assert.equal(pluralKeys.size, 225,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

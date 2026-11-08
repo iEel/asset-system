@@ -336,10 +336,12 @@ test("the save waits with its reason when nothing changed, and LDAP apply waits 
   const submit = form.slice(form.indexOf("  async function handleSubmit("), form.indexOf("  async function handleLdapTest("))
   assert.match(submit, /event\.preventDefault\(\)\n(?:\s+\/\/[^\n]*\n)+\s+if \(changedCount === 0\) return\n\s+fieldErrors\.setErrors\(validate\(/)
   // LDAP apply: still disabled while a preview runs (another action is busy, not a gate); without a preview it is
-  // aria-disabled, tied to the line that says no preview has run, and its handler returns first.
-  assert.match(form, /disabled=\{syncingLdap === "preview"\}\n\s+aria-disabled=\{!syncPreview \|\| undefined\}\n\s+aria-describedby=\{!syncPreview \? "ldap-sync-no-preview" : undefined\}/)
+  // aria-disabled, tied to the line that says no preview has run, and its handler returns first. Since group 12 plan 5
+  // Task 4 apply also waits while LDAP edits are unsaved (ldap-sync-locked) and after an apply (applyReady), and it opens
+  // a confirm (openApplyConfirm) before handleLdapSync runs.
+  assert.match(form, /disabled=\{syncingLdap === "preview"\}\n\s+aria-disabled=\{ldapSyncLocked \|\| !applyReady \|\| undefined\}\n\s+aria-describedby=\{ldapSyncLocked \? "ldap-sync-locked" : !syncPreview \? "ldap-sync-no-preview" : !applyReady \? "ldap-sync-applied" : undefined\}/)
   assert.match(form, /return <EmptyNote id="ldap-sync-no-preview">\{labels\.ldapSyncNoPreview\}<\/EmptyNote>/)
-  assert.match(form, /async function handleLdapSync\(action: "preview" \| "apply"\) \{\n(?:\s+\/\/[^\n]*\n)+\s+if \(action === "apply" && !syncPreview\) return\n/)
+  assert.match(form, /async function handleLdapSync\(action: "preview" \| "apply"\) \{\n(?:\s+\/\/[^\n]*\n\s+if \(ldapSyncLocked\) return\n)?(?:\s+\/\/[^\n]*\n)+\s+if \(action === "apply" && \(!syncPreview \|\| syncPreview\.applied\)\) return\n/)
   assert.doesNotMatch(form, /\|\| !syncPreview\}/)
 })
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
@@ -33,6 +33,8 @@ import { useConfirm } from "@/components/ui/confirm-dialog"
 import { FormChangedField, type FormFieldChange } from "@/components/ui/form-changed-field"
 import { SettingsMenu } from "@/components/admin/settings/settings-menu"
 import { SettingsReviewTable } from "@/components/admin/settings/settings-review-table"
+import { LdapBindPasswordField } from "@/components/admin/settings/ldap-bind-password-field"
+import { LdapApplyConfirm } from "@/components/admin/settings/ldap-apply-confirm"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import {
@@ -77,7 +79,8 @@ import {
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import { buildSystemSettingsTabHref, parseSystemSettingsTab } from "@/lib/system-settings-tabs"
 import { findSystemSettingsSearchResults, getSystemSettingsTabForKey } from "@/lib/settings-search"
-import { dirtyCounts, reviewValue } from "@/lib/settings-page-model"
+import { dirtyCounts, ldapDirty, reviewValue } from "@/lib/settings-page-model"
+import { ldapTestPasswordNeededError, storedSecretPlaceholder } from "@/lib/system-setting-secrets"
 import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
   applyCategoryPrefixGroupEdit,
@@ -426,6 +429,11 @@ type LdapSyncPreview = {
   }
 }
 
+// The last connection test of this visit, shown next to its button (component state only).
+type LdapTestResult = { ok: true; at: Date } | { ok: false; at: Date; reason: string }
+
+const ldapBindPasswordKey = "ldap_bind_password"
+
 type LdapDeactivationImpact = {
   employeeId: string
   code: string
@@ -604,6 +612,10 @@ export function SystemSettingsForm({
   const [syncingLdap, setSyncingLdap] = useState<"preview" | "apply" | null>(null)
   const [syncPreview, setSyncPreview] = useState<LdapSyncPreview | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [ldapTestResult, setLdapTestResult] = useState<LdapTestResult | null>(null)
+  const [bindPasswordEditing, setBindPasswordEditing] = useState(false)
+  const [applyConfirmOpen, setApplyConfirmOpen] = useState(false)
+  const applyButtonRef = useRef<HTMLButtonElement | null>(null)
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   )
@@ -640,6 +652,23 @@ export function SystemSettingsForm({
     fieldErrors.clear(settingFieldKey(key))
   }
   const setBooleanValue = (key: string, checked: boolean) => setValue(key, checked ? "true" : "false")
+  // The bind password: the page sends a placeholder when one is stored, never the password. The input shows only what
+  // the person typed; an empty input sends the placeholder back (or "" with nothing stored, which the server drops).
+  const bindPasswordStored = initialValues[ldapBindPasswordKey] === storedSecretPlaceholder
+  const bindPasswordValue = getValue(ldapBindPasswordKey)
+  const bindPasswordTyped = bindPasswordValue === (initialValues[ldapBindPasswordKey] ?? "") ? "" : bindPasswordValue
+  // Change mode, also opened by a refusal that asks for a new password (the save's or the test's).
+  const bindPasswordOpen = bindPasswordEditing || Boolean(fieldErrors.errors[settingFieldKey(ldapBindPasswordKey)])
+  // Typing clears the refusal; the field stays open (a refusal may have opened it).
+  const setBindPasswordText = (text: string) => {
+    setValue(ldapBindPasswordKey, text === "" ? (initialValues[ldapBindPasswordKey] ?? "") : text)
+    setBindPasswordEditing(true)
+  }
+  // ยกเลิก: back to the stored state; the save sends the placeholder again.
+  const cancelBindPasswordEdit = () => {
+    setValue(ldapBindPasswordKey, initialValues[ldapBindPasswordKey] ?? "")
+    setBindPasswordEditing(false)
+  }
   const resetPrefixEditorFilters = () => {
     setAvailableCategorySearch("")
     setSelectedCategorySearch("")
@@ -722,6 +751,10 @@ export function SystemSettingsForm({
   // The menu's unsaved badges per tab and per group, and the footer's count (board AD-Settings, plan 5 Task 3).
   const dirty = dirtyCounts(changedSettings.map((setting) => setting.key))
   const changedKeys = new Set(changedSettings.map((setting) => setting.key))
+  // Preview and apply run on the stored LDAP settings, so they wait while an LDAP value is unsaved (board AD-Settings).
+  const ldapSyncLocked = ldapDirty([...changedKeys])
+  // Apply follows a preview; after an apply the next one needs a new preview.
+  const applyReady = syncPreview !== null && !syncPreview.applied
   const roleNames = new Set(defaultRoleOptions.map((option) => option.id))
   const roleLabels = new Map(defaultRoleOptions.map((option) => [option.id, option.label]))
   useEffect(() => {
@@ -840,6 +873,8 @@ export function SystemSettingsForm({
     scheduled: labels.ldapSyncModeScheduled,
   }
   const ldapSyncMode = getValue("ldap_sync_mode") || "preview"
+  // The test result's clock time, "14:05", in the page's language.
+  const formatTestTime = (date: Date) => new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "th-TH", { hour: "2-digit", minute: "2-digit" }).format(date)
   const tabSummaries: Record<SettingsTabId, React.ReactNode> = {
     "asset-numbering": <span className="font-mono">{formatTemplate}</span>,
     "label-template": assetLabelPresets[labelTemplates.defaultTapeSize].label,
@@ -907,6 +942,8 @@ export function SystemSettingsForm({
   }
   // คืนค่าเดิม on one field: its saved value back, its error from the last save gone.
   const restoreSetting = (key: string) => {
+    // The schedule's preset select follows the value it gets back.
+    if (key === "ldap_sync_schedule") setCustomScheduleSelected(isCustomSchedule(initialValues[key]))
     if (key === assetTagCategoryPrefixesKey) {
       setPrefixRows(parsePrefixRows(initialValues[key]))
       fieldErrors.clear(settingFieldKey(key))
@@ -917,8 +954,8 @@ export function SystemSettingsForm({
   // A changed field shows "แก้แล้ว · เดิม <saved>" through the shared FormChangedField (spec §11).
   const changeFor = (key: string): FormFieldChange | null =>
     changedKeys.has(key) ? { was: savedDisplayValue(key), onRestore: () => restoreSetting(key) } : null
-  // An LDAP section's heading says "แก้ n ค่า" when any of its settings changed; its fields stay as they are (the LDAP
-  // tabs' content belongs to plan 5 Task 4).
+  // An LDAP section's heading says "แก้ n ค่า" when any of its settings changed. Each plain LDAP field also shows the
+  // changed marker; the bind password does not, its own box shows its state (plan 5 Task 4).
   const sectionTitle = (title: string, keys: readonly string[]) => {
     const count = keys.filter((key) => changedKeys.has(key)).length
     return (
@@ -946,7 +983,8 @@ export function SystemSettingsForm({
     setCustomScheduleSelected(isCustomSchedule(initialValues.ldap_sync_schedule))
     fieldErrors.setErrors({})
     closePrefixEditor()
-    // Hook for plan 5 Task 4: the bind-password change mode closes here too (back to the stored state).
+    // The bind-password change mode closes too (back to the stored state).
+    setBindPasswordEditing(false)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -972,6 +1010,8 @@ export function SystemSettingsForm({
       }
       toast.success(labels.success)
       router.refresh()
+      if (bindPasswordTyped) setValues((current) => ({ ...current, [ldapBindPasswordKey]: storedSecretPlaceholder }))
+      setBindPasswordEditing(false)
     } catch (error) {
       apiError.toast(error instanceof Error ? error : labels.error)
     } finally {
@@ -993,28 +1033,62 @@ export function SystemSettingsForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.message ?? payload?.error ?? labels.ldapTestFailed)
-      toast.success(payload?.message ?? labels.ldapTestSuccess)
+      // A changed host or bind account needs a new password: the refusal shows in Thai under the field, which opens.
+      if (!response.ok && payload?.error === ldapTestPasswordNeededError) {
+        setLdapTestResult(null)
+        fieldErrors.setErrors({ ...fieldErrors.errors, [settingFieldKey(ldapBindPasswordKey)]: "ldapBindPasswordNeeded" })
+        focusFirstError()
+        return
+      }
+      // A 401 still ends the session through the shared handler.
+      if (response.status === 401) {
+        apiError.toast(new Error(payload?.error ?? "Unauthorized"))
+        return
+      }
+      // The result stays next to the button for this visit, in place of a toast.
+      if (response.ok) {
+        setLdapTestResult({ ok: true, at: new Date() })
+      } else {
+        setLdapTestResult({ ok: false, at: new Date(), reason: apiError.describe(payload?.message ?? payload?.error ?? labels.ldapTestFailed).message })
+      }
     } catch (error) {
-      apiError.toast(error instanceof Error ? error : labels.ldapTestFailed)
+      setLdapTestResult({ ok: false, at: new Date(), reason: apiError.describe(error instanceof Error ? error : labels.ldapTestFailed).message })
     } finally {
       setTestingLdap(false)
     }
   }
 
+  // Apply asks first: the dialog shows the preview's counts and who will be deactivated.
+  const openApplyConfirm = () => {
+    if (ldapSyncLocked || !applyReady) return
+    setApplyConfirmOpen(true)
+  }
+  // The dialog closes before the request, so a refusal never reopens it; focus goes back to Apply.
+  const confirmApply = () => {
+    setApplyConfirmOpen(false)
+    void handleLdapSync("apply")
+  }
+
   async function handleLdapSync(action: "preview" | "apply") {
+    // Unsaved LDAP edits lock both actions: they would run on the stored settings (the note under the buttons says so).
+    if (ldapSyncLocked) return
     // Apply needs a preview first: the button waits and the empty preview line says why (spec §4.4, ST-R8).
-    if (action === "apply" && !syncPreview) return
+    if (action === "apply" && (!syncPreview || syncPreview.applied)) return
     setSyncingLdap(action)
     setSyncError(null)
     try {
       const response = await fetch("/api/admin/settings/ldap-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        // The apply carries the deactivation count the person confirmed; the server refuses (409) when it changed.
+        body: JSON.stringify(action === "apply" && syncPreview ? { action, expectedDeactivations: syncPreview.deactivates.length } : { action }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? labels.ldapSyncFailed)
+      if (!response.ok) {
+        // The live result no longer matches the preview: drop it, so Apply waits for a new one.
+        if (response.status === 409) setSyncPreview(null)
+        throw new Error(payload?.error ?? labels.ldapSyncFailed)
+      }
       setSyncPreview(payload)
       toast.success(action === "apply" ? labels.ldapSyncApplySuccess : labels.ldapSyncPreviewSuccess)
       router.refresh()
@@ -1800,126 +1874,162 @@ export function SystemSettingsForm({
         <div className="space-y-6">
           <FormSection as="h3" number={1} title={sectionTitle(labels.ldapStepConnection, ["ldap_enabled", "ldap_start_tls", "ldap_tls_reject_unauthorized", "ldap_url", "ldap_base_dn", "ldap_bind_dn", "ldap_bind_password"])}>
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-              <ToggleField
-                label={labels.ldapEnabled}
-                checked={getValue("ldap_enabled") === "true"}
-                onChange={(checked) => setBooleanValue("ldap_enabled", checked)}
-              />
-              <ToggleField
-                label={labels.ldapStartTls}
-                checked={getValue("ldap_start_tls") === "true"}
-                onChange={(checked) => setBooleanValue("ldap_start_tls", checked)}
-              />
-              <ToggleField
-                label={labels.ldapTlsRejectUnauthorized}
-                checked={getValue("ldap_tls_reject_unauthorized") !== "false"}
-                onChange={(checked) => setBooleanValue("ldap_tls_reject_unauthorized", checked)}
-              />
+              <FormChangedField change={changeFor("ldap_enabled")}>
+                <ToggleField
+                  label={labels.ldapEnabled}
+                  checked={getValue("ldap_enabled") === "true"}
+                  onChange={(checked) => setBooleanValue("ldap_enabled", checked)}
+                />
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_start_tls")}>
+                <ToggleField
+                  label={labels.ldapStartTls}
+                  checked={getValue("ldap_start_tls") === "true"}
+                  onChange={(checked) => setBooleanValue("ldap_start_tls", checked)}
+                />
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_tls_reject_unauthorized")}>
+                <ToggleField
+                  label={labels.ldapTlsRejectUnauthorized}
+                  checked={getValue("ldap_tls_reject_unauthorized") !== "false"}
+                  onChange={(checked) => setBooleanValue("ldap_tls_reject_unauthorized", checked)}
+                />
+              </FormChangedField>
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <Field label={labels.ldapUrl} error={settingError("ldap_url")}>
-                <Input
-                  id="ldap-url"
-                  value={getValue("ldap_url")}
-                  onChange={(event) => setValue("ldap_url", event.target.value)}
-                  placeholder="ldap://dc.company.local:389"
-                />
-              </Field>
-              <Field label={labels.ldapBaseDn} error={settingError("ldap_base_dn")}>
-                <Input
-                  id="ldap-base-dn"
-                  value={getValue("ldap_base_dn")}
-                  onChange={(event) => setValue("ldap_base_dn", event.target.value)}
-                  placeholder="DC=company,DC=local"
-                />
-              </Field>
-              <Field label={labels.ldapBindDn} error={settingError("ldap_bind_dn")}>
-                <Input
-                  id="ldap-bind-dn"
-                  value={getValue("ldap_bind_dn")}
-                  onChange={(event) => setValue("ldap_bind_dn", event.target.value)}
-                  placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
-                />
-              </Field>
-              <Field label={labels.ldapBindPassword} error={settingError("ldap_bind_password")}>
-                <Input
-                  id="ldap-bind-password"
-                  type="password"
-                  value={getValue("ldap_bind_password")}
-                  onChange={(event) => setValue("ldap_bind_password", event.target.value)}
-                />
-              </Field>
+              <FormChangedField change={changeFor("ldap_url")}>
+                <Field label={labels.ldapUrl} error={settingError("ldap_url")}>
+                  <Input
+                    id="ldap-url"
+                    value={getValue("ldap_url")}
+                    onChange={(event) => setValue("ldap_url", event.target.value)}
+                    placeholder="ldap://dc.company.local:389"
+                  />
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_base_dn")}>
+                <Field label={labels.ldapBaseDn} error={settingError("ldap_base_dn")}>
+                  <Input
+                    id="ldap-base-dn"
+                    value={getValue("ldap_base_dn")}
+                    onChange={(event) => setValue("ldap_base_dn", event.target.value)}
+                    placeholder="DC=company,DC=local"
+                  />
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_bind_dn")}>
+                <Field label={labels.ldapBindDn} error={settingError("ldap_bind_dn")}>
+                  <Input
+                    id="ldap-bind-dn"
+                    value={getValue("ldap_bind_dn")}
+                    onChange={(event) => setValue("ldap_bind_dn", event.target.value)}
+                    placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
+                  />
+                </Field>
+              </FormChangedField>
+              <LdapBindPasswordField
+                id="ldap-bind-password"
+                label={labels.ldapBindPassword}
+                error={settingError("ldap_bind_password")}
+                stored={bindPasswordStored}
+                open={bindPasswordOpen}
+                value={bindPasswordTyped}
+                onOpen={() => setBindPasswordEditing(true)}
+                onCancel={cancelBindPasswordEdit}
+                onChange={setBindPasswordText}
+              />
             </div>
-            <Button variant="outline" onClick={handleLdapTest} busy={testingLdap} className="mt-4 w-full sm:w-auto">
-              <PlugZap />
-              {labels.testLdapConnection}
-            </Button>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <Button variant="outline" onClick={handleLdapTest} busy={testingLdap} className="w-full sm:w-auto">
+                <PlugZap />
+                {labels.testLdapConnection}
+              </Button>
+              <p id="ldap-test-result" role="status" className={cn("min-w-0 text-sm", ldapTestResult?.ok === false ? "text-danger" : "text-success")}>
+                {ldapTestResult
+                  ? ldapTestResult.ok
+                    ? tPage("ldapTest.passed", { time: formatTestTime(ldapTestResult.at) })
+                    : tPage("ldapTest.failed", { time: formatTestTime(ldapTestResult.at), reason: ldapTestResult.reason })
+                  : null}
+              </p>
+            </div>
           </FormSection>
 
           <FormSection as="h3" number={2} title={sectionTitle(labels.ldapStepLoginMapping, ["ldap_user_filter", "ldap_upn_domain", "ldap_domain", "ldap_user_dn_template"])}>
             <div className="grid gap-4 lg:grid-cols-2">
-              <Field label={labels.ldapUserFilter} error={settingError("ldap_user_filter")}>
-                <Input
-                  id="ldap-user-filter"
-                  value={getValue("ldap_user_filter")}
-                  onChange={(event) => setValue("ldap_user_filter", event.target.value)}
-                  className="font-mono"
-                />
-              </Field>
-              <Field label={labels.ldapUpnDomain} error={settingError("ldap_upn_domain")}>
-                <Input
-                  id="ldap-upn-domain"
-                  value={getValue("ldap_upn_domain")}
-                  onChange={(event) => setValue("ldap_upn_domain", event.target.value)}
-                  placeholder="company.local"
-                />
-              </Field>
-              <Field label={labels.ldapDomain} error={settingError("ldap_domain")}>
-                <Input
-                  id="ldap-domain"
-                  value={getValue("ldap_domain")}
-                  onChange={(event) => setValue("ldap_domain", event.target.value)}
-                  placeholder="COMPANY"
-                />
-              </Field>
-              <div className="lg:col-span-2">
-                <Field label={labels.ldapUserDnTemplate} error={settingError("ldap_user_dn_template")}>
+              <FormChangedField change={changeFor("ldap_user_filter")}>
+                <Field label={labels.ldapUserFilter} error={settingError("ldap_user_filter")}>
                   <Input
-                    id="ldap-user-dn-template"
-                    value={getValue("ldap_user_dn_template")}
-                    onChange={(event) => setValue("ldap_user_dn_template", event.target.value)}
-                    placeholder="CN={username},OU=Users,DC=company,DC=local"
+                    id="ldap-user-filter"
+                    value={getValue("ldap_user_filter")}
+                    onChange={(event) => setValue("ldap_user_filter", event.target.value)}
                     className="font-mono"
                   />
                 </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_upn_domain")}>
+                <Field label={labels.ldapUpnDomain} error={settingError("ldap_upn_domain")}>
+                  <Input
+                    id="ldap-upn-domain"
+                    value={getValue("ldap_upn_domain")}
+                    onChange={(event) => setValue("ldap_upn_domain", event.target.value)}
+                    placeholder="company.local"
+                  />
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_domain")}>
+                <Field label={labels.ldapDomain} error={settingError("ldap_domain")}>
+                  <Input
+                    id="ldap-domain"
+                    value={getValue("ldap_domain")}
+                    onChange={(event) => setValue("ldap_domain", event.target.value)}
+                    placeholder="COMPANY"
+                  />
+                </Field>
+              </FormChangedField>
+              <div className="lg:col-span-2">
+                <FormChangedField change={changeFor("ldap_user_dn_template")}>
+                  <Field label={labels.ldapUserDnTemplate} error={settingError("ldap_user_dn_template")}>
+                    <Input
+                      id="ldap-user-dn-template"
+                      value={getValue("ldap_user_dn_template")}
+                      onChange={(event) => setValue("ldap_user_dn_template", event.target.value)}
+                      placeholder="CN={username},OU=Users,DC=company,DC=local"
+                      className="font-mono"
+                    />
+                  </Field>
+                </FormChangedField>
               </div>
             </div>
           </FormSection>
 
           <FormSection as="h3" number={3} title={sectionTitle(labels.ldapStepProvisioning, ["ldap_auto_provision", "ldap_default_role"])}>
             <div className="grid gap-4 lg:grid-cols-2">
+              <FormChangedField change={changeFor("ldap_auto_provision")}>
+                <div className="space-y-2">
+                  <div className={fieldLabelClasses}>{labels.ldapAutoProvision}</div>
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
+                    <span>{getValue("ldap_auto_provision") === "true" ? labels.enabled : labels.disabled}</span>
+                    <input
+                      type="checkbox"
+                      checked={getValue("ldap_auto_provision") === "true"}
+                      onChange={(event) => setBooleanValue("ldap_auto_provision", event.target.checked)}
+                      className={checkboxVariants()}
+                    />
+                  </label>
+                </div>
+              </FormChangedField>
               <div className="space-y-2">
-                <div className={fieldLabelClasses}>{labels.ldapAutoProvision}</div>
-                <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
-                  <span>{getValue("ldap_auto_provision") === "true" ? labels.enabled : labels.disabled}</span>
-                  <input
-                    type="checkbox"
-                    checked={getValue("ldap_auto_provision") === "true"}
-                    onChange={(event) => setBooleanValue("ldap_auto_provision", event.target.checked)}
-                    className={checkboxVariants()}
+                <FormChangedField change={changeFor("ldap_default_role")}>
+                  <SearchableSelect
+                    label={labels.ldapDefaultRole}
+                    value={getValue("ldap_default_role")}
+                    options={defaultRoleOptions}
+                    placeholder={labels.ldapDefaultRolePlaceholder}
+                    searchPlaceholder={labels.searchSelectPlaceholder}
+                    emptyLabel={labels.searchSelectNoResults}
+                    onChange={(value) => setValue("ldap_default_role", value)}
                   />
-                </label>
-              </div>
-              <div className="space-y-2">
-                <SearchableSelect
-                  label={labels.ldapDefaultRole}
-                  value={getValue("ldap_default_role")}
-                  options={defaultRoleOptions}
-                  placeholder={labels.ldapDefaultRolePlaceholder}
-                  searchPlaceholder={labels.searchSelectPlaceholder}
-                  emptyLabel={labels.searchSelectNoResults}
-                  onChange={(value) => setValue("ldap_default_role", value)}
-                />
+                </FormChangedField>
                 <p className="text-xs leading-relaxed text-muted-foreground">{labels.ldapDefaultRoleHelp}</p>
                 {getValue("ldap_default_role") && !defaultRoleOptions.some((option) => option.id === getValue("ldap_default_role")) ? (
                   <Notice tone="warning">{labels.ldapDefaultRoleMissing.replace("{role}", getValue("ldap_default_role"))}</Notice>
@@ -1937,44 +2047,54 @@ export function SystemSettingsForm({
           <Notice tone="neutral">{labels.ldapSyncRecommendation}</Notice>
           <FormSection as="h3" number={1} title={sectionTitle(labels.ldapStepSyncStrategy, ["ldap_sync_enabled", "ldap_sync_deactivate_missing", "ldap_sync_mode", "ldap_sync_max_scheduled_deactivations", "ldap_sync_base_dn"])}>
             <div className="grid gap-4 lg:grid-cols-2">
-              <ToggleField
-                label={labels.ldapSyncEnabled}
-                checked={getValue("ldap_sync_enabled") === "true"}
-                onChange={(checked) => setBooleanValue("ldap_sync_enabled", checked)}
-              />
-              <ToggleField
-                label={labels.ldapSyncDeactivateMissing}
-                checked={getValue("ldap_sync_deactivate_missing") === "true"}
-                onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
-              />
-              <Field label={labels.ldapSyncMode} error={settingError("ldap_sync_mode")}>
-                <NativeSelect
-                  id="ldap-sync-mode"
-                  value={getValue("ldap_sync_mode")}
-                  onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
-                >
-                  <option value="preview">{labels.ldapSyncModePreview}</option>
-                  <option value="manual">{labels.ldapSyncModeManual}</option>
-                  <option value="scheduled">{labels.ldapSyncModeScheduled}</option>
-                </NativeSelect>
-              </Field>
-              <Field label={labels.ldapSyncMaxScheduledDeactivations} error={settingError("ldap_sync_max_scheduled_deactivations")}>
-                <Input
-                  id="ldap-sync-max-scheduled-deactivations"
-                  type="number"
-                  min={0}
-                  value={getValue("ldap_sync_max_scheduled_deactivations")}
-                  onChange={(event) => setValue("ldap_sync_max_scheduled_deactivations", event.target.value)}
+              <FormChangedField change={changeFor("ldap_sync_enabled")}>
+                <ToggleField
+                  label={labels.ldapSyncEnabled}
+                  checked={getValue("ldap_sync_enabled") === "true"}
+                  onChange={(checked) => setBooleanValue("ldap_sync_enabled", checked)}
                 />
-              </Field>
-              <Field label={labels.ldapSyncBaseDn} error={settingError("ldap_sync_base_dn")}>
-                <Input
-                  id="ldap-sync-base-dn"
-                  value={getValue("ldap_sync_base_dn")}
-                  onChange={(event) => setValue("ldap_sync_base_dn", event.target.value)}
-                  placeholder="OU=Employees,DC=company,DC=local"
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_sync_deactivate_missing")}>
+                <ToggleField
+                  label={labels.ldapSyncDeactivateMissing}
+                  checked={getValue("ldap_sync_deactivate_missing") === "true"}
+                  onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
                 />
-              </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_sync_mode")}>
+                <Field label={labels.ldapSyncMode} error={settingError("ldap_sync_mode")}>
+                  <NativeSelect
+                    id="ldap-sync-mode"
+                    value={getValue("ldap_sync_mode")}
+                    onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
+                  >
+                    <option value="preview">{labels.ldapSyncModePreview}</option>
+                    <option value="manual">{labels.ldapSyncModeManual}</option>
+                    <option value="scheduled">{labels.ldapSyncModeScheduled}</option>
+                  </NativeSelect>
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_sync_max_scheduled_deactivations")}>
+                <Field label={labels.ldapSyncMaxScheduledDeactivations} error={settingError("ldap_sync_max_scheduled_deactivations")}>
+                  <Input
+                    id="ldap-sync-max-scheduled-deactivations"
+                    type="number"
+                    min={0}
+                    value={getValue("ldap_sync_max_scheduled_deactivations")}
+                    onChange={(event) => setValue("ldap_sync_max_scheduled_deactivations", event.target.value)}
+                  />
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor("ldap_sync_base_dn")}>
+                <Field label={labels.ldapSyncBaseDn} error={settingError("ldap_sync_base_dn")}>
+                  <Input
+                    id="ldap-sync-base-dn"
+                    value={getValue("ldap_sync_base_dn")}
+                    onChange={(event) => setValue("ldap_sync_base_dn", event.target.value)}
+                    placeholder="OU=Employees,DC=company,DC=local"
+                  />
+                </Field>
+              </FormChangedField>
             </div>
           </FormSection>
 
@@ -1983,64 +2103,74 @@ export function SystemSettingsForm({
                 <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  <Field label={labels.ldapSyncDefaultCompanyCode} error={settingError("ldap_sync_default_company_code")}>
-                    <Input
-                      id="ldap-sync-default-company"
-                      value={getValue("ldap_sync_default_company_code")}
-                      onChange={(event) => setValue("ldap_sync_default_company_code", event.target.value.toUpperCase())}
-                      className="uppercase"
-                    />
-                  </Field>
-                  <Field label={labels.ldapSyncDefaultBranchCode} error={settingError("ldap_sync_default_branch_code")}>
-                    <Input
-                      id="ldap-sync-default-branch"
-                      value={getValue("ldap_sync_default_branch_code")}
-                      onChange={(event) => setValue("ldap_sync_default_branch_code", event.target.value.toUpperCase())}
-                      className="uppercase"
-                    />
-                  </Field>
-                  <Field label={labels.ldapSyncDefaultDepartmentCode} error={settingError("ldap_sync_default_department_code")}>
-                    <Input
-                      id="ldap-sync-default-department"
-                      value={getValue("ldap_sync_default_department_code")}
-                      onChange={(event) => setValue("ldap_sync_default_department_code", event.target.value.toUpperCase())}
-                      className="uppercase"
-                    />
-                  </Field>
+                  <FormChangedField change={changeFor("ldap_sync_default_company_code")}>
+                    <Field label={labels.ldapSyncDefaultCompanyCode} error={settingError("ldap_sync_default_company_code")}>
+                      <Input
+                        id="ldap-sync-default-company"
+                        value={getValue("ldap_sync_default_company_code")}
+                        onChange={(event) => setValue("ldap_sync_default_company_code", event.target.value.toUpperCase())}
+                        className="uppercase"
+                      />
+                    </Field>
+                  </FormChangedField>
+                  <FormChangedField change={changeFor("ldap_sync_default_branch_code")}>
+                    <Field label={labels.ldapSyncDefaultBranchCode} error={settingError("ldap_sync_default_branch_code")}>
+                      <Input
+                        id="ldap-sync-default-branch"
+                        value={getValue("ldap_sync_default_branch_code")}
+                        onChange={(event) => setValue("ldap_sync_default_branch_code", event.target.value.toUpperCase())}
+                        className="uppercase"
+                      />
+                    </Field>
+                  </FormChangedField>
+                  <FormChangedField change={changeFor("ldap_sync_default_department_code")}>
+                    <Field label={labels.ldapSyncDefaultDepartmentCode} error={settingError("ldap_sync_default_department_code")}>
+                      <Input
+                        id="ldap-sync-default-department"
+                        value={getValue("ldap_sync_default_department_code")}
+                        onChange={(event) => setValue("ldap_sync_default_department_code", event.target.value.toUpperCase())}
+                        className="uppercase"
+                      />
+                    </Field>
+                  </FormChangedField>
                 </div>
               </div>
           </FormSection>
 
           <FormSection as="h3" number={3} title={sectionTitle(labels.ldapStepSchedule, ["ldap_sync_schedule", "ldap_sync_filter"])}>
             <div className="grid gap-4 lg:grid-cols-2">
-            <Field label={labels.ldapSyncSchedule}>
-              <NativeSelect
-                id="ldap-sync-schedule-preset"
-                value={selectedSyncSchedulePreset}
-                onChange={(event) => {
-                  const value = event.target.value
-                  setCustomScheduleSelected(value === "custom")
-                  if (value !== "custom") {
-                    setValue("ldap_sync_schedule", value)
-                  }
-                }}
-              >
-                {ldapSchedulePresets.map((preset) => (
-                  <option key={preset.value} value={preset.value}>
-                    {labels[preset.labelKey]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <div className="lg:col-span-2">
-              <Field label={labels.ldapSyncFilter} error={settingError("ldap_sync_filter")}>
-                <Input
-                  id="ldap-sync-filter"
-                  value={getValue("ldap_sync_filter")}
-                  onChange={(event) => setValue("ldap_sync_filter", event.target.value)}
-                  className="font-mono"
-                />
+            <FormChangedField change={changeFor("ldap_sync_schedule")}>
+              <Field label={labels.ldapSyncSchedule}>
+                <NativeSelect
+                  id="ldap-sync-schedule-preset"
+                  value={selectedSyncSchedulePreset}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    setCustomScheduleSelected(value === "custom")
+                    if (value !== "custom") {
+                      setValue("ldap_sync_schedule", value)
+                    }
+                  }}
+                >
+                  {ldapSchedulePresets.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {labels[preset.labelKey]}
+                    </option>
+                  ))}
+                </NativeSelect>
               </Field>
+            </FormChangedField>
+            <div className="lg:col-span-2">
+              <FormChangedField change={changeFor("ldap_sync_filter")}>
+                <Field label={labels.ldapSyncFilter} error={settingError("ldap_sync_filter")}>
+                  <Input
+                    id="ldap-sync-filter"
+                    value={getValue("ldap_sync_filter")}
+                    onChange={(event) => setValue("ldap_sync_filter", event.target.value)}
+                    className="font-mono"
+                  />
+                </Field>
+              </FormChangedField>
             </div>
             {selectedSyncSchedulePreset === "custom" ? (
               <div className="lg:col-span-2">
@@ -2065,27 +2195,42 @@ export function SystemSettingsForm({
               onClick={() => handleLdapSync("preview")}
               busy={syncingLdap === "preview"}
               disabled={syncingLdap === "apply"}
+              aria-disabled={ldapSyncLocked || undefined}
+              aria-describedby={ldapSyncLocked ? "ldap-sync-locked" : undefined}
               className="w-full sm:w-auto"
             >
               {labels.ldapSyncPreview}
             </Button>
             <Button
-              onClick={() => handleLdapSync("apply")}
+              ref={applyButtonRef}
+              onClick={openApplyConfirm}
               busy={syncingLdap === "apply"}
               disabled={syncingLdap === "preview"}
-              aria-disabled={!syncPreview || undefined}
-              aria-describedby={!syncPreview ? "ldap-sync-no-preview" : undefined}
+              aria-disabled={ldapSyncLocked || !applyReady || undefined}
+              aria-describedby={ldapSyncLocked ? "ldap-sync-locked" : !syncPreview ? "ldap-sync-no-preview" : !applyReady ? "ldap-sync-applied" : undefined}
               className="w-full sm:w-auto"
             >
               {labels.ldapSyncApply}
             </Button>
           </div>
+          {ldapSyncLocked ? (
+            <p id="ldap-sync-locked" className="text-sm text-warning">{tPage("ldapSyncLocked")}</p>
+          ) : null}
           {syncError ? (
             <Notice tone="danger" role="alert">
               <ApiErrorText error={syncError} />
             </Notice>
           ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} locale={locale} />
+          <LdapApplyConfirm
+            open={applyConfirmOpen}
+            creates={syncPreview?.creates.length ?? 0}
+            updates={syncPreview?.updates.length ?? 0}
+            deactivations={syncPreview?.deactivates ?? []}
+            returnFocusRef={applyButtonRef}
+            onConfirm={confirmApply}
+            onClose={() => setApplyConfirmOpen(false)}
+          />
           </FormSection>
           <LdapSyncHistoryPanel labels={labels} history={ldapSyncHistory} locale={locale} />
         </div>
@@ -2431,7 +2576,7 @@ function SyncPreviewPanel({
       </section>
       {preview.applied ? (
         <div className="space-y-3">
-          <Notice tone="success" role="status" title={labels.ldapSyncAppliedTitle} />
+          <Notice id="ldap-sync-applied" tone="success" role="status" title={labels.ldapSyncAppliedTitle} />
           <StatStrip
             items={[
               { key: "created", label: labels.ldapSyncAppliedCreated, value: formatCount(preview.applied.created) },

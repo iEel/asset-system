@@ -6719,7 +6719,27 @@
     "approvalSummary": "{approvers, plural, one {# approver} other {# approvers}} · SLA {days, plural, one {# day} other {# days}} · {sod}",
     "reviewSetting": "Setting",
     "reviewSecretChanged": "Password changed",
-    "reviewRoleMissing": "Role not found"
+    "reviewRoleMissing": "Role not found",
+    "ldapBind": {
+      "stored": "•••••••• Saved",
+      "notSet": "Not set",
+      "change": "Change",
+      "cancel": "Cancel",
+      "keepHint": "Leave empty to keep the saved password"
+    },
+    "ldapTest": {
+      "passed": "Test passed {time}",
+      "failed": "Test failed {time} · {reason}"
+    },
+    "ldapSyncLocked": "Save the LDAP settings first",
+    "ldapApply": {
+      "title": "Confirm LDAP sync",
+      "counts": "Add {creates, number} · Update {updates, number} · Deactivate {deactivates, number}",
+      "deactivateTitle": "Accounts to deactivate",
+      "more": "and {count, number} more",
+      "confirmDeactivate": "Sync and deactivate {count, plural, one {# account} other {# accounts}}",
+      "confirm": "Sync"
+    }
   },
   "transactionCancellation": {
     "action": "Cancel transaction",
