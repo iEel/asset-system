@@ -89,9 +89,14 @@ test("roles: create is a header button, the role kinds and the matrix roles are 
 
 test("users: role chips are the shared Chip and the status is a StatusBadge (spec 2D D7, M22)", () => {
   const source = read(`${D}admin/users/page.tsx`)
-  assert.match(source, /<Chip key=\{userRole\.role\.name\}>\{userRole\.role\.displayNameTh \|\| userRole\.role\.displayName\}<\/Chip>/)
-  assert.match(source, /<StatusBadge label=\{user\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{user\.isActive \? "success" : "muted"\} \/>/)
+  // Group 11 plan 1 Task 2: the role chips moved to UserRolesCell (two, then +N); their label is still
+  // displayNameTh || displayName, set in src/lib/admin-users-page-data.ts.
+  const cell = read("src/components/admin/users/user-roles-cell.tsx")
+  assert.match(cell, /<Chip key=\{role\.id\} title=\{role\.label\}>\{role\.label\}<\/Chip>/)
+  assert.match(read("src/lib/admin-users-page-data.ts"), /label: role\.displayNameTh \|\| role\.displayName/)
+  assert.match(source, /<StatusBadge label=\{row\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{row\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|bg-info-soft|text-white/)
+  assert.doesNotMatch(cell, /ActiveBadge|bg-info-soft|text-white/)
 })
 
 test("the admin user form is a panel with the shared panel classes and shows role keys as tags (spec 2D D9, M33)", () => {

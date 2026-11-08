@@ -89,7 +89,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 10 plan 2 Task 2 added 7: the catalog's chips line "{k} จาก {n} รายงาน" (keyed on count), a group's report
   // count, the cross-scope and pending-findings descriptions (count), the findings description (keyed on total) and
   // the scope legend's line with and without filters (count).
-  assert.equal(pluralKeys.size, 175,[...pluralKeys.keys()].join(", "))
+  // Group 11 plan 1 Task 2 added 5: the user list's warning title and link (count), a left employee's held assets
+  // (count), the +N roles label (count) and the phone list's "พบ {shown} จาก {total} บัญชี" (keyed on shown).
+  assert.equal(pluralKeys.size, 180,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
@@ -175,10 +177,18 @@ test("no source call passes formatCount(…) into a message whose en value is a 
   const offenders: string[] = []
   for (const file of sourceFiles("src")) {
     const source = readFileSync(file, "utf8")
+    // The namespace of each translator in the file: const t = useTranslations("ns") or await getTranslations("ns").
+    const namespaces = new Map([...source.matchAll(/const (\w+) = (?:await )?(?:useTranslations|getTranslations)\(\s*"([\w.]+)"\s*\)/g)].map((match) => [match[1], match[2]]))
     for (const [key, arg] of pluralKeys) {
       const last = key.slice(key.lastIndexOf(".") + 1)
-      const call = new RegExp(String.raw`\(\s*"(?:[\w.]+\.)?${last}"\s*,\s*\{[^}]*\b${arg}\s*:\s*formatCount\(`, "g")
-      for (const match of source.matchAll(call)) offenders.push(`${file}:${source.slice(0, match.index).split("\n").length} ${key}`)
+      const call = new RegExp(String.raw`(\w*)\(\s*"((?:[\w.]+\.)?${last})"\s*,\s*\{[^}]*\b${arg}\s*:\s*formatCount\(`, "g")
+      for (const match of source.matchAll(call)) {
+        // Group 11 plan 1 Task 2: a call whose translator's namespace is known and that names another key with the same
+        // last segment (batchCheckin.reviewTitle, not adminUsersPage.reviewTitle) is not this plural.
+        const namespace = namespaces.get(match[1])
+        if (namespace !== undefined && `${namespace}.${match[2]}` !== key) continue
+        offenders.push(`${file}:${source.slice(0, match.index).split("\n").length} ${key}`)
+      }
     }
   }
   assert.deepEqual(offenders, [])

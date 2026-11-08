@@ -153,7 +153,8 @@ test("users: edit is the row's only command, so RowActions draws no ⋯, and cre
   assert.match(source, /const canCreate = hasPermission\(currentUser, "user", "create"\)/)
   assert.match(source, /<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+canCreate \? \(\n\s+<Link href=\{`\$\{basePath\}\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
   assert.doesNotMatch(source, /\bfixed bottom-|shadow-lg|rounded-full/)
-  assert.match(source, /hiddenInputs=\{\{ pageSize: listState\.pageSize, sort: listState\.sort, direction: listState\.direction \}\}/)
+  // Group 11 plan 1 Task 2: the search also keeps the status and the role (tests/admin-users-board.test.ts pins those).
+  assert.match(source, /hiddenInputs=\{\{\n\s+pageSize: listState\.pageSize,\n\s+sort: listState\.sort,\n\s+direction: listState\.direction,\n/)
 })
 
 test("wide lists pin the actions column to the right, so edit and ⋯ stay visible while the table scrolls (2B-1 Task 25 fix 1)", () => {
@@ -167,7 +168,8 @@ test("wide lists pin the actions column to the right, so edit and ⋯ stay visib
     `${D}master-data/employees/page.tsx`,
     `${D}master-data/locations/page.tsx`,
     "src/components/master-data/supplier-list-view.tsx",
-    `${D}admin/users/page.tsx`,
+    // admin/users left in group 11 plan 1 Task 2: board US-Users fits at 1440 with no sticky column (spec §4.3), and
+    // tests/admin-users-board.test.ts pins its plain actions column.
   ]
   for (const file of files) {
     const source = read(file)
