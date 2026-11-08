@@ -103,7 +103,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 12 plan 1 Task 3 added 8: the readiness values "ตั้งแล้ว {have} จาก {total} ค่า" and its five siblings
   // (approvers, rules, admins, master data, files; keyed on have or total), the scanner's "หมดเวลา {seconds} วินาที"
   // and the next-steps title "แก้ {count} รายการ".
-  assert.equal(pluralKeys.size, 205,[...pluralKeys.keys()].join(", "))
+  // Group 12 plan 2 Task 3 added 2: the system log's header line "{range} · {count} รายการ · ใหม่สุดก่อน" and the tag
+  // search's cap note "แสดงเฉพาะ {count} รายการแรกที่ตรง" (both keyed on count).
+  assert.equal(pluralKeys.size, 207,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

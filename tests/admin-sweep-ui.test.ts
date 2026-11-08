@@ -192,12 +192,15 @@ test("approval history: the filter panel is a ContentPanel, a row shows a module
   assert.doesNotMatch(source, /<table\b|<thead\b|<th\b|rounded-full|hover:underline|rounded-lg border|function (?:decisionClass|decisionPillClass)\b|bg-(?:success|warning|danger|primary)-soft/)
 })
 
+// Group 12 plan 2 Task 3 (board AD-Logs): the row lives in log-event-row.tsx, and the <details> toggle became the row's
+// arrow Button (aria-expanded), which opens a detail row holding the changes table.
 test("system log: the record link and the details toggle are text links, and the changes inside a row are a DataTable (spec 2D M29)", () => {
-  const source = read(`${D}admin/logs/page.tsx`)
+  const source = read("src/components/admin/logs/log-event-row.tsx")
   assert.match(source, /<Link href=\{log\.href\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
-  assert.match(source, /<summary className=\{cn\(linkVariants\(\), "list-item cursor-pointer"\)\}>/)
-  assert.match(source, /<DataTable caption=\{t\("viewDetails"\)\}>/)
+  assert.match(source, /<Button\n\s+type="button"\n\s+variant="ghost"\n\s+size="icon-sm"\n\s+aria-expanded=\{open\}/)
+  assert.match(source, /<DataTable caption=\{labels\.changesCaption\}>/)
   assert.doesNotMatch(source, /<table\b|<thead\b|<th\b|hover:underline|rounded-md border border-border bg-background p-3/)
+  assert.doesNotMatch(read(`${D}admin/logs/page.tsx`), /<table\b|<thead\b|<th\b|<details\b/)
 })
 
 test("readiness: an unlinked check shows its fix line instead of a link (critique 2026-10-20 F1)", () => {

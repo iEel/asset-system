@@ -647,9 +647,11 @@ test("roles: PageHeader, the role list and the permission matrix on DataTable, w
 // Plan 2B-5 Task 2 (spec 2B §5.6 row admin/logs, §5.9.2 row 1, §6.5 row 9, B4): the system log pages for real (it
 // stopped at the newest 100 entries), its quick filters are TabNav, its filter form uses the shared fields, and the
 // table is a DataTable whose small table of changes inside <details> still opens.
+// Group 12 plan 2 Task 3 (board AD-Logs): the filter form moved to log-filters-bar.tsx and the row to log-event-row.tsx;
+// the table has five columns and the <details> became the row's arrow button (aria-expanded) over a detail row.
 test("system log: real pages counted in the same timed Promise.all, TabNav quick filters, shared filter fields and a DataTable (spec 2B §5.6, §5.9.2 row 1)", () => {
-  const source = read(`${D}admin/logs/page.tsx`)
-  for (const part of ["<PageHeader", "<FilterPanel>", '<form role="search"', "<FilterFormActions", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={6}>", "<Pagination", "<details"]) {
+  const source = [`${D}admin/logs/page.tsx`, "src/components/admin/logs/log-filters-bar.tsx", "src/components/admin/logs/log-event-row.tsx"].map(read).join("\n")
+  for (const part of ["<PageHeader", "<FilterPanel>", '<form id={formId} role="search"', "<FilterFormActions", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={5}>", "<Pagination", "aria-expanded={open}"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.match(source, /<TabNav\n\s+aria-label=\{t\("quickFilters"\)\}/)
@@ -661,9 +663,10 @@ test("system log: real pages counted in the same timed Promise.all, TabNav quick
   assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(logs\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
   // Group 11 plan 1 task 3: the quick filter's params also keep recordId before the page size is added.
   assert.match(source, /const params = new URLSearchParams\(query\)\n[\s\S]*?appendListPage\(params, \{ pageSize: listPage\.pageSize \}\)/, "a quick filter goes back to page 1 and keeps the page size")
-  assert.match(source, /\{listPage\.pageSize !== LIST_PAGE_SIZES\[0\] \? <input type="hidden" name="pageSize" value=\{listPage\.pageSize\} \/> : null\}/, "the filter form keeps the page size")
+  assert.match(source, /\{pageSize !== LIST_PAGE_SIZES\[0\] \? <input type="hidden" name="pageSize" value=\{pageSize\} \/> : null\}/, "the filter form keeps the page size")
+  assert.match(source, /pageSize=\{listPage\.pageSize\}\n\s+recordId=\{filters\.recordId\}/, "the page hands the bar its page size")
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
-  assert.match(source, /\{hasFilters \? t\("emptyFiltered"\) : t\("empty"\)\}/)
+  assert.match(source, /hasFilters \? t\("emptyFiltered"\) : t\("empty"\)/)
   assert.doesNotMatch(source, /function Head\b|<thead className=|\buppercase\b|<label\b/)
   for (const locale of ["th", "en"]) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { systemLogPage: Record<string, unknown> }

@@ -11,7 +11,8 @@ const chipPath = "src/components/maintenance/repair-date-range-chip.tsx"
 test("the date chip is a client part with the agreed props", () => {
   const source = read(chipPath)
   assert.match(source, /^"use client"/)
-  assert.match(source, /export function RepairDateRangeChip\(\{ formId, dateFrom, dateTo, labels, clearHref \}: \{\n\s+formId: string\n\s+dateFrom: string\n\s+dateTo: string\n\s+labels: RepairDateRangeChipLabels\n\s+clearHref: string\n\}\)/)
+  // Group 12 plan 2 Task 3: optional presets (the system log's วันนี้ · 7 วัน · 30 วัน); the repair list passes none.
+  assert.match(source, /export function RepairDateRangeChip\(\{ formId, dateFrom, dateTo, labels, clearHref, presets \}: \{\n\s+formId: string\n\s+dateFrom: string\n\s+dateTo: string\n\s+labels: RepairDateRangeChipLabels\n\s+clearHref: string\n\s+presets\?: \{ key: string; label: string; href: string; active: boolean \}\[\]\n\}\)/)
   assert.match(source, /export type RepairDateRangeChipLabels = \{ chip: string; applied: string; apply: string; clear: string; from: string; to: string \}/)
 })
 
