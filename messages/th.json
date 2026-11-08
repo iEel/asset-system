@@ -7094,7 +7094,10 @@
     "activateRoleForbidden": "เปิดใช้งานบทบาทที่มีสิทธิ์ที่คุณไม่มีไม่ได้",
     "roleInactiveForAdd": "บทบาทนี้ปิดใช้งานอยู่ เพิ่มผู้ใช้ไม่ได้",
     "userNotFoundOrInactive": "ไม่พบผู้ใช้หรือบัญชีปิดใช้งานอยู่",
-    "grantPermissionForbidden": "ให้สิทธิ์ที่คุณไม่มีไม่ได้"
+    "grantPermissionForbidden": "ให้สิทธิ์ที่คุณไม่มีไม่ได้",
+    "ldapPasswordRequired": "เปลี่ยนที่อยู่หรือบัญชี LDAP แล้ว ต้องใส่รหัสผ่านใหม่",
+    "ldapSyncPreviewRequired": "ดูตัวอย่างก่อนซิงก์",
+    "ldapSyncResultChanged": "ผลซิงก์เปลี่ยนไปจากตัวอย่าง กรุณาดูตัวอย่างอีกครั้ง"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

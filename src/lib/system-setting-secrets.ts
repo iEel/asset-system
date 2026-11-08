@@ -27,6 +27,28 @@ export function resolveSubmittedSecretSettings<T extends SettingEntry>(
   )
 }
 
+// An empty secret means "not typed", never "clear it": the API cannot clear the stored bind password (spec §15 item 2).
+export function dropEmptySecretSettings<T extends SettingEntry>(settings: T[]): T[] {
+  return settings.filter((setting) => !(isSecretSystemSettingKey(setting.key) && setting.value === ""))
+}
+
+const ldapEndpointKeys = ["ldap_url", "ldap_bind_dn"] as const
+
+// A save that points LDAP at another host or bind account must carry a newly typed password, so the stored one is
+// never sent to the new host (spec §15 item 3). `changed` holds the submitted values, before the placeholder resolves.
+export function ldapEndpointChangeNeedsPassword(input: {
+  changed: Record<string, string>
+  stored: Record<string, string>
+}): boolean {
+  const { changed, stored } = input
+  const endpointChanged = ldapEndpointKeys.some(
+    (key) => key in changed && (changed[key] ?? "") !== (stored[key] ?? ""),
+  )
+  if (!endpointChanged) return false
+  const password = changed.ldap_bind_password
+  return password === undefined || password === "" || password === storedSecretPlaceholder
+}
+
 export function redactSecretSettingValues<T>(values: Record<string, T>): Record<string, T | "[REDACTED]"> {
   return Object.fromEntries(
     Object.entries(values).map(([key, value]) => [key, isSecretSystemSettingKey(key) ? "[REDACTED]" : value]),

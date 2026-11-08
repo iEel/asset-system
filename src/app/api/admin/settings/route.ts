@@ -10,7 +10,9 @@ import { fieldErrorResponse } from "@/lib/field-error-response"
 import { knownSystemSettingKeys, systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { systemSettingsUpdateSchema } from "@/lib/validations/system-settings"
 import {
+  dropEmptySecretSettings,
   getRestrictedSettingChangeError,
+  ldapEndpointChangeNeedsPassword,
   maskSecretSystemSettings,
   redactSecretSettingValues,
   resolveSubmittedSecretSettings,
@@ -61,8 +63,13 @@ export async function PUT(request: NextRequest) {
       select: { id: true, key: true, value: true },
     })
     const existingByKey = new Map(existingSettings.map((setting) => [setting.key, setting]))
+    const typedSettings = dropEmptySecretSettings(input.settings)
+    const endpointNeedsPassword = ldapEndpointChangeNeedsPassword({
+      changed: Object.fromEntries(typedSettings.map((setting) => [setting.key, setting.value])),
+      stored: Object.fromEntries(existingSettings.map((setting) => [setting.key, setting.value])),
+    })
     const submittedSettings = resolveSubmittedSecretSettings(
-      input.settings,
+      typedSettings,
       new Map(existingSettings.map((setting) => [setting.key, setting.value])),
     ).map((setting) => (setting.key === CHECKIN_DEPARTMENT_SETTING_KEY ? { ...setting, value: normalizeCheckinDepartmentCode(setting.value) } : setting))
     const missingKeys = keys.filter((key) => !existingByKey.has(key) && !knownSystemSettingKeys.has(key))
@@ -84,6 +91,15 @@ export async function PUT(request: NextRequest) {
     )
     if (restrictedChangeError) {
       return NextResponse.json({ error: restrictedChangeError }, { status: 403 })
+    }
+    // After the role check, so a non-admin repointing LDAP still reads 403 (spec §15 item 3).
+    if (endpointNeedsPassword) {
+      return fieldErrorResponse({
+        status: 400,
+        error: "LDAP_PASSWORD_REQUIRED",
+        code: "LDAP_PASSWORD_REQUIRED",
+        fieldErrors: { "settings.ldap_bind_password": "ldapPasswordRequired" },
+      })
     }
     // The return department (group 3 spec §12, P2-R8) must name an active department. Only a changed value is read:
     // a department closed later must not block saving unrelated settings, and the return itself refuses then.

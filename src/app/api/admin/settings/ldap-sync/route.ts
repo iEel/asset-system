@@ -3,7 +3,7 @@ import { hasRole, requireAuth, requirePermission } from "@/lib/auth-utils"
 import { isExposableError } from "@/lib/api-error-exposure"
 import { errorResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/db"
-import { applyLdapSync, loadLdapSettings, previewLdapSync } from "@/lib/ldap-sync"
+import { applyLdapSync, LdapSyncChangedError, loadLdapSettings, previewLdapSync } from "@/lib/ldap-sync"
 import { getScheduledJobDecision, schedulerTimezoneOffsetMinutes, type ScheduledJobDecision } from "@/lib/scheduled-job"
 import { getSettingValue, mapSystemSettings, updateScheduledJobRunState } from "@/lib/scheduled-job-run-state"
 import {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       requirePermission(user, "setting", "edit")
     }
 
-    const payload = (await request.json().catch(() => ({}))) as { action?: string }
+    const payload = (await request.json().catch(() => ({}))) as { action?: string; expectedDeactivations?: unknown }
     const settings = await loadLdapSettings()
     const action = payload.action ?? "preview"
     isScheduledAction = action === "scheduled"
@@ -83,12 +83,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden: only system_admin can apply LDAP sync" }, { status: 403 })
     }
 
+    // A user apply carries the deactivation count of the preview they confirmed (group 12 spec §15 item 1).
+    const expectedDeactivations = payload.expectedDeactivations
+    const hasConfirmedCount =
+      typeof expectedDeactivations === "number" && Number.isInteger(expectedDeactivations) && expectedDeactivations >= 0
+    if (action === "apply" && user && !hasConfirmedCount) {
+      return NextResponse.json({ error: "Preview required before apply" }, { status: 400 })
+    }
+
     const result = action === "apply"
-      ? await applyLdapSync(user?.id, settings)
+      ? user
+        ? await applyLdapSync(user.id, settings, { expectedDeactivations: expectedDeactivations as number })
+        : await applyLdapSync(undefined, settings)
       : await previewLdapSync(settings)
 
     return NextResponse.json(result)
   } catch (error) {
+    if (error instanceof LdapSyncChangedError) {
+      return NextResponse.json({ error: error.message }, { status: 409 })
+    }
     if (isScheduledAction && isSchedulerAuthorized(request)) {
       await updateScheduledJobRunState({
         keys: ldapSchedulerStatusKeys,

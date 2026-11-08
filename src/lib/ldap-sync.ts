@@ -37,6 +37,14 @@ export type LdapSyncApplyResult = LdapSyncPreview & {
   }
 }
 
+// The live preview no longer matches the one the user confirmed: apply changes nothing (group 12 spec §15 item 1).
+export class LdapSyncChangedError extends Error {
+  constructor() {
+    super("LDAP sync result changed")
+    this.name = "LdapSyncChangedError"
+  }
+}
+
 export async function loadLdapSettings(): Promise<LdapConfigInput> {
   const settings = await prisma.systemSetting.findMany({
     where: { key: { in: [...ldapSettingKeys] } },
@@ -132,10 +140,14 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
 export async function applyLdapSync(
   userId?: string,
   settings?: LdapConfigInput,
-  options: { source?: LdapSyncSource } = {}
+  options: { source?: LdapSyncSource; expectedDeactivations?: number } = {}
 ): Promise<LdapSyncApplyResult> {
   const resolvedSettings = settings ?? await loadLdapSettings()
   const preview = await previewLdapSync(resolvedSettings)
+  // The count the preview panel showed as deactivations; checked before any write.
+  if (typeof options.expectedDeactivations === "number" && preview.deactivates.length !== options.expectedDeactivations) {
+    throw new LdapSyncChangedError()
+  }
   if (preview.blockers.length > 0) {
     return {
       ...preview,

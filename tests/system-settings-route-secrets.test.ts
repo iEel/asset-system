@@ -267,3 +267,63 @@ test("an unchanged code is not checked, so a department closed later never block
   assert.equal((await putSettings([{ key: "checkin_department_code", value: "fin" }])).status, 200)
   assert.deepEqual([state.upserts, state.departmentReads], [[], []])
 })
+
+// Group 12 plan 5 task 1 (spec §15 items 2–3): the bind password is guarded on save too.
+const ldapPasswordRequired = {
+  error: "LDAP_PASSWORD_REQUIRED",
+  code: "LDAP_PASSWORD_REQUIRED",
+  fieldErrors: { "settings.ldap_bind_password": "ldapPasswordRequired" },
+}
+
+test("empty bind password never clears", async () => {
+  const response = await putSettings([
+    { key: "company_name", value: "Sonic Logistics" },
+    { key: "ldap_bind_password", value: "" },
+  ])
+  assert.equal(response.status, 200)
+  assert.deepEqual(state.upserts, [{ key: "company_name", value: "Sonic Logistics" }])
+
+  state.upserts = []
+  const onlyPassword = await putSettings([{ key: "ldap_bind_password", value: "" }])
+  assert.equal(onlyPassword.status, 200)
+  assert.deepEqual(state.upserts, [])
+})
+
+test("new URL needs a new password to save", async () => {
+  for (const password of [[{ key: "ldap_bind_password", value: "__STORED_SECRET__" }], [{ key: "ldap_bind_password", value: "" }], []]) {
+    state.upserts = []
+    const response = await putSettings([{ key: "ldap_url", value: "ldap://new-dc.corp.local:389" }, ...password])
+    assert.deepEqual([response.status, await response.json()], [400, ldapPasswordRequired])
+    assert.deepEqual(state.upserts, [])
+  }
+
+  const typed = await putSettings([
+    { key: "ldap_url", value: "ldap://new-dc.corp.local:389" },
+    { key: "ldap_bind_password", value: "New-AD-Password" },
+  ])
+  assert.equal(typed.status, 200)
+  assert.deepEqual(state.upserts, [
+    { key: "ldap_url", value: "ldap://new-dc.corp.local:389" },
+    { key: "ldap_bind_password", value: "New-AD-Password" },
+  ])
+})
+
+test("new Bind DN needs a new password to save", async () => {
+  const response = await putSettings([
+    { key: "ldap_bind_dn", value: "CN=other,DC=corp,DC=local" },
+    { key: "ldap_bind_password", value: "__STORED_SECRET__" },
+  ])
+  assert.deepEqual([response.status, await response.json()], [400, ldapPasswordRequired])
+  assert.deepEqual(state.upserts, [])
+})
+
+test("same URL with the placeholder keeps the stored password", async () => {
+  const response = await putSettings([
+    { key: "ldap_url", value: "ldap://10.0.0.2:389" },
+    { key: "ldap_bind_dn", value: "CN=svc-ldap,DC=corp,DC=local" },
+    { key: "ldap_bind_password", value: "__STORED_SECRET__" },
+    { key: "company_name", value: "Sonic Logistics" },
+  ])
+  assert.equal(response.status, 200)
+  assert.deepEqual(state.upserts, [{ key: "company_name", value: "Sonic Logistics" }])
+})

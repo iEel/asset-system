@@ -7094,7 +7094,10 @@
     "activateRoleForbidden": "You cannot activate a role that has permissions you do not hold",
     "roleInactiveForAdd": "This role is inactive. Users cannot be added to it",
     "userNotFoundOrInactive": "The user was not found or the account is inactive",
-    "grantPermissionForbidden": "You cannot grant a permission you do not hold"
+    "grantPermissionForbidden": "You cannot grant a permission you do not hold",
+    "ldapPasswordRequired": "The LDAP address or account changed. Enter a new password.",
+    "ldapSyncPreviewRequired": "Preview before syncing",
+    "ldapSyncResultChanged": "The sync result changed from the preview. Preview again."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",
