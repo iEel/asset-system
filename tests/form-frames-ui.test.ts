@@ -158,7 +158,8 @@ test("the new audit round form draws its title and trail with PageHeader (2B-1 t
 
 // Plan 2D-2 moved the three settings tables from the local Head onto the shared DataTable, inside their panels.
 test("the three settings tables are the shared DataTable with its white 13/500 header (2B-1 task 24, R-e; plan 2D-2)", () => {
-  const source = read(`${C}admin/system-settings-form.tsx`)
+  // The change review moved to settings-review-table.tsx (group 12 plan 5 Task 3), so the three tables span both files.
+  const source = read(`${C}admin/system-settings-form.tsx`) + read(`${C}admin/settings/settings-review-table.tsx`)
   assert.equal(source.match(/<DataTableHeader>/g)?.length, 3, "the prefix, advanced and change-review tables")
   assert.equal(source.match(/<DataTable framed=\{false\}/g)?.length, 3, "each sits in its panel, so it has no frame of its own")
   assert.doesNotMatch(source, /<thead\b|<th\b|function Head\b|\bbg-muted\//)

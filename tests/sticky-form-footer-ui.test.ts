@@ -52,6 +52,10 @@ test("the settings form ends with the sticky save bar, inside its <form> (K14, 1
   assert.match(source.slice(footerStart, formEnd), /^<StickyFormFooter[\s\S]*<\/StickyFormFooter>\s*$/)
   // Nothing changed: the save stays focusable and says why (v-track plan 3 task 5, ST5).
   assert.match(source, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{changedCount === 0 \|\| undefined\}\n\s+aria-describedby=\{changedCount === 0 \? "settings-save-status" : undefined\}\n\s+>/)
-  assert.match(source, /<p className="mt-1 hidden text-meta text-muted-foreground sm:block">\{labels\.settingsOverviewDescription\}<\/p>/, "the long description hides on phones")
+  // The overview's description under the status went with the overview (group 12 plan 5 Task 3); ยกเลิกการแก้ไข comes
+  // before the save (K8).
+  assert.doesNotMatch(source, /settingsOverviewDescription/)
+  const footer = source.slice(footerStart, formEnd)
+  assert.ok(footer.indexOf("onClick={discardEdits}") < footer.indexOf('type="submit"'), "discard comes before save in the DOM (K8)")
   assert.doesNotMatch(source, /sticky bottom-3|bg-surface\/95|backdrop-blur|shadow-lg/)
 })

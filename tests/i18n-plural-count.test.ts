@@ -112,7 +112,10 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // segment's title (count) and the distribution summary (keyed on total).
   // Group 12 plan 4 Task 2 added 4: the Integration API row's "7 วัน {count} ครั้ง" and error badge, the expand's
   // "24 ชม. {count} ครั้ง" and the usage tile's foot "Error {count}" (all keyed on count).
-  assert.equal(pluralKeys.size, 218,[...pluralKeys.keys()].join(", "))
+  // Group 12 plan 5 Task 3 added 6: the settings menu's unsaved badge "แก้ {n}", an LDAP section's "แก้ {n} ค่า", the
+  // footer's "เปลี่ยน {n} ค่า ยังไม่บันทึก", "บันทึก {n} ค่า", the discard confirm's title (all keyed on count) and the
+  // approval summary "ผู้อนุมัติ {n} · SLA {n} วัน · …" (keyed on approvers; days is a plural too).
+  assert.equal(pluralKeys.size, 224,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

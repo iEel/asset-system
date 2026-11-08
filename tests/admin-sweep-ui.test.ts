@@ -14,9 +14,11 @@ test("settings: panels are ContentPanel, notes are Notice, tables DataTable, no 
   const source = read(`${C}admin/system-settings-form.tsx`)
   assert.doesNotMatch(source, /function (?:SectionHeader|Head|StatusCard|Metric|MiniMetric|EmptyTransferState)\b|<button\b|<table\b|border-dashed|rounded-full|\b(?:bg|text|border)-(?:slate|amber|blue|emerald|rose)-\d|bg-white|uppercase tracking-normal|opacity-80|md:min-h-10|role="list"/)
   assert.doesNotMatch(source, /className="(?:overflow-(?:hidden|visible) )?rounded-lg border/, "every panel is ContentPanel")
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 16)
-  assert.match(source, /<div id="settings-workspace">\n\s+<ContentPanel divided title=\{labels\.settingsOverview\} description=\{labels\.settingsOverviewDescription\}>/)
-  assert.equal(source.match(/<KeyValueList items=\{overviewItems\.slice\((?:0, 5|5)\)\} \/>/g)?.length, 2)
+  // Group 12 plan 5 Task 3 (board AD-Settings): the search panel and the overview panel went (the search sits in the
+  // left menu, the overview values became its summaries) and the change review moved to settings-review-table.tsx: 16 → 13.
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 13)
+  assert.match(source, /<div id="settings-workspace" className="min-w-0 space-y-6">/)
+  assert.doesNotMatch(source, /overviewItems/)
   for (const [tone, text] of [["info", "labels.workflowApprovalFoundationNote"], ["neutral", "labels.schedulerHeartbeatNote"], ["neutral", "labels.retentionDaysHelp"], ["neutral", "labels.ldapSyncRecommendation"]]) {
     assert.ok(source.includes(`<Notice tone="${tone}">{${text}}</Notice>`), `${text} is a ${tone} Notice`)
   }
@@ -28,9 +30,10 @@ test("settings: panels are ContentPanel, notes are Notice, tables DataTable, no 
   assert.match(source, /<span className="tag">\{result\.key\}<\/span>/)
   assert.match(source, /<span className="tag font-medium text-foreground">\{group\.prefix\}<\/span>/)
   assert.match(source, /<span className="tag font-medium text-foreground">\{setting\.key\}<\/span>/)
-  assert.match(source, /\{orNil\(formatReviewValue\(setting\.key, initialValues\[setting\.key\]\)\)\}/)
-  assert.match(source, /return normalized \|\| null\n/)
-  assert.match(source, /onNavigate=\{\(event\) => \{\n\s+event\.preventDefault\(\)\n\s+openSettingGroup\(tab\)\n\s+\}\}/)
+  // The change review is SettingsReviewTable since group 12 plan 5 Task 3; its key links to the tab in place.
+  const review = read(`${C}admin/settings/settings-review-table.tsx`)
+  assert.match(review, /onNavigate=\{\(event\) => \{\n\s+event\.preventDefault\(\)\n\s+onOpenTab\(row\.tab\)\n\s+\}\}/)
+  assert.match(source, /onOpenTab=\{openSettingGroup\}/)
   assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the preview counts and the applied counts")
   assert.match(source, /className="overflow-hidden rounded border border-control-border bg-surface text-foreground shadow-sm"/, "the label paper uses tokens and keeps its paper shadow")
   for (const locale of ["th", "en"] as const) {

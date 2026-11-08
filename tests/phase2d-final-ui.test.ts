@@ -87,7 +87,9 @@ test("the settings screens name the LDAP sync modes, the legacy rules' months an
   assert.match(form, /const ldapSyncMode = getValue\("ldap_sync_mode"\) \|\| "preview"/)
   assert.match(form, /`\$\{labels\.enabled\} \(\$\{ldapSyncModeLabels\[ldapSyncMode\] \?\? ldapSyncMode\}\)`/)
   assert.match(form, /const formatDays = \(days: string \| number\) => labels\.overviewDays\.replace\("\{count\}", String\(days\)\)/)
-  assert.equal(form.match(/formatDays\(/g)?.length, 4, "return due soon, warranty, the approval SLA and the retention days")
+  // The approval SLA reads its days inside approvalSummary since group 12 plan 5 Task 3 ("ผู้อนุมัติ {n} · SLA {n} วัน · …").
+  assert.equal(form.match(/formatDays\(/g)?.length, 3, "return due soon, warranty and the retention days")
+  assert.match(form, /days: workflowApprovalPolicy\.slaDays,/)
   assert.doesNotMatch(form, />(?:Preview|Manual|Scheduled)</)
   assert.doesNotMatch(form, /\}d\b/, "no English day suffix")
   assert.match(builder, /\{rule\.match\}: \{labels\.depreciationLegacyRuleMonths\.replace\("\{months\}", formatCount\(rule\.usefulLifeMonths\)\)\}/)

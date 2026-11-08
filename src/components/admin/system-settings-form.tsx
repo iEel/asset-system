@@ -20,7 +20,7 @@ import { FieldGroup } from "@/components/ui/field-group"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { FormSection } from "@/components/ui/form-section"
 import { Input } from "@/components/ui/input"
-import { KeyValueList, type KeyValueItem } from "@/components/ui/key-value-list"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Nil, orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
@@ -29,7 +29,10 @@ import { Segmented } from "@/components/ui/segmented"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
-import { TabNav } from "@/components/ui/tab-nav"
+import { useConfirm } from "@/components/ui/confirm-dialog"
+import { FormChangedField, type FormFieldChange } from "@/components/ui/form-changed-field"
+import { SettingsMenu } from "@/components/admin/settings/settings-menu"
+import { SettingsReviewTable } from "@/components/admin/settings/settings-review-table"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import {
@@ -74,6 +77,7 @@ import {
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import { buildSystemSettingsTabHref, parseSystemSettingsTab } from "@/lib/system-settings-tabs"
 import { findSystemSettingsSearchResults, getSystemSettingsTabForKey } from "@/lib/settings-search"
+import { dirtyCounts, reviewValue } from "@/lib/settings-page-model"
 import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
   applyCategoryPrefixGroupEdit,
@@ -144,32 +148,13 @@ type SystemSettingsFormProps = {
     tabLdapLogin: string
     tabLdapSync: string
     tabAdvanced: string
-    settingsOverview: string
-    settingsOverviewDescription: string
-    overviewAssetTag: string
-    overviewLabel: string
-    overviewDocuments: string
-    overviewOrganization: string
-    overviewNotifications: string
-    overviewApproval: string
-    overviewGovernance: string
-    overviewLdapLogin: string
-    overviewLdapSync: string
-    overviewAdvanced: string
     overviewDays: string
     enabled: string
     disabled: string
     advancedSettingCount: string
-    unsavedChanges: string
-    noUnsavedChanges: string
     searchSettings: string
     searchSettingsHelp: string
     noSettingsSearchResults: string
-    openSettingGroup: string
-    changeReview: string
-    changeReviewDescription: string
-    beforeValue: string
-    afterValue: string
     advancedWarningTitle: string
     advancedWarningDescription: string
     showAdvancedSettings: string
@@ -589,11 +574,9 @@ function normalizeSettingValue(key: string, value: string | undefined) {
   return value ?? ""
 }
 
-// null when the setting is empty: the review table shows Nil for it.
-function formatReviewValue(key: string, value: string | undefined) {
-  const normalized = normalizeSettingValue(key, value)
-  if (key.toLowerCase().includes("password") && normalized) return "********"
-  return normalized || null
+// A saved schedule that is not one of the presets shows the custom cron field.
+function isCustomSchedule(schedule: string | undefined) {
+  return !ldapSchedulePresets.some((preset) => preset.value === (schedule ?? ""))
 }
 
 export function SystemSettingsForm({
@@ -610,6 +593,7 @@ export function SystemSettingsForm({
   // The tab row's name: the page passes no label for it, so the form reads the page title.
   const tPage = useTranslations("systemSettingsPage")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const params = useParams<{ locale?: string }>()
   const locale = typeof params.locale === "string" ? params.locale : "th"
   const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
@@ -623,10 +607,9 @@ export function SystemSettingsForm({
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   )
-  const [customScheduleSelected, setCustomScheduleSelected] = useState(() => {
-    const savedSchedule = settings.find((setting) => setting.key === "ldap_sync_schedule")?.value ?? ""
-    return !ldapSchedulePresets.some((preset) => preset.value === savedSchedule)
-  })
+  const [customScheduleSelected, setCustomScheduleSelected] = useState(() =>
+    isCustomSchedule(settings.find((setting) => setting.key === "ldap_sync_schedule")?.value)
+  )
   const [prefixRows, setPrefixRows] = useState<CategoryPrefixRow[]>(() =>
     parsePrefixRows(settings.find((setting) => setting.key === assetTagCategoryPrefixesKey)?.value)
   )
@@ -736,6 +719,11 @@ export function SystemSettingsForm({
     (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
   )
   const changedCount = changedSettings.length
+  // The menu's unsaved badges per tab and per group, and the footer's count (board AD-Settings, plan 5 Task 3).
+  const dirty = dirtyCounts(changedSettings.map((setting) => setting.key))
+  const changedKeys = new Set(changedSettings.map((setting) => setting.key))
+  const roleNames = new Set(defaultRoleOptions.map((option) => option.id))
+  const roleLabels = new Map(defaultRoleOptions.map((option) => [option.id, option.label]))
   useEffect(() => {
     if (changedCount === 0) return
 
@@ -817,9 +805,6 @@ export function SystemSettingsForm({
     "ldap-sync": labels.tabLdapSync,
     advanced: labels.tabAdvanced,
   }
-  // TabNav links (O7, 2B spec R-g): each tab has its own URL, so Ctrl+click opens it in a new tab. A plain click runs
-  // onSelect below, which cancels the navigation and switches with selectTab, so unsaved edits stay.
-  const tabs = getSettingsTabOrder().map((id) => ({ key: id, label: tabLabels[id], href: buildSystemSettingsTabHref(pathname, searchParams.toString(), id) }))
   const settingsSearchResults = findSystemSettingsSearchResults(
     settings.filter((setting) => !retiredSystemSettingKeys.has(setting.key)),
     settingsSearch,
@@ -843,12 +828,11 @@ export function SystemSettingsForm({
       idFor: (field) => settingFieldId(settingKeyOf(field)),
       reveal: (field) => selectTab(SETTING_FIELD_IDS[settingKeyOf(field)] ? getSystemSettingsTabForKey(settingKeyOf(field)) : "advanced"),
     })
-  // The overview is two label and value lists (DESIGN KeyValueList): no tone fills, an empty value is Nil, and the two
-  // LDAP switches are status badges.
+  // The menu's one-line summaries: the values the overview panel showed, which is gone (board AD-Settings). Day counts
+  // and the sync mode in words, never an English "d" or a mode code (plan 2D-2 R14); a mode the labels do not know
+  // shows as it is (docs/19_THAI_GLOSSARY.md).
   const ldapLoginEnabled = getValue("ldap_enabled") === "true"
   const ldapSyncEnabled = getValue("ldap_sync_enabled") === "true"
-  // Day counts and the saved sync mode in words, never an English "d" or a mode code (plan 2D-2 R14). A mode the
-  // labels do not know shows as it is (docs/19_THAI_GLOSSARY.md).
   const formatDays = (days: string | number) => labels.overviewDays.replace("{count}", String(days))
   const ldapSyncModeLabels: Record<string, string> = {
     preview: labels.ldapSyncModePreview,
@@ -856,61 +840,114 @@ export function SystemSettingsForm({
     scheduled: labels.ldapSyncModeScheduled,
   }
   const ldapSyncMode = getValue("ldap_sync_mode") || "preview"
-  const overviewItems: KeyValueItem[] = [
-    { key: "assetTag", label: labels.overviewAssetTag, value: <span className="[overflow-wrap:anywhere]">{formatTemplate}</span> },
-    { key: "label", label: labels.overviewLabel, value: assetLabelPresets[labelTemplates.defaultTapeSize].label },
-    {
-      key: "documents",
-      label: labels.overviewDocuments,
-      value: `${renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)} / ${renderOperationDocumentTemplate(
-        checkinDocumentTemplate,
-        operationDocumentExampleDate,
-        1,
-        operationDocumentExampleDigits
-      )}`,
-    },
-    { key: "organization", label: labels.overviewOrganization, value: getValue("company_name") || null },
-    {
-      key: "notifications",
-      label: labels.overviewNotifications,
-      value: `${formatDays(getValue(notificationReturnDueSoonDaysKey) || "3")} / ${formatDays(getValue(notificationWarrantyExpiryDaysKey) || "30")}`,
-    },
-    {
-      key: "approval",
-      label: labels.overviewApproval,
-      value: `${workflowApprovalPolicy.minApprovers} / SLA ${formatDays(workflowApprovalPolicy.slaDays)} /${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
-    },
-    {
-      key: "governance",
-      label: labels.overviewGovernance,
-      value: (
-        <>
-          {[retentionAttachmentDaysKey, retentionAuditLogDaysKey, retentionOrphanFileDaysKey].map((key, index) => (
-            <Fragment key={key}>
-              {index > 0 ? " / " : null}
-              {getValue(key) ? formatDays(getValue(key)) : <Nil />}
-            </Fragment>
-          ))}
-        </>
-      ),
-    },
-    {
-      key: "ldapLogin",
-      label: labels.overviewLdapLogin,
-      value: <StatusBadge label={ldapLoginEnabled ? labels.enabled : labels.disabled} tone={ldapLoginEnabled ? "success" : "muted"} />,
-    },
-    {
-      key: "ldapSync",
-      label: labels.overviewLdapSync,
-      value: (
-        <StatusBadge
-          label={ldapSyncEnabled ? `${labels.enabled} (${ldapSyncModeLabels[ldapSyncMode] ?? ldapSyncMode})` : labels.disabled}
-          tone={ldapSyncEnabled ? "success" : "muted"}
-        />
-      ),
-    },
-    { key: "advanced", label: labels.overviewAdvanced, value: labels.advancedSettingCount.replace("{count}", formatCount(generalSettings.length)) },
-  ]
+  const tabSummaries: Record<SettingsTabId, React.ReactNode> = {
+    "asset-numbering": <span className="font-mono">{formatTemplate}</span>,
+    "label-template": assetLabelPresets[labelTemplates.defaultTapeSize].label,
+    documents: `${renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)} / ${renderOperationDocumentTemplate(
+      checkinDocumentTemplate,
+      operationDocumentExampleDate,
+      1,
+      operationDocumentExampleDigits
+    )}`,
+    organization: getValue("company_name") || <Nil />,
+    notifications: `${formatDays(getValue(notificationReturnDueSoonDaysKey) || "3")} / ${formatDays(getValue(notificationWarrantyExpiryDaysKey) || "30")}`,
+    // "ผู้อนุมัติ {n} · SLA {n} วัน · SOD เปิด/ปิด" (spec §11), which fixes the old "/SOD".
+    "workflow-approval": tPage("approvalSummary", {
+      approvers: workflowApprovalPolicy.minApprovers,
+      days: workflowApprovalPolicy.slaDays,
+      sod: workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff,
+    }),
+    // The overview had no line for the scheduler notice.
+    automation: null,
+    governance: (
+      <>
+        {[retentionAttachmentDaysKey, retentionAuditLogDaysKey, retentionOrphanFileDaysKey].map((key, index) => (
+          <Fragment key={key}>
+            {index > 0 ? " / " : null}
+            {getValue(key) ? formatDays(getValue(key)) : <Nil />}
+          </Fragment>
+        ))}
+      </>
+    ),
+    "ldap-login": ldapLoginEnabled ? labels.enabled : labels.disabled,
+    "ldap-sync": ldapSyncEnabled ? `${labels.enabled} (${ldapSyncModeLabels[ldapSyncMode] ?? ldapSyncMode})` : labels.disabled,
+    advanced: labels.advancedSettingCount.replace("{count}", formatCount(generalSettings.length)),
+  }
+  // Menu links (O7, 2B spec R-g): each tab has its own URL, so Ctrl+click opens it in a new tab. A plain click runs
+  // onSelect, which cancels the navigation and switches with selectTab, so unsaved edits stay.
+  const menuItems = getSettingsTabOrder().map((id) => ({
+    tab: id,
+    label: tabLabels[id],
+    href: buildSystemSettingsTabHref(pathname, searchParams.toString(), id),
+    summary: tabSummaries[id],
+    unsaved: dirty.byTab[id] ?? 0,
+  }))
+
+  const labelLayoutNames: Record<string, string> = {
+    "qr-left": labels.labelLayoutQrLeft,
+    "qr-top": labels.labelLayoutQrTop,
+    "text-only": labels.labelLayoutTextOnly,
+    "qr-only": labels.labelLayoutQrOnly,
+  }
+  // "เดิม <saved value>" under a changed field: a switch in words, a secret never shown, a select's option in words, a
+  // long JSON value cut short. The review table formats the same values with reviewValue.
+  const savedDisplayValue = (key: string) => {
+    const saved = normalizeSettingValue(key, initialValues[key])
+    const value = reviewValue(key, saved, { roleNames })
+    // The label's name choice reads as its two options, not on/off.
+    if (key === "asset_label_compact_asset_name_enabled" && value.kind === "bool") return value.on ? labels.compactLabelAssetNameShort : labels.compactLabelAssetNameFull
+    if (value.kind === "bool") return value.on ? labels.enabled : labels.disabled
+    if (value.kind === "secret") return saved ? "••••••••" : tCommon("noValue")
+    if (value.kind === "missingRole") return value.name
+    const text = value.text.trim()
+    if (!text) return tCommon("noValue")
+    if (key === "asset_label_default_tape_size") return assetLabelPresets[text as AssetLabelTapeSize]?.label ?? text
+    if (key.startsWith("asset_label_") && key.endsWith("_layout")) return labelLayoutNames[text] ?? text
+    return text.length > 80 ? `${text.slice(0, 80)}…` : text
+  }
+  // คืนค่าเดิม on one field: its saved value back, its error from the last save gone.
+  const restoreSetting = (key: string) => {
+    if (key === assetTagCategoryPrefixesKey) {
+      setPrefixRows(parsePrefixRows(initialValues[key]))
+      fieldErrors.clear(settingFieldKey(key))
+      return
+    }
+    setValue(key, initialValues[key] ?? "")
+  }
+  // A changed field shows "แก้แล้ว · เดิม <saved>" through the shared FormChangedField (spec §11).
+  const changeFor = (key: string): FormFieldChange | null =>
+    changedKeys.has(key) ? { was: savedDisplayValue(key), onRestore: () => restoreSetting(key) } : null
+  // An LDAP section's heading says "แก้ n ค่า" when any of its settings changed; its fields stay as they are (the LDAP
+  // tabs' content belongs to plan 5 Task 4).
+  const sectionTitle = (title: string, keys: readonly string[]) => {
+    const count = keys.filter((key) => changedKeys.has(key)).length
+    return (
+      <>
+        {title}
+        {count > 0 ? <span className="ms-2 text-meta font-medium text-primary">{tPage("sectionChanged", { count })}</span> : null}
+      </>
+    )
+  }
+
+  // ยกเลิกการแก้ไข: after a confirm, every field goes back to its saved value, and so do the prefix groups, the custom
+  // schedule switch and the errors.
+  async function discardEdits() {
+    if (changedCount === 0) return
+    const confirmed = await confirm({
+      title: tPage("discardConfirmTitle", { count: changedCount }),
+      description: tPage("discardConfirmDescription"),
+      confirmLabel: tPage("discardChanges"),
+      cancelLabel: tPage("discardConfirmCancel"),
+      tone: "destructive",
+    })
+    if (!confirmed) return
+    setValues({ ...initialValues })
+    setPrefixRows(parsePrefixRows(initialValues[assetTagCategoryPrefixesKey]))
+    setCustomScheduleSelected(isCustomSchedule(initialValues.ldap_sync_schedule))
+    fieldErrors.setErrors({})
+    closePrefixEditor()
+    // Hook for plan 5 Task 4: the bind-password change mode closes here too (back to the stored state).
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -992,69 +1029,63 @@ export function SystemSettingsForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
-      <TabNav
-        aria-label={tPage("title")}
-        items={tabs}
-        current={activeTab}
-        onSelect={(key, event) => {
-          event.preventDefault()
-          selectTab(parseSystemSettingsTab(key))
-        }}
-      />
+      <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[18rem_minmax(0,1fr)]">
+        <SettingsMenu
+          aria-label={tPage("title")}
+          items={menuItems}
+          activeTab={activeTab}
+          groupUnsaved={dirty.byGroup}
+          onSelect={(tab) => selectTab(tab)}
+          search={
+            <div>
+              <Field label={labels.searchSettings}>
+                <SearchField value={settingsSearch} onChange={(event) => setSettingsSearch(event.target.value)} placeholder={labels.searchSettingsHelp} />
+              </Field>
+              {settingsSearch.trim() ? (
+                settingsSearchResults.length > 0 ? (
+                  <ul className="mt-3 grid gap-2">
+                    {settingsSearchResults.map((result) => (
+                      <li key={result.key}>
+                        <Button
+                          variant="outline"
+                          onClick={() => openSettingGroup(result.tab)}
+                          className="h-auto w-full justify-between gap-3 whitespace-normal py-2 text-left md:h-auto md:min-h-9"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm text-foreground"><span className="tag">{result.key}</span></span>
+                            {result.description ? <span className="mt-1 block line-clamp-1 text-xs font-normal text-muted-foreground">{result.description}</span> : null}
+                          </span>
+                          <span className="shrink-0 text-xs text-primary">{result.tabLabel}</span>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <EmptyNote role="status" className="mt-3">{labels.noSettingsSearchResults}</EmptyNote>
+                )
+              ) : null}
+            </div>
+          }
+        />
 
-      <ContentPanel>
-        <Field label={labels.searchSettings}>
-          <SearchField value={settingsSearch} onChange={(event) => setSettingsSearch(event.target.value)} placeholder={labels.searchSettingsHelp} />
-        </Field>
-        {settingsSearch.trim() ? (
-          settingsSearchResults.length > 0 ? (
-            <ul className="mt-3 grid gap-2">
-              {settingsSearchResults.map((result) => (
-                <li key={result.key}>
-                  <Button
-                    variant="outline"
-                    onClick={() => openSettingGroup(result.tab)}
-                    className="h-auto w-full justify-between gap-3 whitespace-normal py-2 text-left md:h-auto md:min-h-9"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm text-foreground"><span className="tag">{result.key}</span></span>
-                      {result.description ? <span className="mt-1 block line-clamp-1 text-xs font-normal text-muted-foreground">{result.description}</span> : null}
-                    </span>
-                    <span className="shrink-0 text-xs text-primary">{result.tabLabel}</span>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyNote role="status" className="mt-3">{labels.noSettingsSearchResults}</EmptyNote>
-          )
-        ) : null}
-      </ContentPanel>
-
-      {/* openSettingGroup scrolls to this id; ContentPanel takes no id of its own. */}
-      <div id="settings-workspace">
-        <ContentPanel divided title={labels.settingsOverview} description={labels.settingsOverviewDescription}>
-          <div className="grid gap-x-8 gap-y-2 lg:grid-cols-2">
-            <KeyValueList items={overviewItems.slice(0, 5)} />
-            <KeyValueList items={overviewItems.slice(5)} />
-          </div>
-        </ContentPanel>
-      </div>
-
+      {/* openSettingGroup scrolls to this id. */}
+      <div id="settings-workspace" className="min-w-0 space-y-6">
       {activeTab === "asset-numbering" ? (
       <>
       <ContentPanel divided title={labels.assetTagFormat} description={labels.assetTagFormatDescription}>
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-2">
-              <Field label={labels.assetTagTemplate} error={settingError(assetTagFormatTemplateKey)} liveError={settingLiveError(assetTagFormatTemplateKey)}>
-                <Input
-                  id="asset-tag-template"
-                  value={formatTemplate}
-                  onChange={(event) => setValue(assetTagFormatTemplateKey, event.target.value)}
-                  className="font-mono"
-                />
-              </Field>
+              <FormChangedField change={changeFor(assetTagFormatTemplateKey)}>
+                <Field label={labels.assetTagTemplate} error={settingError(assetTagFormatTemplateKey)} liveError={settingLiveError(assetTagFormatTemplateKey)}>
+                  <Input
+                    id="asset-tag-template"
+                    value={formatTemplate}
+                    onChange={(event) => setValue(assetTagFormatTemplateKey, event.target.value)}
+                    className="font-mono"
+                  />
+                </Field>
+              </FormChangedField>
               <p className="text-sm text-muted-foreground">{labels.assetTagTemplateHelp}</p>
             </div>
             <div className="space-y-2">
@@ -1097,31 +1128,37 @@ export function SystemSettingsForm({
 
       <ContentPanel divided title={labels.numberingOptions}>
         <div className="grid gap-4 md:grid-cols-3">
-          <Field label={labels.runningDigits} error={settingError("asset_tag_running_digits")}>
-            <Input
-              id="asset-tag-running-digits"
-              type="number"
-              min={1}
-              max={12}
-              value={getValue("asset_tag_running_digits")}
-              onChange={(event) => setValue("asset_tag_running_digits", event.target.value)}
-            />
-          </Field>
-          <Field label={labels.separator} error={settingError("asset_tag_separator")}>
-            <Input
-              id="asset-tag-separator"
-              value={getValue("asset_tag_separator")}
-              onChange={(event) => setValue("asset_tag_separator", event.target.value)}
-            />
-          </Field>
-          <Field label={labels.globalPrefix} error={settingError("asset_tag_prefix")}>
-            <Input
-              id="asset-tag-global-prefix"
-              value={getValue("asset_tag_prefix")}
-              onChange={(event) => setValue("asset_tag_prefix", event.target.value.toUpperCase())}
-              className="uppercase"
-            />
-          </Field>
+          <FormChangedField change={changeFor("asset_tag_running_digits")}>
+            <Field label={labels.runningDigits} error={settingError("asset_tag_running_digits")}>
+              <Input
+                id="asset-tag-running-digits"
+                type="number"
+                min={1}
+                max={12}
+                value={getValue("asset_tag_running_digits")}
+                onChange={(event) => setValue("asset_tag_running_digits", event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor("asset_tag_separator")}>
+            <Field label={labels.separator} error={settingError("asset_tag_separator")}>
+              <Input
+                id="asset-tag-separator"
+                value={getValue("asset_tag_separator")}
+                onChange={(event) => setValue("asset_tag_separator", event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor("asset_tag_prefix")}>
+            <Field label={labels.globalPrefix} error={settingError("asset_tag_prefix")}>
+              <Input
+                id="asset-tag-global-prefix"
+                value={getValue("asset_tag_prefix")}
+                onChange={(event) => setValue("asset_tag_prefix", event.target.value.toUpperCase())}
+                className="uppercase"
+              />
+            </Field>
+          </FormChangedField>
         </div>
       </ContentPanel>
       </>
@@ -1132,15 +1169,17 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
             <div className="space-y-2">
-              <Field label={labels.publicQrBaseUrl} error={settingError(assetQrPublicBaseUrlKey)} liveError={settingLiveError(assetQrPublicBaseUrlKey)}>
-                <Input
-                  id="asset-qr-public-base-url"
-                  value={publicQrBaseUrl}
-                  placeholder={labels.publicQrBaseUrlPlaceholder}
-                  onChange={(event) => setValue(assetQrPublicBaseUrlKey, event.target.value)}
-                  className="font-mono"
-                />
-              </Field>
+              <FormChangedField change={changeFor(assetQrPublicBaseUrlKey)}>
+                <Field label={labels.publicQrBaseUrl} error={settingError(assetQrPublicBaseUrlKey)} liveError={settingLiveError(assetQrPublicBaseUrlKey)}>
+                  <Input
+                    id="asset-qr-public-base-url"
+                    value={publicQrBaseUrl}
+                    placeholder={labels.publicQrBaseUrlPlaceholder}
+                    onChange={(event) => setValue(assetQrPublicBaseUrlKey, event.target.value)}
+                    className="font-mono"
+                  />
+                </Field>
+              </FormChangedField>
               <p className="text-sm text-muted-foreground">{labels.publicQrBaseUrlDescription}</p>
             </div>
             <div className="space-y-1">
@@ -1151,29 +1190,33 @@ export function SystemSettingsForm({
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-[minmax(220px,330px)_minmax(300px,420px)] md:items-start">
-            <Field label={labels.defaultTapeSize} error={settingError("asset_label_default_tape_size")}>
-              <NativeSelect
-                id="asset-label-default-tape-size"
-                value={getValue("asset_label_default_tape_size")}
-                onChange={(event) => setValue("asset_label_default_tape_size", event.target.value)}
-              >
-                {assetLabelTapeSizes.map((size) => (
-                  <option key={size} value={size}>
-                    {assetLabelPresets[size].label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <LabelAssetNameModeField
-              id="asset-label-compact-asset-name"
-              label={labels.compactLabelAssetName}
-              description={labels.compactLabelAssetNameDescription}
-              compactLabel={labels.compactLabelAssetNameShort}
-              fullLabel={labels.compactLabelAssetNameFull}
-              compactEnabled={getValue("asset_label_compact_asset_name_enabled") === "true"}
-              error={settingError("asset_label_compact_asset_name_enabled")}
-              onChange={(compactEnabled) => setBooleanValue("asset_label_compact_asset_name_enabled", compactEnabled)}
-            />
+            <FormChangedField change={changeFor("asset_label_default_tape_size")}>
+              <Field label={labels.defaultTapeSize} error={settingError("asset_label_default_tape_size")}>
+                <NativeSelect
+                  id="asset-label-default-tape-size"
+                  value={getValue("asset_label_default_tape_size")}
+                  onChange={(event) => setValue("asset_label_default_tape_size", event.target.value)}
+                >
+                  {assetLabelTapeSizes.map((size) => (
+                    <option key={size} value={size}>
+                      {assetLabelPresets[size].label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </FormChangedField>
+            <FormChangedField change={changeFor("asset_label_compact_asset_name_enabled")}>
+              <LabelAssetNameModeField
+                id="asset-label-compact-asset-name"
+                label={labels.compactLabelAssetName}
+                description={labels.compactLabelAssetNameDescription}
+                compactLabel={labels.compactLabelAssetNameShort}
+                fullLabel={labels.compactLabelAssetNameFull}
+                compactEnabled={getValue("asset_label_compact_asset_name_enabled") === "true"}
+                error={settingError("asset_label_compact_asset_name_enabled")}
+                onChange={(compactEnabled) => setBooleanValue("asset_label_compact_asset_name_enabled", compactEnabled)}
+              />
+            </FormChangedField>
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
             {assetLabelTapeSizes.map((size) => (
@@ -1194,6 +1237,7 @@ export function SystemSettingsForm({
                 setValue={setValue}
                 errorFor={settingError}
                 liveErrorFor={settingLiveError}
+                changeFor={changeFor}
               />
             ))}
           </div>
@@ -1217,32 +1261,38 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={labels.checkoutDocumentTemplate} error={settingError(checkoutDocumentTemplateKey)} liveError={settingLiveError(checkoutDocumentTemplateKey)}>
-                <Input
-                  id="checkout-document-template"
-                  value={checkoutDocumentTemplate}
-                  onChange={(event) => setValue(checkoutDocumentTemplateKey, event.target.value)}
-                  className="font-mono"
-                />
-              </Field>
-              <Field label={labels.checkinDocumentTemplate} error={settingError(checkinDocumentTemplateKey)} liveError={settingLiveError(checkinDocumentTemplateKey)}>
-                <Input
-                  id="checkin-document-template"
-                  value={checkinDocumentTemplate}
-                  onChange={(event) => setValue(checkinDocumentTemplateKey, event.target.value)}
-                  className="font-mono"
-                />
-              </Field>
-              <Field label={labels.operationDocumentRunningDigits} error={settingError(operationDocumentRunningDigitsKey)} liveError={settingLiveError(operationDocumentRunningDigitsKey)}>
-                <Input
-                  id="operation-document-running-digits"
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={getValue(operationDocumentRunningDigitsKey)}
-                  onChange={(event) => setValue(operationDocumentRunningDigitsKey, event.target.value)}
-                />
-              </Field>
+              <FormChangedField change={changeFor(checkoutDocumentTemplateKey)}>
+                <Field label={labels.checkoutDocumentTemplate} error={settingError(checkoutDocumentTemplateKey)} liveError={settingLiveError(checkoutDocumentTemplateKey)}>
+                  <Input
+                    id="checkout-document-template"
+                    value={checkoutDocumentTemplate}
+                    onChange={(event) => setValue(checkoutDocumentTemplateKey, event.target.value)}
+                    className="font-mono"
+                  />
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor(checkinDocumentTemplateKey)}>
+                <Field label={labels.checkinDocumentTemplate} error={settingError(checkinDocumentTemplateKey)} liveError={settingLiveError(checkinDocumentTemplateKey)}>
+                  <Input
+                    id="checkin-document-template"
+                    value={checkinDocumentTemplate}
+                    onChange={(event) => setValue(checkinDocumentTemplateKey, event.target.value)}
+                    className="font-mono"
+                  />
+                </Field>
+              </FormChangedField>
+              <FormChangedField change={changeFor(operationDocumentRunningDigitsKey)}>
+                <Field label={labels.operationDocumentRunningDigits} error={settingError(operationDocumentRunningDigitsKey)} liveError={settingLiveError(operationDocumentRunningDigitsKey)}>
+                  <Input
+                    id="operation-document-running-digits"
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={getValue(operationDocumentRunningDigitsKey)}
+                    onChange={(event) => setValue(operationDocumentRunningDigitsKey, event.target.value)}
+                  />
+                </Field>
+              </FormChangedField>
             </div>
             <div className="space-y-2">
               <div className={fieldLabelClasses}>{labels.exampleFormat}</div>
@@ -1283,90 +1333,92 @@ export function SystemSettingsForm({
       >
         {/* The prefix groups are one group: a stored prefix that breaks the rule shows its error under the table, and
             focus goes to the table's first edit button (ST-R5). */}
-        <div
-          id="category-prefix-groups"
-          role="group"
-          aria-label={labels.categoryPrefixes}
-          aria-describedby={prefixGroupsError ? "category-prefix-groups-error" : undefined}
-          className="space-y-4"
-        >
-          <div className="space-y-1 text-sm text-muted-foreground">
-            <div className="font-medium text-foreground">
-              {formatTemplateText(labels.prefixGroupCount, { count: String(prefixGroups.length) })}
+        <FormChangedField change={changeFor(assetTagCategoryPrefixesKey)}>
+          <div
+            id="category-prefix-groups"
+            role="group"
+            aria-label={labels.categoryPrefixes}
+            aria-describedby={prefixGroupsError ? "category-prefix-groups-error" : undefined}
+            className="space-y-4"
+          >
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">
+                {formatTemplateText(labels.prefixGroupCount, { count: String(prefixGroups.length) })}
+              </div>
+              <div>
+                {formatTemplateText(labels.assignedCategoryCount, {
+                  assigned: String(categories.length - unassignedCategoryCount),
+                  total: String(categories.length),
+                })}
+              </div>
+              <div>{formatTemplateText(labels.unassignedCategoryCount, { count: String(unassignedCategoryCount) })}</div>
             </div>
-            <div>
-              {formatTemplateText(labels.assignedCategoryCount, {
-                assigned: String(categories.length - unassignedCategoryCount),
-                total: String(categories.length),
-              })}
-            </div>
-            <div>{formatTemplateText(labels.unassignedCategoryCount, { count: String(unassignedCategoryCount) })}</div>
+
+            {prefixGroups.length === 0 ? (
+              <EmptyNote>{labels.noCategoryPrefixes}</EmptyNote>
+            ) : (
+              <DataTable framed={false} caption={labels.categoryPrefixes} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{labels.prefix}</DataTableHead>
+                    <DataTableHead>{labels.category}</DataTableHead>
+                    <DataTableHead>{labels.categoryPrefixPreview}</DataTableHead>
+                    <DataTableHead align="right" hideLabel>{labels.editPrefix}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                    {prefixGroups.map((group) => (
+                      <DataTableRow key={group.prefix}>
+                        <DataTableCell>
+                          <span className="tag font-medium text-foreground">{group.prefix}</span>
+                        </DataTableCell>
+                        <DataTableCell className="min-w-72">
+                          <div className="font-medium text-foreground">
+                            {formatTemplateText(labels.categoryCount, { count: String(group.categoryIds.length) })}
+                          </div>
+                          <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            {group.categoryIds
+                              .map((categoryId) => categoryById.get(categoryId))
+                              .filter(Boolean)
+                              .slice(0, 6)
+                              .map((category) => `${category?.code} - ${category?.name}`)
+                              .join(", ")}
+                          </div>
+                        </DataTableCell>
+                        <DataTableCell className="min-w-56 text-muted-foreground">
+                          <span className="tag">{renderAssetTagPreview(formatTemplate, group.prefix, getValue("asset_tag_separator"))}</span>
+                        </DataTableCell>
+                        <DataTableCell align="right" className="w-32">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => openPrefixEditor(group.prefix)}
+                              title={labels.editPrefix}
+                              aria-label={labels.editPrefix}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => removePrefixGroup(group.prefix)}
+                              title={labels.removePrefix}
+                              aria-label={labels.removePrefix}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </DataTableCell>
+                      </DataTableRow>
+                    ))}
+                </DataTableBody>
+              </DataTable>
+            )}
+
+            {prefixGroupsError ? <FieldError id="category-prefix-groups-error">{prefixGroupsError}</FieldError> : null}
           </div>
-
-          {prefixGroups.length === 0 ? (
-            <EmptyNote>{labels.noCategoryPrefixes}</EmptyNote>
-          ) : (
-            <DataTable framed={false} caption={labels.categoryPrefixes} scrollHint={tCommon("tableScrollHint")}>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{labels.prefix}</DataTableHead>
-                  <DataTableHead>{labels.category}</DataTableHead>
-                  <DataTableHead>{labels.categoryPrefixPreview}</DataTableHead>
-                  <DataTableHead align="right" hideLabel>{labels.editPrefix}</DataTableHead>
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
-                  {prefixGroups.map((group) => (
-                    <DataTableRow key={group.prefix}>
-                      <DataTableCell>
-                        <span className="tag font-medium text-foreground">{group.prefix}</span>
-                      </DataTableCell>
-                      <DataTableCell className="min-w-72">
-                        <div className="font-medium text-foreground">
-                          {formatTemplateText(labels.categoryCount, { count: String(group.categoryIds.length) })}
-                        </div>
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {group.categoryIds
-                            .map((categoryId) => categoryById.get(categoryId))
-                            .filter(Boolean)
-                            .slice(0, 6)
-                            .map((category) => `${category?.code} - ${category?.name}`)
-                            .join(", ")}
-                        </div>
-                      </DataTableCell>
-                      <DataTableCell className="min-w-56 text-muted-foreground">
-                        <span className="tag">{renderAssetTagPreview(formatTemplate, group.prefix, getValue("asset_tag_separator"))}</span>
-                      </DataTableCell>
-                      <DataTableCell align="right" className="w-32">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => openPrefixEditor(group.prefix)}
-                            title={labels.editPrefix}
-                            aria-label={labels.editPrefix}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removePrefixGroup(group.prefix)}
-                            title={labels.removePrefix}
-                            aria-label={labels.removePrefix}
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))}
-              </DataTableBody>
-            </DataTable>
-          )}
-
-          {prefixGroupsError ? <FieldError id="category-prefix-groups-error">{prefixGroupsError}</FieldError> : null}
-        </div>
+        </FormChangedField>
 
         <AccessibleDialog
           open={prefixEditor !== null}
@@ -1512,39 +1564,47 @@ export function SystemSettingsForm({
       {activeTab === "organization" ? (
       <ContentPanel divided title={labels.organizationDefaults} description={labels.organizationDefaultsDescription}>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label={labels.companyName} error={settingError("company_name")}>
-            <Input
-              id="company-name"
-              value={getValue("company_name")}
-              onChange={(event) => setValue("company_name", event.target.value)}
-            />
-          </Field>
-          <Field label={labels.defaultCurrency} error={settingError("default_currency")}>
-            <Input
-              id="default-currency"
-              value={getValue("default_currency")}
-              onChange={(event) => setValue("default_currency", event.target.value.toUpperCase())}
-              className="uppercase"
-            />
-          </Field>
-          <Field label={labels.checkinDepartmentCode} hint={labels.checkinDepartmentCodeHint} error={settingError(CHECKIN_DEPARTMENT_SETTING_KEY)}>
-            <Input
-              id="checkin-department-code"
-              value={getValue(CHECKIN_DEPARTMENT_SETTING_KEY)}
-              onChange={(event) => setValue(CHECKIN_DEPARTMENT_SETTING_KEY, event.target.value.toUpperCase())}
-              className="uppercase"
-            />
-          </Field>
+          <FormChangedField change={changeFor("company_name")}>
+            <Field label={labels.companyName} error={settingError("company_name")}>
+              <Input
+                id="company-name"
+                value={getValue("company_name")}
+                onChange={(event) => setValue("company_name", event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor("default_currency")}>
+            <Field label={labels.defaultCurrency} error={settingError("default_currency")}>
+              <Input
+                id="default-currency"
+                value={getValue("default_currency")}
+                onChange={(event) => setValue("default_currency", event.target.value.toUpperCase())}
+                className="uppercase"
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor(CHECKIN_DEPARTMENT_SETTING_KEY)}>
+            <Field label={labels.checkinDepartmentCode} hint={labels.checkinDepartmentCodeHint} error={settingError(CHECKIN_DEPARTMENT_SETTING_KEY)}>
+              <Input
+                id="checkin-department-code"
+                value={getValue(CHECKIN_DEPARTMENT_SETTING_KEY)}
+                onChange={(event) => setValue(CHECKIN_DEPARTMENT_SETTING_KEY, event.target.value.toUpperCase())}
+                className="uppercase"
+              />
+            </Field>
+          </FormChangedField>
           <div className="md:col-span-2">
-            <DepreciationPolicyBuilder
-              categories={categories}
-              policyJson={getValue(depreciationPolicySettingKey)}
-              labels={labels}
-              onPolicyJsonChange={(value) => setValue(depreciationPolicySettingKey, value)}
-              jsonId="depreciation-policy-json"
-              jsonError={settingError(depreciationPolicySettingKey)}
-              jsonLiveError={settingLiveError(depreciationPolicySettingKey)}
-            />
+            <FormChangedField change={changeFor(depreciationPolicySettingKey)}>
+              <DepreciationPolicyBuilder
+                categories={categories}
+                policyJson={getValue(depreciationPolicySettingKey)}
+                labels={labels}
+                onPolicyJsonChange={(value) => setValue(depreciationPolicySettingKey, value)}
+                jsonId="depreciation-policy-json"
+                jsonError={settingError(depreciationPolicySettingKey)}
+                jsonLiveError={settingLiveError(depreciationPolicySettingKey)}
+              />
+            </FormChangedField>
             <p className="mt-2 text-sm text-muted-foreground">{labels.accountingDepreciationPolicyDescription}</p>
           </div>
         </div>
@@ -1555,46 +1615,54 @@ export function SystemSettingsForm({
       <ContentPanel divided title={labels.notificationRules} description={labels.notificationRulesDescription}>
         <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Field label={labels.returnDueSoonDays} error={settingError(notificationReturnDueSoonDaysKey)} liveError={settingLiveError(notificationReturnDueSoonDaysKey)}>
-            <Input
-              id="notification-return-due-days"
-              type="number"
-              min={0}
-              max={365}
-              value={getValue(notificationReturnDueSoonDaysKey)}
-              onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
-            />
-          </Field>
-          <Field label={labels.auditActionDueSoonDays} error={settingError(notificationAuditActionDueSoonDaysKey)} liveError={settingLiveError(notificationAuditActionDueSoonDaysKey)}>
-            <Input
-              id="notification-audit-action-days"
-              type="number"
-              min={0}
-              max={365}
-              value={getValue(notificationAuditActionDueSoonDaysKey)}
-              onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
-            />
-          </Field>
-          <Field label={labels.warrantyExpiryDays} error={settingError(notificationWarrantyExpiryDaysKey)} liveError={settingLiveError(notificationWarrantyExpiryDaysKey)}>
-            <Input
-              id="notification-warranty-expiry-days"
-              type="number"
-              min={0}
-              max={365}
-              value={getValue(notificationWarrantyExpiryDaysKey)}
-              onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
-            />
-          </Field>
-          <Field label={labels.licenseExpiryDays} error={settingError(notificationLicenseExpiryDaysKey)} liveError={settingLiveError(notificationLicenseExpiryDaysKey)}>
-            <Input
-              id="notification-license-expiry-days"
-              type="number"
-              min={0}
-              max={365}
-              value={getValue(notificationLicenseExpiryDaysKey)}
-              onChange={(event) => setValue(notificationLicenseExpiryDaysKey, event.target.value)}
-            />
-          </Field>
+          <FormChangedField change={changeFor(notificationReturnDueSoonDaysKey)}>
+            <Field label={labels.returnDueSoonDays} error={settingError(notificationReturnDueSoonDaysKey)} liveError={settingLiveError(notificationReturnDueSoonDaysKey)}>
+              <Input
+                id="notification-return-due-days"
+                type="number"
+                min={0}
+                max={365}
+                value={getValue(notificationReturnDueSoonDaysKey)}
+                onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor(notificationAuditActionDueSoonDaysKey)}>
+            <Field label={labels.auditActionDueSoonDays} error={settingError(notificationAuditActionDueSoonDaysKey)} liveError={settingLiveError(notificationAuditActionDueSoonDaysKey)}>
+              <Input
+                id="notification-audit-action-days"
+                type="number"
+                min={0}
+                max={365}
+                value={getValue(notificationAuditActionDueSoonDaysKey)}
+                onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor(notificationWarrantyExpiryDaysKey)}>
+            <Field label={labels.warrantyExpiryDays} error={settingError(notificationWarrantyExpiryDaysKey)} liveError={settingLiveError(notificationWarrantyExpiryDaysKey)}>
+              <Input
+                id="notification-warranty-expiry-days"
+                type="number"
+                min={0}
+                max={365}
+                value={getValue(notificationWarrantyExpiryDaysKey)}
+                onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
+          <FormChangedField change={changeFor(notificationLicenseExpiryDaysKey)}>
+            <Field label={labels.licenseExpiryDays} error={settingError(notificationLicenseExpiryDaysKey)} liveError={settingLiveError(notificationLicenseExpiryDaysKey)}>
+              <Input
+                id="notification-license-expiry-days"
+                type="number"
+                min={0}
+                max={365}
+                value={getValue(notificationLicenseExpiryDaysKey)}
+                onChange={(event) => setValue(notificationLicenseExpiryDaysKey, event.target.value)}
+              />
+            </Field>
+          </FormChangedField>
         </div>
         <p className="text-sm text-muted-foreground">{labels.notificationDaysHelp}</p>
         </div>
@@ -1606,47 +1674,57 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <Notice tone="info">{labels.workflowApprovalFoundationNote}</Notice>
           <div className="grid gap-4 lg:grid-cols-2">
-            <ToggleField
-              id="workflow-approval-disposal-required"
-              label={labels.workflowApprovalDisposalRequired}
-              checked={getValue(workflowApprovalDisposalRequiredKey) === "true"}
-              error={settingError(workflowApprovalDisposalRequiredKey)}
-              onChange={(checked) => setBooleanValue(workflowApprovalDisposalRequiredKey, checked)}
-            />
-            <ToggleField
-              id="workflow-approval-audit-close-required"
-              label={labels.workflowApprovalAuditCloseRequired}
-              checked={getValue(workflowApprovalAuditCloseRequiredKey) === "true"}
-              error={settingError(workflowApprovalAuditCloseRequiredKey)}
-              onChange={(checked) => setBooleanValue(workflowApprovalAuditCloseRequiredKey, checked)}
-            />
-            <ToggleField
-              id="workflow-approval-segregation-required"
-              label={labels.workflowApprovalSegregationRequired}
-              checked={getValue(workflowApprovalSegregationRequiredKey) === "true"}
-              error={settingError(workflowApprovalSegregationRequiredKey)}
-              onChange={(checked) => setBooleanValue(workflowApprovalSegregationRequiredKey, checked)}
-            />
-            <Field label={labels.workflowApprovalMinApprovers} error={settingError(workflowApprovalMinApproversKey)} liveError={settingLiveError(workflowApprovalMinApproversKey)}>
-              <Input
-                id="workflow-approval-min-approvers"
-                type="number"
-                min={1}
-                max={5}
-                value={getValue(workflowApprovalMinApproversKey)}
-                onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
+            <FormChangedField change={changeFor(workflowApprovalDisposalRequiredKey)}>
+              <ToggleField
+                id="workflow-approval-disposal-required"
+                label={labels.workflowApprovalDisposalRequired}
+                checked={getValue(workflowApprovalDisposalRequiredKey) === "true"}
+                error={settingError(workflowApprovalDisposalRequiredKey)}
+                onChange={(checked) => setBooleanValue(workflowApprovalDisposalRequiredKey, checked)}
               />
-            </Field>
-            <Field label={labels.workflowApprovalSlaDays} error={settingError(workflowApprovalSlaDaysKey)} liveError={settingLiveError(workflowApprovalSlaDaysKey)}>
-              <Input
-                id="workflow-approval-sla-days"
-                type="number"
-                min={1}
-                max={90}
-                value={getValue(workflowApprovalSlaDaysKey)}
-                onChange={(event) => setValue(workflowApprovalSlaDaysKey, event.target.value)}
+            </FormChangedField>
+            <FormChangedField change={changeFor(workflowApprovalAuditCloseRequiredKey)}>
+              <ToggleField
+                id="workflow-approval-audit-close-required"
+                label={labels.workflowApprovalAuditCloseRequired}
+                checked={getValue(workflowApprovalAuditCloseRequiredKey) === "true"}
+                error={settingError(workflowApprovalAuditCloseRequiredKey)}
+                onChange={(checked) => setBooleanValue(workflowApprovalAuditCloseRequiredKey, checked)}
               />
-            </Field>
+            </FormChangedField>
+            <FormChangedField change={changeFor(workflowApprovalSegregationRequiredKey)}>
+              <ToggleField
+                id="workflow-approval-segregation-required"
+                label={labels.workflowApprovalSegregationRequired}
+                checked={getValue(workflowApprovalSegregationRequiredKey) === "true"}
+                error={settingError(workflowApprovalSegregationRequiredKey)}
+                onChange={(checked) => setBooleanValue(workflowApprovalSegregationRequiredKey, checked)}
+              />
+            </FormChangedField>
+            <FormChangedField change={changeFor(workflowApprovalMinApproversKey)}>
+              <Field label={labels.workflowApprovalMinApprovers} error={settingError(workflowApprovalMinApproversKey)} liveError={settingLiveError(workflowApprovalMinApproversKey)}>
+                <Input
+                  id="workflow-approval-min-approvers"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={getValue(workflowApprovalMinApproversKey)}
+                  onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
+                />
+              </Field>
+            </FormChangedField>
+            <FormChangedField change={changeFor(workflowApprovalSlaDaysKey)}>
+              <Field label={labels.workflowApprovalSlaDays} error={settingError(workflowApprovalSlaDaysKey)} liveError={settingLiveError(workflowApprovalSlaDaysKey)}>
+                <Input
+                  id="workflow-approval-sla-days"
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={getValue(workflowApprovalSlaDaysKey)}
+                  onChange={(event) => setValue(workflowApprovalSlaDaysKey, event.target.value)}
+                />
+              </Field>
+            </FormChangedField>
           </div>
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalMinApproversHelp}</p>
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalSlaDaysHelp}</p>
@@ -1675,36 +1753,42 @@ export function SystemSettingsForm({
             </a>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            <Field label={labels.retentionAttachmentDays} error={settingError(retentionAttachmentDaysKey)} liveError={settingLiveError(retentionAttachmentDaysKey)}>
-              <Input
-                id="retention-attachment-days"
-                type="number"
-                min={1}
-                max={3650}
-                value={getValue(retentionAttachmentDaysKey)}
-                onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
-              />
-            </Field>
-            <Field label={labels.retentionAuditLogDays} error={settingError(retentionAuditLogDaysKey)} liveError={settingLiveError(retentionAuditLogDaysKey)}>
-              <Input
-                id="retention-audit-log-days"
-                type="number"
-                min={1}
-                max={3650}
-                value={getValue(retentionAuditLogDaysKey)}
-                onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
-              />
-            </Field>
-            <Field label={labels.retentionOrphanFileDays} error={settingError(retentionOrphanFileDaysKey)} liveError={settingLiveError(retentionOrphanFileDaysKey)}>
-              <Input
-                id="retention-orphan-file-days"
-                type="number"
-                min={1}
-                max={3650}
-                value={getValue(retentionOrphanFileDaysKey)}
-                onChange={(event) => setValue(retentionOrphanFileDaysKey, event.target.value)}
-              />
-            </Field>
+            <FormChangedField change={changeFor(retentionAttachmentDaysKey)}>
+              <Field label={labels.retentionAttachmentDays} error={settingError(retentionAttachmentDaysKey)} liveError={settingLiveError(retentionAttachmentDaysKey)}>
+                <Input
+                  id="retention-attachment-days"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={getValue(retentionAttachmentDaysKey)}
+                  onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
+                />
+              </Field>
+            </FormChangedField>
+            <FormChangedField change={changeFor(retentionAuditLogDaysKey)}>
+              <Field label={labels.retentionAuditLogDays} error={settingError(retentionAuditLogDaysKey)} liveError={settingLiveError(retentionAuditLogDaysKey)}>
+                <Input
+                  id="retention-audit-log-days"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={getValue(retentionAuditLogDaysKey)}
+                  onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
+                />
+              </Field>
+            </FormChangedField>
+            <FormChangedField change={changeFor(retentionOrphanFileDaysKey)}>
+              <Field label={labels.retentionOrphanFileDays} error={settingError(retentionOrphanFileDaysKey)} liveError={settingLiveError(retentionOrphanFileDaysKey)}>
+                <Input
+                  id="retention-orphan-file-days"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={getValue(retentionOrphanFileDaysKey)}
+                  onChange={(event) => setValue(retentionOrphanFileDaysKey, event.target.value)}
+                />
+              </Field>
+            </FormChangedField>
           </div>
           <Notice tone="neutral">{labels.retentionDaysHelp}</Notice>
         </div>
@@ -1714,7 +1798,7 @@ export function SystemSettingsForm({
       {activeTab === "ldap-login" ? (
       <ContentPanel divided title={labels.ldapSettings} description={labels.ldapSettingsDescription}>
         <div className="space-y-6">
-          <FormSection as="h3" number={1} title={labels.ldapStepConnection}>
+          <FormSection as="h3" number={1} title={sectionTitle(labels.ldapStepConnection, ["ldap_enabled", "ldap_start_tls", "ldap_tls_reject_unauthorized", "ldap_url", "ldap_base_dn", "ldap_bind_dn", "ldap_bind_password"])}>
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
               <ToggleField
                 label={labels.ldapEnabled}
@@ -1772,7 +1856,7 @@ export function SystemSettingsForm({
             </Button>
           </FormSection>
 
-          <FormSection as="h3" number={2} title={labels.ldapStepLoginMapping}>
+          <FormSection as="h3" number={2} title={sectionTitle(labels.ldapStepLoginMapping, ["ldap_user_filter", "ldap_upn_domain", "ldap_domain", "ldap_user_dn_template"])}>
             <div className="grid gap-4 lg:grid-cols-2">
               <Field label={labels.ldapUserFilter} error={settingError("ldap_user_filter")}>
                 <Input
@@ -1812,7 +1896,7 @@ export function SystemSettingsForm({
             </div>
           </FormSection>
 
-          <FormSection as="h3" number={3} title={labels.ldapStepProvisioning}>
+          <FormSection as="h3" number={3} title={sectionTitle(labels.ldapStepProvisioning, ["ldap_auto_provision", "ldap_default_role"])}>
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2">
                 <div className={fieldLabelClasses}>{labels.ldapAutoProvision}</div>
@@ -1851,7 +1935,7 @@ export function SystemSettingsForm({
       <ContentPanel divided title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription}>
         <div className="space-y-6">
           <Notice tone="neutral">{labels.ldapSyncRecommendation}</Notice>
-          <FormSection as="h3" number={1} title={labels.ldapStepSyncStrategy}>
+          <FormSection as="h3" number={1} title={sectionTitle(labels.ldapStepSyncStrategy, ["ldap_sync_enabled", "ldap_sync_deactivate_missing", "ldap_sync_mode", "ldap_sync_max_scheduled_deactivations", "ldap_sync_base_dn"])}>
             <div className="grid gap-4 lg:grid-cols-2">
               <ToggleField
                 label={labels.ldapSyncEnabled}
@@ -1894,7 +1978,7 @@ export function SystemSettingsForm({
             </div>
           </FormSection>
 
-          <FormSection as="h3" number={2} title={labels.ldapStepOrgMapping}>
+          <FormSection as="h3" number={2} title={sectionTitle(labels.ldapStepOrgMapping, ["ldap_sync_default_company_code", "ldap_sync_default_branch_code", "ldap_sync_default_department_code"])}>
               <div className="rounded-md border border-border bg-background px-3 py-3">
                 <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
@@ -1927,7 +2011,7 @@ export function SystemSettingsForm({
               </div>
           </FormSection>
 
-          <FormSection as="h3" number={3} title={labels.ldapStepSchedule}>
+          <FormSection as="h3" number={3} title={sectionTitle(labels.ldapStepSchedule, ["ldap_sync_schedule", "ldap_sync_filter"])}>
             <div className="grid gap-4 lg:grid-cols-2">
             <Field label={labels.ldapSyncSchedule}>
               <NativeSelect
@@ -2030,13 +2114,15 @@ export function SystemSettingsForm({
                       <span className="tag font-medium text-foreground">{setting.key}</span>
                     </DataTableCell>
                     <DataTableCell className="min-w-80">
-                      <Field label={setting.key} hideLabel error={settingError(setting.key)}>
-                        <Input
-                          id={settingFieldId(setting.key)}
-                          value={values[setting.key] ?? ""}
-                          onChange={(event) => setValue(setting.key, event.target.value)}
-                        />
-                      </Field>
+                      <FormChangedField change={changeFor(setting.key)}>
+                        <Field label={setting.key} hideLabel error={settingError(setting.key)}>
+                          <Input
+                            id={settingFieldId(setting.key)}
+                            value={values[setting.key] ?? ""}
+                            onChange={(event) => setValue(setting.key, event.target.value)}
+                          />
+                        </Field>
+                      </FormChangedField>
                     </DataTableCell>
                     <DataTableCell className="min-w-80 text-muted-foreground">{orNil(setting.description)}</DataTableCell>
                   </DataTableRow>
@@ -2048,58 +2134,41 @@ export function SystemSettingsForm({
       ) : null}
 
       {changedCount > 0 ? (
-        <ContentPanel divided flush className="overflow-hidden" title={labels.changeReview} description={labels.changeReviewDescription}>
-          <DataTable framed={false} caption={labels.changeReview} scrollHint={tCommon("tableScrollHint")}>
-            <DataTableHeader>
-              <tr>
-                <DataTableHead>{labels.key}</DataTableHead>
-                <DataTableHead>{labels.beforeValue}</DataTableHead>
-                <DataTableHead>{labels.afterValue}</DataTableHead>
-              </tr>
-            </DataTableHeader>
-            <DataTableBody>
-              {changedSettings.map((setting) => {
-                const tab = getSystemSettingsTabForKey(setting.key)
-                return (
-                  <DataTableRow key={setting.key}>
-                    <DataTableCell className="whitespace-nowrap">
-                      {/* A link to the tab (Ctrl+click opens it); a plain click switches in place, like TabNav. */}
-                      <Link
-                        href={buildSystemSettingsTabHref(pathname, searchParams.toString(), tab)}
-                        onNavigate={(event) => {
-                          event.preventDefault()
-                          openSettingGroup(tab)
-                        }}
-                        className={linkVariants({ size: "inherit" })}
-                      >
-                        <span className="tag">{setting.key}</span>
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">{labels.openSettingGroup}</span>
-                      </Link>
-                    </DataTableCell>
-                    <DataTableCell className="max-w-md break-words text-muted-foreground">
-                      {orNil(formatReviewValue(setting.key, initialValues[setting.key]))}
-                    </DataTableCell>
-                    <DataTableCell className="max-w-md break-words font-medium text-foreground">
-                      {orNil(formatReviewValue(setting.key, effectiveValues[setting.key]))}
-                    </DataTableCell>
-                  </DataTableRow>
-                )
-              })}
-            </DataTableBody>
-          </DataTable>
-        </ContentPanel>
+        <SettingsReviewTable
+          rows={changedSettings.map((setting) => {
+            const tab = getSystemSettingsTabForKey(setting.key)
+            return {
+              key: setting.key,
+              before: normalizeSettingValue(setting.key, initialValues[setting.key]),
+              after: normalizeSettingValue(setting.key, effectiveValues[setting.key]),
+              tab,
+              href: buildSystemSettingsTabHref(pathname, searchParams.toString(), tab),
+            }
+          })}
+          roleNames={roleNames}
+          roleLabels={roleLabels}
+          onOpenTab={openSettingGroup}
+        />
       ) : null}
+      </div>
+      </div>
 
       <StickyFormFooter
         status={
-          <>
-            <p id="settings-save-status" className="text-sm font-semibold text-foreground">
-              {changedCount > 0 ? labels.unsavedChanges.replace("{count}", String(changedCount)) : labels.noUnsavedChanges}
-            </p>
-            <p className="mt-1 hidden text-meta text-muted-foreground sm:block">{labels.settingsOverviewDescription}</p>
-          </>
+          <p id="settings-save-status" className="text-sm font-semibold text-foreground">
+            {changedCount > 0 ? tPage("footerUnsaved", { count: changedCount }) : tPage("footerNoChanges")}
+          </p>
         }
       >
+        <Button
+          variant="outline"
+          onClick={discardEdits}
+          disabled={saving}
+          aria-disabled={changedCount === 0 || undefined}
+          aria-describedby={changedCount === 0 ? "settings-save-status" : undefined}
+        >
+          {tPage("discardChanges")}
+        </Button>
         <Button
           type="submit"
           busy={saving}
@@ -2107,7 +2176,7 @@ export function SystemSettingsForm({
           aria-describedby={changedCount === 0 ? "settings-save-status" : undefined}
         >
           <Save />
-          {labels.save}
+          {changedCount > 0 ? tPage("saveCount", { count: changedCount }) : labels.save}
         </Button>
       </StickyFormFooter>
     </form>
@@ -2470,6 +2539,7 @@ function LabelTemplatePanel({
   setValue,
   errorFor,
   liveErrorFor,
+  changeFor,
 }: {
   tapeSize: AssetLabelTapeSize
   title: string
@@ -2481,6 +2551,8 @@ function LabelTemplatePanel({
   // Only the live rule's text, or null, for the field's polite region; a save's error is read once, by focus (v-track
   // final task 3).
   liveErrorFor?: (key: string) => string | null
+  // "แก้แล้ว · เดิม …" under a changed field (board AD-Settings, plan 5 Task 3).
+  changeFor?: (key: string) => FormFieldChange | null
 }) {
   const prefix = `asset_label_${tapeSize}`
   const preset = assetLabelPresets[tapeSize]
@@ -2508,96 +2580,114 @@ function LabelTemplatePanel({
         </Button>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Field label={labels.labelWidthMm} error={errorFor?.(`${prefix}_width_mm`)} liveError={liveErrorFor?.(`${prefix}_width_mm`)}>
-          <Input
-            id={`${prefix}-width-mm`}
-            type="number"
-            min={30}
-            max={120}
-            value={getValue(`${prefix}_width_mm`)}
-            onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
-          />
-        </Field>
-        <Field label={labels.labelHeightMm} error={errorFor?.(`${prefix}_height_mm`)} liveError={liveErrorFor?.(`${prefix}_height_mm`)}>
-          <Input
-            id={`${prefix}-height-mm`}
-            type="number"
-            min={10}
-            max={100}
-            value={getValue(`${prefix}_height_mm`)}
-            onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
-          />
-        </Field>
-        <Field label={labels.labelQrSize} error={errorFor?.(`${prefix}_qr_size`)} liveError={liveErrorFor?.(`${prefix}_qr_size`)}>
-          <Input
-            id={`${prefix}-qr-size`}
-            type="number"
-            min={20}
-            max={90}
-            value={getValue(`${prefix}_qr_size`)}
-            onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
-          />
-        </Field>
-        <Field label={labels.labelMarginMm} error={errorFor?.(`${prefix}_margin_mm`)} liveError={liveErrorFor?.(`${prefix}_margin_mm`)}>
-          <Input
-            id={`${prefix}-margin-mm`}
-            type="number"
-            min={0}
-            max={10}
-            step="0.5"
-            value={getValue(`${prefix}_margin_mm`)}
-            onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
-          />
-        </Field>
-        <Field label={labels.labelGapMm} error={errorFor?.(`${prefix}_gap_mm`)} liveError={liveErrorFor?.(`${prefix}_gap_mm`)}>
-          <Input
-            id={`${prefix}-gap-mm`}
-            type="number"
-            min={0}
-            max={10}
-            step="0.5"
-            value={getValue(`${prefix}_gap_mm`)}
-            onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
-          />
-        </Field>
-        <Field label={labels.labelLayout} error={errorFor?.(`${prefix}_layout`)} liveError={liveErrorFor?.(`${prefix}_layout`)}>
-          <NativeSelect
-            id={`${prefix}-layout`}
-            value={getValue(`${prefix}_layout`)}
-            onChange={(event) => setValue(`${prefix}_layout`, event.target.value)}
-          >
-            <option value="qr-left">{labels.labelLayoutQrLeft}</option>
-            <option value="qr-top">{labels.labelLayoutQrTop}</option>
-            <option value="text-only">{labels.labelLayoutTextOnly}</option>
-            <option value="qr-only">{labels.labelLayoutQrOnly}</option>
-          </NativeSelect>
-        </Field>
+        <FormChangedField change={changeFor?.(`${prefix}_width_mm`) ?? null}>
+          <Field label={labels.labelWidthMm} error={errorFor?.(`${prefix}_width_mm`)} liveError={liveErrorFor?.(`${prefix}_width_mm`)}>
+            <Input
+              id={`${prefix}-width-mm`}
+              type="number"
+              min={30}
+              max={120}
+              value={getValue(`${prefix}_width_mm`)}
+              onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_height_mm`) ?? null}>
+          <Field label={labels.labelHeightMm} error={errorFor?.(`${prefix}_height_mm`)} liveError={liveErrorFor?.(`${prefix}_height_mm`)}>
+            <Input
+              id={`${prefix}-height-mm`}
+              type="number"
+              min={10}
+              max={100}
+              value={getValue(`${prefix}_height_mm`)}
+              onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_qr_size`) ?? null}>
+          <Field label={labels.labelQrSize} error={errorFor?.(`${prefix}_qr_size`)} liveError={liveErrorFor?.(`${prefix}_qr_size`)}>
+            <Input
+              id={`${prefix}-qr-size`}
+              type="number"
+              min={20}
+              max={90}
+              value={getValue(`${prefix}_qr_size`)}
+              onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_margin_mm`) ?? null}>
+          <Field label={labels.labelMarginMm} error={errorFor?.(`${prefix}_margin_mm`)} liveError={liveErrorFor?.(`${prefix}_margin_mm`)}>
+            <Input
+              id={`${prefix}-margin-mm`}
+              type="number"
+              min={0}
+              max={10}
+              step="0.5"
+              value={getValue(`${prefix}_margin_mm`)}
+              onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_gap_mm`) ?? null}>
+          <Field label={labels.labelGapMm} error={errorFor?.(`${prefix}_gap_mm`)} liveError={liveErrorFor?.(`${prefix}_gap_mm`)}>
+            <Input
+              id={`${prefix}-gap-mm`}
+              type="number"
+              min={0}
+              max={10}
+              step="0.5"
+              value={getValue(`${prefix}_gap_mm`)}
+              onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_layout`) ?? null}>
+          <Field label={labels.labelLayout} error={errorFor?.(`${prefix}_layout`)} liveError={liveErrorFor?.(`${prefix}_layout`)}>
+            <NativeSelect
+              id={`${prefix}-layout`}
+              value={getValue(`${prefix}_layout`)}
+              onChange={(event) => setValue(`${prefix}_layout`, event.target.value)}
+            >
+              <option value="qr-left">{labels.labelLayoutQrLeft}</option>
+              <option value="qr-top">{labels.labelLayoutQrTop}</option>
+              <option value="text-only">{labels.labelLayoutTextOnly}</option>
+              <option value="qr-only">{labels.labelLayoutQrOnly}</option>
+            </NativeSelect>
+          </Field>
+        </FormChangedField>
       </div>
       <div className="mt-3 grid gap-3">
-        <Field label={labels.labelPrimaryLine} error={errorFor?.(`${prefix}_primary_template`)} liveError={liveErrorFor?.(`${prefix}_primary_template`)}>
-          <Input
-            id={`${prefix}-primary-template`}
-            value={getValue(`${prefix}_primary_template`)}
-            onChange={(event) => setValue(`${prefix}_primary_template`, event.target.value)}
-            className="font-mono"
-          />
-        </Field>
-        <Field label={labels.labelSecondaryLine} error={errorFor?.(`${prefix}_secondary_template`)} liveError={liveErrorFor?.(`${prefix}_secondary_template`)}>
-          <Input
-            id={`${prefix}-secondary-template`}
-            value={getValue(`${prefix}_secondary_template`)}
-            onChange={(event) => setValue(`${prefix}_secondary_template`, event.target.value)}
-            className="font-mono"
-          />
-        </Field>
-        <Field label={labels.labelTertiaryLine} error={errorFor?.(`${prefix}_tertiary_template`)} liveError={liveErrorFor?.(`${prefix}_tertiary_template`)}>
-          <Input
-            id={`${prefix}-tertiary-template`}
-            value={getValue(`${prefix}_tertiary_template`)}
-            onChange={(event) => setValue(`${prefix}_tertiary_template`, event.target.value)}
-            className="font-mono"
-          />
-        </Field>
+        <FormChangedField change={changeFor?.(`${prefix}_primary_template`) ?? null}>
+          <Field label={labels.labelPrimaryLine} error={errorFor?.(`${prefix}_primary_template`)} liveError={liveErrorFor?.(`${prefix}_primary_template`)}>
+            <Input
+              id={`${prefix}-primary-template`}
+              value={getValue(`${prefix}_primary_template`)}
+              onChange={(event) => setValue(`${prefix}_primary_template`, event.target.value)}
+              className="font-mono"
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_secondary_template`) ?? null}>
+          <Field label={labels.labelSecondaryLine} error={errorFor?.(`${prefix}_secondary_template`)} liveError={liveErrorFor?.(`${prefix}_secondary_template`)}>
+            <Input
+              id={`${prefix}-secondary-template`}
+              value={getValue(`${prefix}_secondary_template`)}
+              onChange={(event) => setValue(`${prefix}_secondary_template`, event.target.value)}
+              className="font-mono"
+            />
+          </Field>
+        </FormChangedField>
+        <FormChangedField change={changeFor?.(`${prefix}_tertiary_template`) ?? null}>
+          <Field label={labels.labelTertiaryLine} error={errorFor?.(`${prefix}_tertiary_template`)} liveError={liveErrorFor?.(`${prefix}_tertiary_template`)}>
+            <Input
+              id={`${prefix}-tertiary-template`}
+              value={getValue(`${prefix}_tertiary_template`)}
+              onChange={(event) => setValue(`${prefix}_tertiary_template`, event.target.value)}
+              className="font-mono"
+            />
+          </Field>
+        </FormChangedField>
       </div>
     </div>
   )

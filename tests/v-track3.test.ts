@@ -262,7 +262,8 @@ test("the settings form shows every setting's error under its field, opens its t
     assert.equal(form.split(error).length - 1, 1, `${key}: ${error}`)
     if (!live) assert.ok(!form.includes(`${error} liveError`), `${key} waits for save (U6)`)
   }
-  assert.ok(form.includes('jsonId="depreciation-policy-json"\n              jsonError={settingError(depreciationPolicySettingKey)}'))
+  // FormChangedField wraps the builder since group 12 plan 5 Task 3, so its props sit one step deeper.
+  assert.match(form, /jsonId="depreciation-policy-json"\n\s+jsonError=\{settingError\(depreciationPolicySettingKey\)\}/)
   assert.match(form, /<div\n\s+id="category-prefix-groups"\n\s+role="group"\n\s+aria-label=\{labels\.categoryPrefixes\}\n\s+aria-describedby=\{prefixGroupsError \? "category-prefix-groups-error" : undefined\}/)
   assert.ok(form.includes('{prefixGroupsError ? <FieldError id="category-prefix-groups-error">{prefixGroupsError}</FieldError> : null}'))
   assert.ok(form.includes("errorFor={settingError}"))
@@ -328,7 +329,8 @@ test("the prefix editor checks its prefix and its categories on save, its save i
 test("the save waits with its reason when nothing changed, and LDAP apply waits for a preview with its reason (v-track plan 3 task 5, ST5)", () => {
   const form = formSource()
   // Save: aria-disabled (it stays focusable), tied to the visible status line, and the handler returns first.
-  assert.match(form, /<p id="settings-save-status" className="text-sm font-semibold text-foreground">\n\s+\{changedCount > 0 \? labels\.unsavedChanges/)
+  // The status reads "เปลี่ยน n ค่า ยังไม่บันทึก" / "ยังไม่มีการเปลี่ยนแปลง" since group 12 plan 5 Task 3.
+  assert.match(form, /<p id="settings-save-status" className="text-sm font-semibold text-foreground">\n\s+\{changedCount > 0 \? tPage\("footerUnsaved", \{ count: changedCount \}\)/)
   assert.match(form, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{changedCount === 0 \|\| undefined\}\n\s+aria-describedby=\{changedCount === 0 \? "settings-save-status" : undefined\}\n\s+>/)
   assert.doesNotMatch(form, /disabled=\{changedCount === 0\}/)
   const submit = form.slice(form.indexOf("  async function handleSubmit("), form.indexOf("  async function handleLdapTest("))
