@@ -78,6 +78,8 @@ User decisions 2026-11-08:
 - "ดูประวัติการแก้ไขของบัญชี" (user) and "ดูประวัติของบทบาท" (role) open `/admin/logs` filtered to that record.
 - The logs page gains a `recordId` URL filter beside the existing `module` and `action` filters, with a chip that
   removes it **(my call)**.
+- The logs page is gated by `system:view` today, which in practice means system administrators only. The gate does not
+  change; the history items show only to viewers who pass the same check **(my call)**.
 
 ## 4. User list (`US-Users`, `US-Users-Phone`)
 
@@ -99,6 +101,9 @@ User decisions 2026-11-08:
 - A "พนักงานลาออกแล้ว" badge in the employee column.
 - When the employee still holds assets, a link "ยังถือครองทรัพย์สิน {n} รายการ". It opens the register with
   `custodianId=<employeeId>`, and the count is assets with that custodian.
+  - It is a link only with `asset:view`, plain text otherwise.
+  - The register names its custodian chip from active employees only today. It must look the named custodian up by id
+    whatever their status, so the chip names a resigned employee **(my call)**.
 
 **Never automatic:** the system never closes these accounts; the administrator closes them from the edit page (§5.3).
 
@@ -213,7 +218,10 @@ All targets are at least 44px.
 
 **Choosing an employee:**
 - A searchable picker that shows the name before the code, with the department and branch under it.
-- It only lists employees who are still active and have no account, or who are linked to this account, as today.
+- It only offers employees who are still active and have no account.
+- The employee already linked to this account is always loaded, even when they have left. Today's query drops them,
+  because its `isActive` condition covers the linked case too. They show as a card with a "พนักงานลาออกแล้ว" badge.
+  A resigned employee is never offered for a new link.
 - Once chosen, the employee shows as a card with เปลี่ยน and เลิกผูก.
 
 **On create, choosing an employee fills in the empty fields** **(my call)**:
@@ -240,6 +248,15 @@ All targets are at least 44px.
 - Each role shows its permission count. Inactive roles are not listed, as today, with a note and a link
   "ดูสิทธิ์ของแต่ละบทบาท" to `/admin/roles?view=matrix`.
 
+**Inactive roles the user already holds (my call; fixes a current bug):**
+- Today the edit page sends them, and the server refuses the whole save ("Invalid role selection"). Such a user cannot
+  be saved, closed, or added to another role.
+- New rule: a role the user already holds may be kept while inactive. It grants nothing, because `session-access.ts`
+  drops inactive roles. It still cannot be newly granted.
+- The form shows it as a chip marked "ปิดใช้งาน", with a remove button.
+- `getUserAccessChangeError` takes the target's current role ids and refuses only inactive roles that are new. Unit
+  tests cover keep, remove and new grant.
+
 **Roles the viewer cannot grant are disabled, with the reason, before saving:**
 - ผู้ดูแลระบบ for a non-system-admin: "ให้ได้เฉพาะผู้ดูแลระบบ".
 - A role holding permissions the viewer lacks: "มีสิทธิ์ที่คุณไม่มี".
@@ -258,8 +275,13 @@ The server check stays the authority (§9).
 - When a removed role loses nothing because another role covers it: "เอา{role}ออกแล้วไม่เสียสิทธิ์ใด เพราะ…".
 
 **Close or reopen the account (อื่น ๆ menu):**
-- It opens a confirm dialog that names the account and says the person cannot sign in until it is reopened.
-- It saves `isActive` through the same `PUT` with the current values, so every access rule runs.
+- It opens a confirm dialog that names the account and says the person cannot sign in until it is reopened. The dialog
+  has an optional หมายเหตุ.
+- It calls a new route, `PATCH /api/admin/users/[id]/status` `{ isActive, note }` **(my call)**:
+  - It saves only `isActive`, and runs `getUserAccessChangeError` with the roles stored in the database, not the form.
+  - It writes a `SystemLog` row (`action: update`, old and new `isActive`, `note`) and calls `invalidateUserAccess`.
+- While the form has unsaved edits, the menu item is disabled with "บันทึกหรือยกเลิกการแก้ไขก่อน" **(my call)**. After it
+  succeeds, the page refreshes.
 - The "ใช้งาน" checkbox leaves the form.
 - Closing the last active system administrator is refused, as today.
 
@@ -372,7 +394,8 @@ with a title that says why.
 
 **Change summary card:**
 - "การเปลี่ยนแปลง {before} → {after}", then one line per change ("เพิ่ม อนุมัติ · ตรวจนับ").
-- "มีผลทันทีกับผู้ใช้ {n} คนในบทบาทนี้: {first names}…".
+- "มีผลทันทีกับผู้ใช้ {n} คนในบทบาทนี้: {first names}…". The names show only with `user:view`; otherwise the line has
+  the count alone **(my call)**.
 
 **Segregation warning:**
 - It shows when the role ends up holding both `create` and `approve` on `disposal` or on `audit`.
@@ -387,10 +410,12 @@ with a title that says why.
 
 ### 7.3 People in this role (ผู้ใช้ในบทบาทนี้) — new, agreed in chat
 
-**Placement:** a section on the edit page. It is not on create.
+**Placement:** a section on the edit page. It is not on create. It shows only with `user:view`; without it, the page
+says "ผู้ใช้ในบทบาทนี้ {n} คน" only **(my call)**.
 
 **List:**
-- The people in the role: name, login name, status and last login. Each name links to their edit page.
+- The people in the role: name, login name, status and last login. Each name links to their edit page when the viewer
+  has `user:edit`.
 - 10 rows at a time with "ดูทั้งหมดในหน้าจัดการผู้ใช้" (the user list with `role=`) **(my call)**.
 
 **เพิ่มผู้ใช้เข้าบทบาทนี้** (needs `user:edit`; the role must be active):
@@ -406,6 +431,9 @@ with a title that says why.
 - It returns `{ added: [...], refused: [{ userId, reason }] }`.
 - Refused names are shown in the dialog in Thai; the others are saved.
 - It calls `invalidateUserAccess` per user.
+- It also writes one `SystemLog` row on the role (`module: role`, `recordId: roleId`, `action: update`,
+  `newValue: { addedUserIds, note }`), so the role's history shows the batch **(my call)**.
+- Users who hold an inactive role can be added; the inactive-role rule in §5.3 applies.
 
 **Removing someone from a role** stays on that user's edit page **(my call: removal must keep at least one role per
 user, and the form already enforces that)**.
@@ -424,7 +452,7 @@ user, and the form already enforces that)**.
 
 ## 9. What the boards omit and we keep
 
-**Server rules, unchanged and still the authority:**
+**Server rules, unchanged except the inactive-role keep rule in §5.3, and still the authority:**
 - No escalation: you cannot grant a role or permission you do not hold.
 - You cannot change a user who has more access than you.
 - Only a system administrator can grant `system_admin`.
