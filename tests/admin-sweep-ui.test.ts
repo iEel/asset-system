@@ -182,14 +182,20 @@ test("approval inbox: the policy is a KeyValueList with status badges, matrix ca
   assert.doesNotMatch(source, /rounded-full|rounded-lg border|bg-(?:success|warning|danger)-soft|text-danger|hover:bg-accent|"ตัดจำหน่าย"/)
 })
 
+// Group 12 plan 2 Task 4 (board AD-ApprovalHistory): the row moved to approval-decision-row.tsx; its badge is the
+// decision word (the logged action reads in the sentence), and the <details> toggle became a Button with aria-expanded.
 test("approval history: the filter panel is a ContentPanel, a row shows a module Chip and a decision badge, and its changes are a DataTable (spec 2D D7, D9)", () => {
   const source = read(`${D}admin/approvals/history/page.tsx`)
+  const row = read("src/components/admin/approvals/approval-decision-row.tsx")
   assert.match(source, /<ContentPanel title=\{t\("filterTitle"\)\} description=\{t\("filterDescription"\)\}>/)
-  assert.match(source, /<Chip>\{item\.moduleLabel\}<\/Chip>/)
-  assert.match(source, /<StatusBadge label=\{item\.actionLabel\} tone=\{decisionTone\(item\.decision\)\} \/>/)
-  assert.match(source, /<summary className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "list-item cursor-pointer text-sm"\)\}>/)
-  assert.match(source, /<DataTable caption=\{labels\.viewDetails\}>/)
-  assert.doesNotMatch(source, /<table\b|<thead\b|<th\b|rounded-full|hover:underline|rounded-lg border|function (?:decisionClass|decisionPillClass)\b|bg-(?:success|warning|danger|primary)-soft/)
+  assert.match(source, /tone: decisionTone\(item\.decision\),/)
+  assert.match(row, /<Chip>\{row\.moduleLabel\}<\/Chip>/)
+  assert.match(row, /<StatusBadge label=\{row\.decisionLabel\} tone=\{row\.tone\} \/>/)
+  assert.match(row, /aria-expanded=\{open\}/)
+  assert.match(row, /<DataTable caption=\{labels\.viewDetails\}>/)
+  for (const file of [source, row]) {
+    assert.doesNotMatch(file, /<table\b|<thead\b|<th\b|rounded-full|hover:underline|rounded-lg border|function (?:decisionClass|decisionPillClass)\b|bg-(?:success|warning|danger|primary)-soft/)
+  }
 })
 
 // Group 12 plan 2 Task 3 (board AD-Logs): the row lives in log-event-row.tsx, and the <details> toggle became the row's

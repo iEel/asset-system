@@ -3,6 +3,10 @@ import test from "node:test"
 
 import {
   approvalDecisionFilters,
+  buildApprovalHistoryQuery,
+  groupDecisionsByDay,
+  parseApprovalHistoryFilters,
+  summarizeApprovalDecisionChipCounts,
   approvalDecisionModuleFilters,
   buildApprovalDecisionLogItems,
   buildApprovalDecisionLogWhere,
@@ -195,4 +199,86 @@ test("the decision counts folded from a groupBy equal the counts of the decision
     rows.set(`${log.module}:${log.action}`, row)
   }
   assert.deepEqual(summarizeApprovalDecisionCounts([...rows.values()]), summarizeApprovalDecisionLog(buildApprovalDecisionLogItems(logs, labels, "th", t)))
+})
+
+// Group 12 plan 2 task 4 (spec §5, board AD-ApprovalHistory): the history gains ผู้ตัดสินใจ and ช่วงวันที่ filters, chip
+// counts that follow them, and rows grouped under Bangkok days.
+test("parses actor and dates", () => {
+  assert.deepEqual(parseApprovalHistoryFilters({}), { module: "all", decision: "all", actorId: null, dateFrom: null, dateTo: null })
+  assert.deepEqual(
+    parseApprovalHistoryFilters({ module: "audit", decision: ["reject", "approve"], actorId: " user-1 ", dateFrom: "2026-10-20", dateTo: "2026-10-01" }),
+    { module: "audit", decision: "reject", actorId: "user-1", dateFrom: "2026-10-01", dateTo: "2026-10-20" },
+    "the dates swap when reversed, the first of a repeated param wins, the actor is trimmed",
+  )
+  assert.deepEqual(
+    parseApprovalHistoryFilters({ module: "x", decision: "y", actorId: "  ", dateFrom: "2026-02-30", dateTo: "20261020" }),
+    { module: "all", decision: "all", actorId: null, dateFrom: null, dateTo: null },
+  )
+  // The list URL keeps every filter; empty ones, page 1 and page size 25 stay out.
+  assert.equal(buildApprovalHistoryQuery(parseApprovalHistoryFilters({}), {}), "")
+  assert.equal(
+    buildApprovalHistoryQuery({ module: "disposal", decision: "approve", actorId: "user-1", dateFrom: "2026-10-01", dateTo: "2026-10-20" }, { page: 2, pageSize: 50 }),
+    "module=disposal&decision=approve&actorId=user-1&dateFrom=2026-10-01&dateTo=2026-10-20&page=2&pageSize=50",
+  )
+})
+
+test("groups by Bangkok day with today and yesterday", () => {
+  const now = new Date("2026-10-20T03:00:00.000Z") // 10:00 on 20 Oct in Bangkok
+  const at = (iso: string, id: string) => buildApprovalDecisionLogItems([makeLog({ id, action: "approve", module: "disposal", recordId: "disposal-1", createdAt: new Date(iso) })], labels, "th", t)[0]
+  const items = [
+    at("2026-10-20T02:00:00.000Z", "a"), // 09:00 on the 20th
+    at("2026-10-19T17:30:00.000Z", "b"), // 00:30 on the 20th (still today in Bangkok)
+    at("2026-10-19T16:59:00.000Z", "c"), // 23:59 on the 19th
+    at("2026-10-19T01:00:00.000Z", "d"), // 08:00 on the 19th
+    at("2026-10-17T20:00:00.000Z", "e"), // 03:00 on the 18th
+  ]
+  assert.deepEqual(
+    groupDecisionsByDay(items, now).map((group) => ({ key: group.key, ids: group.items.map((item) => item.id) })),
+    [
+      { key: "today", ids: ["a", "b"] },
+      { key: "yesterday", ids: ["c", "d"] },
+      { key: "2026-10-18", ids: ["e"] },
+    ],
+  )
+  assert.deepEqual(groupDecisionsByDay([], now), [])
+})
+
+test("actor filter never widens what the viewer may see", () => {
+  const access = { canApproveDisposal: true, canApproveAudit: false }
+  const plain = buildApprovalDecisionLogWhere({ access, canSeeRepairCloseHistory: false, module: "all", decision: "all" })
+  const filtered = buildApprovalDecisionLogWhere({ access, canSeeRepairCloseHistory: false, module: "all", decision: "all", actorId: "user-1", dateFrom: "2026-10-01", dateTo: "2026-10-20" })
+  // The same permission OR (no repair-close and no audit rows), ANDed with the actor and the Bangkok day bounds.
+  assert.deepEqual(filtered.OR, plain.OR)
+  assert.ok((filtered.OR as Array<{ module: string }>).every((condition) => condition.module === "disposal"))
+  assert.equal(filtered.userId, "user-1")
+  assert.deepEqual(filtered.createdAt, { gte: new Date("2026-09-30T17:00:00.000Z"), lt: new Date("2026-10-20T17:00:00.000Z") })
+  assert.equal("AND" in filtered, false)
+  // No actor and no dates: the where is the permission OR alone, as before.
+  assert.deepEqual(Object.keys(plain), ["OR"])
+  // A viewer who may see nothing finds nothing, whoever the actor is.
+  const none = buildApprovalDecisionLogWhere({ access: { canApproveDisposal: false, canApproveAudit: false }, canSeeRepairCloseHistory: false, module: "all", decision: "all", actorId: "user-1" })
+  assert.deepEqual(none.OR, [])
+})
+
+test("chip counts apply actor and date, and each group ignores only its own selection", () => {
+  const rows: ApprovalDecisionCountRow[] = [
+    { module: "disposal", action: "approve", _count: { _all: 5 } },
+    { module: "disposal", action: "execute", _count: { _all: 2 } },
+    { module: "disposal", action: "execute_historical_without_evidence", _count: { _all: 1 } },
+    { module: "audit", action: "approve_finding", _count: { _all: 3 } },
+    { module: "audit", action: "close", _count: { _all: 4 } },
+    { module: "maintenance", action: "close", _count: { _all: 6 } },
+    { module: "maintenance", action: "update_status", _count: { _all: 9 } },
+  ]
+  assert.deepEqual(summarizeApprovalDecisionChipCounts(rows, "all", "all"), {
+    module: { all: 21, disposal: 8, audit: 7, maintenance: 6 },
+    decision: { all: 21, approve: 8, reject: 0, close: 10, execute: 3 },
+  })
+  // ตรวจนับ chosen: the decision chips count audit only; the module chips stay whole for the decision "all".
+  assert.deepEqual(summarizeApprovalDecisionChipCounts(rows, "audit", "all"), {
+    module: { all: 21, disposal: 8, audit: 7, maintenance: 6 },
+    decision: { all: 7, approve: 3, reject: 0, close: 4, execute: 0 },
+  })
+  // ปิดงาน chosen: the module chips count closes only.
+  assert.deepEqual(summarizeApprovalDecisionChipCounts(rows, "all", "close").module, { all: 10, disposal: 0, audit: 4, maintenance: 6 })
 })

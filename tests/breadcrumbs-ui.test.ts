@@ -44,8 +44,9 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     )
   // Group 6 plan 3 Task 2: ยื่นคำขอตัดจำหน่าย adds its create trail. Group 6 plan 4 Task 4: the rounds list, the round
   // page and สร้างรอบตัดจำหน่าย add three. Request batches Task 2: สร้างชุดคำขอ moves onto the operation frame with its trail.
-  // Request batches Task 4: the batch list takes the rounds list's trail.
-  assert.equal(sites.length, 19, "Breadcrumbs call sites")
+  // Request batches Task 4: the batch list takes the rounds list's trail. Group 12 plan 2 Task 4: the approval history
+  // takes "งานรออนุมัติ › ประวัติการตัดสินใจ" (board AD-ApprovalHistory).
+  assert.equal(sites.length, 20, "Breadcrumbs call sites")
   // Group 5 plan 4 Task 4: the PM edit page is a form whose trail ends on "แก้ไขแผน PM" (spec §10); its planNo is in the meta.
   assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 9, "call sites that mark a code")
 
@@ -66,7 +67,7 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     assert.match(site.element, new RegExp(`\\{ label: ${escapeRegExp(expression)}, code: true \\},? ?\\]\\}`), file)
     assert.equal(site.element.match(/code: true/g)?.length, 1, `${file}: only the last item is a code`)
   }
-  for (const file of ["maintenance/new/page.tsx", "maintenance/pm/new/page.tsx", "maintenance/pm/[id]/edit/page.tsx", "maintenance/pm/page.tsx", "disposal/new/page.tsx", "disposal/batch/new/page.tsx", "disposal/rounds/new/page.tsx", "disposal/rounds/page.tsx", "disposal/batches/page.tsx"]) {
+  for (const file of ["maintenance/new/page.tsx", "maintenance/pm/new/page.tsx", "maintenance/pm/[id]/edit/page.tsx", "maintenance/pm/page.tsx", "disposal/new/page.tsx", "disposal/batch/new/page.tsx", "disposal/rounds/new/page.tsx", "disposal/rounds/page.tsx", "disposal/batches/page.tsx", "admin/approvals/history/page.tsx"]) {
     const site = sites.find((candidate) => candidate.path === base + file)
     assert.ok(site, `no Breadcrumbs in ${file}`)
     assert.doesNotMatch(site.element, /code:/, `${file} ends on a page title, not a code`)

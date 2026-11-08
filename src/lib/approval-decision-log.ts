@@ -5,6 +5,8 @@ import {
   type SystemLogPresenterInput,
   type SystemLogRecordLabels,
 } from "./system-log-presenter.ts"
+import { bangkokDayBounds, parseSystemLogFilters } from "./system-log-filters.ts"
+import { appendListPage } from "./list-pagination.ts"
 
 export type ApprovalDecisionModuleFilter = "all" | "disposal" | "maintenance" | "audit"
 export type ApprovalDecisionFilter = "all" | "approve" | "reject" | "close" | "execute"
@@ -14,6 +16,8 @@ export type ApprovalDecisionLogSource = SystemLogPresenterInput
 
 export type ApprovalDecisionLogItem = {
   id: string
+  // The log's record (a disposal request, a repair ticket, an audit finding or round): the page looks up its asset.
+  recordId: string | null
   module: Exclude<ApprovalDecisionModuleFilter, "all">
   decision: ApprovalDecision
   createdAt: Date
@@ -27,7 +31,8 @@ export type ApprovalDecisionLogItem = {
   remark: string | null
 }
 
-export const approvalDecisionModuleFilters: ApprovalDecisionModuleFilter[] = ["all", "disposal", "maintenance", "audit"]
+// Board AD-ApprovalHistory order: ทั้งหมด · ตัดจำหน่าย · ตรวจนับ · ซ่อมบำรุง.
+export const approvalDecisionModuleFilters: ApprovalDecisionModuleFilter[] = ["all", "disposal", "audit", "maintenance"]
 export const approvalDecisionFilters: ApprovalDecisionFilter[] = ["all", "approve", "reject", "close", "execute"]
 
 export function parseApprovalDecisionModuleFilter(value: string | string[] | undefined): ApprovalDecisionModuleFilter {
@@ -59,6 +64,7 @@ export function buildApprovalDecisionLogItems(
       const presentation = buildSystemLogPresentation(log, labels, locale, t)
       return {
         id: log.id,
+        recordId: log.recordId ?? null,
         module: decisionModule,
         decision,
         createdAt: log.createdAt,
@@ -117,16 +123,24 @@ const approvalDecisionActions: Record<ApprovalDecisionLogItem["module"], Partial
 // rows buildApprovalDecisionLogItems keeps, so the page and its counts come from the database, not from the newest
 // 150 rows. Old repair-close decisions (their approval was retired in 2026-10) show to whoever can edit maintenance.
 // An empty OR finds nothing, as the list showed nothing before.
+// Group 12 plan 2 task 4: the actor and the Bangkok date range are ANDed beside the permission OR (top-level keys), so
+// they only ever narrow it: an actor never shows a decision the viewer may not see.
 export function buildApprovalDecisionLogWhere({
   access,
   canSeeRepairCloseHistory,
   module: moduleFilter,
   decision: decisionFilter,
+  actorId = null,
+  dateFrom = null,
+  dateTo = null,
 }: {
   access: ApprovalDecisionAccess
   canSeeRepairCloseHistory: boolean
   module: ApprovalDecisionModuleFilter
   decision: ApprovalDecisionFilter
+  actorId?: string | null
+  dateFrom?: string | null
+  dateTo?: string | null
 }): Prisma.SystemLogWhereInput {
   const allowed: Record<ApprovalDecisionLogItem["module"], boolean> = {
     disposal: access.canApproveDisposal,
@@ -141,7 +155,10 @@ export function buildApprovalDecisionLogWhere({
       .flatMap(([, moduleActions]) => moduleActions ?? [])
     if (actions.length > 0) conditions.push({ module: decisionModule, action: { in: actions } })
   }
-  return { OR: conditions }
+  const where: Prisma.SystemLogWhereInput = { OR: conditions }
+  if (actorId) where.userId = actorId
+  if (dateFrom || dateTo) where.createdAt = bangkokDayBounds(dateFrom, dateTo)
+  return where
 }
 
 // The summary of summarizeApprovalDecisionLog, folded from a systemLog.groupBy by module and action over every
@@ -157,6 +174,97 @@ export function summarizeApprovalDecisionCounts(rows: readonly ApprovalDecisionC
     summary[decision] += row._count._all
   }
   return summary
+}
+
+// Group 12 plan 2 task 4 (spec §5): the chip counts, from one groupBy over the decisions the viewer may see within the
+// actor and date filters. Each chip group ignores its own selection and applies the other's, so a group's chips add up
+// to the list the other group's choice shows.
+export function summarizeApprovalDecisionChipCounts(
+  rows: readonly ApprovalDecisionCountRow[],
+  moduleFilter: ApprovalDecisionModuleFilter,
+  decisionFilter: ApprovalDecisionFilter,
+) {
+  const moduleCounts: Record<ApprovalDecisionModuleFilter, number> = { all: 0, disposal: 0, audit: 0, maintenance: 0 }
+  const decisionCounts: Record<ApprovalDecisionFilter, number> = { all: 0, approve: 0, reject: 0, close: 0, execute: 0 }
+  for (const row of rows) {
+    const decision = getApprovalDecision(row)
+    const decisionModule = getApprovalDecisionModule(row)
+    if (!decision || !decisionModule) continue
+    const count = row._count._all
+    if (decisionFilter === "all" || decisionFilter === decision) {
+      moduleCounts.all += count
+      moduleCounts[decisionModule] += count
+    }
+    if (moduleFilter === "all" || moduleFilter === decisionModule) {
+      decisionCounts.all += count
+      decisionCounts[decision] += count
+    }
+  }
+  return { module: moduleCounts, decision: decisionCounts }
+}
+
+export type ApprovalHistoryFilters = {
+  module: ApprovalDecisionModuleFilter
+  decision: ApprovalDecisionFilter
+  actorId: string | null
+  /** yyyy-mm-dd, a Bangkok calendar day. */
+  dateFrom: string | null
+  /** yyyy-mm-dd, a Bangkok calendar day (inclusive). */
+  dateTo: string | null
+}
+
+// The history's URL: module, decision (names and values unchanged, other pages link with them), actorId, dateFrom and
+// dateTo (the system log's date params and rules: real days only, a reversed range swaps).
+export function parseApprovalHistoryFilters(input: Record<string, string | string[] | undefined>): ApprovalHistoryFilters {
+  const { dateFrom, dateTo } = parseSystemLogFilters({ dateFrom: input.dateFrom, dateTo: input.dateTo })
+  const rawActor = Array.isArray(input.actorId) ? input.actorId[0] : input.actorId
+  return {
+    module: parseApprovalDecisionModuleFilter(input.module),
+    decision: parseApprovalDecisionFilter(input.decision),
+    actorId: String(rawActor ?? "").trim() || null,
+    dateFrom,
+    dateTo,
+  }
+}
+
+/** The list query string: "all", empty filters, page 1 and page size 25 stay out of it. */
+export function buildApprovalHistoryQuery(filters: ApprovalHistoryFilters, page: { page?: number; pageSize?: number }): string {
+  const params = new URLSearchParams()
+  if (filters.module !== "all") params.set("module", filters.module)
+  if (filters.decision !== "all") params.set("decision", filters.decision)
+  if (filters.actorId) params.set("actorId", filters.actorId)
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom)
+  if (filters.dateTo) params.set("dateTo", filters.dateTo)
+  return appendListPage(params, page).toString()
+}
+
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function bangkokDayKey(instant: number) {
+  return new Date(instant + BANGKOK_OFFSET_MS).toISOString().slice(0, 10)
+}
+
+/** The rows under day headings, in the rows' order: "today", "yesterday" (Bangkok days), else the day as yyyy-mm-dd. */
+export function groupDecisionsByDay(
+  items: ApprovalDecisionLogItem[],
+  now: Date,
+): { key: "today" | "yesterday" | string; items: ApprovalDecisionLogItem[] }[] {
+  const today = bangkokDayKey(now.getTime())
+  const yesterday = bangkokDayKey(now.getTime() - DAY_MS)
+  const groups: { key: string; items: ApprovalDecisionLogItem[] }[] = []
+  const byDay = new Map<string, { key: string; items: ApprovalDecisionLogItem[] }>()
+  for (const item of items) {
+    const day = bangkokDayKey(item.createdAt.getTime())
+    let group = byDay.get(day)
+    if (!group) {
+      group = { key: day === today ? "today" : day === yesterday ? "yesterday" : day, items: [] }
+      byDay.set(day, group)
+      groups.push(group)
+    }
+    group.items.push(item)
+  }
+  return groups
 }
 
 export function isApprovalDecisionLog(log: Pick<ApprovalDecisionLogSource, "module" | "action">) {
