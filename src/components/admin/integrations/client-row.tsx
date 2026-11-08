@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useMemo, useState, type RefObject } from "react"
-import { ChevronDown, Copy, History, Pencil, Power, RotateCw } from "lucide-react"
+import { ChevronDown, Copy, History, Loader2, Pencil, Power, RotateCw } from "lucide-react"
 import { useTranslations } from "next-intl"
 import type { IntegrationLabels } from "@/components/admin/IntegrationClientManager"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,8 @@ export type ClientRowProps = {
   scopeLabels: Readonly<Record<string, string>>
   locale: string
   canEdit: boolean
+  // system:view: the history item opens /admin/logs, which needs it.
+  canViewLogs: boolean
   isNew: boolean
   busy: boolean
   openerRef: RefObject<HTMLElement | null>
@@ -190,50 +192,58 @@ function ClientUsageSummary({ client, labels, locale }: ClientRowProps) {
 }
 
 // One row button (แก้ไข) and the ⋯ menu: Copy PowerShell, ดูประวัติ, เปลี่ยน token…, then the status item in its own
-// group. แก้ไข, เปลี่ยน token and the status item need setting:edit; a viewer keeps Copy PowerShell and ดูประวัติ.
-function ClientActions({ client, labels, locale, canEdit, openerRef, onEdit, onRotate, onEnable, onDisable, onCopyPowerShell }: ClientRowProps) {
+// group. แก้ไข, เปลี่ยน token and the status item need setting:edit; a viewer keeps Copy PowerShell, and ดูประวัติ shows
+// only with system:view (canViewLogs). While an action of this client runs, a spinner shows beside the actions.
+function ClientActions({ client, labels, locale, canEdit, canViewLogs, busy, openerRef, onEdit, onRotate, onEnable, onDisable, onCopyPowerShell }: ClientRowProps) {
   const t = useTranslations("integrationApiPage")
   const example = usePrimaryPowerShellExample(client)
   const disableItem: RowActionItem = { kind: "action", key: "disable", label: t("disableItem"), hint: t("disableHint"), destructive: true, onSelect: onDisable, icon: <Power aria-hidden="true" /> }
   const enableItem: RowActionItem = { kind: "action", key: "enable", label: t("enableItem"), onSelect: onEnable, icon: <Power aria-hidden="true" /> }
   return (
-    <RowActions
-      code={client.clientId}
-      name={client.displayName}
-      menuLabel={t("moreActions", { name: client.displayName })}
-      nextWidth="auto"
-      openerRef={openerRef}
-      next={canEdit ? { label: t("edit"), onSelect: onEdit, icon: <Pencil aria-hidden="true" /> } : undefined}
-      groups={[
-        {
-          key: "use",
-          items: [
-            ...(example
-              ? [
-                  {
-                    kind: "action",
-                    key: "copyPowerShell", label: labels.copyPowerShell,
-                    onSelect: () => onCopyPowerShell(example),
-                    icon: <Copy aria-hidden="true" />,
-                  } satisfies RowActionItem,
-                ]
-              : []),
-            { kind: "link", key: "history", label: t("historyItem"), href: buildSystemLogRecordHref(locale, "integration_api", client.clientId), icon: <History aria-hidden="true" /> },
-            ...(canEdit
-              ? [
-                  {
-                    kind: "action",
-                    key: "rotate", label: t("rotateItem"), hint: t("rotateHint"),
-                    onSelect: onRotate,
-                    icon: <RotateCw aria-hidden="true" />,
-                  } satisfies RowActionItem,
-                ]
-              : []),
-          ],
-        },
-        { key: "status", items: canEdit ? [client.enabled ? disableItem : enableItem] : [] },
-      ]}
-    />
+    <div className="inline-flex items-center gap-2">
+      {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" /> : null}
+      <RowActions
+        code={client.clientId}
+        name={client.displayName}
+        menuLabel={t("moreActions", { name: client.displayName })}
+        nextWidth="auto"
+        openerRef={openerRef}
+        next={canEdit ? { label: t("edit"), onSelect: onEdit, icon: <Pencil aria-hidden="true" /> } : undefined}
+        groups={[
+          {
+            key: "use",
+            items: [
+              ...(example
+                ? [
+                    {
+                      kind: "action",
+                      key: "copyPowerShell", label: labels.copyPowerShell,
+                      onSelect: () => onCopyPowerShell(example),
+                      icon: <Copy aria-hidden="true" />,
+                    } satisfies RowActionItem,
+                  ]
+                : []),
+              ...(canViewLogs
+                ? [
+                    { kind: "link", key: "history", label: t("historyItem"), href: buildSystemLogRecordHref(locale, "integration_api", client.clientId), icon: <History aria-hidden="true" /> } satisfies RowActionItem,
+                  ]
+                : []),
+              ...(canEdit
+                ? [
+                    {
+                      kind: "action",
+                      key: "rotate", label: t("rotateItem"), hint: t("rotateHint"),
+                      onSelect: onRotate,
+                      icon: <RotateCw aria-hidden="true" />,
+                    } satisfies RowActionItem,
+                  ]
+                : []),
+            ],
+          },
+          { key: "status", items: canEdit ? [client.enabled ? disableItem : enableItem] : [] },
+        ]}
+      />
+    </div>
   )
 }
 

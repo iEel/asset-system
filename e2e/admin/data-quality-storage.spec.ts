@@ -11,7 +11,8 @@
 //   row's archive button opens its confirm dialog, which is cancelled.
 // Phone (phone-light, phone-dark): neither page scrolls sideways; the tabs and the chips can be reached.
 // Writes: none. บันทึกกฎ, สแกนรายการใหม่, resolve, dismiss and the archive confirm are never pressed; every request that is
-// not a GET or a HEAD to an /api/ path fails the test (and the fixtures abort the settings save and the stored-files API
+// not a GET or a HEAD to an /api/ path fails the test, except the shell's session keep-alive (POST /api/session/keep-alive),
+// which is app-wide and not a page write (and the fixtures abort the settings save and the stored-files API
 // before they leave the browser). axe through recordSettled on every page.
 import type { Locator, Page } from "../shell/shell-steps.ts"
 import { fillTemplate } from "../shell/shell-words.ts"

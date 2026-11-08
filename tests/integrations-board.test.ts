@@ -18,7 +18,7 @@ test("create opens a side panel and the token gate stays", () => {
   const source = manager()
   // The header: the history link to the Integration API quick filter, and สร้าง client only with setting:edit.
   assert.match(source, /href=\{buildSystemLogFilterHref\(locale, "integration_api"\)\}/)
-  assert.match(source, /\{canEdit \? \(\n\s+<Button onClick=\{openCreate\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{labels\.createClient\}/)
+  assert.match(source, /\{canEdit \? \(\n\s+<Button ref=\{createButtonRef\} onClick=\{openCreate\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{labels\.createClient\}/)
   assert.match(source, /<ClientCreateSheet\n/)
   // The create form is step 1 of the panel; the old panel above the list is gone.
   assert.doesNotMatch(source, /<ContentPanel divided title=\{labels\.createTitle\}>/)
@@ -30,9 +30,9 @@ test("create opens a side panel and the token gate stays", () => {
   assert.match(panel, /<SheetContent\n\s+side="right"/)
   // The panel closes only once the acknowledgement is ticked: the X, Escape and a click outside all go through the gate.
   assert.match(panel, /const gated = token !== null && !tokenAcknowledgement/)
-  assert.match(panel, /function requestOpenChange\(next: boolean\) \{\n\s+if \(!next && gated\) return\n/)
-  assert.match(panel, /onEscapeKeyDown=\{\(event\) => \{\n\s+if \(gated\) event\.preventDefault\(\)/)
-  assert.match(panel, /onInteractOutside=\{\(event\) => \{\n\s+if \(gated\) event\.preventDefault\(\)/)
+  assert.match(panel, /function requestOpenChange\(next: boolean\) \{\n\s+if \(!next && locked\) return\n/)
+  assert.match(panel, /onEscapeKeyDown=\{\(event\) => \{\n\s+if \(locked\) event\.preventDefault\(\)/)
+  assert.match(panel, /onInteractOutside=\{\(event\) => \{\n\s+if \(locked\) event\.preventDefault\(\)/)
   // After create step 1 collapses to a summary: the display name, the client ID and the scopes.
   assert.match(panel, /\{token \? \(\n\s+<dl /)
   assert.match(panel, /<span className="tag">\{token\.clientId\}<\/span>/)
@@ -129,8 +129,8 @@ test("the ⋯ menu keeps rotate and disable confirms", () => {
   assert.match(source, /key: "enable", label: t\("enableItem"\)/)
   // The confirms are the ones the page always had.
   const composer = manager()
-  assert.match(composer, /confirm\(\{ title: labels\.confirmRotate, confirmLabel: labels\.rotate, tone: "destructive" \}\)/)
-  assert.match(composer, /\? \{ title: labels\.confirmEnable, confirmLabel: labels\.enable \}\n\s+: \{ title: labels\.confirmDisable, confirmLabel: labels\.disable, tone: "destructive" \}/)
+  assert.match(composer, /confirm\(\{ title: labels\.confirmRotate, confirmLabel: labels\.rotate, tone: "destructive", returnFocusRef: openerRef \}\)/)
+  assert.match(composer, /\? \{ title: labels\.confirmEnable, confirmLabel: labels\.enable, returnFocusRef: openerRef \}\n\s+: \{ title: labels\.confirmDisable, confirmLabel: labels\.disable, tone: "destructive", returnFocusRef: openerRef \}/)
 
   const th = messages("th")
   assert.equal(th.historyItem, "ดูประวัติ")
@@ -163,7 +163,7 @@ test("kept: edit dialog with widening confirm, empty state, load and action erro
   // The create error shows inside the panel, where the form is.
   assert.match(sheet(), /\{error \? \(\n\s+<Notice tone="danger" role="alert">\n\s+\{labels\.error\}: \{error\}/)
   // After an action the row keeps its creator's name (the action responses carry createdByName null).
-  assert.match(source, /function mergeClient\(previous: IntegrationClient \| undefined, next: IntegrationClient\): IntegrationClient \{\n\s+return \{ \.\.\.next, createdByName: next\.createdByName \?\? previous\?\.createdByName \?\? null \}/)
+  assert.match(source, /function mergeClient\(previous: IntegrationClient \| undefined, next: IntegrationClient\): IntegrationClient \{\n\s+return \{ \.\.\.next, createdByName: next\.createdByName \?\? previous\?\.createdByName \?\? null, operations: previous\?\.operations \?\? next\.operations \}/)
   // Tiles and chips: four tiles from the page model, chips with counts in client state.
   const strip = tiles()
   assert.match(strip, /\{ key: "usage", label: t\("usageTile"\), value: formatCount\(summary\.calls7d\), unit: t\("usageUnit"\), foot: t\("usageErrors", \{ count: summary\.errors7d \}\) \}/)
@@ -171,4 +171,49 @@ test("kept: edit dialog with widening confirm, empty state, load and action erro
   assert.match(source, /const summary = useMemo\(\(\) => integrationSummary\(clients\), \[clients\]\)/)
   assert.match(source, /const visibleClients = useMemo\(\(\) => filterClients\(clients, statusFilter\), \[clients, statusFilter\]\)/)
   assert.match(source, /counts=\{statusCounts\(clients\)\}/)
+})
+
+test("final review: token stays on screen, usage kept, history links, focus and busy", () => {
+  const source = manager()
+  const panel = sheet()
+  const rows = row()
+  // A create in flight cannot be closed away: the panel refuses every close while busy, the composer too, and a
+  // token that arrives while the panel is closed opens it again at its gated step 2.
+  assert.match(source, /busy=\{saving\}/)
+  assert.match(panel, /const locked = gated \|\| busy/)
+  assert.match(panel, /function requestOpenChange\(next: boolean\) \{\n\s+if \(!next && locked\) return\n/)
+  assert.match(panel, /onEscapeKeyDown=\{\(event\) => \{\n\s+if \(locked\) event\.preventDefault\(\)/)
+  assert.match(panel, /onInteractOutside=\{\(event\) => \{\n\s+if \(locked\) event\.preventDefault\(\)/)
+  assert.match(panel, /showCloseButton=\{!busy\}/)
+  assert.match(source, /function changeSheetOpen\(open: boolean\) \{\n\s+if \(open\) \{\n\s+setSheetOpen\(true\)\n\s+return\n\s+\}\n\s+if \(saving\) return\n/)
+  assert.match(source, /token: payload\.token \}\)\n\s+setSheetMode\("create"\)\n\s+setSheetOpen\(true\)/)
+  // An action's response carries no usage, so a row keeps the usage it had.
+  assert.match(source, /operations: previous\?\.operations \?\? next\.operations/)
+  // The history links only for viewers who can open the logs page (system:view).
+  assert.match(page(), /canViewLogs=\{hasPermission\(user, "system", "view"\)\}/)
+  assert.match(source, /\{canViewLogs \? \(\n\s+<Link href=\{buildSystemLogFilterHref\(locale, "integration_api"\)\}/)
+  assert.match(rows, /\.\.\.\(canViewLogs\n\s+\? \[\n\s+\{ kind: "link", key: "history"/)
+  // Focus: the panel returns focus to its opener; the ⋯ confirms return to the row's ⋯; copy returns there too.
+  assert.match(panel, /onCloseAutoFocus=\{\(event\) => \{\n\s+event\.preventDefault\(\)\n\s+const target = returnFocusRef\.current\n\s+if \(target\?\.isConnected\) target\.focus\(\)/)
+  assert.match(source, /returnFocusRef=\{sheetReturnFocusRef\}/)
+  assert.match(source, /sheetReturnFocusRef\.current = createButtonRef\.current/)
+  assert.match(source, /sheetReturnFocusRef\.current = openerRef\.current/)
+  assert.match(source, /confirm\(\{ title: labels\.confirmRotate, confirmLabel: labels\.rotate, tone: "destructive", returnFocusRef: openerRef \}\)/)
+  assert.match(source, /\{ title: labels\.confirmEnable, confirmLabel: labels\.enable, returnFocusRef: openerRef \}/)
+  assert.match(source, /\{ title: labels\.confirmDisable, confirmLabel: labels\.disable, tone: "destructive", returnFocusRef: openerRef \}/)
+  assert.match(source, /finally \{\n\s+const opener = openerRef\.current\n\s+if \(opener\?\.isConnected\) opener\.focus\(\)/)
+  // A status change that filters its row out sends focus to the status chips.
+  assert.match(source, /focusChipsAfterFilterRef\.current = true/)
+  assert.match(source, /chipsRef\.current\?\.querySelector<HTMLElement>\('\[aria-pressed="true"\]'\)\?\.focus\(\)/)
+  // A second action while one runs is refused out loud, checked through a ref before its confirm opens.
+  assert.match(source, /function refuseWhileBusy\(\) \{\n\s+if \(!mutatingRef\.current\) return false\n\s+setError\(labels\.actionBusy\)\n\s+return true/)
+  assert.doesNotMatch(source, /if \(mutatingId\) return/)
+  assert.match(rows, /\{busy \? <Loader2 aria-hidden="true" className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" \/> : null\}/)
+  // Thai words: the rotate confirm says เปลี่ยน token; the page title is the board's.
+  const th = messages("th")
+  assert.equal(th.confirmRotate, "ต้องการเปลี่ยน token ของ client นี้หรือไม่? token เดิมจะใช้ไม่ได้ทันที")
+  assert.equal(th.title, "Integration API")
+  assert.equal(messages("en").title, "Integration API")
+  assert.equal(typeof th.actionBusy, "string")
+  assert.equal(typeof messages("en").actionBusy, "string")
 })

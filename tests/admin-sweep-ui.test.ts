@@ -70,7 +70,7 @@ test("the integration client manager: StatStrip, ContentPanel, DataTable, shared
   assert.match(source, /<RowActions\n/, "rotate and the status action are ⋯ menu items with their confirms")
   assert.match(source, /<Button onClick=\{dismissToken\} disabled=\{!tokenAcknowledgement\}/)
   assert.match(source, /key: "copyPowerShell", label: labels\.copyPowerShell,\n\s+onSelect: \(\) => onCopyPowerShell\(example\)/)
-  assert.equal(source.match(/<Loader2\b/g)?.length, 1, "only the loading status of the list head (I27)")
+  assert.equal(source.match(/<Loader2\b/g)?.length, 2, "the loading status of the list head and a row's busy mark beside ⋯ (I27, group 12 plan 4 final review)")
 })
 
 test("the role permission form: two ContentPanels, the system-role guard as a neutral Notice, DataTable and the module key as a tag (spec 2D D7, M27)", () => {

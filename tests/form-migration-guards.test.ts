@@ -216,6 +216,7 @@ const OLD_MARKUP: ExemptList = {}
 // GB1 <Loader2 tags (every tag, also icons kept in a variable). A busy Button brings its own spinner (an owner).
 const LOADER2: ExemptList = {
   [`${C}admin/IntegrationClientManager.tsx`]: { count: 1, kind: "permanent", why: "the loading status in the client list head", ruling: "2C I27" },
+  [`${C}admin/integrations/client-row.tsx`]: { count: 1, kind: "permanent", why: "the row's busy mark beside ⋯ while a rotate, enable or disable runs (the old row's busy button is now a menu item)", ruling: "2C I27" },
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: { count: 1, kind: "permanent", why: "the loading line in the dialog body", ruling: "2C I27" },
   [`${C}assets/asset-component-manager.tsx`]: { count: 1, kind: "permanent", why: "the searching status line", ruling: "2C I27" },
   [`${C}assets/asset-label-queue.tsx`]: { count: 1, kind: "permanent", why: "the loading line of the search results and of the label queue (one LoadingLine part, group 4 plan 6 Task 4)", ruling: "2C I27" },

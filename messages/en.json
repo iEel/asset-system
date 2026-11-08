@@ -6707,7 +6707,7 @@
     }
   },
   "integrationApiPage": {
-    "title": "Integration API Clients",
+    "title": "Integration API",
     "subtitle": "Create and manage database-backed API clients for approved read-only integrations.",
     "summaryActive": "Active clients",
     "summaryDisabled": "Disabled clients",
@@ -6737,7 +6737,7 @@
     "cancel": "Cancel",
     "enable": "Enable",
     "disable": "Disable",
-    "confirmRotate": "Rotate this client token? The current token will stop working after rotation.",
+    "confirmRotate": "Rotate this client's token? The current token stops working at once.",
     "confirmScopeExpansion": "You are adding permissions to an existing token. It will be able to call the newly allowed endpoint immediately. Continue?",
     "confirmEnable": "Enable this API client?",
     "confirmDisable": "Disable this API client? Requests using its token will stop working.",
@@ -6794,7 +6794,8 @@
     "token": "Token",
     "usageDetails": "Usage",
     "hashNote": "Only a hash of each token is stored, so it cannot be shown again · if a token is lost, rotate it and put the new token in the other system",
-    "filterEmpty": "No clients with this status"
+    "filterEmpty": "No clients with this status",
+    "actionBusy": "Wait for the previous action to finish, then try again."
   },
   "apiErrors": {
     "activeCheckoutNotFound": "Active checkout not found",

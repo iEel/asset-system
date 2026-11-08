@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useRef, type ReactNode } from "react"
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react"
 import { Check, Copy } from "lucide-react"
 import type { IntegrationLabels } from "@/components/admin/IntegrationClientManager"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,11 @@ export type CopyFeedback = {
 type ClientCreateSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  // True while the create POST is in flight: the panel cannot close, so the token it returns is never hidden.
+  busy: boolean
+  // The panel opens from state (the header's สร้าง client, or a row's ⋯ for a rotate), not a Radix trigger, so focus
+  // goes back to this element when it closes.
+  returnFocusRef: RefObject<HTMLElement | null>
   title: string
   labels: IntegrationLabels
   scopeLabels: Readonly<Record<string, string>>
@@ -43,10 +48,12 @@ type ClientCreateSheetProps = {
 // to a summary (the display name, the client ID and the scopes) and step 2 shows the one-time token with copy, the
 // warning and the acknowledgement. While a token is shown and not acknowledged, the panel cannot close: the X, Escape
 // and a click outside are all refused, and the hint under the dismiss button says why. A rotate opens the same panel
-// at step 2.
+// at step 2. While a create is saving the panel cannot close either, and its X is hidden.
 export function ClientCreateSheet({
   open,
   onOpenChange,
+  busy,
+  returnFocusRef,
   title,
   labels,
   scopeLabels,
@@ -62,6 +69,7 @@ export function ClientCreateSheet({
   const hintId = useId()
   const tokenStepRef = useRef<HTMLHeadingElement | null>(null)
   const gated = token !== null && !tokenAcknowledgement
+  const locked = gated || busy
 
   // The form unmounts on create, so focus moves to step 2's heading, which a screen reader then reads.
   useEffect(() => {
@@ -69,7 +77,7 @@ export function ClientCreateSheet({
   }, [token])
 
   function requestOpenChange(next: boolean) {
-    if (!next && gated) return
+    if (!next && locked) return
     onOpenChange(next)
   }
 
@@ -79,11 +87,17 @@ export function ClientCreateSheet({
         side="right"
         className="w-full gap-0 sm:max-w-md"
         aria-describedby={undefined}
+        showCloseButton={!busy}
         onEscapeKeyDown={(event) => {
-          if (gated) event.preventDefault()
+          if (locked) event.preventDefault()
         }}
         onInteractOutside={(event) => {
-          if (gated) event.preventDefault()
+          if (locked) event.preventDefault()
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          const target = returnFocusRef.current
+          if (target?.isConnected) target.focus()
         }}
       >
         <SheetHeader>

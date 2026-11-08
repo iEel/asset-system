@@ -78,6 +78,7 @@ export type IntegrationLabels = {
   loadFailed: string
   createFailed: string
   actionFailed: string
+  actionBusy: string
   active: string
   disabled: string
   noLastUsed: string
@@ -136,26 +137,29 @@ function validate(values: { clientId?: string; displayName: string; scopes: read
   return errors
 }
 
-// Only the list GET looks up the creator's name: the create, update, rotate, enable and disable responses carry
-// createdByName null, so a row keeps the name it had.
+// Only the list GET looks up the creator's name and the usage: the create, update, rotate, enable and disable responses
+// carry createdByName null and an empty usage summary, so a row keeps the name and the usage it had.
 function mergeClient(previous: IntegrationClient | undefined, next: IntegrationClient): IntegrationClient {
-  return { ...next, createdByName: next.createdByName ?? previous?.createdByName ?? null }
+  return { ...next, createdByName: next.createdByName ?? previous?.createdByName ?? null, operations: previous?.operations ?? next.operations }
 }
 
 // Board AD-Integrations (page group 12 plan 4, spec §10): the header with ประวัติการเรียกใช้ and สร้าง client (a side
 // panel that keeps the one-time token gate), four tiles, status chips, rows with the creator, the rotation date and the
 // usage, an expand that keeps the 24-hour count, the top endpoint and the latest error, and a ⋯ menu for the rest.
-// The page needs setting:view; สร้าง client, แก้ไข, เปลี่ยน token and the status items need setting:edit (canEdit).
+// The page needs setting:view; สร้าง client, แก้ไข, เปลี่ยน token and the status items need setting:edit (canEdit). The
+// history links open /admin/logs, which needs system:view (canViewLogs).
 // The plain token lives in this component's state only: never stored, logged or put in a URL, and gone on dismiss.
 export function IntegrationClientManager({
   labels,
   locale,
   canEdit,
+  canViewLogs,
   viewerName,
 }: {
   labels: IntegrationLabels
   locale: string
   canEdit: boolean
+  canViewLogs: boolean
   viewerName: string | null
 }) {
   const confirm = useConfirm()
@@ -163,7 +167,15 @@ export function IntegrationClientManager({
   const createErrors = useFieldErrors<CreateField>()
   const editErrors = useFieldErrors<EditField>()
   const validationMessage = useValidationMessage()
-  const editOpenerRef = useRef<HTMLElement | null>(null)
+  // The row's ⋯ (or its แก้ไข button) that opened a dialog, a confirm or the rotate panel: focus goes back there.
+  const openerRef = useRef<HTMLElement | null>(null)
+  const createButtonRef = useRef<HTMLButtonElement | null>(null)
+  // Where the side panel sends focus when it closes: the header's สร้าง client, or the row's ⋯ after a rotate.
+  const sheetReturnFocusRef = useRef<HTMLElement | null>(null)
+  const chipsRef = useRef<HTMLDivElement | null>(null)
+  const focusChipsAfterFilterRef = useRef(false)
+  // The client an action runs for, read at the moment of the check (a menu item's closure can hold an old render).
+  const mutatingRef = useRef<string | null>(null)
   const [clients, setClients] = useState<IntegrationClient[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -191,6 +203,15 @@ export function IntegrationClientManager({
   )
   const summary = useMemo(() => integrationSummary(clients), [clients])
   const visibleClients = useMemo(() => filterClients(clients, statusFilter), [clients, statusFilter])
+
+  // A status change under a status chip removes the row and its focused ⋯; focus goes to the chip that is on, so a
+  // keyboard user keeps their place in the list.
+  useEffect(() => {
+    if (!focusChipsAfterFilterRef.current) return
+    focusChipsAfterFilterRef.current = false
+    if (openerRef.current?.isConnected) return
+    chipsRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus()
+  }, [visibleClients])
 
   useEffect(() => {
     let cancelled = false
@@ -223,18 +244,27 @@ export function IntegrationClientManager({
 
   function openCreate() {
     if (!canEdit) return
+    sheetReturnFocusRef.current = createButtonRef.current
+    // A token never acknowledged stays (behind its gate); one already acknowledged is dropped, never shown again.
+    if (oneTimeToken && tokenAcknowledgement) {
+      setOneTimeToken(null)
+      setTokenAcknowledgement(false)
+      setCopyFeedback(null)
+    }
     setSheetMode("create")
     setError(null)
     createErrors.setErrors({})
     setSheetOpen(true)
   }
 
-  // The panel's own gate refuses a close while a token waits for its acknowledgement; this is the close after it.
+  // The panel's own gate refuses a close while a create is saving or a token waits for its acknowledgement; this is the
+  // close after it, and it refuses a close while saving too, so the token a create returns is never hidden.
   function changeSheetOpen(open: boolean) {
     if (open) {
       setSheetOpen(true)
       return
     }
+    if (saving) return
     if (oneTimeToken && !tokenAcknowledgement) return
     setOneTimeToken(null)
     setTokenAcknowledgement(false)
@@ -300,6 +330,8 @@ export function IntegrationClientManager({
       setClients((current) => [created, ...current.filter((client) => client.id !== payload.data.id)])
       setNewClientIds((current) => new Set(current).add(payload.data.id))
       setOneTimeToken({ clientId: payload.data.clientId, displayName: payload.data.displayName, scopes: payload.data.scopes, token: payload.token })
+      setSheetMode("create")
+      setSheetOpen(true)
       setTokenAcknowledgement(false)
       setCopyFeedback(null)
       setClientId("")
@@ -320,6 +352,7 @@ export function IntegrationClientManager({
     if (!(await confirmScopeExpansion(editingClient, editScopes))) return
 
     setUpdatingClient(true)
+    mutatingRef.current = editingClient.id
     setMutatingId(editingClient.id)
     setError(null)
     try {
@@ -340,29 +373,40 @@ export function IntegrationClientManager({
       setError(updateError instanceof Error ? updateError.message : labels.actionFailed)
     } finally {
       setUpdatingClient(false)
+      mutatingRef.current = null
       setMutatingId(null)
     }
   }
 
+  // One action at a time: a second one is refused with a message, never dropped in silence. Checked before the confirm
+  // opens and again after it, through the ref, so an action that ended meanwhile no longer blocks.
+  function refuseWhileBusy() {
+    if (!mutatingRef.current) return false
+    setError(labels.actionBusy)
+    return true
+  }
+
+  // The confirms opened from the ⋯ menu send focus back to the row's ⋯ (openerRef), as the other ⋯ menus do.
   async function rotateClient(client: IntegrationClient) {
-    if (!canEdit) return
-    if (!(await confirm({ title: labels.confirmRotate, confirmLabel: labels.rotate, tone: "destructive" }))) return
+    if (!canEdit || refuseWhileBusy()) return
+    if (!(await confirm({ title: labels.confirmRotate, confirmLabel: labels.rotate, tone: "destructive", returnFocusRef: openerRef }))) return
     await mutateClient(client, "rotate")
   }
 
   async function setClientEnabled(client: IntegrationClient, enabled: boolean) {
-    if (!canEdit) return
+    if (!canEdit || refuseWhileBusy()) return
     const confirmed = await confirm(
       enabled
-        ? { title: labels.confirmEnable, confirmLabel: labels.enable }
-        : { title: labels.confirmDisable, confirmLabel: labels.disable, tone: "destructive" },
+        ? { title: labels.confirmEnable, confirmLabel: labels.enable, returnFocusRef: openerRef }
+        : { title: labels.confirmDisable, confirmLabel: labels.disable, tone: "destructive", returnFocusRef: openerRef },
     )
     if (!confirmed) return
     await mutateClient(client, enabled ? "enable" : "disable")
   }
 
   async function mutateClient(client: IntegrationClient, action: "rotate" | "enable" | "disable") {
-    if (mutatingId) return
+    if (refuseWhileBusy()) return
+    mutatingRef.current = client.id
     setMutatingId(client.id)
     setError(null)
     try {
@@ -375,18 +419,21 @@ export function IntegrationClientManager({
       const response = await fetch(endpoint, { method: "POST" })
       if (!response.ok) throw new Error(labels.actionFailed)
       const payload = (await response.json()) as { data: IntegrationClient; token?: string }
+      if (action !== "rotate" && statusFilter !== "all") focusChipsAfterFilterRef.current = true
       setClients((current) => current.map((item) => (item.id === payload.data.id ? mergeClient(item, payload.data) : item)))
       // A rotate shows its new token in the same panel, at step 2, behind the same acknowledgement.
       if (action === "rotate" && payload.token) {
         setOneTimeToken({ clientId: payload.data.clientId, displayName: payload.data.displayName, scopes: payload.data.scopes, token: payload.token })
         setTokenAcknowledgement(false)
         setCopyFeedback(null)
+        sheetReturnFocusRef.current = openerRef.current
         setSheetMode("rotate")
         setSheetOpen(true)
       }
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : labels.actionFailed)
     } finally {
+      mutatingRef.current = null
       setMutatingId(null)
     }
   }
@@ -402,6 +449,8 @@ export function IntegrationClientManager({
     }
   }
 
+  // Copy opens no dialog, yet the ⋯ menu leaves focus to its caller (RowActions keeps it for a dialog), so focus goes
+  // back to the row's ⋯ here.
   async function copyPowerShellExample(example: IntegrationPowerShellExample) {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable")
@@ -409,6 +458,9 @@ export function IntegrationClientManager({
       setExampleCopyFeedback({ tone: "success", message: labels.powerShellCopied })
     } catch {
       setExampleCopyFeedback({ tone: "error", message: labels.error })
+    } finally {
+      const opener = openerRef.current
+      if (opener?.isConnected) opener.focus()
     }
   }
 
@@ -426,9 +478,10 @@ export function IntegrationClientManager({
     scopeLabels,
     locale,
     canEdit,
+    canViewLogs,
     isNew: newClientIds.has(client.id),
     busy: mutatingId === client.id,
-    openerRef: editOpenerRef,
+    openerRef: openerRef,
     onEdit: () => openEditClient(client),
     onRotate: () => void rotateClient(client),
     onEnable: () => void setClientEnabled(client, true),
@@ -443,12 +496,14 @@ export function IntegrationClientManager({
         meta={labels.subtitle}
         actions={
           <>
-            <Link href={buildSystemLogFilterHref(locale, "integration_api")} className={buttonVariants({ variant: "outline" })}>
-              <ScrollText aria-hidden="true" />
-              {labels.historyLink}
-            </Link>
+            {canViewLogs ? (
+              <Link href={buildSystemLogFilterHref(locale, "integration_api")} className={buttonVariants({ variant: "outline" })}>
+                <ScrollText aria-hidden="true" />
+                {labels.historyLink}
+              </Link>
+            ) : null}
             {canEdit ? (
-              <Button onClick={openCreate}>
+              <Button ref={createButtonRef} onClick={openCreate}>
                 <Plus aria-hidden="true" />
                 {labels.createClient}
               </Button>
@@ -469,6 +524,8 @@ export function IntegrationClientManager({
         <ClientCreateSheet
           open={sheetOpen}
           onOpenChange={changeSheetOpen}
+          busy={saving}
+          returnFocusRef={sheetReturnFocusRef}
           title={sheetMode === "rotate" ? labels.rotatedTitle : labels.createClient}
           labels={labels}
           scopeLabels={scopeLabels}
@@ -543,7 +600,7 @@ export function IntegrationClientManager({
           description={editingClient ? <span className="tag">{editingClient.clientId}</span> : undefined}
           busy={updatingClient}
           size="md"
-          returnFocusRef={editOpenerRef}
+          returnFocusRef={openerRef}
           onClose={closeEditClient}
         >
           {editingClient ? (
@@ -607,7 +664,9 @@ export function IntegrationClientManager({
                 <span className="sr-only">{labels.loading}</span>
               </span>
             ) : clients.length > 0 ? (
-              <ClientStatusChips value={statusFilter} counts={statusCounts(clients)} labels={labels} onChange={setStatusFilter} />
+              <div ref={chipsRef}>
+                <ClientStatusChips value={statusFilter} counts={statusCounts(clients)} labels={labels} onChange={setStatusFilter} />
+              </div>
             ) : null
           }
         >

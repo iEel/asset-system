@@ -2,7 +2,7 @@
 // docs/superpowers/specs/2026-11-08-page-group-12-admin-design.md §10, board AD-Integrations), as the app writes them in
 // messages/th.json integrationApiPage and common. Plain data, no imports, so a node test can load it.
 export const INTEGRATIONS_WORDS = {
-  title: "Integration API Clients",
+  title: "Integration API",
   // The four tiles (a <dl>: the label is the <dt>), the usage tile's unit and its foot.
   summaryActive: "Client ที่เปิดใช้งาน", summaryDisabled: "Client ที่ปิดใช้งาน", summaryLastUsed: "Client ที่เคยถูกใช้",
   usageTile: "การใช้งาน · 7 วัน", usageUnit: "ครั้ง", usageErrors: "Error {count}",
