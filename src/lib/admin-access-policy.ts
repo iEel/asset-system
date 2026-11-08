@@ -11,14 +11,21 @@ export type UserAccessChangeInput = {
   target: ExistingUserAccess | null
   requestedRoleIds: string[]
   requestedRoles: GrantableRole[]
+  /** The target's stored role ids; [] on create. A held inactive role may be kept but grants nothing. */
+  currentRoleIds: string[]
   nextIsActive: boolean
   otherActiveSystemAdminCount: number
 }
 
 export function getUserAccessChangeError(input: UserAccessChangeInput): string | null {
   const requestedRoleIds = new Set(input.requestedRoleIds)
-  const validRoles = input.requestedRoles.filter((role) => role.isActive && requestedRoleIds.has(role.id))
+  const currentRoleIds = new Set(input.currentRoleIds)
+  const validRoles = input.requestedRoles.filter(
+    (role) => requestedRoleIds.has(role.id) && (role.isActive || currentRoleIds.has(role.id)),
+  )
   if (validRoles.length !== requestedRoleIds.size) return "Invalid role selection"
+  // Inactive roles the user already holds are kept but grant nothing (session-access drops them).
+  const grantingRoles = validRoles.filter((role) => role.isActive)
 
   if (!input.actor.roles.includes(systemAdminRole)) {
     const actorPermissions = new Set(input.actor.permissions)
@@ -28,16 +35,16 @@ export function getUserAccessChangeError(input: UserAccessChangeInput): string |
         input.target.permissionKeys.some((permission) => !actorPermissions.has(permission)))
     if (targetHasMoreAccess) return "Forbidden: cannot modify a user who has access you do not hold"
 
-    if (validRoles.some((role) => role.name === systemAdminRole)) {
+    if (grantingRoles.some((role) => role.name === systemAdminRole)) {
       return "Forbidden: only system_admin can grant the system_admin role"
     }
 
-    const ungranted = validRoles.flatMap((role) => role.permissionKeys).find((permission) => !actorPermissions.has(permission))
+    const ungranted = grantingRoles.flatMap((role) => role.permissionKeys).find((permission) => !actorPermissions.has(permission))
     if (ungranted) return `Forbidden: cannot grant ${ungranted} without holding it`
   }
 
   const targetIsActiveSystemAdmin = input.target?.isActive === true && input.target.roleNames.includes(systemAdminRole)
-  const remainsActiveSystemAdmin = input.nextIsActive && validRoles.some((role) => role.name === systemAdminRole)
+  const remainsActiveSystemAdmin = input.nextIsActive && grantingRoles.some((role) => role.name === systemAdminRole)
   if (targetIsActiveSystemAdmin && !remainsActiveSystemAdmin && input.otherActiveSystemAdminCount === 0) {
     return "Cannot remove or deactivate the last active system administrator"
   }

@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       target: null,
       requestedRoleIds: input.roleIds,
       requestedRoles: await loadGrantableRoles(input.roleIds),
+      currentRoleIds: [],
       nextIsActive: input.isActive,
       otherActiveSystemAdminCount: 0,
     })

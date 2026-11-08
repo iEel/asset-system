@@ -165,7 +165,7 @@ test("creating an admin user does not echo the stored password hash", async () =
 })
 
 test("updating an admin user does not echo the stored password hash", async () => {
-  state.existingRow = { id: "u4", username: "staff", displayName: "Staff", isActive: true, userRoles: [{ roleId: "role-employee", role: { name: "employee", rolePermissions: [{ permission: { module: "asset", action: "view" } }] } }] }
+  state.existingRow = { id: "u4", username: "staff", displayName: "Staff", isActive: true, userRoles: [{ roleId: "role-employee", role: { id: "role-employee", name: "employee", isActive: true, rolePermissions: [{ permission: { module: "asset", action: "view" } }] } }] }
   state.updatedRow = { id: "u4", username: "staff", displayName: "Staff 2", passwordHash: "$2a$12$hash-four" }
 
   const response = await userRoute.PUT(
@@ -221,7 +221,7 @@ test("a helpdesk user cannot reset the password of a system administrator", asyn
     username: "admin",
     displayName: "Admin",
     isActive: true,
-    userRoles: [{ roleId: "role-admin", role: { name: "system_admin", rolePermissions: [] } }],
+    userRoles: [{ roleId: "role-admin", role: { id: "role-admin", name: "system_admin", isActive: true, rolePermissions: [] } }],
   }
 
   const response = await putUser("admin-9", { username: "admin", password: "attacker-chosen", displayName: "Admin", roleIds: ["role-admin"] })
@@ -238,7 +238,7 @@ test("the last active system administrator cannot be demoted through the API", a
     username: "admin",
     displayName: "Admin",
     isActive: true,
-    userRoles: [{ roleId: "role-admin", role: { name: "system_admin", rolePermissions: [] } }],
+    userRoles: [{ roleId: "role-admin", role: { id: "role-admin", name: "system_admin", isActive: true, rolePermissions: [] } }],
   }
 
   const response = await putUser("admin-9", { username: "admin", displayName: "Admin", roleIds: ["role-employee"] })
@@ -253,7 +253,7 @@ test("editing a user refreshes that user's live session access", async () => {
     username: "staff",
     displayName: "Staff",
     isActive: true,
-    userRoles: [{ roleId: "role-employee", role: { name: "employee", rolePermissions: [{ permission: { module: "asset", action: "view" } }] } }],
+    userRoles: [{ roleId: "role-employee", role: { id: "role-employee", name: "employee", isActive: true, rolePermissions: [{ permission: { module: "asset", action: "view" } }] } }],
   }
   state.updatedRow = { id: "u4", username: "staff", displayName: "Staff", isActive: false }
 

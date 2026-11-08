@@ -1,7 +1,24 @@
 import assert from "node:assert/strict"
+import * as nodeModule from "node:module"
 import test from "node:test"
 
-import { getRolePermissionChangeError, getUserAccessChangeError } from "../src/lib/admin-access-policy.ts"
+const registerHooks = (nodeModule as unknown as {
+  registerHooks(options: {
+    resolve(specifier: string, context: unknown, nextResolve: (specifier: string, context: unknown) => unknown): unknown
+  }): void
+}).registerHooks
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier === "@/lib/db") {
+      return { url: `data:text/javascript;charset=utf-8,${encodeURIComponent("export const prisma = {}")}`, shortCircuit: true }
+    }
+    return nextResolve(specifier, context)
+  },
+})
+
+const { getRolePermissionChangeError, getUserAccessChangeError } = await import("../src/lib/admin-access-policy.ts")
+const { toExistingUserAccess } = await import("../src/lib/admin-access-data.ts")
 
 const helpdesk = { id: "helpdesk-1", roles: ["helpdesk"], permissions: ["user:view", "user:edit", "asset:view"] }
 const systemAdmin = { id: "admin-1", roles: ["system_admin"], permissions: [] }
@@ -20,6 +37,7 @@ function userChange(overrides: Partial<Parameters<typeof getUserAccessChangeErro
     target: employeeTarget,
     requestedRoleIds: ["role-employee"],
     requestedRoles: [employeeRole],
+    currentRoleIds: ["role-employee"],
     nextIsActive: true,
     otherActiveSystemAdminCount: 1,
     ...overrides,
@@ -104,5 +122,70 @@ test("keeping a permission the role already has is not an escalation", () => {
   assert.equal(
     getRolePermissionChangeError({ actor: systemAdmin, currentPermissionKeys: [], requestedPermissionKeys: ["setting:edit"] }),
     null,
+  )
+})
+
+const oldRole = { id: "old", name: "old_role", isActive: false, permissionKeys: ["asset:delete"] }
+const r1Role = { id: "r1", name: "r1_role", isActive: true, permissionKeys: ["asset:view"] }
+
+test("a held inactive role can be kept or removed", () => {
+  assert.equal(
+    userChange({ currentRoleIds: ["old"], requestedRoleIds: ["old", "r1"], requestedRoles: [oldRole, r1Role] }),
+    null,
+  )
+  assert.equal(userChange({ currentRoleIds: ["old"], requestedRoleIds: ["r1"], requestedRoles: [r1Role] }), null)
+})
+
+test("a new inactive role is still refused", () => {
+  assert.equal(
+    userChange({ currentRoleIds: [], requestedRoleIds: ["old"], requestedRoles: [oldRole] }),
+    "Invalid role selection",
+  )
+  assert.equal(
+    userChange({ actor: systemAdmin, currentRoleIds: [], requestedRoleIds: ["old"], requestedRoles: [oldRole] }),
+    "Invalid role selection",
+  )
+})
+
+test("inactive roles do not count as the target's access", () => {
+  const actor = { id: "actor-2", roles: ["helpdesk"], permissions: ["asset:view"] }
+  const target = toExistingUserAccess({
+    id: "user-5",
+    isActive: true,
+    userRoles: [
+      {
+        role: {
+          name: "old_role",
+          isActive: false,
+          rolePermissions: [{ permission: { module: "asset", action: "delete" } }],
+        },
+      },
+    ],
+  })
+  assert.deepEqual(target.permissionKeys, [])
+
+  assert.equal(
+    userChange({
+      actor,
+      target,
+      currentRoleIds: ["old"],
+      requestedRoleIds: ["old", "r1"],
+      requestedRoles: [oldRole, r1Role],
+    }),
+    null,
+  )
+})
+
+test("last system admin rule unchanged", () => {
+  assert.equal(
+    userChange({
+      actor: systemAdmin,
+      target: adminTarget,
+      currentRoleIds: ["role-admin"],
+      requestedRoleIds: ["role-employee"],
+      requestedRoles: [employeeRole],
+      otherActiveSystemAdminCount: 0,
+    }),
+    "Cannot remove or deactivate the last active system administrator",
   )
 })

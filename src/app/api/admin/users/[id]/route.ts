@@ -40,6 +40,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
       target: toExistingUserAccess(existing),
       requestedRoleIds: input.roleIds,
       requestedRoles: await loadGrantableRoles(input.roleIds),
+      currentRoleIds: existing.userRoles.map((userRole) => userRole.roleId),
       nextIsActive: input.isActive,
       otherActiveSystemAdminCount: await countOtherActiveSystemAdmins(id),
     })

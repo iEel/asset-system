@@ -6,7 +6,9 @@ export const userAccessInclude = {
       roleId: true,
       role: {
         select: {
+          id: true,
           name: true,
+          isActive: true,
           rolePermissions: { select: { permission: { select: { module: true, action: true } } } },
         },
       },
@@ -42,13 +44,15 @@ export async function loadGrantableRoles(roleIds: string[]) {
 export function toExistingUserAccess(user: {
   id: string
   isActive: boolean
-  userRoles: Array<{ role: { name: string; rolePermissions: RolePermissionRows } }>
+  userRoles: Array<{ role: { name: string; isActive: boolean; rolePermissions: RolePermissionRows } }>
 }) {
+  // Only active roles count as the user's access; session-access drops inactive roles too.
+  const activeRoles = user.userRoles.map(({ role }) => role).filter((role) => role.isActive)
   return {
     id: user.id,
     isActive: user.isActive,
-    roleNames: user.userRoles.map(({ role }) => role.name),
-    permissionKeys: user.userRoles.flatMap(({ role }) => toPermissionKeys(role.rolePermissions)),
+    roleNames: activeRoles.map((role) => role.name),
+    permissionKeys: activeRoles.flatMap((role) => toPermissionKeys(role.rolePermissions)),
   }
 }
 
