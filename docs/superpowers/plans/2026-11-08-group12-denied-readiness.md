@@ -196,7 +196,7 @@ export function permissionWordKeys(module: string, action: string): { action: st
 - [ ] **Step 5: Commit.**
   - Message: `feat(access): the denied page names the page, the permission in Thai and your roles, with a back button; approvals pages redirect there (group 12 plan 1 task 1)`
 
-### Task 2: IT Helpdesk contact (settings keys and denied-page box)
+### Task 2: IT Helpdesk contact — REMOVED (user decision 2026-11-08: "ไม่จำเป็นต้องมี"; no helpdesk keys, no settings fields, no box on the denied page; Review Focus item 4 is void)
 
 **Files:**
 - Modify: `src/lib/system-setting-defaults.ts`, adding two keys

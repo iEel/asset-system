@@ -492,3 +492,7 @@ These override the sections above where they differ. All are **(my call)** unles
     - The `tests/e2e-review.test.ts` source guard gets one named exception for that spec file.
 12. **Approvals denial:** E2E checks in `e2e/approvals` that expect a 404 for denied viewers change to expect the
     denied page.
+
+### User decision after the spec (2026-11-08)
+
+13. **No IT Helpdesk contact.** The user said the box is not needed ("ไม่จำเป็นต้องมี"). Drop the helpdesk box on the denied page (§9), the two settings keys and the two Organization fields (§11, §14 plan 1). The denied page keeps everything else.
