@@ -9,7 +9,7 @@ export const USERS_WORDS = {
   statusNavigation: "กรองตามสถานะ", statusAll: "ทั้งหมด", statusActive: "ใช้งาน", statusInactive: "ไม่ใช้งาน",
   statusNever: "ไม่เคยเข้าสู่ระบบ", statusReview: "ควรตรวจ",
   roleFilter: "บทบาท", roleFilterAll: "ทุกบทบาท", roleFilterSearch: "ค้นหาบทบาท",
-  // A row's left-employee badge, the warning's title and link, and a phone card's name.
+  // A row's left-employee badge, the warning's title and link, and the name of a row and of a phone card's name link.
   employeeLeft: "พนักงานลาออกแล้ว", reviewTitle: "ควรตรวจ {count, number} บัญชี", reviewLink: "ดู {count, number} บัญชีนี้",
-  editUserLabel: "แก้ไขผู้ใช้ {name}",
+  editUserLabel: "แก้ไขผู้ใช้ {name} ({username})",
 } as const

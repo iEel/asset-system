@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
 import { buildUserListQuery, parseUserListFilters, type UserStatusFilter } from "@/lib/admin-users-list"
 import { loadUsersPageData, userSorts, type UserSort } from "@/lib/admin-users-page-data"
 import { formatCount } from "@/lib/display-format"
@@ -41,6 +42,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
 
   const t = await getTranslations("adminUsersPage")
   const tCommon = await getTranslations("common")
+  const tAsset = await getTranslations("asset")
   const listState = parseMasterDataListParams<UserSort>({
     input: rawSearchParams,
     allowedSorts: userSorts,
@@ -111,7 +113,13 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
       state={listState}
       filters={filters}
       options={roleOptions}
-      labels={{ label: t("roleFilter"), all: t("roleFilterAll"), search: t("roleFilterSearch"), empty: t("roleFilterEmpty") }}
+      labels={{
+        label: t("roleFilter"),
+        all: t("roleFilterAll"),
+        search: t("roleFilterSearch"),
+        empty: t("roleFilterEmpty"),
+        clear: tAsset("clearDrilldownFilter"),
+      }}
       className={className}
     />
   )
@@ -143,7 +151,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
           {statusChips("shrink-0 [&>ul]:flex-nowrap")}
         </div>
         <UserReviewWarning count={reviewTotal} basePath={basePath} state={listState} filters={filters} variant="short" />
-        <p className="num text-meta text-muted-foreground">{t("foundCount", { shown: total, total: formatCount(grandTotal) })}</p>
+        <p className="num text-meta text-muted-foreground">{t("foundCount", { shown: total, total: grandTotal })}</p>
         <UserListCards rows={rows} basePath={basePath} />
         {pagination}
       </div>
@@ -184,11 +192,12 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                 const editHref = `${basePath}/${row.id}/edit`
                 const heldText = row.employee ? t("heldAssets", { count: row.employee.heldAssetCount }) : ""
                 // Spec §4.1: a left employee who still holds assets shows the count (a link with asset:view). It shows in
-                // the พนักงานที่ผูก column from xl and in the ผู้ใช้ cell below xl.
+                // the พนักงานที่ผูก column from xl and in the ผู้ใช้ cell below xl. An exact register link, so the admin's saved
+                // register view is neither restored over it nor overwritten by it.
                 const held =
                   row.employee?.hasLeft && row.employee.heldAssetCount > 0 ? (
                     canViewAssets ? (
-                      <Link href={`/${locale}/assets?custodianId=${row.employee.id}`} className={cn(linkVariants(), "text-meta")}>
+                      <Link href={buildExactAssetRegisterHref(locale, { custodianId: row.employee.id })} className={cn(linkVariants(), "text-meta")}>
                         {heldText}
                       </Link>
                     ) : (
@@ -199,7 +208,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                   <ClickableTableRow
                     key={row.id}
                     href={editHref}
-                    label={t("editUserLabel", { name: row.displayName })}
+                    label={t("editUserLabel", { name: row.displayName, username: row.username })}
                   >
                     <DataTableCell className="min-w-56 max-w-80">
                       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -214,12 +223,15 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                         <span className="tag">{row.username}</span>
                         {row.email ? <> · {row.email}</> : null}
                       </div>
-                      {/* Below xl: the linked employee, the left badge with holdings, and ไม่ใช้งาน for an inactive account. */}
+                      {/* Below xl: the linked employee as the xl column has it (code, name, department · branch), the left badge with holdings, and ไม่ใช้งาน for an inactive account. */}
                       <div data-slot="user-cell-compact" className="mt-1.5 flex min-w-0 flex-col gap-1 xl:hidden">
                         {row.employee ? (
                           <div className="min-w-0 break-words text-meta text-foreground">
-                            {row.employee.fullNameTh}
-                            <span className="text-muted-foreground"> · {row.employee.departmentName}</span>
+                            <span className="tag">{row.employee.code}</span> {row.employee.fullNameTh}
+                            <span className="text-muted-foreground">
+                              {" · "}
+                              {[row.employee.departmentName, row.employee.branchName].filter(Boolean).join(" · ")}
+                            </span>
                           </div>
                         ) : (
                           <div className="text-meta text-muted-foreground">{t("noEmployeeLinked")}</div>

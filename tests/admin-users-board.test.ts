@@ -60,7 +60,10 @@ test("rows show you, left employees and holdings", () => {
   assert.match(page, /\{row\.isSelf \? [\s\S]*?\{t\("you"\)\}/)
   assert.match(page, /\{row\.employee\.hasLeft \? \(\s*<div[^>]*>\s*<StatusBadge label=\{t\("employeeLeft"\)\} tone="warning" \/>/)
   assert.match(page, /const canViewAssets = hasPermission\(currentUser, "asset", "view"\)/)
-  assert.match(page, /canViewAssets \? \(\s*<Link href=\{`\/\$\{locale\}\/assets\?custodianId=\$\{row\.employee\.id\}`\}[\s\S]*?\{heldText\}[\s\S]*?\) : \(\s*<span[^>]*>\{heldText\}<\/span>/)
+  // Final review: an exact register link, so it neither restores nor overwrites the admin's saved register view.
+  assert.match(page, /canViewAssets \? \(\s*<Link href=\{buildExactAssetRegisterHref\(locale, \{ custodianId: row\.employee\.id \}\)\}[\s\S]*?\{heldText\}[\s\S]*?\) : \(\s*<span[^>]*>\{heldText\}<\/span>/)
+  assert.match(page, /import \{ buildExactAssetRegisterHref \} from "@\/lib\/asset-register-view-memory"/)
+  assert.doesNotMatch(page, /assets\?custodianId=/)
   assert.match(page, /\{t\("noEmployeeLinked"\)\}/)
   assert.match(page, /<span className="text-warning">\{t\("neverLoggedIn"\)\}<\/span>/)
 })
@@ -108,12 +111,24 @@ test("user cards wrap and cap role chips", () => {
   assert.match(cards, /\bmin-w-0\b/)
   assert.match(cards, /\bbreak-words\b/)
   assert.doesNotMatch(cards, /(?<![-\w])w-(\d|\[)/, "the cards have no fixed width")
-  assert.match(cards, /<Link\b[^>]*\baria-label=\{/, "each card is one link with an aria-label")
-  assert.match(cards, /t\("editUserLabel", \{ name: row\.displayName \}\)/)
+  // Final review: the card is no longer one link with an aria-label (that hid the status, the left badge, the roles
+  // and the last sign-in from screen readers). The name is a stretched link (the register's pattern): its ::before
+  // covers the card, so the whole card stays clickable and the focus ring draws round the card; the rest is plain
+  // text outside the link.
+  assert.doesNotMatch(cards, /aria-label=/, "no aria-label replaces the card's content")
+  const link = cards.match(/<Link\b([\s\S]*?)>([\s\S]*?)<\/Link>/)
+  assert.ok(link, "the card has a link")
+  for (const name of ["before:absolute", "before:inset-0", "before:content-['']", "focus-visible:before:ring-2", "focus-visible:before:ring-ring"]) {
+    assert.ok(link[1].includes(name), name)
+  }
+  assert.match(link[2], /\{row\.displayName\}/, "the visible name is inside the link")
+  assert.match(link[2], /<span className="sr-only">/, "the login name and (คุณ) are read inside the link")
+  assert.match(cards, /<li\b[^>]*className="[^"]*\brelative\b/, "the card is the link's positioning box")
+  assert.match(cards, /t\("editUserLabel", \{ name: row\.displayName, username: row\.username \}\)/)
   assert.match(cards, /row\.isSelf \?/)
   const page = read(PAGE)
   assert.match(page, /<div\b[^>]*className="[^"]*\bmd:hidden\b[^"]*"[^>]*>[\s\S]*?<UserListCards\b/, "the page renders the cards inside md:hidden")
-  assert.match(page, /t\("foundCount", \{ shown: total, total: /)
+  assert.match(page, /t\("foundCount", \{ shown: total, total: grandTotal \}\)/, "numbers: the en value pluralises on total")
   assert.match(read(`${U}user-review-warning.tsx`), /t\("reviewShort"\)/, "the phone warning is one line")
 })
 
@@ -186,4 +201,42 @@ test("look fix: below xl the employee and status move into the user cell", () =>
   assert.match(body, /<StatusBadge label=\{t\("employeeLeft"\)\} tone="warning" \/>/)
   assert.match(body, /\{held\}/, "the same held-assets text or link as the column")
   assert.match(body, /!row\.isActive \? <StatusBadge label=\{tCommon\("inactive"\)\} tone="muted" \/> : null/, "only inactive accounts get a badge")
+})
+
+// Final review fix wave (final-fix-brief.md).
+test("final review: a row's name carries the login name", () => {
+  const page = read(PAGE)
+  assert.match(page, /label=\{t\("editUserLabel", \{ name: row\.displayName, username: row\.username \}\)\}/)
+  const th = JSON.parse(read("messages/th.json")).adminUsersPage
+  const en = JSON.parse(read("messages/en.json")).adminUsersPage
+  assert.equal(th.editUserLabel, "แก้ไขผู้ใช้ {name} ({username})")
+  assert.equal(en.editUserLabel, "Edit user {name} ({username})")
+})
+
+test("final review: the English found count agrees with its noun", async () => {
+  const { IntlMessageFormat } = await import("intl-messageformat")
+  const en = JSON.parse(read("messages/en.json")).adminUsersPage.foundCount
+  const th = JSON.parse(read("messages/th.json")).adminUsersPage.foundCount
+  assert.equal(new IntlMessageFormat(en, "en").format({ shown: 1, total: 5 }), "1 of 5 accounts")
+  assert.equal(new IntlMessageFormat(en, "en").format({ shown: 0, total: 1 }), "0 of 1 account")
+  assert.equal(new IntlMessageFormat(en, "en").format({ shown: 12, total: 1234 }), "12 of 1,234 accounts")
+  assert.equal(new IntlMessageFormat(th, "th").format({ shown: 12, total: 1234 }), "พบ 12 จาก 1,234 บัญชี")
+})
+
+test("final review: below xl the employee line shows the code and the branch", () => {
+  const page = read(PAGE)
+  const compact = page.match(/<div data-slot="user-cell-compact"[\s\S]*?\{t\("noEmployeeLinked"\)\}/)
+  assert.ok(compact)
+  assert.match(compact[0], /<span className="tag">\{row\.employee\.code\}<\/span>[\s\S]*?\{row\.employee\.fullNameTh\}/, "the code (mono tag) before the name")
+  assert.match(compact[0], /row\.employee\.departmentName[\s\S]*?row\.employee\.branchName/, "the branch after the department")
+})
+
+test("final review: the phone row clears the chosen role with a 44px ×", () => {
+  const chip = read(`${U}user-role-filter-chip.tsx`)
+  assert.match(chip, /filters\.roleId \? \(/, "only while a role is chosen")
+  assert.match(chip, /<Link\b[^>]*href=\{`\$\{basePath\}\?\$\{buildUserListQuery\(state, filters, \{ roleId: null, page: 1 \}\)\}`\}/)
+  assert.match(chip, /aria-label=\{`\$\{labels\.clear\}: \$\{labels\.label\}: \$\{/, "names what it clears, as FilterChipList does")
+  assert.match(chip, /\bsize-11\b/, "44px")
+  assert.match(chip, /\bmd:hidden\b/, "phone only: from md the menu's ทุกบทบาท clears it")
+  assert.match(read(PAGE), /clear: tAsset\("clearDrilldownFilter"\)/, "reuses the logs page's remove-filter words")
 })

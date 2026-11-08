@@ -5594,9 +5594,9 @@
     "moreRolesLabel": "{count, plural, one {Show # more role} other {Show # more roles}}: {names}",
     "neverLoggedIn": "Never signed in",
     "listRange": "Users {from}–{to} of {total}",
-    "foundCount": "{shown, plural, one {# of {total} account} other {# of {total} accounts}}",
+    "foundCount": "{shown, number} of {total, plural, one {# account} other {# accounts}}",
     "lastLoginShort": "Last sign-in {time}",
-    "editUserLabel": "Edit user {name}",
+    "editUserLabel": "Edit user {name} ({username})",
     "filtersLabel": "Filters"
   },
   "adminRolesPage": {

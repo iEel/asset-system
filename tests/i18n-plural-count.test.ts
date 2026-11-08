@@ -90,7 +90,8 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // count, the cross-scope and pending-findings descriptions (count), the findings description (keyed on total) and
   // the scope legend's line with and without filters (count).
   // Group 11 plan 1 Task 2 added 5: the user list's warning title and link (count), a left employee's held assets
-  // (count), the +N roles label (count) and the phone list's "พบ {shown} จาก {total} บัญชี" (keyed on shown).
+  // (count), the +N roles label (count) and the phone list's "พบ {shown} จาก {total} บัญชี" (keyed on total since the plan 1 final review, so English
+  // reads "1 of 5 accounts": the noun follows the total, not the shown count).
   assert.equal(pluralKeys.size, 180,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
@@ -171,6 +172,7 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   assert.equal(pluralKeys.get("asset.requiredMissing"), "count")
   assert.equal(pluralKeys.get("common.searchSelectResultCount"), "count")
   assert.equal(pluralKeys.get("session.idleWarningSr"), "minutes")
+  assert.equal(pluralKeys.get("adminUsersPage.foundCount"), "total")
 })
 
 test("no source call passes formatCount(…) into a message whose en value is a plural", () => {

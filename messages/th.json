@@ -5594,9 +5594,9 @@
     "moreRolesLabel": "ดูบทบาทอีก {count, number} บทบาท: {names}",
     "neverLoggedIn": "ยังไม่เคยเข้าสู่ระบบ",
     "listRange": "รายชื่อผู้ใช้ {from}–{to} จาก {total}",
-    "foundCount": "พบ {shown, number} จาก {total} บัญชี",
+    "foundCount": "พบ {shown, number} จาก {total, number} บัญชี",
     "lastLoginShort": "เข้าสู่ระบบล่าสุด {time}",
-    "editUserLabel": "แก้ไขผู้ใช้ {name}",
+    "editUserLabel": "แก้ไขผู้ใช้ {name} ({username})",
     "filtersLabel": "ตัวกรอง"
   },
   "adminRolesPage": {

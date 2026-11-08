@@ -204,7 +204,7 @@ test.describe("the user list as the seed admin (group 11 plan 1)", () => {
     const cards = page.locator('[data-slot="user-list-cards"]').filter({ visible: true })
     for (const user of Object.values(users)) {
       if (!user) continue
-      await expect(cards.getByRole("link", { name: fillTemplate(W.editUserLabel, { name: user.displayName }), exact: true })).toBeVisible()
+      await expect(cards.getByRole("link", { name: fillTemplate(W.editUserLabel, { name: user.displayName, username: user.username }), exact: true })).toBeVisible()
     }
     await recordSettled(page, measure, "user list cards (phone)")
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
