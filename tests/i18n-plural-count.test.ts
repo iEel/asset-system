@@ -105,7 +105,8 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // and the next-steps title "แก้ {count} รายการ".
   // Group 12 plan 2 Task 3 added 2: the system log's header line "{range} · {count} รายการ · ใหม่สุดก่อน" and the tag
   // search's cap note "แสดงเฉพาะ {count} รายการแรกที่ตรง" (both keyed on count).
-  assert.equal(pluralKeys.size, 207,[...pluralKeys.keys()].join(", "))
+  // The group 12 plan 2 final review added 1: approval history's "{count} รายการ" (approvalHistoryPage.filteredCount).
+  assert.equal(pluralKeys.size, 208,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

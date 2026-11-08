@@ -88,8 +88,18 @@ export function bangkokDayBounds(dateFrom: string | null, dateTo: string | null)
 
 function userWhere(userId: string): Prisma.SystemLogWhereInput {
   if (userId === LOG_USER_SYSTEM) return { userId: null, module: { not: INTEGRATION_MODULE } }
-  if (userId === LOG_USER_INTEGRATION) return { module: INTEGRATION_MODULE }
+  // Only the API's own calls: an admin's client changes (integration_api with a userId) name the admin in the ผู้ใช้
+  // column, so this option mirrors the row label; those changes stay under the Integration API quick filter.
+  if (userId === LOG_USER_INTEGRATION) return { userId: null, module: INTEGRATION_MODULE }
   return { userId }
+}
+
+/**
+ * The tag search's asset where: an exact tag, or a tag that starts with the text. SQL Server LIKE reads % _ [ as
+ * wildcards and Prisma does not escape them, so each is wrapped in [ ] for the prefix (a literal in a LIKE class).
+ */
+export function assetTagMatchWhere(tag: string): Prisma.AssetWhereInput {
+  return { OR: [{ assetTag: tag }, { assetTag: { startsWith: tag.replace(/[[%_]/g, (c) => `[${c}]`) } }] }
 }
 
 /**

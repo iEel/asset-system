@@ -414,3 +414,51 @@ test("the disposal round: its record label, its link to the round page, and the 
   assert.equal(byField.get("รอบตัดจำหน่าย"), "DPR-20261105-0001")
   assert.equal(byField.get("วิธีที่ขอ"), "บริจาค")
 })
+
+// Group 12 plan 2 final review: a decided finding opens the findings list on every status at that finding (the bare list
+// defaults to รอพิจารณา, where a decided finding is not shown). The finding logs carry no round and item ids.
+test("a finding decision opens that finding on the all-status findings list", () => {
+  for (const action of ["approve_finding", "reject_finding", "update_action_plan", "close_action_plan"]) {
+    const r = buildSystemLogPresentation(logOf({ action, module: "audit", recordId: "finding-1", next: { reviewStatus: "approved" } }), {}, "th", t)
+    assert.equal(r.moduleKey, "auditFinding", action)
+    assert.equal(r.href, "/th/audit/findings?status=all&finding=finding-1", action)
+  }
+  // A round's close still opens the round.
+  const closed = buildSystemLogPresentation(logOf({ action: "close", module: "audit", recordId: "round-1", next: { status: "closed" } }), {}, "en", t)
+  assert.equal(closed.href, "/en/audit/rounds/round-1")
+})
+
+test("person id fields name the employee", () => {
+  const labels: SystemLogRecordLabels = { employee: new Map([["emp-1", "EMP-001 - สมชาย"], ["emp-2", "EMP-002 - สมหญิง"]]) }
+  const r = buildSystemLogPresentation(
+    logOf({ action: "update", module: "employee", recordId: "emp-9", old: { managerId: "emp-1" }, next: { managerId: "emp-2", requestedById: "emp-1", approverId: "emp-2", reportedById: "emp-1", employeeId: "emp-2" } }),
+    labels,
+    "th",
+    t,
+  )
+  for (const change of r.changes) assert.match(change.after, /^EMP-00[12] - /, change.field)
+  assert.equal(r.changes.find((change) => change.before !== "-")?.before, "EMP-001 - สมชาย")
+})
+
+test("the LDAP sync mode and label layouts read as Thai words", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).systemLogPage as Record<string, string>
+  const tTh = (key: string) => th[key.replaceAll(".", "_")] ?? key
+  const r = buildSystemLogPresentation(
+    logOf({ action: "update", module: "setting", recordId: "system_settings", old: { ldap_sync_mode: "preview", asset_label_12_layout: "qr-left" }, next: { ldap_sync_mode: "scheduled", asset_label_12_layout: "qr-only", asset_label_18_layout: "qr-top", asset_label_24_layout: "text-only", asset_label_custom_layout: "qr-left" } }),
+    {},
+    "th",
+    tTh,
+  )
+  const byField = new Map(r.changes.map((change) => [change.field, change]))
+  assert.equal(byField.get(th.field_ldap_sync_mode)?.before, "ดูตัวอย่างเท่านั้น")
+  assert.equal(byField.get(th.field_ldap_sync_mode)?.after, "ซิงก์ตามรอบเวลา")
+  assert.equal(byField.get(th.field_asset_label_12_layout)?.after, "QR ล้วน")
+  assert.equal(byField.get(th.field_asset_label_18_layout)?.after, "QR บน + ข้อความล่าง")
+  assert.equal(byField.get(th.field_asset_label_24_layout)?.after, "ข้อความล้วน")
+  assert.equal(byField.get(th.field_asset_label_custom_layout)?.after, "QR ซ้าย + ข้อความขวา")
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).systemLogPage as Record<string, string>
+  for (const key of ["value_ldap_sync_mode_manual", "value_labelLayout_qr-left", "value_labelLayout_qr-top", "value_labelLayout_text-only", "value_labelLayout_qr-only"]) {
+    assert.equal(typeof th[key], "string", key)
+    assert.equal(typeof en[key], "string", key)
+  }
+})

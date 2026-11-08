@@ -25,7 +25,8 @@ const en = JSON.parse(readFileSync("messages/en.json", "utf8")) as { systemLogPa
 test("tag lookup caps and links", () => {
   const page = read(pagePath)
   // Assets first (exact or prefix), one more than the cap so the page knows it was cut; never a LIKE over log values.
-  assert.match(page, /prisma\.asset\.findMany\(\{\n\s+where: \{ OR: \[\{ assetTag: filters\.tag \}, \{ assetTag: \{ startsWith: filters\.tag \} \}\] \},\n\s+select: \{ id: true, assetTag: true, name: true \},/)
+  // The prefix escapes LIKE wildcards (final review): assetTagMatchWhere in system-log-filters.
+  assert.match(page, /prisma\.asset\.findMany\(\{\n\s+where: assetTagMatchWhere\(filters\.tag\),\n\s+select: \{ id: true, assetTag: true, name: true \},/)
   assert.match(page, /take: TAG_MATCH_CAP \+ 1,/)
   assert.match(page, /const tagCapped = found !== null && found\.length > TAG_MATCH_CAP/)
   assert.match(page, /found\.slice\(0, TAG_MATCH_CAP\)/)
@@ -38,12 +39,13 @@ test("tag lookup caps and links", () => {
   assert.match(page, /t\("tagSingleMatch", \{ name: singleMatch\.name, tag: singleMatch\.assetTag \}\)/)
   assert.match(page, /href=\{buildAssetDetailViewHref\(locale, singleMatch\.id, "history"\)\}/)
   assert.match(page, /\{t\("assetHistoryLink"\)\}/)
-  assert.equal(th.systemLogPage.tagCapNote, "แสดงเฉพาะ {count, number} รายการแรกที่ตรง")
+  // The cap is on assets, not on log entries (final review).
+  assert.equal(th.systemLogPage.tagCapNote, "รหัสนี้ตรงกับทรัพย์สินมากกว่า {count, number} รายการ แสดงเฉพาะประวัติของ {count, number} รายการแรก (เรียงตามรหัส) · พิมพ์รหัสให้ยาวขึ้นเพื่อจำกัดผล")
   assert.equal(th.systemLogPage.tagNotFound, "ไม่พบทรัพย์สินรหัสนี้")
   assert.equal(th.systemLogPage.tagSingleMatch, "{name} · {tag}")
   assert.equal(th.systemLogPage.assetHistoryLink, "ดูประวัติทุกเรื่องของทรัพย์สินนี้")
   assert.equal(th.systemLogPage.tagSearch, "ค้นหารหัสทรัพย์สิน")
-  assert.match(en.systemLogPage.tagCapNote, /\{count, plural,/)
+  assert.match(en.systemLogPage.tagCapNote, /\{count, plural, one \{# asset\} other \{# assets\}\}/)
   // The bar's tag input is part of the one GET form.
   assert.match(read(barPath), /name="tag"/)
 })
@@ -229,4 +231,27 @@ test("the logs E2E spec reads the app's words and writes only the run asset", as
   // The one write: createTxAsset (POST /api/assets inside tx-support). No other request, no DELETE, no settings, no LDAP.
   assert.equal([...spec.matchAll(/createTxAsset\(/g)].length, 1, "called once")
   assert.doesNotMatch(spec, /\.request\.|\.(?:post|put|patch|delete)\(|method:\s*["'`]|signInOnce\(|ldap-(?:sync|test)|\/api\/admin\/settings|admin\/settings/)
+})
+
+// Group 12 plan 2 final review: the form remounts from the URL, so after a quick-filter tab, the clear link or Back the
+// selects, the tag box and the user chip show the URL's filters and the next submit does not drop or re-add any.
+test("the filter form is keyed on the current query", () => {
+  const page = read(pagePath)
+  assert.match(page, /<LogFiltersBar\n\s+key=\{buildSystemLogQuery\(filters, \{ pageSize: listPage\.pageSize \}\)\}/)
+})
+
+test("stand-alone open links are 44px below md, and the event sentence clamps to two lines in the list", () => {
+  const row = read(rowPath)
+  assert.match(row, /<Link href=\{log\.assetHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  // Clamped in the row and the phone card; the expanded part repeats the full sentence.
+  assert.match(row, /line-clamp-2/)
+  assert.equal(row.match(/<LogEventSentence log=\{log\} clamp \/>/g)?.length, 2, "the row and the phone card")
+  assert.match(row, /\{log\.detail \? <p className="break-words text-foreground">\{log\.detail\}<\/p> : null\}/)
+})
+
+test("issue type values use the glossary's repair record word", () => {
+  for (const key of ["value_issueType_repair_status_without_active_ticket", "value_issueType_active_repair_ticket_status_mismatch"]) {
+    assert.doesNotMatch(th.systemLogPage[key], /ใบงาน/, key)
+    assert.match(th.systemLogPage[key], /บันทึกการซ่อม/, key)
+  }
 })

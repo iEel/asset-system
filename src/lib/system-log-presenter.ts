@@ -1,3 +1,4 @@
+import { buildAuditFindingsHref } from "./audit-finding-filters.ts"
 import { isBlankValue } from "./display-format.ts"
 import { formatDate, formatDateTime } from "./utils.ts"
 
@@ -97,12 +98,25 @@ const CODE_FIELDS = new Set([
   "locationType",
   "riskPreset",
   "source",
+  // Settings stored as codes (group 12 plan 2 final review): the LDAP sync mode and the four label layouts.
+  "ldap_sync_mode",
+  "asset_label_12_layout",
+  "asset_label_18_layout",
+  "asset_label_24_layout",
+  "asset_label_custom_layout",
 ])
 // Fields that read their codes under another field's values.
 const CODE_FIELD_ALIASES: Record<string, string> = {
   fromDisposalType: "disposalType",
   expectedOutcome: "outcome",
+  asset_label_12_layout: "labelLayout",
+  asset_label_18_layout: "labelLayout",
+  asset_label_24_layout: "labelLayout",
+  asset_label_custom_layout: "labelLayout",
 }
+// The audit actions on one finding. Their values carry no round and item ids, so the value test below cannot tell them
+// from a round's logs; their record is a finding.
+const AUDIT_FINDING_ACTIONS = new Set(["approve_finding", "reject_finding", "update_action_plan", "close_action_plan"])
 // A date-only value, or a timestamp at midnight UTC, is a date; any other ISO timestamp is a date and time.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T00:00(?::00(?:\.0{1,3})?)?Z)?$/
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/
@@ -270,6 +284,7 @@ export function buildSystemLogPresentation(
 
 export function normalizeLogModule(module: string, log: Pick<SystemLogPresenterInput, "oldValue" | "newValue"> & { action?: string }) {
   if (module === "audit") {
+    if (log.action && AUDIT_FINDING_ACTIONS.has(log.action)) return "auditFinding"
     const values = [parseLogJson(log.newValue), parseLogJson(log.oldValue)].filter(Boolean) as Record<string, unknown>[]
     if (values.some((value) => "auditRoundId" in value && "auditItemId" in value)) return "auditFinding"
     if (values.some((value) => "auditStatus" in value || "auditResult" in value)) return "auditItem"
@@ -506,6 +521,8 @@ function formatValue(value: unknown, key: string, moduleKey: string, labels: Sys
 function getLabelKeyForField(key: string): RecordLabelKey | null {
   if (key === "currentLocationId" || key === "locationId" || key === "nextLocationId") return "location"
   if (key === "custodianId" || key === "returnByEmployeeId" || key === "receiveByEmployeeId") return "employee"
+  // Group 12 plan 2 final review: the people an employee, disposal, batch or repair log names.
+  if (key === "managerId" || key === "requestedById" || key === "approverId" || key === "reportedById" || key === "employeeId") return "employee"
   if (key === "executedById" || key === "actionOwnerId" || key === "actualCustodianId") return "employee"
   if (key === "actualLocationId") return "location"
   if (key === "departmentId" || key === "actualDepartmentId") return "department"
@@ -539,7 +556,12 @@ function getLogHref(log: SystemLogPresenterInput, locale: string, moduleKey: str
   if (moduleKey === "disposal") return `/${locale}/disposal/${log.recordId}`
   if (moduleKey === "disposalRound") return `/${locale}/disposal/rounds/${log.recordId}`
   if (moduleKey === "auditRound") return `/${locale}/audit/rounds/${log.recordId}`
-  if (moduleKey === "auditFinding" || moduleKey === "auditItem") return `/${locale}/audit/findings`
+  // A finding opens on every status at that finding: the bare list shows รอพิจารณา only, and a decided finding is not
+  // there (group 12 plan 2 final review). An audit item's id is not a finding's, so it keeps the bare list.
+  if (moduleKey === "auditFinding") {
+    return buildAuditFindingsHref(locale, { status: "all", search: "", roundId: null, findingType: null, returnTo: null }, { finding: log.recordId })
+  }
+  if (moduleKey === "auditItem") return `/${locale}/audit/findings`
   if (moduleKey === "employee") return `/${locale}/master-data/employees`
   if (moduleKey === "role") return `/${locale}/admin/roles`
   if (moduleKey === "user") return `/${locale}/admin/users`

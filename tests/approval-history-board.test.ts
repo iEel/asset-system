@@ -70,7 +70,8 @@ test("rows: day groups, the document number, the asset name before its tag, the 
   assert.match(row, /aria-expanded=\{open\}/)
   assert.match(row, /aria-controls=\{detailId\}/)
   assert.match(row, /<DataTable caption=\{labels\.viewDetails\}>/)
-  assert.match(row, /\{row\.href \? \(\n\s+<Link href=\{row\.href\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>\n\s+\{row\.openRecordLabel\}/)
+  // The open-record link stands on its own, 44px below md (final review).
+  assert.match(row, /\{row\.href \? \(\n\s+<p className="text-meta">\n\s+<Link href=\{row\.href\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>\n\s+\{row\.openRecordLabel\}/)
   assert.doesNotMatch(row, /<table\b|<thead\b|<th\b|rounded-full|hover:underline|bg-(?:success|warning|danger|primary)-soft/)
   for (const messages of [th, en]) {
     for (const key of ["today", "yesterday", "hideDetails", "newestFirst", "actorAll", "actorSearch", "actorEmpty", "openRecord_disposal", "openRecord_maintenance", "openRecord_auditFinding", "openRecord_auditRound"]) {
@@ -100,4 +101,14 @@ test("kept: breadcrumb back to inbox, paging, empty state", () => {
   assert.match(page, /<ActionEmptyState\n\s+icon=\{<History className="h-6 w-6" \/>\}\n\s+title=\{t\("emptyTitle"\)\}/)
   // The record links: the presenter's href.
   assert.match(page, /href: item\.href,/)
+})
+
+// Group 12 plan 2 final review: the form remounts from the URL (Back from an actor keeps no stale chip), and the count
+// is a number with an en plural.
+test("the filter form is keyed on the current query and the count pluralises", () => {
+  const page = read(pagePath)
+  assert.match(page, /<form\n\s+key=\{buildApprovalHistoryQuery\(filters, \{\}\)\}\n\s+id=\{FILTER_FORM_ID\}/)
+  assert.match(page, /t\("filteredCount", \{ count: total \}\)/)
+  assert.equal(th.approvalHistoryPage.filteredCount, "{count, number} รายการ")
+  assert.equal(en.approvalHistoryPage.filteredCount, "{count, plural, one {# item} other {# items}}")
 })

@@ -66,6 +66,12 @@ function addReferencedValueIds(idsByModule: SystemLogRecordLabelRefs, log: Syste
     addStringReference(idsByModule, "employee", value.executedById)
     addStringReference(idsByModule, "employee", value.actionOwnerId)
     addStringReference(idsByModule, "employee", value.actualCustodianId)
+    // The people an employee, disposal, batch or repair log names (group 12 plan 2 final review).
+    addStringReference(idsByModule, "employee", value.managerId)
+    addStringReference(idsByModule, "employee", value.requestedById)
+    addStringReference(idsByModule, "employee", value.approverId)
+    addStringReference(idsByModule, "employee", value.reportedById)
+    addStringReference(idsByModule, "employee", value.employeeId)
     addStringReference(idsByModule, "status", value.assetStatusId)
     addStringReference(idsByModule, "supplier", value.vendorId)
     addStringReference(idsByModule, "location", value.actualLocationId)

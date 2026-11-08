@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  assetTagMatchWhere,
   bangkokDayBounds,
   buildSystemLogQuery,
   LOG_USER_INTEGRATION,
@@ -90,8 +91,9 @@ test("system and integration user options", () => {
   assert.deepEqual(systemLogWhere({ ...EMPTY, userId: LOG_USER_SYSTEM }, null), {
     AND: [{ userId: null, module: { not: "integration_api" } }],
   })
+  // Only the API's own calls (no user): an admin's client changes name the admin in the ผู้ใช้ column (final review).
   assert.deepEqual(systemLogWhere({ ...EMPTY, userId: LOG_USER_INTEGRATION }, null), {
-    AND: [{ module: "integration_api" }],
+    AND: [{ userId: null, module: "integration_api" }],
   })
   assert.deepEqual(systemLogWhere({ ...EMPTY, userId: "u1" }, null), { AND: [{ userId: "u1" }] })
   const dated = systemLogWhere({ ...EMPTY, userId: "u1", dateFrom: "2026-11-08", dateTo: "2026-11-08" }, null)
@@ -127,4 +129,11 @@ test("the query keeps filters and omits defaults", () => {
     page: "3",
     pageSize: "50",
   })
+})
+
+// Final review: SQL Server LIKE reads % _ [ as wildcards and Prisma does not escape them, so the prefix wraps each in [ ].
+test("the tag prefix escapes LIKE wildcards", () => {
+  assert.deepEqual(assetTagMatchWhere("NB-01"), { OR: [{ assetTag: "NB-01" }, { assetTag: { startsWith: "NB-01" } }] })
+  assert.deepEqual(assetTagMatchWhere("NB_01%[a]"), { OR: [{ assetTag: "NB_01%[a]" }, { assetTag: { startsWith: "NB[_]01[%][[]a]" } }] })
+  assert.deepEqual(assetTagMatchWhere("_"), { OR: [{ assetTag: "_" }, { assetTag: { startsWith: "[_]" } }] })
 })

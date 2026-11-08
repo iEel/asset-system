@@ -11,6 +11,7 @@ import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseLis
 import { paginationRange } from "@/lib/master-data-query"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import {
+  assetTagMatchWhere,
   buildSystemLogQuery,
   parseSystemLogFilters,
   presetRange,
@@ -97,7 +98,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
   const [found, userRows] = await Promise.all([
     filters.tag
       ? prisma.asset.findMany({
-          where: { OR: [{ assetTag: filters.tag }, { assetTag: { startsWith: filters.tag } }] },
+          where: assetTagMatchWhere(filters.tag),
           select: { id: true, assetTag: true, name: true },
           orderBy: { assetTag: "asc" },
           take: TAG_MATCH_CAP + 1,
@@ -235,7 +236,10 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
           current={activeQuickFilter}
           className="mb-4"
         />
+        {/* Keyed on the query: a Link to another filter keeps this page mounted, and a select's defaultValue and the
+            user chip's state would keep the old filters for the next submit (group 12 plan 2 final review). */}
         <LogFiltersBar
+          key={buildSystemLogQuery(filters, { pageSize: listPage.pageSize })}
           formId={FILTER_FORM_ID}
           action={basePath}
           filters={filters}

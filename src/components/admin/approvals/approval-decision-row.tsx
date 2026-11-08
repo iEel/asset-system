@@ -122,19 +122,17 @@ export function ApprovalDecisionRow({ row, labels }: { row: ApprovalDecisionRowD
             </DataTableBody>
           </DataTable>
         ) : null}
-        {row.remark || row.href ? (
+        {row.remark ? (
           <p className="text-meta text-muted-foreground">
-            {row.remark ? (
-              <>
-                <span className="font-medium text-foreground">{labels.remark}:</span> {row.remark}
-              </>
-            ) : null}
-            {row.remark && row.href ? " · " : null}
-            {row.href ? (
-              <Link href={row.href} className={linkVariants({ size: "inherit" })}>
-                {row.openRecordLabel}
-              </Link>
-            ) : null}
+            <span className="font-medium text-foreground">{labels.remark}:</span> {row.remark}
+          </p>
+        ) : null}
+        {/* A stand-alone link: 44px tall below md (linkVariants' contract). */}
+        {row.href ? (
+          <p className="text-meta">
+            <Link href={row.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
+              {row.openRecordLabel}
+            </Link>
           </p>
         ) : null}
       </div>

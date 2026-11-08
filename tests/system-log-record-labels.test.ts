@@ -96,3 +96,16 @@ test("collects the disposal round's own id and the round an executed request nam
   assert.deepEqual(Array.from(refs.get("disposalRound") ?? []), ["round-1", "round-2"])
   assert.deepEqual(Array.from(refs.get("disposal") ?? []), ["dp-1"])
 })
+
+test("collects the person ids that employee, disposal and repair logs carry (group 12 plan 2 final review)", () => {
+  const refs = collectSystemLogRecordLabelRefs([
+    {
+      recordId: "x",
+      action: "update",
+      module: "disposal",
+      oldValue: JSON.stringify({ managerId: "emp-1" }),
+      newValue: JSON.stringify({ managerId: "emp-2", requestedById: "emp-3", approverId: "emp-4", reportedById: "emp-5", employeeId: "emp-6" }),
+    },
+  ])
+  assert.deepEqual(Array.from(refs.get("employee") ?? []).sort(), ["emp-1", "emp-2", "emp-3", "emp-4", "emp-5", "emp-6"])
+})

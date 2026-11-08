@@ -54,7 +54,7 @@ export function LogEventRow({ log, labels }: { log: LogEventData; labels: LogEve
         <DataTableCell className="whitespace-nowrap text-muted-foreground tabular-nums">{log.time}</DataTableCell>
         <DataTableCell className="min-w-32 text-foreground">{log.userLabel}</DataTableCell>
         <DataTableCell className="min-w-72">
-          <LogEventSentence log={log} />
+          <LogEventSentence log={log} clamp />
         </DataTableCell>
         <DataTableCell className="whitespace-nowrap">
           <Chip>{log.moduleLabel}</Chip>
@@ -83,7 +83,7 @@ export function LogEventCard({ log, labels }: { log: LogEventData; labels: LogEv
           <p className="text-meta text-muted-foreground tabular-nums">
             {log.time} · <span className="text-foreground">{log.userLabel}</span>
           </p>
-          <LogEventSentence log={log} />
+          <LogEventSentence log={log} clamp />
           <Chip>{log.moduleLabel}</Chip>
         </div>
         <ExpandButton open={open} onToggle={() => setOpen((value) => !value)} controls={detailId} log={log} />
@@ -96,8 +96,9 @@ export function LogEventCard({ log, labels }: { log: LogEventData; labels: LogEv
 }
 
 // One sentence: the action, then the record (an asset's name before its tag, linked when there is an href), then
-// what the summary adds.
-function LogEventSentence({ log }: { log: LogEventData }) {
+// what the summary adds. In the list the summary is clamped to two lines (a create log's summary can run long); the
+// expanded part shows it in full.
+function LogEventSentence({ log, clamp = false }: { log: LogEventData; clamp?: boolean }) {
   const record = log.asset ? (
     <>
       {log.asset.name} <span className="tag">{log.asset.tag}</span>
@@ -122,7 +123,7 @@ function LogEventSentence({ log }: { log: LogEventData }) {
           </>
         ) : null}
       </p>
-      {log.detail ? <p className="mt-0.5 text-muted-foreground">{log.detail}</p> : null}
+      {log.detail ? <p className={cn("mt-0.5 text-muted-foreground", clamp && "line-clamp-2")}>{log.detail}</p> : null}
     </div>
   )
 }
@@ -147,6 +148,7 @@ function ExpandButton({ open, onToggle, controls, log }: { open: boolean; onTogg
 function LogEventDetails({ log, labels }: { log: LogEventData; labels: LogEventLabels }) {
   return (
     <div className="min-w-0 space-y-2">
+      {log.detail ? <p className="break-words text-foreground">{log.detail}</p> : null}
       {log.changes.length > 0 ? (
         <DataTable caption={labels.changesCaption}>
           <DataTableHeader>
@@ -169,19 +171,17 @@ function LogEventDetails({ log, labels }: { log: LogEventData; labels: LogEventL
       ) : (
         <p className="text-meta text-muted-foreground">{labels.noChanges}</p>
       )}
-      {log.remark || log.assetHref ? (
+      {log.remark ? (
         <p className="text-meta text-muted-foreground">
-          {log.remark ? (
-            <>
-              <span className="font-medium text-foreground">{labels.remark}:</span> {log.remark}
-            </>
-          ) : null}
-          {log.remark && log.assetHref ? " · " : null}
-          {log.assetHref ? (
-            <Link href={log.assetHref} className={linkVariants({ size: "inherit" })}>
-              {labels.openAsset}
-            </Link>
-          ) : null}
+          <span className="font-medium text-foreground">{labels.remark}:</span> {log.remark}
+        </p>
+      ) : null}
+      {/* A stand-alone link: 44px tall below md (linkVariants' contract). */}
+      {log.assetHref ? (
+        <p className="text-meta">
+          <Link href={log.assetHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
+            {labels.openAsset}
+          </Link>
         </p>
       ) : null}
     </div>

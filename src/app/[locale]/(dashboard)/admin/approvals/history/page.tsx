@@ -201,8 +201,16 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
             filters={filters}
             pageSize={listPage.pageSize}
           />
-          {/* ผู้ตัดสินใจ and ช่วงวันที่: one GET form that carries the chosen tabs and the page size along. */}
-          <form id={FILTER_FORM_ID} role="search" aria-label={t("filterTitle")} action={basePath} className="flex min-w-0 flex-wrap items-center gap-2">
+          {/* ผู้ตัดสินใจ and ช่วงวันที่: one GET form that carries the chosen tabs and the page size along. Keyed on the
+              query, so after Back or a Link the actor chip shows the URL's actor, not the one it last held. */}
+          <form
+            key={buildApprovalHistoryQuery(filters, {})}
+            id={FILTER_FORM_ID}
+            role="search"
+            aria-label={t("filterTitle")}
+            action={basePath}
+            className="flex min-w-0 flex-wrap items-center gap-2"
+          >
             {filters.module !== "all" ? <input type="hidden" name="module" value={filters.module} /> : null}
             {filters.decision !== "all" ? <input type="hidden" name="decision" value={filters.decision} /> : null}
             {listPage.pageSize !== LIST_PAGE_SIZES[0] ? <input type="hidden" name="pageSize" value={listPage.pageSize} /> : null}
@@ -232,7 +240,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
         flush
         className="overflow-hidden"
         title={t("timelineTitle")}
-        actions={<span className="text-sm font-medium text-muted-foreground num">{`${t("filteredCount", { count: formatCount(total) })} · ${t("newestFirst")}`}</span>}
+        actions={<span className="text-sm font-medium text-muted-foreground num">{`${t("filteredCount", { count: total })} · ${t("newestFirst")}`}</span>}
       >
         {items.length === 0 ? (
           <div className="p-4 md:p-5">
