@@ -149,3 +149,41 @@ test("the user list E2E spec reads the app's words and writes only its three req
   assert.doesNotMatch(spec, /page\.request\.(?:post|put|patch|delete)|\.delete\(|method:\s*["'`]|signInOnce\(|ldap-(?:sync|test)|\/api\/admin\/settings/)
   assert.match(spec, /code: `\$\{runId\}-\$\{code\}-US`/, "the run's employee code pattern")
 })
+
+// Look step (look-fix-brief.md, fix 1): from md the search keeps its button beside the input. When the chips leave no
+// room, the whole search group moves to its own line on the right. MasterDataSearch itself is unchanged.
+test("look fix: the search keeps its button beside the input from md", () => {
+  const page = read(PAGE)
+  const wrapper = page.match(/<div className="([^"]*)">\{searchForm\}<\/div>\n\s+<\/div>\n\n\s+<DataTable\b/)
+  assert.ok(wrapper, "the desktop toolbar wraps searchForm in one div")
+  const classes = wrapper[1].split(/\s+/)
+  for (const name of ["ml-auto", "w-full", "max-w-md", "md:[&>form]:flex-nowrap", "[&>form]:mb-0"]) {
+    assert.ok(classes.includes(name), name)
+  }
+  assert.ok(!classes.includes("min-w-72"), "no minimum that forces the button under the input")
+  assert.match(read("src/components/master-data/master-data-layout.tsx"), /className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"/, "the shared search is unchanged")
+})
+
+// Look step (fix 2): below xl the employee and status columns hide and move into the user cell, so 1024 needs no
+// sideways scroll.
+test("look fix: below xl the employee and status move into the user cell", () => {
+  const page = read(PAGE)
+  assert.match(page, /<DataTableHead className="hidden xl:table-cell">\{t\("columnEmployee"\)\}<\/DataTableHead>/)
+  assert.match(page, /<DataTableHead className="hidden xl:table-cell">\{tCommon\("status"\)\}<\/DataTableHead>/)
+  const hiddenCells = [...page.matchAll(/<DataTableCell className="([^"]*)">/g)].filter((match) => {
+    const classes = match[1].split(/\s+/)
+    return classes.includes("hidden") && classes.includes("xl:table-cell")
+  })
+  assert.equal(hiddenCells.length, 2, "the two cells hide too")
+  assert.match(page, /<TableEmptyRow colSpan=\{6\}>/)
+  const compact = page.match(/<div data-slot="user-cell-compact" className="([^"]*)">([\s\S]*?)\n\s{22}<\/div>\n\s+<\/DataTableCell>/)
+  assert.ok(compact, "the user cell has a compact block")
+  assert.ok(compact[1].split(/\s+/).includes("xl:hidden"))
+  const body = compact[2]
+  assert.match(body, /row\.employee\.fullNameTh/)
+  assert.match(body, /row\.employee\.departmentName/)
+  assert.match(body, /\{t\("noEmployeeLinked"\)\}/)
+  assert.match(body, /<StatusBadge label=\{t\("employeeLeft"\)\} tone="warning" \/>/)
+  assert.match(body, /\{held\}/, "the same held-assets text or link as the column")
+  assert.match(body, /!row\.isActive \? <StatusBadge label=\{tCommon\("inactive"\)\} tone="muted" \/> : null/, "only inactive accounts get a badge")
+})

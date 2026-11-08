@@ -151,11 +151,12 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
       {/* Desktop: the toolbar and the table (board US-Users). */}
       <div className="hidden space-y-4 md:block">
         {/* Board US-Users: the status chips and the role chip on the left, the search on the right. The form's own
-            bottom margin is dropped here: the row's gap spaces it. */}
+            bottom margin is dropped here: the row's gap spaces it. The form never wraps here, so its button stays
+            beside the input; when the chips leave no room, the whole search group moves to its own line, right. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {statusChips()}
           {roleChip()}
-          <div className="min-w-72 flex-1 lg:ml-auto lg:max-w-md [&>form]:mb-0">{searchForm}</div>
+          <div className="ml-auto w-full max-w-md md:[&>form]:flex-nowrap [&>form]:mb-0">{searchForm}</div>
         </div>
 
         <DataTable
@@ -167,9 +168,10 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
             <tr>
               {/* Only ผู้ใช้ and เข้าสู่ระบบล่าสุด have header sorts; the other sort values stay valid in the URL. */}
               <DataTableHead sort={sortBy("displayName")}>{t("columnUser")}</DataTableHead>
-              <DataTableHead>{t("columnEmployee")}</DataTableHead>
+              {/* Below xl พนักงานที่ผูก and สถานะ hide and move into the ผู้ใช้ cell, so 1024 needs no sideways scroll. */}
+              <DataTableHead className="hidden xl:table-cell">{t("columnEmployee")}</DataTableHead>
               <DataTableHead>{t("roles")}</DataTableHead>
-              <DataTableHead>{tCommon("status")}</DataTableHead>
+              <DataTableHead className="hidden xl:table-cell">{tCommon("status")}</DataTableHead>
               <DataTableHead sort={sortBy("lastLoginAt")}>{t("lastLoginAt")}</DataTableHead>
               <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
             </tr>
@@ -181,6 +183,18 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
               rows.map((row) => {
                 const editHref = `${basePath}/${row.id}/edit`
                 const heldText = row.employee ? t("heldAssets", { count: row.employee.heldAssetCount }) : ""
+                // Spec §4.1: a left employee who still holds assets shows the count (a link with asset:view). It shows in
+                // the พนักงานที่ผูก column from xl and in the ผู้ใช้ cell below xl.
+                const held =
+                  row.employee?.hasLeft && row.employee.heldAssetCount > 0 ? (
+                    canViewAssets ? (
+                      <Link href={`/${locale}/assets?custodianId=${row.employee.id}`} className={cn(linkVariants(), "text-meta")}>
+                        {heldText}
+                      </Link>
+                    ) : (
+                      <span className="text-meta text-muted-foreground">{heldText}</span>
+                    )
+                  ) : null
                 return (
                   <ClickableTableRow
                     key={row.id}
@@ -200,8 +214,26 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                         <span className="tag">{row.username}</span>
                         {row.email ? <> · {row.email}</> : null}
                       </div>
+                      {/* Below xl: the linked employee, the left badge with holdings, and ไม่ใช้งาน for an inactive account. */}
+                      <div data-slot="user-cell-compact" className="mt-1.5 flex min-w-0 flex-col gap-1 xl:hidden">
+                        {row.employee ? (
+                          <div className="min-w-0 break-words text-meta text-foreground">
+                            {row.employee.fullNameTh}
+                            <span className="text-muted-foreground"> · {row.employee.departmentName}</span>
+                          </div>
+                        ) : (
+                          <div className="text-meta text-muted-foreground">{t("noEmployeeLinked")}</div>
+                        )}
+                        {row.employee?.hasLeft || !row.isActive ? (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            {row.employee?.hasLeft ? <StatusBadge label={t("employeeLeft")} tone="warning" /> : null}
+                            {held}
+                            {!row.isActive ? <StatusBadge label={tCommon("inactive")} tone="muted" /> : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </DataTableCell>
-                    <DataTableCell className="min-w-48 max-w-72">
+                    <DataTableCell className="hidden min-w-48 max-w-72 xl:table-cell">
                       {row.employee ? (
                         <>
                           <div className="break-words text-foreground">{row.employee.fullNameTh}</div>
@@ -212,15 +244,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                           {row.employee.hasLeft ? (
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                               <StatusBadge label={t("employeeLeft")} tone="warning" />
-                              {row.employee.heldAssetCount > 0 ? (
-                                canViewAssets ? (
-                                  <Link href={`/${locale}/assets?custodianId=${row.employee.id}`} className={cn(linkVariants(), "text-meta")}>
-                                    {heldText}
-                                  </Link>
-                                ) : (
-                                  <span className="text-meta text-muted-foreground">{heldText}</span>
-                                )
-                              ) : null}
+                              {held}
                             </div>
                           ) : null}
                         </>
@@ -231,7 +255,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                     <DataTableCell className="min-w-44">
                       <UserRolesCell roles={row.roles} />
                     </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap">
+                    <DataTableCell className="hidden whitespace-nowrap xl:table-cell">
                       <StatusBadge label={row.isActive ? tCommon("active") : tCommon("inactive")} tone={row.isActive ? "success" : "muted"} />
                     </DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">
