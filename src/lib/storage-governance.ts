@@ -163,6 +163,20 @@ export function getStoragePathVariants(relativePath: string, uploadRoot?: string
   return [...new Set(variants)]
 }
 
+// The path archiveOrphanUploadFile would use for this file at this time on its first try: `.archive/<UTC date>/<source
+// folder>/<name>`. The server adds "-1", "-2"… before the extension when that name is taken, so the page shows it as an
+// estimate. Throws on the paths archiveOrphanUploadFile refuses (absolute, traversal, inside the archive).
+export function archiveDestinationPreview(relativePath: string, at: Date): string {
+  const sourceRelativePath = assertStorageRelativePath(relativePath)
+  const parsedSourcePath = path.posix.parse(sourceRelativePath)
+  return path.posix.join(
+    ARCHIVE_DIRECTORY_NAME,
+    at.toISOString().slice(0, 10),
+    parsedSourcePath.dir,
+    `${parsedSourcePath.name}${parsedSourcePath.ext}`
+  )
+}
+
 export async function archiveOrphanUploadFile({
   uploadDir,
   relativePath,

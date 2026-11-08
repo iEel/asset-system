@@ -5273,7 +5273,15 @@
     "moduleDisposal": "ตัดจำหน่าย",
     "moduleAssetModel": "รุ่นทรัพย์สิน",
     "modulePurchaseDocument": "เอกสารจัดซื้อ",
-    "moduleAssetPurchase": "เอกสารจัดซื้อเดิม"
+    "moduleAssetPurchase": "เอกสารจัดซื้อเดิม",
+    "moduleDisposalBatch": "ชุดคำขอตัดจำหน่าย",
+    "moduleCheckoutPhotoBefore": "รูปก่อนส่งมอบ",
+    "moduleCheckoutReceiverSignature": "ลายเซ็นผู้รับมอบ",
+    "moduleCheckinPhotoAfter": "รูปหลังรับคืน",
+    "moduleCheckinReturnSignature": "ลายเซ็นผู้คืน",
+    "moduleCheckinReceiveSignature": "ลายเซ็นผู้รับคืน",
+    "moduleComponentInstall": "รูปตอนติดตั้งส่วนควบ",
+    "moduleComponentRemove": "รูปตอนถอดส่วนควบ"
   },
   "systemLogPage": {
     "title": "ประวัติระบบ",

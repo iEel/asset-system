@@ -5273,7 +5273,15 @@
     "moduleDisposal": "Disposal",
     "moduleAssetModel": "Asset Model",
     "modulePurchaseDocument": "Purchase Document",
-    "moduleAssetPurchase": "Legacy Purchase Document"
+    "moduleAssetPurchase": "Legacy Purchase Document",
+    "moduleDisposalBatch": "Disposal request batch",
+    "moduleCheckoutPhotoBefore": "Before-handover photo",
+    "moduleCheckoutReceiverSignature": "Receiver signature",
+    "moduleCheckinPhotoAfter": "Return photo",
+    "moduleCheckinReturnSignature": "Returner signature",
+    "moduleCheckinReceiveSignature": "Receiver return signature",
+    "moduleComponentInstall": "Component installation photo",
+    "moduleComponentRemove": "Component removal photo"
   },
   "systemLogPage": {
     "title": "System Log",
