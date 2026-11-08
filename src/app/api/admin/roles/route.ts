@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       module: "role",
       recordId: role.id,
-      newValue: { ...input, permissionIds },
+      newValue: { ...input, permissionIds, note: input.note ?? null },
     })
 
     return NextResponse.json(role, { status: 201 })

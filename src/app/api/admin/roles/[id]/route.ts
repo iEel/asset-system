@@ -47,6 +47,16 @@ export async function PUT(request: NextRequest, context: AdminRoleRouteContext) 
       requestedPermissionKeys: existingPermissions.map((permission) => `${permission.module}:${permission.action}`),
     })
     if (escalationError) return NextResponse.json({ error: escalationError }, { status: 403 })
+    // Switching a role back on hands its permissions to every holder at once, so a non-admin may only do it while
+    // holding every permission the role will have after the save (group 11 plan 3).
+    const reactivates = !existing.isSystem && existing.isActive === false && input.isActive === true
+    if (reactivates && !user.roles.includes("system_admin")) {
+      const actorPermissions = new Set(user.permissions)
+      const unheld = existingPermissions.some((permission) => !actorPermissions.has(`${permission.module}:${permission.action}`))
+      if (unheld) {
+        return NextResponse.json({ error: "Forbidden: cannot activate a role with permissions you do not hold" }, { status: 403 })
+      }
+    }
     if (isProtectedSystemAdmin && !sameStringSet(permissionIds, existing.rolePermissions.map((permission) => permission.permissionId))) {
       return NextResponse.json({ error: "System administrator permissions are protected" }, { status: 400 })
     }
@@ -103,6 +113,7 @@ export async function PUT(request: NextRequest, context: AdminRoleRouteContext) 
         description: input.description,
         isActive: existing.isSystem ? existing.isActive : input.isActive,
         permissionIds,
+        note: input.note ?? null,
       },
     })
 

@@ -18,6 +18,15 @@ export const adminRoleSchema = z.object({
   ),
   isActive: z.boolean().default(true),
   permissionIds: z.array(z.string().trim().min(1)).default([]),
+  note: z.string().trim().max(500).nullable().optional(),
 })
 
 export type AdminRoleInput = z.infer<typeof adminRoleSchema>
+
+// POST /api/admin/roles/[id]/users: add several users to one role (group 11 plan 3).
+export const roleUsersAddSchema = z.object({
+  userIds: z.array(z.string().trim().min(1)).min(1).max(50),
+  note: z.string().trim().max(500).nullable().optional(),
+})
+
+export type RoleUsersAddInput = z.infer<typeof roleUsersAddSchema>
