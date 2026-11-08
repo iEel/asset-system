@@ -380,7 +380,8 @@ test("integration clients: create and edit show errors under the field, at least
   // "At least one scope" is a content rule (spec §4.4): no silent keep-the-last rule, no disabled save, one group error.
   assert.doesNotMatch(source, /next\.length > 0 \? next : current|disabled=\{editScopes\.length === 0\}/)
   // Each scope list is a FieldGroup (F7): its error under the group, tied to the fieldset; focus goes to its first box.
-  assert.ok(source.includes('<FieldGroup legend={labels.scopes} id="integration-scopes" className="lg:col-span-2" error={createErrors.message("scopes")}>'))
+  // Group 12 plan 4 Task 2: the create form is the side panel's one column, so its group no longer spans two.
+  assert.ok(source.includes('<FieldGroup legend={labels.scopes} id="integration-scopes" error={createErrors.message("scopes")}>'))
   assert.ok(source.includes('<FieldGroup legend={labels.scopes} id="integration-edit-scopes" error={editErrors.message("scopes")}>'))
   assert.doesNotMatch(source, /<fieldset\b|fieldLabelClasses|<FieldError\b/)
   // The server's reason, described like every other server error, instead of the fixed createFailed / actionFailed.

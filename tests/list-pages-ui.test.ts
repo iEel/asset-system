@@ -495,11 +495,17 @@ test("data quality review queue: FilterSelect, DataTable and a client page bar o
 })
 
 // Plan 2B-2 Task 17 (spec 2B §4.4.3, I12): the integrations header only. IntegrationClientManager and its labels belong
-// to 2C plan 5 (it adds confirmScopeExpansionAction there).
+// to 2C plan 5 (it adds confirmScopeExpansionAction there). Group 12 plan 4 Task 2 (board AD-Integrations): the header's
+// สร้าง client opens the side panel the manager holds, so the manager draws the PageHeader with the page's title and
+// subtitle, and the page renders only the manager.
 test("integrations: the header is PageHeader and the client manager follows it (spec 2B §4.4.3, I12)", () => {
   const source = read(`${D}admin/integrations/page.tsx`)
-  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>\n\n\s+<IntegrationClientManager\n\s+labels=\{\{/)
+  assert.match(source, /return \(\n\s+<IntegrationClientManager\n/)
+  assert.match(source, /title: t\("title"\),\n\s+subtitle: t\("subtitle"\),/)
   assert.doesNotMatch(source, /<h1\b/)
+  const manager = read(`${C}admin/IntegrationClientManager.tsx`)
+  assert.match(manager, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{labels\.title\}\n\s+meta=\{labels\.subtitle\}\n\s+actions=\{/)
+  assert.doesNotMatch(manager, /<h1\b/)
 })
 
 // Plan 2B-2 Task 18 fix 1: the coverage-gap boxes on the rounds page are about 260px wide. Their number headers wrap

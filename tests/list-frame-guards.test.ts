@@ -156,6 +156,7 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
   LT3: {
     [`${C}master-data/category-form/template-table.tsx`]: { count: 1, kind: "permanent", why: "the detail row under a template row (option chips, the rename warning), not an empty row", ruling: "group 8 plan 2 Task 2 (board MD-Category-Edit)" },
     [`${C}admin/logs/log-event-row.tsx`]: { count: 1, kind: "permanent", why: "the detail row under a system log row (the before/after table, the remark, the asset link) that the row's arrow opens, not an empty row", ruling: "group 12 plan 2 Task 3 (board AD-Logs)" },
+    [`${C}admin/integrations/client-row.tsx`]: { count: 1, kind: "permanent", why: "the detail row under an Integration API client row (the 24-hour count, the top endpoint, the latest error) that the row's arrow opens, not an empty row", ruling: "group 12 spec §10, plan 4 Task 2 (board AD-Integrations)" },
   },
   LT4: {},
   LT5: {},

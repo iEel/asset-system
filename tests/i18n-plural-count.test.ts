@@ -110,7 +110,9 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // "ไฟล์ในโฟลเดอร์ {disk} = …" (keyed on disk) and "แสดง {shown} จาก {total}" (keyed on total).
   // The group 12 plan 3 final review added 3: the data-quality card link "ดูทรัพย์สิน {count} รายการ" (count), the bar
   // segment's title (count) and the distribution summary (keyed on total).
-  assert.equal(pluralKeys.size, 214,[...pluralKeys.keys()].join(", "))
+  // Group 12 plan 4 Task 2 added 4: the Integration API row's "7 วัน {count} ครั้ง" and error badge, the expand's
+  // "24 ชม. {count} ครั้ง" and the usage tile's foot "Error {count}" (all keyed on count).
+  assert.equal(pluralKeys.size, 218,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

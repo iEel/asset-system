@@ -47,21 +47,29 @@ test("the depreciation builder has no frame of its own in the settings panel, an
   assert.match(source, /<EmptyNote className="px-2 py-3">\{emptyLabel\}<\/EmptyNote>/)
 })
 
+// Group 12 plan 4 Task 2 (board AD-Integrations) split the manager: the side panel (client-create-sheet), the row and
+// card (client-row) and the tiles and chips (client-tiles) live under admin/integrations/, so this reads all four. The
+// create panel is a Sheet (no ContentPanel), the row's rotate and status buttons moved into the ⋯ menu (RowActions, its
+// confirms kept in the manager) and scopes show in Thai, with an unknown scope's code as a tag.
 test("the integration client manager: StatStrip, ContentPanel, DataTable, shared badges and chips, and default Buttons in the row (spec 2D M27)", () => {
-  const source = read(`${C}admin/IntegrationClientManager.tsx`)
+  const source = [
+    read(`${C}admin/IntegrationClientManager.tsx`),
+    read(`${C}admin/integrations/client-create-sheet.tsx`),
+    read(`${C}admin/integrations/client-row.tsx`),
+    read(`${C}admin/integrations/client-tiles.tsx`),
+  ].join("\n")
   assert.doesNotMatch(source, /<button\b|disabled:opacity|text-white|rounded-full|border-dashed|<table\b|<thead\b|function (?:SummaryCard|OperationMetric|StatusBadge)\b|bg-(?:success|danger|warning)-soft|h-10 min-h-11/)
   assert.match(source, /<StatStrip\n\s+items=\{\[/)
-  assert.match(source, /<ContentPanel divided title=\{labels\.tokenPanelTitle\}>\n\s+<div className="space-y-4">\n\s+<Notice tone="warning">\{labels\.tokenPanelWarning\}<\/Notice>/)
+  assert.match(source, /<Notice tone="warning">\{labels\.tokenPanelWarning\}<\/Notice>/)
   assert.match(source, /<Notice tone=\{copyFeedback\.tone === "success" \? "success" : "danger"\} role="status">/)
-  assert.match(source, /<ContentPanel divided title=\{labels\.createTitle\}>/)
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{labels\.clientsTitle\}/)
   assert.match(source, /<ActionEmptyState title=\{labels\.emptyTitle\} description=\{labels\.emptyDescription\} \/>/)
   assert.match(source, /<StatusBadge label=\{enabled \? labels\.active : labels\.disabled\} tone=\{enabled \? "success" : "muted"\} \/>/)
-  assert.match(source, /<Chip>\n\s+<span className="tag">\{scope\}<\/span>\n\s+<\/Chip>/)
-  assert.equal(source.match(/<span className="tag">\{client\.(?:clientId|tokenPreview)\}<\/span>/g)?.length, 4, "the id and the token preview in the row and the phone card")
-  assert.match(source, /<Button variant="outline" busy=\{busy\} onClick=\{onRotate\}>/, "R3 hand-on: the rotate button is the shared busy Button")
-  assert.match(source, /<Button variant="danger" onClick=\{onDisable\} disabled=\{busy\}>/)
-  assert.match(source, /<Button onClick=\{dismissToken\} disabled=\{!tokenAcknowledgement\}>/)
-  assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => onCopyPowerShell\(example\)\} className="w-fit">/)
+  assert.match(source, /<Chip key=\{scope\}>\{scopeLabels\[scope\] \?\? <span className="tag">\{scope\}<\/span>\}<\/Chip>/)
+  assert.equal(source.match(/<span className="tag">\{client\.(?:clientId|tokenPreview)\}<\/span>/g)?.length, 2, "the id and the token preview, one part each for the row and the phone card")
+  assert.match(source, /<RowActions\n/, "rotate and the status action are ⋯ menu items with their confirms")
+  assert.match(source, /<Button onClick=\{dismissToken\} disabled=\{!tokenAcknowledgement\}/)
+  assert.match(source, /key: "copyPowerShell", label: labels\.copyPowerShell,\n\s+onSelect: \(\) => onCopyPowerShell\(example\)/)
   assert.equal(source.match(/<Loader2\b/g)?.length, 1, "only the loading status of the list head (I27)")
 })
 
