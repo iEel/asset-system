@@ -565,7 +565,6 @@
     "openWorkCenter": "Open Work Center",
     "backHome": "Back to Home",
     "titleNamed": "You can't open {page}",
-    "thisPage": "this page",
     "needs": "Required permission: {permission}",
     "permissionWords": "{action} · {module}",
     "approvalWords": "Approve · Disposal or Approve · Audit",
@@ -573,7 +572,8 @@
     "noRoles": "Your roles: none yet",
     "reassure": "Nothing was lost or saved. If you need this page, ask a system administrator for access.",
     "goBack": "Go back",
-    "yourHome": "Your home page: {home}"
+    "yourHome": "Your home page: {home}",
+    "titleUnnamed": "You can't open this page"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -5192,12 +5192,12 @@
     },
     "checkedAt": "Checked {time}",
     "nextStepsTitle": "Next steps: fix {count, plural, one {# item} other {# items}} before go-live",
-    "nextStepEnv": "Set {names} in the server's env file, then restart the app",
+    "nextStepEnv": "Set {names} in the server's env file:",
     "nextStepsServerNote": "A server admin must set these and restart the app",
     "filterLabel": "Check status",
     "filter_all": "All",
     "filter_fail": "Fix",
-    "filter_warning": "Check",
+    "filter_warning": "Review",
     "filter_pass": "Ready",
     "sumLine": "{fail, number} + {warning, number} + {pass, number} = {total, number}",
     "filterEmpty": "No checks with this status",

@@ -98,9 +98,12 @@ test("the four groups cover the 16 checks once", () => {
   assert.equal(keys.length, 16)
   assert.deepEqual([...keys].sort(), [...all].sort())
   assert.deepEqual(READINESS_GROUPS.map((group) => group.key), ["access", "backupJobs", "workflowData", "filesApp"])
+  // Final review: the retention policy sits with the QR, workflow and master data group, as on the board.
+  assert.ok(READINESS_GROUPS.find((group) => group.key === "workflowData")?.checks.includes("retentionPolicy"))
+  assert.ok(!READINESS_GROUPS.find((group) => group.key === "backupJobs")?.checks.includes("retentionPolicy"))
   assert.deepEqual(
     groupReadiness(buildProductionReadinessChecks(healthy), "all").map((group) => group.checks.length),
-    [4, 5, 4, 3],
+    [4, 4, 5, 3],
   )
 })
 
@@ -143,6 +146,26 @@ test("all pass shows no next-steps card", () => {
   assert.ok(steps.every((check) => check.status === "fail"))
   const page = read("src/app/[locale]/(dashboard)/admin/readiness/page.tsx")
   assert.match(page, /\{steps\.length > 0 \? \(\n\s+<ReadinessNextSteps\b/)
+})
+
+test("final review: the next-steps card keeps what to do, the status column fits its badge, the fix link wraps", () => {
+  const page = read("src/app/[locale]/(dashboard)/admin/readiness/page.tsx")
+  // An env-fixed check names the env values and then its own fix sentence (what to do first, then restart).
+  assert.match(page, /fix: check\.href \? null : t\(`check_\$\{check\.key\}_fix`\),\n\s+\}\)\}/)
+  assert.doesNotMatch(page, /line\.env \?\? line\.fix/)
+  assert.match(page, /\{line\.env \? <>\{line\.env\} <\/> : null\}\n\s+\{line\.fix\}/)
+  // The card's link alone on its line has a 44px target below md.
+  assert.match(page, /<Link href=\{`\/\$\{locale\}\$\{check\.href\}`\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  // The status column fits "ควรตรวจ"; the fix button wraps inside its column.
+  assert.match(page, /<col className="w-36" \/>/)
+  assert.doesNotMatch(page, /<col className="w-28" \/>/)
+  assert.match(page, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "md" \}\), "h-auto whitespace-normal py-2 text-left md:h-auto md:min-h-9"\)\}/)
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).productionReadinessPage
+    assert.equal(messages.filter_warning, messages.status_warning, `${locale}: the warning chip and badge use one word`)
+    assert.doesNotMatch(messages.nextStepEnv, /restart|รีสตาร์ต/, `${locale}: the fix sentence says restart once`)
+    for (const key of ["backupStatus", "backupRestoreDrill", "authSecret"]) assert.equal(typeof messages[`check_${key}_fix`], "string")
+  }
 })
 
 test("every display key has a Thai message", () => {

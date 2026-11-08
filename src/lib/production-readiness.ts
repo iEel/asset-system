@@ -2,7 +2,7 @@ import { summarizeRetentionPolicy } from "./retention-policy.ts"
 import type { SettingsTabId } from "./settings-information-architecture.ts"
 import { buildSystemSettingsTabHref } from "./system-settings-tabs.ts"
 import { getUploadScanReadiness } from "./upload-virus-scan.ts"
-import { formatDateTime } from "./utils.ts"
+import { formatDate, formatDateTime } from "./utils.ts"
 
 export type ProductionReadinessStatus = "pass" | "warning" | "fail"
 export type ProductionReadinessCheckKey =
@@ -347,8 +347,10 @@ function getBackupRestoreDrillDisplay(deployment?: ProductionReadinessDeployment
   return { key: "restoreAt", values: { date: formatEnvDate(lastRestoreTestAt) } }
 }
 
-// A date from the env reads in the app's date format; text that is not a date stays as written.
+// A date from the env reads in the app's date format; text that is not a date stays as written. A date with no time
+// (2026-11-01) shows the date only: Date reads it as UTC midnight, so formatDateTime would invent a time (07:00).
 function formatEnvDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return Number.isNaN(Date.parse(value)) ? value : formatDate(`${value}T12:00:00`)
   return Number.isNaN(Date.parse(value)) ? value : formatDateTime(value)
 }
 

@@ -41,20 +41,25 @@ const permissionModules = new Set([
   "role", "setting", "import", "export", "log",
 ])
 
+// Gate modules with no word of their own: the system log asks for system:view and reads as the log module (ประวัติระบบ).
+const moduleWordAliases: Record<string, string> = { system: "log" }
+
 // Message keys under adminRolesPage, or null for a word the app does not know (an old link): the page then shows the code.
 export function permissionWordKeys(module: string, action: string): { action: string | null; module: string | null } {
+  const word = moduleWordAliases[module] ?? module
   return {
     action: permissionActions.has(action) ? `actions.${action}` : null,
-    module: permissionModules.has(module) ? `modules.${module}` : null,
+    module: permissionModules.has(word) ? `modules.${word}` : null,
   }
 }
 
 export type DeniedRole = { displayName: string; displayNameTh: string | null; isActive: boolean }
 
-// The viewer's active roles by their Thai name (or the display name), joined by " · "; null when there are none.
-export function formatDeniedRoleNames(roles: readonly DeniedRole[]): string | null {
+// The viewer's active roles joined by " · ", null when there are none. Thai uses the Thai name (or the display name),
+// English the display name, as the shell foot does (getUserRoleLabel in src/lib/user-display.ts).
+export function formatDeniedRoleNames(roles: readonly DeniedRole[], locale: string): string | null {
   const names = roles
     .filter((role) => role.isActive)
-    .map((role) => role.displayNameTh?.trim() || role.displayName)
+    .map((role) => (locale === "th" ? role.displayNameTh?.trim() || role.displayName : role.displayName))
   return names.length > 0 ? names.join(" · ") : null
 }

@@ -40,7 +40,7 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
   // `from` only names the page, from the login page's fixed route table; it is never a link.
   const safeFrom = sanitizeDeniedFrom(locale, from)
   const pageKey = safeFrom ? getLoginDestinationKey(locale, safeFrom) : null
-  const pageName = pageKey && pageKey !== "auth.destinationFallback" && tAll.has(pageKey) ? tAll(pageKey) : t("thisPage")
+  const pageName = pageKey && pageKey !== "auth.destinationFallback" && tAll.has(pageKey) ? tAll(pageKey) : null
 
   const words = module && action ? permissionWordKeys(module, action) : null
   const permissionLabel = module === APPROVAL_PERMISSION
@@ -55,14 +55,14 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
         select: { userRoles: { select: { role: { select: { displayName: true, displayNameTh: true, isActive: true } } } } },
       })
     : null
-  const roleNames = formatDeniedRoleNames(roleRecord?.userRoles.map((userRole) => userRole.role) ?? [])
+  const roleNames = formatDeniedRoleNames(roleRecord?.userRoles.map((userRole) => userRole.role) ?? [], locale)
 
   return (
     <div className="flex min-h-[calc(100dvh_-_var(--shell-top)_-_4rem)] items-center justify-center">
       <section className="w-full max-w-xl">
         <ActionEmptyState
           tone="permission"
-          title={t("titleNamed", { page: pageName })}
+          title={pageName ? t("titleNamed", { page: pageName }) : t("titleUnnamed")}
           description={t("reassure")}
           details={(
             <div className="flex flex-col items-center gap-1.5">
@@ -85,7 +85,7 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
                 <Link href={homeHref} className={buttonVariants({ size: "md" })}>
                   {t("backHome")}
                 </Link>
-                <HistoryBackButton>{t("goBack")}</HistoryBackButton>
+                <HistoryBackButton fallbackHref={homeHref}>{t("goBack")}</HistoryBackButton>
                 {canOpenWorkCenter ? (
                   <Link href={`/${locale}/work-center`} className={buttonVariants({ variant: "outline", size: "md" })}>
                     {t("openWorkCenter")}

@@ -6,8 +6,8 @@ export type ReadinessGroupKey = "access" | "backupJobs" | "workflowData" | "file
 
 export const READINESS_GROUPS: readonly { key: ReadinessGroupKey; checks: readonly ProductionReadinessCheckKey[] }[] = [
   { key: "access", checks: ["adminCoverage", "authSecret", "appBaseUrl", "databaseConfig"] },
-  { key: "backupJobs", checks: ["backupStatus", "backupRestoreDrill", "schedulerTokens", "schedulerRuns", "retentionPolicy"] },
-  { key: "workflowData", checks: ["publicQrBaseUrl", "workflowApprovers", "notificationRules", "masterData"] },
+  { key: "backupJobs", checks: ["backupStatus", "backupRestoreDrill", "schedulerTokens", "schedulerRuns"] },
+  { key: "workflowData", checks: ["publicQrBaseUrl", "workflowApprovers", "notificationRules", "retentionPolicy", "masterData"] },
   { key: "filesApp", checks: ["uploadDir", "uploadScanner", "pwaAssets"] },
 ]
 

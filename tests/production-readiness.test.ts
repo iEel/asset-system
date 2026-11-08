@@ -65,6 +65,21 @@ const healthyInput: Parameters<typeof buildProductionReadinessChecks>[0] = {
   },
 }
 
+test("a date-only backup or restore date shows the date, never an invented time (final review)", () => {
+  const checks = buildProductionReadinessChecks({
+    ...healthyInput,
+    deployment: { ...healthyInput.deployment, backupLastRunAt: "2026-11-01", backupLastRestoreTestAt: "2026-11-02" },
+  })
+  const restore = checks.find((check) => check.key === "backupRestoreDrill")?.display
+  assert.equal(restore?.key, "restoreAt")
+  assert.match(String(restore?.values?.date), /^0?2\/11\/2569$/)
+  const backup = checks.find((check) => check.key === "backupStatus")?.display
+  assert.match(String(backup?.values?.lastRunAt), /^0?1\/11\/2569$/)
+  // A full timestamp keeps its time.
+  const full = buildProductionReadinessChecks(healthyInput).find((check) => check.key === "backupRestoreDrill")?.display
+  assert.match(String(full?.values?.date), /\d{2}:\d{2}/)
+})
+
 test("marks core production readiness checks as pass when settings and coverage are healthy", () => {
   const checks = buildProductionReadinessChecks(healthyInput)
 

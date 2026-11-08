@@ -21,7 +21,7 @@ import {
   notificationDigestLastStatusKey,
   systemSettingDefaults,
 } from "@/lib/system-setting-defaults"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { parseWorkflowApprovalPolicy } from "@/lib/workflow-approval"
 import { ReadinessFilterChips } from "@/components/admin/readiness/readiness-filter-chips"
 import { ContentPanel } from "@/components/ui/content-panel"
@@ -139,7 +139,7 @@ export default async function ProductionReadinessPage({ params, searchParams }: 
             title: t(`check_${check.key}_title`),
             env: check.fixEnv.length > 0 ? t("nextStepEnv", { names: check.fixEnv.join(" · ") }) : null,
             action: check.href ? t(`check_${check.key}_action`) : null,
-            fix: check.href || check.fixEnv.length > 0 ? null : t(`check_${check.key}_fix`),
+            fix: check.href ? null : t(`check_${check.key}_fix`),
           })}
         />
       ) : null}
@@ -198,9 +198,11 @@ function ReadinessNextSteps({
             <li key={check.key} className="break-words">
               <span className="font-medium">{line.title}</span>
               {" · "}
-              {line.env ?? line.fix}
+              {/* Final review: the env names, then the check's own fix sentence (what to do first; it ends in restart). */}
+              {line.env ? <>{line.env} </> : null}
+              {line.fix}
               {check.href ? (
-                <Link href={`/${locale}${check.href}`} className={linkVariants({ size: "inherit" })}>
+                <Link href={`/${locale}${check.href}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                   {line.action}
                 </Link>
               ) : null}
@@ -237,7 +239,7 @@ function ReadinessGroupSection({
 
       <DataTable caption={heading} layout="fixed" className="max-md:hidden">
         <colgroup>
-          <col className="w-28" />
+          <col className="w-36" />
           <col />
           <col className="w-[28%]" />
           <col className="w-[30%]" />
@@ -336,7 +338,7 @@ function ReadinessFix({ check, locale, labels, fixEnvLead }: { check: Production
       {check.href ? (
         <Link
           href={`/${locale}${check.href}`}
-          className={buttonVariants({ variant: "outline", size: "md" })}
+          className={cn(buttonVariants({ variant: "outline", size: "md" }), "h-auto whitespace-normal py-2 text-left md:h-auto md:min-h-9")}
           aria-label={`${labels.action}: ${labels.title}`}
         >
           {labels.action}

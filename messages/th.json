@@ -565,7 +565,6 @@
     "openWorkCenter": "เปิดศูนย์งานค้าง",
     "backHome": "กลับหน้าแรก",
     "titleNamed": "ไม่มีสิทธิ์เปิดหน้า {page}",
-    "thisPage": "หน้านี้",
     "needs": "สิทธิ์ที่ต้องใช้: {permission}",
     "permissionWords": "{action} · {module}",
     "approvalWords": "อนุมัติ · ตัดจำหน่าย หรือ อนุมัติ · ตรวจนับ",
@@ -573,7 +572,8 @@
     "noRoles": "บทบาทของคุณ: ยังไม่มีบทบาท",
     "reassure": "ไม่มีข้อมูลใดหายหรือถูกบันทึก ถ้าคุณต้องใช้หน้านี้ ให้ขอสิทธิ์จากผู้ดูแลระบบ",
     "goBack": "กลับหน้าก่อน",
-    "yourHome": "หน้าแรกของคุณ: {home}"
+    "yourHome": "หน้าแรกของคุณ: {home}",
+    "titleUnnamed": "ไม่มีสิทธิ์เข้าหน้านี้"
   },
   "dashboard": {
     "title": "แดชบอร์ด",
@@ -5192,7 +5192,7 @@
     },
     "checkedAt": "ตรวจเมื่อ {time}",
     "nextStepsTitle": "ขั้นถัดไป: แก้ {count, number} รายการก่อนเปิดใช้งานจริง",
-    "nextStepEnv": "ตั้ง {names} ในไฟล์ env ของเซิร์ฟเวอร์ แล้วรีสตาร์ตแอป",
+    "nextStepEnv": "ตั้ง {names} ในไฟล์ env ของเซิร์ฟเวอร์:",
     "nextStepsServerNote": "ต้องให้ผู้ดูแลเซิร์ฟเวอร์ตั้งค่าและรีสตาร์ตแอป",
     "filterLabel": "สถานะผลตรวจ",
     "filter_all": "ทั้งหมด",

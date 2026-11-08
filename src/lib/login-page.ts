@@ -22,6 +22,7 @@ const destinationRoutes: readonly { segments: readonly string[]; exact?: boolean
   { segments: ["assets", "*"], key: "asset.detailTitle" },
   { segments: ["audit", "rounds"], key: "nav.auditRound" },
   { segments: ["audit", "findings"], key: "nav.auditFinding" },
+  { segments: ["admin", "approvals", "history"], key: "approvalHistoryPage.title" },
   { segments: ["admin", "approvals"], key: "nav.approvalInbox" },
   { segments: ["admin", "users"], key: "nav.userManagement" },
   { segments: ["admin", "roles"], key: "nav.rolePermission" },

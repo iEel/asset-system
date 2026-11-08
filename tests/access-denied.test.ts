@@ -46,17 +46,22 @@ test("admin sub-pages get their own name", () => {
     "admin/users": "nav.userManagement", "admin/users/abc": "nav.userManagement", "admin/roles": "nav.rolePermission",
     "admin/logs": "nav.systemLog", "admin/data-quality": "nav.dataQuality", "admin/integrations": "nav.integrationApi",
     "admin/storage": "nav.fileStorage", "admin/readiness": "nav.productionReadiness", "admin/approvals": "nav.approvalInbox",
-    "admin/approvals/history": "nav.approvalInbox", "admin": "nav.administration",
+    "admin/approvals/history": "approvalHistoryPage.title", "admin": "nav.administration",
     "master-data/companies": "nav.company", "master-data/branches": "nav.branch", "master-data/departments": "nav.department",
     "master-data/employees": "nav.employee", "master-data/locations": "nav.location", "master-data/categories": "nav.category",
     "master-data/brands": "nav.brandModel", "master-data/suppliers": "nav.supplier", "master-data": "nav.masterData",
     "audit": "nav.audit", "audit/rounds": "nav.auditRound", "audit/findings": "nav.auditFinding",
   }
   for (const [route, key] of Object.entries(routes)) assert.equal(getLoginDestinationKey("th", `/th/${route}`), key, route)
+  // Final review: the history page names itself, not the inbox (the longer route comes first).
+  assert.equal(getLoginDestinationKey("th", "/th/admin/approvals/history/x"), "approvalHistoryPage.title")
   // Every key the table names exists in both languages.
   for (const locale of ["th", "en"]) {
-    const nav = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav
-    for (const key of Object.values(routes)) assert.equal(typeof nav[key.slice("nav.".length)], "string", `${locale} ${key}`)
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+    for (const key of Object.values(routes)) {
+      const [namespace, name] = key.split(".")
+      assert.equal(typeof messages[namespace]?.[name], "string", `${locale} ${key}`)
+    }
   }
 })
 
@@ -64,10 +69,13 @@ test("unknown permission words fall back to the code", () => {
   assert.deepEqual(permissionWordKeys("foo", "bar"), { action: null, module: null })
   assert.deepEqual(permissionWordKeys("setting", "view"), { action: "actions.view", module: "modules.setting" })
   assert.deepEqual(permissionWordKeys("disposal", "nope"), { action: null, module: "modules.disposal" })
+  // The system log asks for system:view; "system" reads as the log module's word (ดู · ประวัติระบบ), never the code.
+  assert.deepEqual(permissionWordKeys("system", "view"), { action: "actions.view", module: "modules.log" })
+  assert.match(readLf(`${D}admin/logs/page.tsx`), /requirePagePermission\(locale, "system", "view"\)/)
   // Every word the helper names exists under adminRolesPage in both languages.
   for (const locale of ["th", "en"]) {
     const page = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).adminRolesPage
-    for (const module of Object.keys(page.modules)) assert.equal(permissionWordKeys(module, "view").module, `modules.${module}`)
+    for (const moduleName of Object.keys(page.modules)) assert.equal(permissionWordKeys(moduleName, "view").module, `modules.${moduleName}`)
     for (const action of Object.keys(page.actions)) assert.equal(permissionWordKeys("asset", action).action, `actions.${action}`)
   }
   const source = readLf(`${D}access-denied/page.tsx`)
@@ -78,20 +86,20 @@ test("unknown permission words fall back to the code", () => {
   assert.match(source, /: permission$/m)
 })
 
-test("roles line lists active roles only", () => {
-  assert.equal(
-    formatDeniedRoleNames([
-      { displayName: "Employee", displayNameTh: "พนักงาน", isActive: true },
-      { displayName: "Old role", displayNameTh: "บทบาทเก่า", isActive: false },
-      { displayName: "IT Officer", displayNameTh: null, isActive: true },
-      { displayName: "Blank Thai", displayNameTh: "  ", isActive: true },
-    ]),
-    "พนักงาน · IT Officer · Blank Thai"
-  )
-  assert.equal(formatDeniedRoleNames([]), null)
-  assert.equal(formatDeniedRoleNames([{ displayName: "Gone", displayNameTh: null, isActive: false }]), null)
+test("roles line lists active roles only, by the locale's name", () => {
+  const roles = [
+    { displayName: "Employee", displayNameTh: "พนักงาน", isActive: true },
+    { displayName: "Old role", displayNameTh: "บทบาทเก่า", isActive: false },
+    { displayName: "IT Officer", displayNameTh: null, isActive: true },
+    { displayName: "Blank Thai", displayNameTh: "  ", isActive: true },
+  ]
+  assert.equal(formatDeniedRoleNames(roles, "th"), "พนักงาน · IT Officer · Blank Thai")
+  // Final review: the English page names the roles in English, as the shell foot does (getUserRoleLabel).
+  assert.equal(formatDeniedRoleNames(roles, "en"), "Employee · IT Officer · Blank Thai")
+  assert.equal(formatDeniedRoleNames([], "th"), null)
+  assert.equal(formatDeniedRoleNames([{ displayName: "Gone", displayNameTh: null, isActive: false }], "en"), null)
   const source = readLf(`${D}access-denied/page.tsx`)
-  assert.match(source, /formatDeniedRoleNames\(/)
+  assert.match(source, /formatDeniedRoleNames\(roleRecord\?\.userRoles\.map\(\(userRole\) => userRole\.role\) \?\? \[\], locale\)/)
   assert.match(source, /t\("yourRoles", \{ roles: roleNames \}\)/)
   assert.match(source, /t\("noRoles"\)/)
   const lib = readLf("src/lib/access-denied.ts")
@@ -103,19 +111,23 @@ test("the denied page names the page, keeps its buttons and adds a back button",
   const source = readLf(`${D}access-denied/page.tsx`)
   assert.match(source, /sanitizeDeniedFrom\(locale, from\)/)
   assert.match(source, /getLoginDestinationKey\(locale, safeFrom\)/)
-  assert.match(source, /t\("titleNamed", \{ page: pageName \}\)/)
-  assert.match(source, /t\("thisPage"\)/)
+  // Final review: an unknown page gets its own title ("ไม่มีสิทธิ์เข้าหน้านี้"), not "เปิดหน้า หน้านี้".
+  assert.match(source, /title=\{pageName \? t\("titleNamed", \{ page: pageName \}\) : t\("titleUnnamed"\)\}/)
+  assert.doesNotMatch(source, /thisPage/)
   assert.match(source, /t\("reassure"\)/)
   assert.match(source, /t\("yourHome", \{ home: homeName \}\)/)
-  assert.match(source, /<HistoryBackButton>\{t\("goBack"\)\}<\/HistoryBackButton>/)
+  assert.match(source, /<HistoryBackButton fallbackHref=\{homeHref\}>\{t\("goBack"\)\}<\/HistoryBackButton>/)
   assert.match(source, /homeHref\.endsWith\("\/my-assets"\) \? tNav\("myAssets"\) : tNav\("dashboard"\)/)
   const back = readLf("src/components/ui/history-back-button.tsx")
   assert.match(back, /^"use client"/)
   assert.match(back, /window\.history\.back\(\)/)
-  assert.match(back, /<Button type="button" variant="outline" size="md" onClick=\{\(\) => window\.history\.back\(\)\}>/)
+  // Final review: with nothing to go back to (a new tab, a bookmark, a link from another site) it goes home instead.
+  assert.match(back, /if \(canGoBack\(window\.history\.length, document\.referrer, window\.location\.origin\)\) window\.history\.back\(\)\n\s+else router\.push\(fallbackHref\)/)
+  assert.match(back, /<Button type="button" variant="outline" size="md" onClick=\{goBack\}>/)
   for (const locale of ["th", "en"]) {
     const page = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).accessDeniedPage
-    for (const key of ["titleNamed", "thisPage", "needs", "permissionWords", "approvalWords", "yourRoles", "noRoles", "reassure", "goBack", "yourHome"]) {
+    assert.equal(page.thisPage, undefined, `${locale} thisPage is gone`)
+    for (const key of ["titleNamed", "titleUnnamed", "needs", "permissionWords", "approvalWords", "yourRoles", "noRoles", "reassure", "goBack", "yourHome"]) {
       assert.equal(typeof page[key], "string", `${locale} accessDeniedPage.${key}`)
     }
   }
@@ -123,6 +135,19 @@ test("the denied page names the page, keeps its buttons and adds a back button",
   assert.equal(th.titleNamed, "ไม่มีสิทธิ์เปิดหน้า {page}")
   assert.equal(th.approvalWords, "อนุมัติ · ตัดจำหน่าย หรือ อนุมัติ · ตรวจนับ")
   assert.equal(th.goBack, "กลับหน้าก่อน")
+  assert.equal(th.titleUnnamed, "ไม่มีสิทธิ์เข้าหน้านี้")
+})
+
+test("the back button goes back only to an earlier page of this app", async () => {
+  const { canGoBack } = await import("../src/lib/history-back.ts")
+  const origin = "https://asset.company.com"
+  assert.equal(canGoBack(1, "", origin), false, "a new tab")
+  assert.equal(canGoBack(1, `${origin}/th/dashboard`, origin), false, "nothing before this entry")
+  assert.equal(canGoBack(3, "", origin), false, "typed or bookmarked URL in a used tab")
+  assert.equal(canGoBack(3, "https://mail.example.com/x", origin), false, "a link from another site")
+  assert.equal(canGoBack(3, "https://asset.company.com.evil.com/x", origin), false, "a look-alike origin")
+  assert.equal(canGoBack(2, `${origin}/th/dashboard`, origin), true)
+  assert.equal(canGoBack(2, origin, origin), true)
 })
 
 test("every permission redirect passes the request path as from", () => {
