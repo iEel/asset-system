@@ -7,15 +7,20 @@ import test from "node:test"
 // working tree, so they are read with \r stripped before the multi-line regexes.
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
+// Group 12 plan 3 Task 2 (board AD-DataQuality): the checkbox became a switch and the severity select a Segmented in a
+// FieldGroup, both in data-quality/rule-card.tsx. The switch is named by its rule; the severity group by its legend,
+// inside the card named by the rule; the save stays busy and keeps its label.
 test("the data-quality rule form names each severity select after its rule and uses the shared field, checkbox and busy save (2C batch 4)", () => {
   const source = read("src/components/admin/data-quality-rule-form.tsx")
-  assert.match(source, /\n    danger: string\n    severity: string\n/)
-  assert.match(source, /<span id=\{`data-quality-rule-\$\{rule\.key\}`\} className="block font-medium text-foreground">\{labels\.ruleLabels\[rule\.key\]\}<\/span>/)
-  assert.match(source, /<Field label=\{labels\.severity\} id=\{severityId\(rule\.key\)\} error=\{fieldErrors\.message\(`\$\{rule\.key\}\.severity`\)\}>\n\s+<NativeSelect\n\s+value=\{rule\.severity\}\n[^\n]*\n\s+aria-describedby=\{`data-quality-rule-\$\{rule\.key\}`\}\n\s+>/)
-  assert.match(source, /<label className="flex min-h-11 items-start gap-3 py-2">\n\s+<input\n\s+type="checkbox"\n(?:[^\n]*\n){2}\s+className=\{cn\(checkboxVariants\(\), "mt-0\.5"\)\}/)
-  assert.match(source, /<Button type="submit" busy=\{saving\} className="w-fit">\n\s+<Save aria-hidden="true" \/>\n\s+\{labels\.save\}\n\s+<\/Button>/)
-  assert.doesNotMatch(source, /<select|<button|disabled=|rounded border-border|focus:border-ring/)
+  const card = read("src/components/admin/data-quality/rule-card.tsx")
+  assert.match(card, /\n  severity: string\n  warning: string\n  danger: string\n/)
+  assert.match(card, /<h3 id=\{nameId\} className=\{cn\("font-semibold", rule\.enabled \? "text-foreground" : "text-muted-foreground"\)\}>\{name\}<\/h3>/)
+  assert.match(card, /<article aria-labelledby=\{nameId\}/)
+  assert.match(card, /<FieldGroup legend=\{labels\.severity\} id=\{severityId\} error=\{error\}>\n\s+<Segmented\n\s+labelledBy=\{`\$\{severityId\}-legend`\}\n\s+value=\{rule\.severity\}/)
+  assert.match(card, /<input\n\s+type="checkbox"\n\s+role="switch"\n\s+checked=\{rule\.enabled\}\n\s+aria-labelledby=\{nameId\}/)
+  assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{labels\.saveRules\}\n\s+<\/Button>/)
+  assert.doesNotMatch(source + card, /<select|<button|rounded border-border|focus:border-ring|NativeSelect/)
 
   const page = read("src/app/[locale]/(dashboard)/admin/data-quality/page.tsx")
-  assert.match(page, /<DataQualityRuleForm\n(?:[^\n]*\n)*?\s+danger: t\("danger"\),\n\s+severity: t\("assetStateReviews\.severity"\),\n\s+ruleLabels:/, "the page passes the existing severity label")
+  assert.match(page, /<DataQualityRuleForm\n(?:[^\n]*\n)*?\s+severity: t\("assetStateReviews\.severity"\),\n\s+warning: t\("warning"\),\n\s+danger: t\("danger"\),/, "the page passes the existing severity label")
 })

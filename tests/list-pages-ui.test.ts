@@ -467,10 +467,10 @@ test("the PM page goes back to maintenance, has no icon in its title, and its li
 test("data quality: PageHeader with the reports link, one StatStrip for the three tinted SummaryCards, and the common words the review queue reads (spec 2B §5.4, I12)", () => {
   const source = read(`${D}admin/data-quality/page.tsx`)
   assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+<Link href=\{`\/\$\{locale\}\/reports`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.ok(source.includes("<StatStrip"), "no <StatStrip")
-  for (const [key, count] of [["enabledRules", "enabledRules.length"], ["totalIssues", "totalIssues"], ["rulesConfigured", "rules.length"]]) {
-    assert.ok(source.includes(`{ key: "${key}", label: t("${key}"), value: formatCount(${count}) },`), `no StatStrip cell for ${key}`)
-  }
+  // Group 12 plan 3 Task 2 (board AD-DataQuality): the StatStrip is gone; the tab ข้อมูลไม่ครบ and the distribution
+  // summary carry its numbers (enabled rules, all rules, issues of the enabled rules).
+  assert.ok(!source.includes("<StatStrip"), "the StatStrip is gone")
+  assert.ok(source.includes('t("distributionSummary", { enabled: formatCount(enabledCount), all: formatCount(rules.length), total: formatCount(issues.total) })'))
   assert.match(source, /pagination: tCommon\("pagination"\),\n\s+pageOf: tCommon\.raw\("pageOf"\),\n\s+tableScrollHint: tCommon\("tableScrollHint"\),/, "the review queue's page bar and scroll hint use the common words")
   assert.doesNotMatch(source, /toLocaleString\(/, "counts go through formatCount")
   assert.ok(source.includes("<AssetStateReviewWorkspace") && source.includes("<DataQualityRuleForm"), "the review queue and the rule form stay on the page")

@@ -84,6 +84,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}admin/admin-user-form.tsx`]: ["/th/admin/users/new", "/th/admin/users/sample-1/edit"],
   // Group 11 plan 3 Task 4: the role form's save bar with the note and the permission counts (board US-Role-Edit).
   [`${C}admin/role-permission-form.tsx`]: ["/th/admin/roles/new", "/th/admin/roles/sample-1/edit"],
+  // Page group 12 plan 3 Task 2: the data-quality rules' save bar with the change summary (board AD-DataQuality).
+  [`${C}admin/data-quality-rule-form.tsx`]: ["/th/admin/data-quality"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
@@ -568,7 +570,8 @@ test("GL2 form routes hide the bottom navigation and list routes keep it (K15)",
   const wrong: string[] = []
   for (const route of routes) {
     const mode = getMobileShellMode(`/th/${route.replace(/\[[^\]]+\]/g, "sample-1")}`)
-    const isForm = /(?:^|\/)new$|\/\[[^\]]+\]\/edit$/.test(route) || route === "admin/settings"
+    // Page group 12 plan 3 Task 2: the data-quality rules are settings with a sticky save bar, like admin/settings.
+    const isForm = /(?:^|\/)new$|\/\[[^\]]+\]\/edit$/.test(route) || route === "admin/settings" || route === "admin/data-quality"
     const isList = !route.includes("[") && !isForm && !TASK_ROUTES.has(route)
     if (isForm && mode !== "focus") wrong.push(`${route}: ${mode}, a form route must be focus`)
     if (isList && mode !== "navigation") wrong.push(`${route}: ${mode}, a list route keeps the bottom navigation`)

@@ -6237,9 +6237,6 @@
     "title": "ศูนย์กฎคุณภาพข้อมูล",
     "subtitle": "กำหนดกฎตรวจข้อมูลทะเบียนทรัพย์สิน และดูจำนวนรายการที่ต้องแก้ไขตามกฎที่เปิดใช้งาน",
     "openReports": "เปิดรายงาน",
-    "enabledRules": "กฎที่เปิดใช้งาน",
-    "totalIssues": "รายการที่ต้องแก้",
-    "rulesConfigured": "กฎทั้งหมด",
     "warning": "เตือน",
     "danger": "เร่งด่วน",
     "saved": "บันทึกกฎคุณภาพข้อมูลสำเร็จ",
@@ -6333,7 +6330,23 @@
         "label": "ใกล้หมดประกัน",
         "description": "ตรวจทรัพย์สินที่ประกันจะหมดตามเงื่อนไขแจ้งเตือน ไม่รวม License"
       }
-    }
+    },
+    "tabsLabel": "มุมมองคุณภาพข้อมูล",
+    "tabRules": "ข้อมูลไม่ครบ",
+    "tabReview": "สถานะไม่สอดคล้อง รอตรวจสอบ",
+    "distributionTitle": "รายการที่ต้องแก้ตามกฎที่เปิด",
+    "distributionSummary": "กฎที่เปิดใช้งาน {enabled} จาก {all} · รวม {total} รายการ",
+    "distributionNote": "ทรัพย์สินหนึ่งชิ้นอาจติดหลายกฎ จึงนับแยกตามกฎ",
+    "segmentTitle": "{rule} {count} รายการ",
+    "noIssues": "ไม่มีรายการที่ต้องแก้ตามกฎที่เปิด",
+    "viewAssets": "ดูทรัพย์สิน {count} รายการ",
+    "countAfterSave": "นับหลังบันทึก",
+    "readOnly": "ดูอย่างเดียว",
+    "changeTurnedOn": "ปิด → เปิด {rules}",
+    "changeTurnedOff": "เปิด → ปิด {rules}",
+    "changeEnabled": "กฎที่เปิด {before} → {after}",
+    "noChanges": "ยังไม่มีการเปลี่ยนแปลง",
+    "saveRules": "บันทึกกฎ"
   },
   "systemSettingsPage": {
     "title": "ตั้งค่าระบบ",

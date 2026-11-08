@@ -139,21 +139,27 @@ test("the state review queue is a divided ContentPanel with an md scan button, s
   assert.doesNotMatch(source, /rounded-full|hover:underline|ShieldAlert|AlertTriangle|text-lg font-semibold|size="lg"/)
 })
 
+// Group 12 plan 3 Task 2 (board AD-DataQuality): the status cards and the rule form became one card per rule in
+// data-quality/rule-card.tsx; it stays a panel with a severity badge, the count and a view link named after its rule.
 test("data quality: rule cards are panels with a severity badge and a named view link, and the unread scanning label is gone (spec 2D D9, 2D-1 R6)", () => {
-  const source = read(`${D}admin/data-quality/page.tsx`)
-  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
-  assert.match(source, /<StatusBadge className="mt-2" label=\{stateLabel\} tone=\{rule\.enabled && count > 0 \? rule\.severity : "muted"\} \/>/)
-  assert.match(source, /<div className="text-count num text-foreground">\{formatCount\(count\)\}<\/div>/)
-  assert.match(source, /<Link href=\{href\} aria-label=\{`\$\{viewLabel\}: \$\{label\}`\} className=\{cn\(linkVariants\(\), "mt-1 inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
-  assert.doesNotMatch(source, /function severityClass\b|bg-(?:danger|warning)-soft|text-2xl font-bold|hover:underline|scanning: t\(/)
+  const source = read(`${C}admin/data-quality/rule-card.tsx`)
+  assert.match(source, /className=\{cn\(getPanelClasses\(\), "flex flex-col gap-4 p-4 sm:p-5", !rule\.enabled && "bg-background"\)\}/)
+  assert.match(source, /<StatusBadge label=\{rule\.severity === "danger" \? labels\.danger : labels\.warning\} tone=\{count > 0 \? rule\.severity : "muted"\} \/>/)
+  assert.match(source, /<span className="text-count num text-foreground">\{formatCount\(count\)\}<\/span>/)
+  assert.match(source, /<Link href=\{href\} aria-label=\{`\$\{viewText\} \$\{name\}`\} className=\{cn\(linkVariants\(\), "ms-auto inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  for (const path of [`${D}admin/data-quality/page.tsx`, `${C}admin/data-quality/rule-card.tsx`]) {
+    assert.doesNotMatch(read(path), /function severityClass\b|bg-(?:danger|warning)-soft|text-2xl font-bold|hover:underline|scanning: t\(/, path)
+  }
   for (const locale of ["th", "en"] as const) {
     assert.equal(messages(locale).dataQualityPage.assetStateReviews.scanning, undefined, `${locale}: the key no code reads is deleted`)
   }
 })
 
-test("the data-quality rule form is a ContentPanel whose count goes through formatCount (spec 2D D9; 2B R-f)", () => {
+// Group 12 plan 3 Task 2 (board AD-DataQuality): the panel title "กฎที่เปิดใช้งาน: n" became the save bar's
+// "กฎที่เปิด {before} → {after}"; its counts still go through formatCount.
+test("the data-quality rule form's enabled counts go through formatCount (spec 2D D9; 2B R-f)", () => {
   const source = read(`${C}admin/data-quality-rule-form.tsx`)
-  assert.match(source, /<ContentPanel\n\s+title=\{`\$\{labels\.enabled\}: \$\{formatCount\(enabledCount\)\}`\}\n\s+actions=\{/)
+  assert.match(source, /labels\.changeEnabled\.replace\("\{before\}", formatCount\(change\.enabledBefore\)\)\.replace\("\{after\}", formatCount\(change\.enabledAfter\)\)/)
   assert.doesNotMatch(source, /toLocaleString|<section className="rounded-lg/)
 })
 

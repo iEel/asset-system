@@ -28,7 +28,6 @@ test("mobile shell keeps browsing and pending queues in navigation mode", () => 
     "/th/disposal/rounds/round-1",
     "/th/admin/users",
     "/th/admin/roles",
-    "/th/admin/data-quality",
     "/th/admin/integrations",
     "/th/master-data/brands",
     "/th/master-data/employees/employee-1",
@@ -67,6 +66,8 @@ test("form routes hide the field navigation (K15)", () => {
   for (const pathname of [
     "/th/admin/settings",
     "/en/admin/settings",
+    // Page group 12 plan 3 Task 2: the data-quality rules end in a sticky save bar.
+    "/th/admin/data-quality",
     "/th/admin/users/new",
     "/th/admin/users/user-1/edit",
     "/th/admin/roles/new",

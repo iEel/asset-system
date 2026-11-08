@@ -411,12 +411,14 @@ test("asset state review: the 10-character reason is an error on submit, and a r
 test("data-quality rules and the report preset name become forms that validate themselves; the rules keep the server's reason (v-track M11)", () => {
   // The data-quality rules: one severity per rule, keyed <rule>.severity; the bare catch now shows the server's reason.
   const rules = read(`${C}admin/data-quality-rule-form.tsx`)
-  assert.match(rules, /<form onSubmit=\{handleSubmit\} noValidate>/)
-  assert.match(rules, /<Button type="submit" busy=\{saving\} className="w-fit">/)
+  assert.match(rules, /<form onSubmit=\{handleSubmit\} noValidate className="space-y-3">/)
+  assert.match(rules, /<Button type="submit" busy=\{saving\}>/)
   assert.ok(validateBody(rules).includes('for (const rule of items) check(`${rule.key}.severity`, rule.severity === "warning" || rule.severity === "danger" ? null : "invalidChoice")'))
   assert.match(rules, /fieldErrors\.setErrors\(validate\(items\)\)/)
   assert.match(rules, /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return/)
-  assert.ok(rules.includes("<Field label={labels.severity} id={severityId(rule.key)} error={fieldErrors.message(`${rule.key}.severity`)}>"))
+  // Group 12 plan 3 Task 2: the severity is a Segmented in a FieldGroup on the rule card; the form hands it the id and error.
+  assert.ok(rules.includes("severityId={severityId(rule.key)}\n            error={fieldErrors.message(`${rule.key}.severity`)}"))
+  assert.ok(read(`${C}admin/data-quality/rule-card.tsx`).includes("<FieldGroup legend={labels.severity} id={severityId} error={error}>"))
   assert.match(rules, /\} catch \(error\) \{\n[^\n]*\n\s+apiError\.toast\(error\)\n/)
   assert.doesNotMatch(rules, /toast\.error\(|await response\.text\(\)|\} catch \{/)
 

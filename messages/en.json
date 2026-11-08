@@ -6237,9 +6237,6 @@
     "title": "Data Quality Rule Center",
     "subtitle": "Configure asset register data-quality rules and review issue counts for enabled checks.",
     "openReports": "Open Reports",
-    "enabledRules": "Enabled rules",
-    "totalIssues": "Issues to fix",
-    "rulesConfigured": "Total rules",
     "warning": "Warning",
     "danger": "Urgent",
     "saved": "Data quality rules saved",
@@ -6333,7 +6330,23 @@
         "label": "Warranty expiring",
         "description": "Find assets whose warranty ends within the notification rule, licenses excluded."
       }
-    }
+    },
+    "tabsLabel": "Data quality views",
+    "tabRules": "Incomplete data",
+    "tabReview": "State mismatches to review",
+    "distributionTitle": "Issues to fix under enabled rules",
+    "distributionSummary": "{enabled} of {all} rules enabled · {total} items in all",
+    "distributionNote": "One asset can break several rules, so each rule counts it.",
+    "segmentTitle": "{rule}: {count} items",
+    "noIssues": "No issues under the enabled rules",
+    "viewAssets": "View {count} assets",
+    "countAfterSave": "Counted after saving",
+    "readOnly": "View only",
+    "changeTurnedOn": "Off → on: {rules}",
+    "changeTurnedOff": "On → off: {rules}",
+    "changeEnabled": "Enabled rules {before} → {after}",
+    "noChanges": "No changes yet",
+    "saveRules": "Save rules"
   },
   "systemSettingsPage": {
     "title": "System Settings",

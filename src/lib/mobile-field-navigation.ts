@@ -26,6 +26,8 @@ const focusTaskRoutes = [
   // K15 (spec 2C section 6.9): the settings page and every new or [id]/edit form of users, roles, PM plans and
   // master data (brand models included) are focus tasks. Their list and detail pages keep the bottom navigation.
   /^\/admin\/settings$/,
+  // Page group 12 plan 3 Task 2: the data-quality page's rule cards end in a sticky save bar (board AD-DataQuality).
+  /^\/admin\/data-quality$/,
   /^\/(?:admin\/(?:users|roles)|maintenance\/pm|master-data\/(?:brands\/models|[^/]+))\/(?:new|[^/]+\/edit)$/,
 ]
 
