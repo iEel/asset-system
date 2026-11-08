@@ -81,7 +81,28 @@ const CODE_FIELDS = new Set([
   "reconcileStatus",
   "ownershipType",
   "status",
+  // Group 12 plan 2 task 2 (spec §4): the codes the other logs write read as Thai words too.
+  "checkoutType",
+  "handoverMode",
+  "authMode",
+  "employmentStatus",
+  "frequency",
+  "planState",
+  "documentType",
+  "attachmentType",
+  // A late return's expected outcome is one of its outcomes (reattached / standalone).
+  "expectedOutcome",
+  "issueType",
+  "severity",
+  "locationType",
+  "riskPreset",
+  "source",
 ])
+// Fields that read their codes under another field's values.
+const CODE_FIELD_ALIASES: Record<string, string> = {
+  fromDisposalType: "disposalType",
+  expectedOutcome: "outcome",
+}
 // A date-only value, or a timestamp at midnight UTC, is a date; any other ISO timestamp is a date and time.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T00:00(?::00(?:\.0{1,3})?)?Z)?$/
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/
@@ -128,6 +149,80 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
   ldap_sync_mode: "field.ldap_sync_mode",
   ldap_sync_schedule: "field.ldap_sync_schedule",
 }
+
+// Every field the code writes into a log's old or new value, less the secrets and the plumbing ids the table never
+// shows (SENSITIVE_FIELDS, IGNORED_CHANGE_FIELDS). Each has a systemLogPage.field_<key> label in th and en, pinned by
+// tests/system-log-presenter-thai.test.ts; a field missing here still reads field.unknown, never its raw name.
+// Sources: every logAudit / writeAuditLog / systemLog.create call in src (group 12 plan 2 task 2).
+export const KNOWN_LOG_FIELDS: readonly string[] = [
+  "accounting_depreciation_policy", "action", "actionDueDate", "actionOwnerId", "actionPlan", "actionStatus",
+  "actionTaken", "actualConditionId", "actualCustodianId", "actualDepartmentId", "actualLocationId",
+  "actualSaleValue", "actualSalvageValue", "actualValue", "addedUserIds", "address", "applied", "appliedCorrections",
+  "approvalRemark", "approvedBy", "approverId", "archiveRelativePath", "assetCount", "assetId", "assetIds",
+  "assetStatusId", "assetTag", "assetTagCode", "assetTags", "asset_data_quality_rules", "asset_label_12_gap_mm",
+  "asset_label_12_height_mm", "asset_label_12_layout", "asset_label_12_margin_mm", "asset_label_12_primary_template",
+  "asset_label_12_qr_size", "asset_label_12_secondary_template", "asset_label_12_tertiary_template",
+  "asset_label_12_width_mm", "asset_label_18_gap_mm", "asset_label_18_height_mm", "asset_label_18_layout",
+  "asset_label_18_margin_mm", "asset_label_18_primary_template", "asset_label_18_qr_size",
+  "asset_label_18_secondary_template", "asset_label_18_tertiary_template", "asset_label_18_width_mm",
+  "asset_label_24_gap_mm", "asset_label_24_height_mm", "asset_label_24_layout", "asset_label_24_margin_mm",
+  "asset_label_24_primary_template", "asset_label_24_qr_size", "asset_label_24_secondary_template",
+  "asset_label_24_tertiary_template", "asset_label_24_width_mm", "asset_label_compact_asset_name_enabled",
+  "asset_label_custom_gap_mm", "asset_label_custom_height_mm", "asset_label_custom_layout",
+  "asset_label_custom_margin_mm", "asset_label_custom_primary_template", "asset_label_custom_qr_size",
+  "asset_label_custom_secondary_template", "asset_label_custom_tertiary_template", "asset_label_custom_width_mm",
+  "asset_label_default_tape_size", "asset_qr_public_base_url", "asset_tag_category_prefixes",
+  "asset_tag_format_template", "asset_tag_prefix", "asset_tag_running_digits", "asset_tag_separator", "attachment",
+  "attachmentType", "auditItemId", "auditNo", "auditResult", "auditRoundId", "auditStatus", "auditYear", "authMode",
+  "batchId", "batchNo", "blockers", "branchId", "brandId", "cancelReason", "cancelledAt", "cancelledBy",
+  "categoryId", "checkin_department_code", "checkin_document_template", "checklist", "checkoutDate", "checkoutType",
+  "checkout_document_template", "clientId", "closedAt", "closureRemark", "code", "companyId", "company_name",
+  "componentAssetId", "componentItems", "componentLinkId", "componentRole", "componentSync", "conditionAfter",
+  "conditionBefore", "conditionId", "conflictConfirmed", "contactPerson", "correctionReason", "created", "creates",
+  "currency", "currentLocationId", "currentSnapshot", "custodianId", "custodianScope", "customFieldDefs",
+  "customFieldsJson", "damageNote", "deactivates", "deactivationImpacts", "default_currency", "delivered",
+  "deliveredExternal", "departmentId", "description", "displayName", "displayNameTh", "disposalNo", "disposalType",
+  "documentDate", "documentNo", "documentNumber", "documentType", "done", "dryRun", "effectiveEvidenceCount",
+  "email", "employeeId", "employmentStatus", "enabled", "endDate", "errorRows", "evidenceAttachmentId",
+  "evidenceCount", "evidenceExceptionAcknowledged", "evidenceExceptionGrantedAt", "evidenceExceptionGrantedBy",
+  "evidenceExceptionReason", "executedById", "executionDate", "executionRemark", "expectedOutcome",
+  "expectedReturnDate", "expectedValue", "failedExternal", "fieldFindingTypes", "fileName", "filePath", "fileSize",
+  "fileType", "findingId", "findingType", "fixedAssetCode", "frequency", "fromDisposalType", "fullNameEn",
+  "fullNameTh", "generatedItems", "handoverMode", "homeLocationId", "impact", "imported", "includeClosedAssets",
+  "installedAt", "intervalDays", "invoiceNo", "invoiceNumber", "isActive", "issueType", "items",
+  "ldap_auto_provision", "ldap_base_dn", "ldap_bind_dn", "ldap_default_role", "ldap_domain", "ldap_enabled",
+  "ldap_start_tls", "ldap_sync_base_dn", "ldap_sync_deactivate_missing", "ldap_sync_default_branch_code",
+  "ldap_sync_default_company_code", "ldap_sync_default_department_code", "ldap_sync_enabled", "ldap_sync_filter",
+  "ldap_sync_max_scheduled_deactivations", "ldap_sync_mode", "ldap_sync_schedule", "ldap_tls_reject_unauthorized",
+  "ldap_upn_domain", "ldap_url", "ldap_user_dn_template", "ldap_user_filter", "licenseAssignedAssetId",
+  "licenseTotalSeats", "licenseUsedSeats", "locationId", "locationType", "maintenancePlanId", "maintenanceProblem",
+  "maintenanceReportedById", "managerId", "mappedColumns", "matchedAssets", "method", "mismatches",
+  "missingAccessories", "missingColumns", "missingComponentIds", "modelId", "module", "name", "nameEn", "nameTh",
+  "nextDueDate", "nextLocationId", "nextStatusId", "note", "notes", "notification_audit_action_due_soon_days",
+  "notification_license_expiry_days", "notification_return_due_soon_days", "notification_warranty_expiry_days",
+  "operation", "operation_document_running_digits", "originalName", "outOfScope", "outcome", "ownershipType",
+  "parentAssetId", "parentAssetTag", "parentId", "permissionIds", "phone", "photoChecklist", "planNo", "poNumber",
+  "position", "previousConditionId", "previousDepartmentId", "previousStatusId", "problem", "purchaseDate",
+  "purchaseDocumentIds", "purchasePrice", "query_assetTag", "query_branchCode", "query_companyCode",
+  "query_condition", "query_cursor", "query_employeeCode", "query_includeInactive", "query_limit",
+  "query_locationCode", "query_page", "query_q", "query_serialNumber", "query_status", "query_updatedSince",
+  "readyRows", "reason", "receiveBy", "receiveByEmployeeId", "recipientName", "reconcileStatus", "recordFinished",
+  "referenceType", "relativePath", "remark", "removedAt", "repairCost", "repairNo", "repairStatus", "reportedById",
+  "reportedDate", "requestId", "requestIds", "requestStatus", "requestedById", "resolutionReason",
+  "resolvedNotFoundFinding", "response_hasMore", "response_highWaterMark", "response_nextCursor",
+  "response_resultCount", "response_total", "restoredSnapshot", "resultCorrection", "retention_attachment_days",
+  "retention_audit_log_days", "retention_orphan_file_days", "returnBy", "returnByEmployeeId", "returnDate",
+  "reviewStatus", "riskPreset", "role", "roleIds", "rollbackPlan", "roundId", "roundNo", "route", "saleValue",
+  "salvageValue", "sampleRate", "scanCount", "scannedUsers", "scopeBranchId", "scopeCategoryId", "scopeCompanyId",
+  "scopeConditionId", "scopeCustodianId", "scopeDepartmentId", "scopeLocationId", "scopeStatusId", "scopes",
+  "serialNumber", "skipped", "skippedDuplicate", "skippedEmpty", "skippedRows", "skippedRowsHidden", "slotNo",
+  "source", "sourceFile", "sourceId", "sourceRow", "sourceType", "specs", "startDate", "status", "statusId",
+  "statusName", "supplierId", "tapeSize", "targetStatusName", "target_assetTag", "taxId", "title", "tokenPreview",
+  "total", "totalAmount", "totalRows", "transactionId", "updates", "uploadedAt", "useHistoricalEvidenceException",
+  "username", "vendorId", "warrantyEndDate", "warrantyStartDate", "workflow_approval_audit_close_required",
+  "workflow_approval_disposal_required", "workflow_approval_maintenance_close_required",
+  "workflow_approval_min_approvers", "workflow_approval_segregation_required", "workflow_approval_sla_days",
+]
 
 const SENSITIVE_FIELDS = new Set(["ldap_bind_password", "password", "newPassword", "receiverSignature"])
 const IGNORED_CHANGE_FIELDS = new Set([
@@ -397,7 +492,7 @@ function formatValue(value: unknown, key: string, moduleKey: string, labels: Sys
   if (Array.isArray(structuredValue)) return `${structuredValue.length} ${translateWithFallback(t, "value.items", "items")}`
   if (structuredValue && typeof structuredValue === "object") return translateWithFallback(t, "value.complex", "Complex data")
   if (CODE_FIELDS.has(key)) {
-    const codeKey = key === "fromDisposalType" ? "disposalType" : key
+    const codeKey = CODE_FIELD_ALIASES[key] ?? key
     return translateWithFallback(t, `value.${moduleKey}.${codeKey}.${value}`, translateWithFallback(t, `value.${codeKey}.${value}`, value))
   }
   if (ISO_DATE.test(value)) return formatDate(value)
@@ -429,9 +524,12 @@ function getLabelKeyForField(key: string): RecordLabelKey | null {
   return null
 }
 
-// A module's own name for a field wins (an audit round's "status" is not the integration log's HTTP status).
+// A module's own name for a field wins (an audit round's "status" is not the integration log's HTTP status). A field
+// with no label reads field.unknown, never its raw name (spec §4); the raw name is the last resort only when even that
+// message is missing.
 function getFieldLabel(key: string, moduleKey: string, t: Translate) {
-  return translateWithFallback(t, `field.${moduleKey}.${key}`, translateWithFallback(t, FIELD_LABEL_KEYS[key] ?? `field.${key}`, humanizeKey(key)))
+  const unknown = translateWithFallback(t, "field.unknown", humanizeKey(key))
+  return translateWithFallback(t, `field.${moduleKey}.${key}`, translateWithFallback(t, FIELD_LABEL_KEYS[key] ?? `field.${key}`, unknown))
 }
 
 function getLogHref(log: SystemLogPresenterInput, locale: string, moduleKey: string) {
