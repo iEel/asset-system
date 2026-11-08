@@ -123,11 +123,49 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   assert.match(integrationsSpec, /return route\.fallback\(\)/)
   assert.doesNotMatch(integrationsSpec, /\.continue\(|\.fetch\(|route\.continue|route\.fetch/)
   assert.match(integrationsSpec, /expect\(attempted, "no request but the GET reached the client list"\)\.toEqual\(\[\]\)/)
+  // The settings page (group 12 plan 5 task 5): only its spec may open it, read-only. It edits fields in the browser and
+  // puts them back with ยกเลิกการแก้ไข; it never clicks a button named บันทึก, ทดสอบ, ดูตัวอย่าง or ซิงก์, never presses a
+  // key (Enter submits the form), never routes a request, and fails on any write it sees. The fixtures' context abort of
+  // the settings save and of the LDAP test and sync (above) stays the safety net.
+  const settingsPageAllowed = "e2e/admin/settings.spec.ts"
+  assert.ok(sources.includes(settingsPageAllowed), `${settingsPageAllowed} is a file of the suite`)
+  assert.deepEqual(sources.filter((file) => /\/th\/admin\/settings/.test(read(file))), [settingsPageAllowed])
+  const settingsSpec = read(settingsPageAllowed)
+  const settingsWordsSource = read("e2e/admin/settings-words.ts")
+  const dangerous = /บันทึก|ทดสอบ|ดูตัวอย่าง|ซิงก์/
+  const { SETTINGS_WORDS } = await import("../e2e/admin/settings-words.ts")
+  // Every word is the app's own, and the words that name a dangerous button (or carry one of its words) are only these.
+  const th = read("messages/th.json")
+  for (const [key, value] of Object.entries(SETTINGS_WORDS)) assert.ok(th.includes(JSON.stringify(value)), `settings word ${key} is in messages/th.json`)
+  const dangerousKeys = Object.entries(SETTINGS_WORDS).filter(([, value]) => dangerous.test(value)).map(([key]) => key).sort()
+  assert.deepEqual(dangerousKeys, ["bindStored", "changeReview", "footerUnsaved", "ldapSyncStrategy", "syncApplyButton", "syncLocked", "syncPreviewButton", "tabLdapSync"])
+  assert.doesNotMatch(settingsWordsSource, /\b(?:save|test|ldapTest|testLdap)\w*\s*:/i, "the words name no save or test button")
+  // Each click is one of the four the spec makes: a menu link, the disclosure, ยกเลิกการแก้ไข and its confirm.
+  const clicks = settingsSpec.split("\n").filter((line) => /\.(?:click|dblclick|tap|check|press|dispatchEvent|requestSubmit|submit)\(/.test(line))
+  assert.deepEqual(clicks.map((line) => line.trim()), [
+    "await footerDiscard(page).click()",
+    `await confirm.getByRole("button", { name: W.discardChanges, exact: true }).click()`,
+    "await link.click()",
+    `await disclosure.locator("summary", { hasText: W.menuShowAll }).click()`,
+  ])
+  for (const line of clicks) assert.doesNotMatch(line, dangerous, line)
+  assert.doesNotMatch(settingsSpec, /keyboard\.|\.press\(|\.route\(|route\.|\.fetch\(|request\.(?:put|post|patch|delete)\(/)
+  // The sync buttons are only read: their names appear in the one loop that checks aria-disabled.
+  assert.equal(settingsSpec.match(/W\.sync(?:Preview|Apply)Button/g)?.length, 2)
+  assert.match(settingsSpec, /for \(const name of \[W\.syncPreviewButton, W\.syncApplyButton\]\) \{\n\s*const button = page\.getByRole\("button", \{ name, exact: true \}\)\n\s*await expect\(button\)\.toHaveAttribute\("aria-disabled", "true"\)/)
+  assert.doesNotMatch(settingsSpec, /button\.(?:click|press|tap)/)
+  // The stored secret: the real placeholder, never on the page and never in an input.
+  assert.match(settingsSpec, /import \{ storedSecretPlaceholder \} from "\.\.\/\.\.\/src\/lib\/system-setting-secrets\.ts"/)
+  assert.match(read("src/lib/system-setting-secrets.ts"), /export const storedSecretPlaceholder = "__STORED_SECRET__"/)
+  // Any write the page sends fails the test (the shell's keep-alive aside).
+  assert.match(settingsSpec, /if \(path === SESSION_KEEP_ALIVE\) return\n\s*if \(method !== "GET" && method !== "HEAD" && path\.startsWith\("\/api\/"\)\) writes\.push/)
+  assert.equal(settingsSpec.match(/expect\(writes, "the page writes nothing"\)\.toEqual\(\[\]\)/g)?.length, 3)
   for (const file of sources) {
     const source = read(file)
     for (const [what, pattern] of banned) {
       if (guards[file] === what) continue
       if (what === "Excel import" && importAllowed.includes(file)) continue
+      if (what === "the settings page" && file === settingsPageAllowed) continue
       if (what === "the integration API" && file === integrationClientsAllowed) {
         assert.doesNotMatch(source, /\/api\/integrations/, `${file}: the Integration API itself`)
         continue
