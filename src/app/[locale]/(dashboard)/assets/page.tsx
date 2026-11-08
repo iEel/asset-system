@@ -304,7 +304,12 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const selectedCompany = companies.find((company) => company.id === filters.companyId)
   const selectedBranch = branches.find((branch) => branch.id === filters.branchId)
   const selectedCategory = categories.find((category) => category.id === filters.categoryId)
+  // The option lists stay active-only; a custodian filter naming someone no longer active (an old link, a resigned
+  // holder) still gets a named chip (group 11 spec).
   const selectedCustodian = employees.find((employee) => employee.id === filters.custodianId)
+    ?? (filters.custodianId
+      ? await prisma.employee.findUnique({ where: { id: filters.custodianId }, select: { code: true, fullNameTh: true } })
+      : null)
   const selectedLocationPath = await selectedLocationPathPromise
   const filterChips = buildAssetRegisterChips({
     basePath,

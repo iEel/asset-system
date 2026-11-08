@@ -654,7 +654,8 @@ test("system log: real pages counted in the same timed Promise.all, TabNav quick
   assert.doesNotMatch(source, /\btake: \d+/, "no fixed number of rows")
   assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
   assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(logs\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
-  assert.match(source, /appendListPage\(new URLSearchParams\(query\), \{ pageSize: listPage\.pageSize \}\)/, "a quick filter goes back to page 1 and keeps the page size")
+  // Group 11 plan 1 task 3: the quick filter's params also keep recordId before the page size is added.
+  assert.match(source, /const params = new URLSearchParams\(query\)\n[\s\S]*?appendListPage\(params, \{ pageSize: listPage\.pageSize \}\)/, "a quick filter goes back to page 1 and keeps the page size")
   assert.match(source, /\{listPage\.pageSize !== LIST_PAGE_SIZES\[0\] \? <input type="hidden" name="pageSize" value=\{listPage\.pageSize\} \/> : null\}/, "the filter form keeps the page size")
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
   assert.match(source, /\{hasFilters \? t\("emptyFiltered"\) : t\("empty"\)\}/)

@@ -20,6 +20,7 @@ import { cn, formatDateTime } from "@/lib/utils"
 import { linkVariants } from "@/components/ui/button-variants"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
+import { FilterChipList } from "@/components/ui/filter-chips"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/ui/page-header"
@@ -28,7 +29,7 @@ import { TabNav } from "@/components/ui/tab-nav"
 
 type LogsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ module?: string | string[]; action?: string | string[]; page?: string | string[]; pageSize?: string | string[] }>
+  searchParams: Promise<{ module?: string | string[]; action?: string | string[]; page?: string | string[]; pageSize?: string | string[]; recordId?: string | string[] }>
 }
 
 export default async function LogsPage({ params, searchParams }: LogsPageProps) {
@@ -37,10 +38,13 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
   const filters = {
     module: getSearchParam(rawFilters.module),
     action: getSearchParam(rawFilters.action),
+    // One record's history (the user and role pages link here through buildSystemLogRecordHref).
+    recordId: getSearchParam(rawFilters.recordId),
   }
   await requirePagePermission(locale, "system", "view")
   const t = await getTranslations("systemLogPage")
   const tCommon = await getTranslations("common")
+  const tAsset = await getTranslations("asset")
   const messages = await getMessages()
   const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
     ? messages.systemLogPage as Record<string, string>
@@ -48,24 +52,30 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
 
   const listPage = parseListPage({ page: rawFilters.page, pageSize: rawFilters.pageSize })
   const basePath = `/${locale}/admin/logs`
-  // The list URL keeps the module and action filters; the default page and page size stay out of it (spec 2B B4).
-  const listHref = (next: { page?: number; pageSize?: number }) => {
+  // The list URL keeps the module, action and record filters; the default page and page size stay out of it (spec 2B
+  // B4). recordId: null drops the record filter (its chip).
+  const listHref = ({ recordId, ...next }: { page?: number; pageSize?: number; recordId?: null }) => {
     const query = new URLSearchParams()
     if (filters.module) query.set("module", filters.module)
     if (filters.action) query.set("action", filters.action)
+    if (filters.recordId && recordId !== null) query.set("recordId", filters.recordId)
     const search = appendListPage(query, next).toString()
     return search ? `${basePath}?${search}` : basePath
   }
-  // A quick filter goes back to page 1 and keeps the page size; buildSystemLogFilterHref itself stays as it is.
+  // A quick filter goes back to page 1 and keeps the page size and the record filter; buildSystemLogFilterHref itself
+  // stays as it is.
   const quickFilterHref = (key: SystemLogQuickFilterKey) => {
     const [path, query = ""] = buildSystemLogFilterHref(locale, key).split("?")
-    const search = appendListPage(new URLSearchParams(query), { pageSize: listPage.pageSize }).toString()
+    const params = new URLSearchParams(query)
+    if (filters.recordId) params.set("recordId", filters.recordId)
+    const search = appendListPage(params, { pageSize: listPage.pageSize }).toString()
     return search ? `${path}?${search}` : path
   }
 
   const where: Prisma.SystemLogWhereInput = {
     ...(filters.module ? { module: filters.module } : {}),
     ...(filters.action ? { action: filters.action } : {}),
+    ...(filters.recordId ? { recordId: filters.recordId } : {}),
   }
   const { skip, take } = listPageWindow(listPage)
   // Real pages instead of the newest 100 (spec 2B §5.9.2 row 1). The count runs on a table that grows with every
@@ -97,7 +107,15 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
     { key: "all", labelKey: "quickFilterAll" },
     ...systemLogQuickFilters.map((filter) => ({ key: filter.key, labelKey: filter.labelKey })),
   ]
-  const hasFilters = Boolean(filters.module || filters.action)
+  const hasFilters = Boolean(filters.module || filters.action || filters.recordId)
+  // The chip names the record by the label the rows show (every loaded row is that record), or the id when no row
+  // gives one.
+  const recordRowIndex = filters.recordId ? logs.findIndex((log) => log.recordId === filters.recordId) : -1
+  const recordRowLabel = recordRowIndex >= 0 ? displayLogs[recordRowIndex]?.recordLabel : undefined
+  const recordFilterLabel = recordRowLabel && recordRowLabel !== "-" ? recordRowLabel : filters.recordId ?? ""
+  const recordFilterChips = filters.recordId
+    ? [{ key: "recordId", label: t("recordFilterChip", { label: recordFilterLabel }), href: listHref({ pageSize: listPage.pageSize, recordId: null }) }]
+    : []
 
   return (
     <div className="space-y-6">
@@ -112,6 +130,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
         />
         <form role="search" className="grid grid-cols-1 gap-3 md:grid-cols-4" action={basePath}>
           {listPage.pageSize !== LIST_PAGE_SIZES[0] ? <input type="hidden" name="pageSize" value={listPage.pageSize} /> : null}
+          {filters.recordId ? <input type="hidden" name="recordId" value={filters.recordId} /> : null}
           <Field label={t("module")}>
             <Input name="module" defaultValue={filters.module ?? ""} />
           </Field>
@@ -120,6 +139,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
           </Field>
           <FilterFormActions submitLabel={t("filter")} />
         </form>
+        <FilterChipList chips={recordFilterChips} label={tAsset("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} className="mt-4" />
       </FilterPanel>
 
       <DataTable

@@ -5548,7 +5548,8 @@
     "field_roundId": "Disposal round",
     "field_roundNo": "Round No.",
     "field_fromDisposalType": "Method requested",
-    "field_requestIds": "Requests in round"
+    "field_requestIds": "Requests in round",
+    "recordFilterChip": "Selected record: {label}"
   },
   "adminUsersPage": {
     "title": "User Management",

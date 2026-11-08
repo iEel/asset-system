@@ -87,6 +87,14 @@ export function buildSystemLogFilterHref(locale: string, key: SystemLogQuickFilt
   return `/${locale}/admin/logs?${query.toString()}`
 }
 
+// The system log of one record (the user and role pages link here; the logs page gate is system:view).
+export function buildSystemLogRecordHref(locale: string, module: string, recordId: string) {
+  const query = new URLSearchParams()
+  query.set("module", module)
+  query.set("recordId", recordId)
+  return `/${locale}/admin/logs?${query.toString()}`
+}
+
 export function resolveSystemLogQuickFilter(filters: { module?: string | null; action?: string | null }): ResolvedSystemLogQuickFilterKey {
   const moduleFilter = filters.module?.trim() ?? ""
   const action = filters.action?.trim() ?? ""

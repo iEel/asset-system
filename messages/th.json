@@ -5548,7 +5548,8 @@
     "field_roundId": "รอบตัดจำหน่าย",
     "field_roundNo": "เลขที่รอบ",
     "field_fromDisposalType": "วิธีที่ขอ",
-    "field_requestIds": "คำขอในรอบ"
+    "field_requestIds": "คำขอในรอบ",
+    "recordFilterChip": "รายการที่เลือก: {label}"
   },
   "adminUsersPage": {
     "title": "จัดการผู้ใช้",
