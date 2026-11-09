@@ -123,8 +123,8 @@ test.describe("the machine's consumables as the seed admin: the panel, the often
     // เบิก 1 more through the same panel: the often notice names the kind, 2 times in 90 days.
     await issueOne(4)
     const often = panel(page).locator('[data-slot="asset-consumables-often"]')
+    // .last(): the first issue's toast can still be up (E2E-1110C).
     await Promise.all([
-      // .last(): the first issue's toast can still be up (E2E-1110C).
       expect(toast(page, fillTemplate(W.issueToast, { name: kindName })).last()).toBeVisible(),
       expect(panelRows(page, e2eDevice)).toHaveCount(2),
     ])
