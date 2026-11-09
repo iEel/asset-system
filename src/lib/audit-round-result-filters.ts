@@ -61,7 +61,7 @@ const auditRoundItemResultLabelKeys: Record<string, "found" | "confirmedWithPare
   not_found: "notFound",
   mismatch: "mismatch",
   // What the scan stores for a mismatch (api/audit-rounds/[id]/scan: one wrong field, or need_review for several):
-  // the round page and the asset's fact strip read "รายการไม่ตรง", never the code.
+  // the round page and the asset's fact strip read "รายการไม่ตรงทะเบียน", never the code.
   wrong_location: "mismatch",
   wrong_custodian: "mismatch",
   wrong_department: "mismatch",

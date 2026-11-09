@@ -35,7 +35,7 @@ function digestLabel(locale: NotificationDigestLocale, key: string) {
       openRepairs: "ซ่อมยังไม่เสร็จ",
       stuckRepairs: "รอซ่อมแต่ยังไม่มีบันทึกซ่อม",
       duePm: "PM ครบกำหนดใน 7 วัน",
-      pendingAuditFindings: "รายการไม่ตรงรอพิจารณา",
+      pendingAuditFindings: "รายการไม่ตรงทะเบียนรอพิจารณา",
       openAuditActions: "แผนแก้ไขจากการตรวจนับที่ยังเปิด",
       auditActionsDueSoon: "แผนแก้ไขจากการตรวจนับใกล้ครบกำหนด",
       pendingDisposals: "ตัดจำหน่ายรอพิจารณา",

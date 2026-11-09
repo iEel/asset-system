@@ -82,7 +82,7 @@ test("rows: day groups, the document number, the asset name before its tag, the 
   assert.equal(th.approvalHistoryPage.yesterday, "เมื่อวาน")
   assert.equal(th.approvalHistoryPage.hideDetails, "ซ่อนรายละเอียด")
   assert.equal(th.approvalHistoryPage.actorAll, "ทุกคน")
-  assert.equal(th.approvalHistoryPage.openRecord_auditFinding, "เปิดรายการไม่ตรง")
+  assert.equal(th.approvalHistoryPage.openRecord_auditFinding, "เปิดรายการไม่ตรงทะเบียน")
 })
 
 test("kept: breadcrumb back to inbox, paging, empty state", () => {

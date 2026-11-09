@@ -2,7 +2,7 @@
 // injected (pages pass Prisma, the tests fake it).
 //
 // - maintenance → "งานซ่อม MT-…" linking to the repair record;
-// - audit_finding → "รายการไม่ตรง AUD-…" linking to the findings page opened on that finding;
+// - audit_finding → "รายการไม่ตรงทะเบียน AUD-…" linking to the findings page opened on that finding;
 // - anything else, or a known type whose record is not found, keeps the old "<sourceType> / <sourceId>" text.
 
 export type DisposalSourceLink =

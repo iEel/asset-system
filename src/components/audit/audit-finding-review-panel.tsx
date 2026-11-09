@@ -80,7 +80,7 @@ export async function AuditFindingReviewPanel({
     effectText: effectText(auditFindingApprovalEffect(sibling)),
   }))
   const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
-  // finding.evidence is newest first (Task 2). Closure files from ปิดรายการไม่ตรง are newer than the check's own photo,
+  // finding.evidence is newest first (Task 2). Closure files from ปิดรายการไม่ตรงทะเบียน are newer than the check's own photo,
   // so the check's photo is the oldest image (P4-R33).
   const photo = finding.evidence.filter((attachment) => isThumbnailable(attachment.fileType)).at(-1) ?? null
   const reporter = data.reporterLabel ?? tCommon("noValue")

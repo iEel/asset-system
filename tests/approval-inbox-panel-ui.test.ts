@@ -161,7 +161,7 @@ test("panel words are in both message files", () => {
     staleNotice: "รายการนี้ถูกตัดสินแล้วหรือไม่อยู่ในคิว",
     panelFoot: "ตัดสินใจแล้วไปรายการถัดไปอัตโนมัติ · {position} จาก {total}",
     roundOpen: "เปิดรอบตรวจนับเพื่อปิดรอบ",
-    roundChecklistClear: "ไม่มีรายการค้าง · ไม่มีรายการไม่ตรงค้าง · ไม่มีแผนแก้ไขค้าง",
+    roundChecklistClear: "ไม่มีรายการค้าง · ไม่มีรายการไม่ตรงทะเบียนค้าง · ไม่มีแผนแก้ไขค้าง",
   }
   for (const [key, value] of Object.entries(expected)) {
     assert.equal(th[key], value, key)

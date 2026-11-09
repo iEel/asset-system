@@ -43,7 +43,7 @@ const t = (key: string) => {
     "summary.skipped": "ข้าม",
     // Critique 2026-10-20 F2: the field names, codes and words the decision history needs.
     "action.approve": "อนุมัติ",
-    "action.approve_finding": "อนุมัติรายการไม่ตรง",
+    "action.approve_finding": "อนุมัติรายการไม่ตรงทะเบียน",
     "action.execute": "ดำเนินการตัดจำหน่าย",
     "action.close": "ปิด",
     "module.disposal": "ตัดจำหน่าย",
@@ -57,7 +57,7 @@ const t = (key: string) => {
     "field.executedById": "ผู้ดำเนินการ",
     "field.evidenceExceptionGrantedAt": "เวลาที่อนุมัติข้อยกเว้นหลักฐาน",
     "field.reviewStatus": "สถานะการพิจารณา",
-    "field.findingType": "ประเภทรายการไม่ตรง",
+    "field.findingType": "ประเภทรายการไม่ตรงทะเบียน",
     "field.actualValue": "ค่าที่ตรวจพบ",
     "field.actionTaken": "ผลการพิจารณา",
     "field.auditRound.status": "สถานะรอบตรวจนับ",

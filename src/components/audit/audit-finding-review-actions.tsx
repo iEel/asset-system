@@ -55,7 +55,7 @@ function validate(values: { actionPlan?: string; closureRemark?: string }): Part
 }
 
 // The follow-up of a finding in the review panel (group 2 spec §10, Appendix A §10): "แผนแก้ไข" and, until it is closed,
-// "ปิดรายการไม่ตรง". Each sets the state that mounts its dialog; AccessibleDialog gives focus back to the button pressed.
+// "ปิดรายการไม่ตรงทะเบียน". Each sets the state that mounts its dialog; AccessibleDialog gives focus back to the button pressed.
 export function AuditFindingFollowUpActions({
   findingId,
   actionStatus,

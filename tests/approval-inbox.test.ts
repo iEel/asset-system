@@ -9,10 +9,10 @@ const copy: ApprovalInboxCopy = {
   kindDisposal: "ตัดจำหน่าย",
   kindAudit: "ตรวจนับ",
   actionDisposal: "พิจารณาตัดจำหน่าย",
-  actionFinding: "พิจารณารายการไม่ตรง",
+  actionFinding: "พิจารณารายการไม่ตรงทะเบียน",
   actionRound: "เปิดรอบตรวจนับ",
   roundReady: "รอบตรวจนับพร้อมปิด ไม่มีรายการค้าง",
-  findingReview: "รายการไม่ตรงรอพิจารณา",
+  findingReview: "รายการไม่ตรงทะเบียนรอพิจารณา",
   disposalReady: (assetName) => `คำขอตัดจำหน่าย ${assetName} รอพิจารณา`,
 }
 
@@ -68,7 +68,7 @@ test("builds approval inbox items from pending workflow records", () => {
   )
   assert.equal(items[0].description, "คำขอตัดจำหน่าย Notebook รอพิจารณา")
   assert.equal(items[0].actionLabel, "พิจารณาตัดจำหน่าย")
-  assert.equal(items[1].actionLabel, "พิจารณารายการไม่ตรง")
+  assert.equal(items[1].actionLabel, "พิจารณารายการไม่ตรงทะเบียน")
   assert.equal(items[2].description, "รอบตรวจนับพร้อมปิด ไม่มีรายการค้าง")
   assert.equal(items[2].actionLabel, "เปิดรอบตรวจนับ")
   assert.equal(items[0].tone, "danger")

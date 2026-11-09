@@ -34,7 +34,7 @@ export type WorkQueueSummary = {
   backlogTotal: number
   /** ต้องทำวันนี้: รออนุมัติ + อนุมัติแล้วรอบันทึกตัดจำหน่าย. */
   today: { total: number; approvals: number; approvedDisposals: number }
-  /** The inbox's parts (ตัดจำหน่าย · รายการไม่ตรง · ปิดรอบตรวจนับ), null without the approvals queue. */
+  /** The inbox's parts (ตัดจำหน่าย · รายการไม่ตรงทะเบียน · ปิดรอบตรวจนับ), null without the approvals queue. */
   approvalParts: { disposal: number; audit: number; round: number } | null
   /** เตือนล่วงหน้า: the visible advance keys and their sum. */
   advance: { total: number; keys: WaitingWorkKey[] }

@@ -41,7 +41,7 @@ test("queues group the keys and sum the backlog", () => {
   ])
   assert.equal(summary.backlogTotal, 38, "19 + 10 + 6 + 3, the advance warnings never count")
   assert.deepEqual(summary.today, { total: 22, approvals: 19, approvedDisposals: 3 })
-  // total = disposal + findings + rounds; รายการไม่ตรง is the findings only, ปิดรอบตรวจนับ the rounds (final review F1).
+  // total = disposal + findings + rounds; รายการไม่ตรงทะเบียน is the findings only, ปิดรอบตรวจนับ the rounds (final review F1).
   assert.deepEqual(summary.approvalParts, { disposal: 4, audit: 14, round: 1 })
   assert.deepEqual(summary.advance, { total: 8, keys: ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"] })
 })

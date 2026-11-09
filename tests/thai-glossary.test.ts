@@ -5,7 +5,7 @@ import test from "node:test"
 // The rules mirror docs/19_THAI_GLOSSARY.md — change both together.
 type Rule = { term: string; pattern: RegExp; use: string }
 const rules: Rule[] = [
-  { term: "Finding", pattern: /finding/i, use: "รายการไม่ตรง" },
+  { term: "Finding", pattern: /finding/i, use: "รายการไม่ตรงทะเบียน" },
   { term: "Scope", pattern: /scope/i, use: "ขอบเขต / นอกขอบเขต" },
   { term: "Review", pattern: /review/i, use: "พิจารณา" },
   { term: "Asset Tag / Tag", pattern: /asset tag|\btag\b/i, use: "รหัสทรัพย์สิน" },
@@ -47,6 +47,9 @@ const rules: Rule[] = [
   { term: "เลยกำหนด", pattern: /เลยกำหนด/, use: "เกินกำหนด" },
   // Group 6 plan 3 (user 2026-11-04): the execute words carry no "จริง".
   { term: "ตัดจำหน่ายจริง", pattern: /ตัดจำหน่ายจริง/, use: "บันทึกตัดจำหน่าย" },
+  // Inspection-confirm plan 1: the finding word reads รายการไม่ตรงทะเบียน; the short form and a doubled ทะเบียน are refused.
+  { term: "รายการไม่ตรง (ไม่มี ทะเบียน)", pattern: /รายการไม่ตรง(?!ทะเบียน)/, use: "รายการไม่ตรงทะเบียน" },
+  { term: "ทะเบียนซ้ำ", pattern: /ทะเบียนทะเบียน/, use: "รายการไม่ตรงทะเบียน" },
 ]
 
 // Removed before matching: product names and allowed compounds.
@@ -179,4 +182,19 @@ test("the execute words read บันทึกตัดจำหน่าย, n
   // Task 3: the request page's rail ends at the round (spec §9.2); the stepper's workflowSteps went with the stepper.
   assert.equal(page.workflowSteps, undefined)
   assert.equal(((page.requestPage as Record<string, unknown>).steps as Record<string, unknown>).round, "บันทึกในรอบตัดจำหน่าย")
+})
+
+test("the finding word reads รายการไม่ตรงทะเบียน (inspection-confirm plan 1)", () => {
+  assert.deepEqual(brokenRules("ดูรายการไม่ตรง"), ["รายการไม่ตรง (ไม่มี ทะเบียน)"])
+  assert.deepEqual(brokenRules("ดูรายการไม่ตรงทะเบียน"), [])
+  assert.deepEqual(brokenRules("ที่ตั้งไม่ตรง"), [])
+  assert.equal((th.nav as Record<string, unknown>).auditFinding, "รายการไม่ตรงทะเบียน")
+  assert.equal((th.auditFinding as Record<string, unknown>).title, "รายการไม่ตรงทะเบียนจากการตรวจนับ")
+  assert.equal((th.systemLogPage as Record<string, unknown>).field_findingType, "ประเภทรายการไม่ตรงทะเบียน")
+  assert.equal((th.auditRound as Record<string, unknown>).multipleFieldsNote, "บางรายการไม่ตรงทะเบียนมากกว่าหนึ่งเรื่อง")
+  const glossary = readFileSync("docs/19_THAI_GLOSSARY.md", "utf8")
+  assert.match(glossary, /\| ผลตรวจที่ไม่ตรงระบบ \| \*\*รายการไม่ตรงทะเบียน\*\* \|/)
+  const row = glossary.split(/\r?\n/).find((line) => line.startsWith("| ผลตรวจที่ไม่ตรงระบบ |")) ?? ""
+  const retired = row.split("|").map((cell) => cell.trim())[3] ?? ""
+  assert.ok(retired.includes("รายการไม่ตรง (ไม่มีคำว่า ทะเบียน)"), retired)
 })

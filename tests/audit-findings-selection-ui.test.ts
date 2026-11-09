@@ -101,7 +101,7 @@ test("the page: one provider per selectionKey around the list pane, the ticks in
   assert.doesNotMatch(page.match(/const selectionKey = [^\n]+/)?.[0] ?? "", /finding\b(?!Type)/, "opening a row in the panel keeps the ticks")
 })
 
-test("the bar's words, Thai and English (glossary: รายการไม่ตรง, พิจารณา); the result and the reasons are Task 4's", () => {
+test("the bar's words, Thai and English (glossary: รายการไม่ตรงทะเบียน, พิจารณา); the result and the reasons are Task 4's", () => {
   const th = JSON.parse(read("messages/th.json")).auditFinding
   const en = JSON.parse(read("messages/en.json")).auditFinding
   const words: Record<string, [string, string]> = {

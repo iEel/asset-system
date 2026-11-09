@@ -171,7 +171,7 @@ test("finding dialogs: action plan and close are forms that validate themselves,
   assert.ok(decision.includes('error={fieldErrors.errors.reviewRemark === "required" ? t("reviewReasonRequired") : fieldErrors.message("reviewRemark")}'), "the reject's own sentence under the box (P4-R27)")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-  assert.equal(th.auditFinding.closeNeedsEvidence, "ยังไม่มีหลักฐานปิดงาน ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ก่อนจึงจะปิดรายการไม่ตรงได้")
+  assert.equal(th.auditFinding.closeNeedsEvidence, "ยังไม่มีหลักฐานปิดงาน ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ก่อนจึงจะปิดรายการไม่ตรงทะเบียนได้")
   assert.equal(en.auditFinding.closeNeedsEvidence, "No closure evidence yet. Attach at least one file before you close this discrepancy.")
 })
 

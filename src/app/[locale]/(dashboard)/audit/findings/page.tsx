@@ -259,13 +259,13 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
       <PageHeader
         title={t("title")}
         meta={t("subtitle")}
-        // Below xl an open finding takes the page and has its own "กลับไปรายการไม่ตรง": one way back, never two arrows.
+        // Below xl an open finding takes the page and has its own "กลับไปรายการไม่ตรงทะเบียน": one way back, never two arrows.
         back={<PageBackLink href={back.href} label={backLabel} className={chosen ? "max-xl:hidden" : undefined} />}
         actions={canExport ? <AuditFindingsExportMenu excelHref={`/api/audit-findings/export?${exportParams.toString()}`} pdfHref={`/api/audit-findings/export-pdf?${exportParams.toString()}`} /> : null}
       />
 
       {/* Two panes from xl (spec §10): the list, then the review pane (420px, sticky from xl and scrolling on its own,
-          P4-R31). Below xl an open finding takes the page and the list waits behind "กลับไปรายการไม่ตรง" (P4-R13); with
+          P4-R31). Below xl an open finding takes the page and the list waits behind "กลับไปรายการไม่ตรงทะเบียน" (P4-R13); with
           none open the pane is not shown there. AuditFindingPaneTop opens each finding at its top. */}
       <div data-audit-findings-panes className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-4">
         <div data-audit-findings-list className={cn("min-w-0 space-y-4", chosen && "max-xl:hidden")}>

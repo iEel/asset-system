@@ -55,7 +55,7 @@ test("the gate: the decision for an approver (kept mounted for the approve-all r
   assert.doesNotMatch(source, /isSameAuditActor|viewerId/, "who reported it is Task 2's reportedByViewer (P4-R20)")
 })
 
-test("the follow-up section: plan, owner by name and due date, แผนแก้ไข / ปิดรายการไม่ตรง, the evidence list and the disposal request (Appendix A §10, P4-R11)", () => {
+test("the follow-up section: plan, owner by name and due date, แผนแก้ไข / ปิดรายการไม่ตรงทะเบียน, the evidence list and the disposal request (Appendix A §10, P4-R11)", () => {
   const source = read(PANEL)
   assert.match(source, /<section aria-labelledby=\{`audit-finding-follow-up-\$\{finding\.id\}`\} data-audit-finding-follow-up className="grid gap-3 border-t border-border-soft pt-5">/)
   assert.match(source, /\{ key: "actionOwner", label: t\("actionOwner"\), value: finding\.ownerLabel, nilLabel: t\("noActionOwner"\) \}/)
@@ -121,7 +121,7 @@ test("the page fills Task 3's slot with the panel or the empty panel, passes Tas
   assert.doesNotMatch(page, /<DataFreshnessBanner\b|<AuditFindingReviewActions\b|import \{ DataFreshnessBanner \}|function FindingStatusBadges|data-audit-finding-panel-body|chosenDisposalHref/)
 })
 
-test("the panel's words in th and en (glossary: รายการไม่ตรง, พิจารณา, ผู้ถือครอง, ที่ตั้ง); Task 3's words are reused; the decision dialog's words are gone", () => {
+test("the panel's words in th and en (glossary: รายการไม่ตรงทะเบียน, พิจารณา, ผู้ถือครอง, ที่ตั้ง); Task 3's words are reused; the decision dialog's words are gone", () => {
   const th = JSON.parse(read("messages/th.json")).auditFinding as Record<string, string | undefined>
   const en = JSON.parse(read("messages/en.json")).auditFinding as Record<string, string | undefined>
   const words: Record<string, [string, string]> = {

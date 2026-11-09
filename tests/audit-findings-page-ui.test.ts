@@ -73,7 +73,7 @@ test("the list's links are Task 2's one writer: a row keeps the page and opens i
   assert.doesNotMatch(page, /function buildAuditFindingsHref|new URLSearchParams\(\)\n\s+params\.set\("status"/, "the builder is Task 2's, in audit-finding-filters.ts")
 })
 
-test("two panes from xl: the list, then the 420px pane with its one panel slot, sticky from xl and opening each finding at its top; below xl an open finding takes the page behind กลับไปรายการไม่ตรง (spec §10, P4-R13, P4-R31)", () => {
+test("two panes from xl: the list, then the 420px pane with its one panel slot, sticky from xl and opening each finding at its top; below xl an open finding takes the page behind กลับไปรายการไม่ตรงทะเบียน (spec §10, P4-R13, P4-R31)", () => {
   const page = read(PAGE)
   assert.match(page, /const chosen = data\.panel\?\.finding \?\? null/)
   assert.match(page, /<div data-audit-findings-panes className="grid min-w-0 gap-6 xl:grid-cols-\[minmax\(0,1fr\)_420px\] xl:items-start xl:gap-4">/)
@@ -142,12 +142,12 @@ test("ClickableTableRow: scroll={false} keeps the list where it is, current mark
   assert.ok(design.includes("`MasterDataSearch leading`"))
 })
 
-test("the words of the findings page shell, in th and en (glossary: รายการไม่ตรง, ผู้ถือครอง, ที่ตั้ง, นอกขอบเขต, ส่วนควบ)", () => {
+test("the words of the findings page shell, in th and en (glossary: รายการไม่ตรงทะเบียน, ผู้ถือครอง, ที่ตั้ง, นอกขอบเขต, ส่วนควบ)", () => {
   const th = messages("th")
   const en = messages("en")
   const expected: Record<string, [string, string]> = {
     backToRound: ["กลับไปหน้ารอบ", "Back to the round"],
-    backToList: ["กลับไปรายการไม่ตรง", "Back to the discrepancies"],
+    backToList: ["กลับไปรายการไม่ตรงทะเบียน", "Back to the discrepancies"],
     followUpChipsLabel: ["งานที่ต้องติดตาม", "Follow-up work"],
     findingTopic: ["เรื่อง", "Issue"],
     roundShort: ["รอบ", "Round"],
@@ -156,12 +156,12 @@ test("the words of the findings page shell, in th and en (glossary: รายก
     filterNotListed: ["ไม่อยู่ในรายการ", "Not in the list"],
     componentOfParent: ["ส่วนควบของ {assetTag} {name}", "Component of {assetTag} {name}"],
     comparisonColumn: ["ตามระบบ → ที่พบ", "System → found"],
-    panelTitle: ["พิจารณารายการไม่ตรง", "Review the discrepancy"],
+    panelTitle: ["พิจารณารายการไม่ตรงทะเบียน", "Review the discrepancy"],
     panelEmpty: ["เลือกรายการทางซ้ายเพื่อพิจารณา", "Choose a row on the left to review it"],
-    panelNotFound: ["ไม่พบรายการไม่ตรงที่เลือก", "The chosen discrepancy was not found"],
+    panelNotFound: ["ไม่พบรายการไม่ตรงทะเบียนที่เลือก", "The chosen discrepancy was not found"],
     openAsset: ["เปิดหน้าทรัพย์สิน", "Open the asset"],
     exportFilteredHint: ["ตามตัวกรองที่เลือก", "With the filters in use"],
-    emptySearchTitle: ["ไม่พบรายการไม่ตรงที่ตรงกับคำค้น", "No discrepancy matches the search"],
+    emptySearchTitle: ["ไม่พบรายการไม่ตรงทะเบียนที่ตรงกับคำค้น", "No discrepancy matches the search"],
     emptySearchHelp: ["ลองคำค้นอื่น หรือล้างคำค้นเพื่อดูทุกรายการในแท็บนี้", "Try other words, or clear the search to see every row of this tab"],
     clearSearch: ["ล้างคำค้น", "Clear search"],
   }
@@ -170,7 +170,7 @@ test("the words of the findings page shell, in th and en (glossary: รายก
     assert.equal(en[key], enText, `en ${key}`)
   }
   // The tab and sub-chip words are today's keys, unchanged, and Task 2's tabFollowUp.
-  for (const [key, text] of Object.entries({ status_pending: "รอพิจารณา", status_approved: "อนุมัติแล้ว", status_rejected: "ปฏิเสธแล้ว", tabFollowUp: "ต้องติดตาม", filterClosed: "ปิดแล้ว", status_all: "ทั้งหมด", filterActionOpen: "ต้องแก้ไข", filterOverdue: "เกินกำหนด", status_exception: "ต้องตรวจสอบพิเศษ", exportFindings: "ส่งออกรายการไม่ตรง", exportFindingsPdf: "ส่งออก PDF", quickFilters: "ตัวกรองงาน" })) {
+  for (const [key, text] of Object.entries({ status_pending: "รอพิจารณา", status_approved: "อนุมัติแล้ว", status_rejected: "ปฏิเสธแล้ว", tabFollowUp: "ต้องติดตาม", filterClosed: "ปิดแล้ว", status_all: "ทั้งหมด", filterActionOpen: "ต้องแก้ไข", filterOverdue: "เกินกำหนด", status_exception: "ต้องตรวจสอบพิเศษ", exportFindings: "ส่งออกรายการไม่ตรงทะเบียน", exportFindingsPdf: "ส่งออก PDF", quickFilters: "ตัวกรองงาน" })) {
     assert.equal(th[key], text, key)
   }
   for (const gone of ["resolutionTitle", "resolutionHelp", "quickFiltersHelp", "summaryPendingReview", "summaryPendingReviewHelp", "summaryOpenActions", "summaryOpenActionsHelp", "summaryOverdue", "summaryOverdueHelp", "summaryClosed", "summaryClosedHelp"]) {

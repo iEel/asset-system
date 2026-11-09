@@ -44,7 +44,7 @@ export const auditRoundAnyFieldFindingWhere: Prisma.AuditItemWhereInput = {
   },
 }
 
-// "บางรายการไม่ตรงมากกว่าหนึ่งเรื่อง": the bars' sum exceeds the distinct items they count (P2-R18).
+// "บางรายการไม่ตรงทะเบียนมากกว่าหนึ่งเรื่อง": the bars' sum exceeds the distinct items they count (P2-R18).
 export function hasMultipleAuditFieldFindings(counts: Readonly<Record<AuditFindingField, number>>, distinctItems: number): boolean {
   const sum = auditFindingFields.reduce((total, field) => total + counts[field], 0)
   return sum > distinctItems
@@ -222,7 +222,7 @@ export function buildAuditRoundPageMainAction({ steps, pendingItems, pendingFind
 export type AuditRoundResultBadgeKey = "pending" | "found" | "confirmedWithParent" | "mismatchShort" | "notFound" | "outOfScope"
 
 // The ผล column (spec §8): one badge per row. A checked item with no result reads ไม่ตรง, as it counts (P2-R2). The
-// badge is a chip, so it reads the short "ไม่ตรง" as the result chip does (spec §5); sentences keep "รายการไม่ตรง".
+// badge is a chip, so it reads the short "ไม่ตรง" as the result chip does (spec §5); sentences keep "รายการไม่ตรงทะเบียน".
 export function auditRoundResultBadge(auditStatus: string, auditResult: string | null): { labelKey: AuditRoundResultBadgeKey; tone: StatusTone } {
   if (auditStatus === "pending") return { labelKey: "pending", tone: "muted" }
   if (auditResult === "found") return { labelKey: "found", tone: "success" }

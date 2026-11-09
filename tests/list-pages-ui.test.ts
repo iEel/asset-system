@@ -279,10 +279,10 @@ test("the findings batch: ticks in a 44px label, the shared bar with ล้า�
 })
 
 // Group 2 plan 4 (spec §10, Appendix A §10): the review decision moved into the review panel (audit-finding-decision.tsx);
-// this file keeps a finding's follow-up: "แผนแก้ไข" and "ปิดรายการไม่ตรง" as outline Buttons that mount their dialogs.
+// this file keeps a finding's follow-up: "แผนแก้ไข" and "ปิดรายการไม่ตรงทะเบียน" as outline Buttons that mount their dialogs.
 const FINDING_FOLLOW_UP = `${C}audit/audit-finding-review-actions.tsx`
 
-test("the finding follow-up: แผนแก้ไข and ปิดรายการไม่ตรง are outline Buttons that mount their two dialogs; the review decision is no longer here (group 2 spec §10, Appendix A §10)", () => {
+test("the finding follow-up: แผนแก้ไข and ปิดรายการไม่ตรงทะเบียน are outline Buttons that mount their two dialogs; the review decision is no longer here (group 2 spec §10, Appendix A §10)", () => {
   const source = read(FINDING_FOLLOW_UP)
   assert.match(source, /export function AuditFindingFollowUpActions\(/)
   assert.match(source, /<Button variant="outline" size="md" onClick=\{\(\) => setPlanOpen\(true\)\}>\n\s+<CalendarClock aria-hidden="true" \/>\n\s+\{t\("actionPlan"\)\}/)

@@ -35,6 +35,11 @@ test("the digest names the two repair kinds (group 1 dashboard task 1)", () => {
   assert.match(buildDailyDigestMessage("en", items), /- Repairs in progress: 2\n- Awaiting repair without a repair record: 1/)
 })
 
+test("the digest names pending findings รายการไม่ตรงทะเบียนรอพิจารณา (inspection-confirm plan 1)", () => {
+  const items = [{ key: "pendingAuditFindings", count: 4, href: "/th/audit/findings", tone: "warning" as const }]
+  assert.match(buildDailyDigestMessage("th", items), /- รายการไม่ตรงทะเบียนรอพิจารณา: 4/)
+})
+
 test("uses highest severity tone in digest", () => {
   assert.equal(resolveDigestTone([{ key: "returnsDueSoon", count: 1, href: "/th", tone: "warning" }]), "warning")
   assert.equal(

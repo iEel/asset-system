@@ -174,14 +174,14 @@ test("the links carry the page's language: the round page through its one builde
   assert.ok(reports.includes("href: `/api/audit-findings/export-pdf?status=all&locale=${locale}`"))
 })
 
-test("the new words, Thai and English; English reads as today's export (glossary: รหัสทรัพย์สิน, รายการไม่ตรง, ตรวจนับ)", () => {
+test("the new words, Thai and English; English reads as today's export (glossary: รหัสทรัพย์สิน, รายการไม่ตรงทะเบียน, ตรวจนับ)", () => {
   assert.equal(th("auditRound.exportPdfTitle", { auditNo: "AUD-1" }), "ผลตรวจนับ AUD-1")
   assert.equal(en("auditRound.exportPdfTitle", { auditNo: "AUD-1" }), "Audit Result - AUD-1")
   assert.equal(th("auditRound.exportPdfFilter", { filter: "ทั้งหมด" }), "ตัวกรอง: ทั้งหมด")
   assert.equal(en("auditRound.exportSummary_mismatchOrNotFound"), "Mismatch/Not Found")
   assert.equal(th("auditRound.varianceMetric_totalExpected"), "ทรัพย์สินในรอบ")
   assert.equal(en("auditRound.varianceMetric_outOfScopeFindings"), "Out-of-scope Findings")
-  assert.equal(th("auditFinding.exportPdfTitle", { filter: "รอพิจารณา" }), "รายการไม่ตรง · รอพิจารณา")
+  assert.equal(th("auditFinding.exportPdfTitle", { filter: "รอพิจารณา" }), "รายการไม่ตรงทะเบียน · รอพิจารณา")
   assert.equal(en("auditFinding.exportSummary_rejectedOrException"), "Rejected/Exception")
   assert.equal(Object.keys(messages.th.auditRound).filter((key) => key.startsWith("varianceMetric_")).length, 13)
   assert.equal(Object.keys(messages.th.auditFinding).filter((key) => key.startsWith("actionTaken_")).length, auditFindingActionTakenCodes.length)

@@ -31,7 +31,7 @@ export type ApprovalInboxCounts = {
   disposal: number
   /** findings + rounds. */
   audit: number
-  /** Audit findings waiting for approval (รายการไม่ตรง). */
+  /** Audit findings waiting for approval (รายการไม่ตรงทะเบียน). */
   findings: number
   /** Audit rounds ready to close (ปิดรอบตรวจนับ). */
   rounds: number

@@ -251,7 +251,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       href: pageHref(filters, { components: null, page: 1 }),
     })
   }
-  // "ไปพิจารณารายการไม่ตรง" follows the field in use (wrong_department included) or the review and mismatch results.
+  // "ไปพิจารณารายการไม่ตรงทะเบียน" follows the field in use (wrong_department included) or the review and mismatch results.
   const resultFindingReviewHref = filters.field
     ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${auditFindingTypeByField[filters.field]}`
     : filters.result === "pending_review" || filters.result === "mismatch"

@@ -157,7 +157,7 @@ test("the list's top: the result chips and the category chips as TabNav with cou
   assert.doesNotMatch(list, /<StatusBadge label=\{resultFilterLabels|t\("viewAll"\)\}\s*<\/Link>/, "the bucket badge and the old ทั้งหมด button go: the tabs show the result in use")
 })
 
-test("ไปพิจารณารายการไม่ตรง follows the field in use, the department included, or the review and mismatch results (spec §8, Appendix A §8)", () => {
+test("ไปพิจารณารายการไม่ตรงทะเบียน follows the field in use, the department included, or the review and mismatch results (spec §8, Appendix A §8)", () => {
   const page = read(PAGE)
   assert.match(page, /const resultFindingReviewHref = filters\.field\n\s+\? `\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{round\.id\}&findingType=\$\{auditFindingTypeByField\[filters\.field\]\}`\n\s+: filters\.result === "pending_review" \|\| filters\.result === "mismatch"\n\s+\? pendingReviewFindingsHref\n\s+: null/)
 })

@@ -94,7 +94,7 @@ test("the table: urgency dot with a word, the work, queue and kind, the age line
   assert.match(
     table,
     /<col \/>\n\s+<col className="hidden w-44 xl:table-column" \/>\n\s+<col className="w-40" \/>\n\s+<col className="w-60" \/>\n\s+<\/colgroup>/,
-    "the ขั้นถัดไป column has room for พิจารณารายการไม่ตรง and ⋯; the งาน column wraps",
+    "the ขั้นถัดไป column has room for พิจารณารายการไม่ตรงทะเบียน and ⋯; the งาน column wraps",
   )
   // Look fix 2: at 1024 (sidebar open) the table fits its frame. Below xl the คิว · ประเภท column is hidden and its two
   // words lead the งาน cell's context line; from xl the table is as before.

@@ -254,7 +254,7 @@ test("the IT head's own finding and own close are refused by the segregation rul
   const exports = block(spec, "The audit exports by permission")
   assert.ok(!exports.includes(`test.fail(true, "AU1: `) && !exports.includes(`test.fail(true, "U1: `), "AU1 is fixed (FX4); U1 is decided (DX6)")
   // Group 2 plan 4 (spec §10): the findings export sits in "ส่งออก ▾", no longer a link of its own.
-  assert.ok(!exports.includes(`{ name: "ส่งออกรายการไม่ตรง" }`), "no findings export link")
+  assert.ok(!exports.includes(`{ name: "ส่งออกรายการไม่ตรงทะเบียน" }`), "no findings export link")
   // Group 2 plan 2 (spec §8, §16): IT staff get no export menu on the round page; after the review the IT head sees the
   // rejected condition leave its bar (P2-R1) and the Excel export follow the category.
   assert.ok(exports.includes(`await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)`))
@@ -464,7 +464,7 @@ test("the findings page in the walk: a row opens the panel with ?finding=, a dec
   assert.ok(head.includes("fillTemplate(R.approveSelected, { count: 2 })") && head.includes("fillTemplate(R.batchResult, { succeeded: 1, failed: 1 })"))
   assert.ok(head.includes(`expect(outOfScope.status(), "X1 was decided already: one failure, and the batch goes on").toBe(400)`))
   // The panel decides with no dialog (spec §10); the bar's batch asks once in its own (P4-R25).
-  assert.ok(!head.includes("ยืนยันการอนุมัติรายการไม่ตรง"), "no decision dialog in the panel (spec §10)")
+  assert.ok(!head.includes("ยืนยันการอนุมัติรายการไม่ตรงทะเบียน"), "no decision dialog in the panel (spec §10)")
   assert.equal((head.match(/getByRole\("dialog"/g) ?? []).length, 1, "one dialog: the batch's")
   assert.ok(head.includes('page.getByRole("dialog", { name: fillTemplate(R.batchApproveTitle, { count: 2 }) })'))
   // Every navigation of the block waits for the page's requests first (E2E-1027B/C).

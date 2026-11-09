@@ -325,8 +325,8 @@ test("the PM plan form's save is checked on the plan it created, not found on a 
 
 test("IT staff see neither the review controls nor the segregation note on the findings page (e2e Task 51 loop 6: decision DX3)", () => {
   const spec = read("e2e/audit/field-audit.spec.ts")
-  assert.match(spec, /await expect\(page\.getByText\("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้"\)\.filter\(\{ visible: true \}\)\)\.toHaveCount\(0\)/)
-  assert.doesNotMatch(spec, /getByText\("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้"\)\.filter\(\{ visible: true \}\)\.first\(\)\)\.toBeVisible\(\)/)
+  assert.match(spec, /await expect\(page\.getByText\("ไม่สามารถพิจารณารายการไม่ตรงทะเบียนที่คุณเป็นผู้รายงานเองได้"\)\.filter\(\{ visible: true \}\)\)\.toHaveCount\(0\)/)
+  assert.doesNotMatch(spec, /getByText\("ไม่สามารถพิจารณารายการไม่ตรงทะเบียนที่คุณเป็นผู้รายงานเองได้"\)\.filter\(\{ visible: true \}\)\.first\(\)\)\.toBeVisible\(\)/)
 })
 
 test("a page's font cancelled as the workflow leaves the page is allowed, reviewed (e2e Task 51 loop 7)", async () => {

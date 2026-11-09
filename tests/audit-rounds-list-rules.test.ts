@@ -28,7 +28,7 @@ import {
 test("the list opens on กำลังดำเนินการ; old and unknown views fall back to it, and a work view keeps that tab (group 2 spec §6, R7)", () => {
   assert.equal(parseAuditRoundView(undefined), "open")
   for (const value of ["open", "closed", "cancelled", "all", "pending", "review", "readyToClose"]) assert.equal(parseAuditRoundView(value), value)
-  assert.equal(parseAuditRoundView("mismatch"), "open", "มีรายการไม่ตรง is gone")
+  assert.equal(parseAuditRoundView("mismatch"), "open", "มีรายการไม่ตรงทะเบียน is gone")
   assert.equal(parseAuditRoundView("bogus"), "open")
   assert.equal(parseAuditRoundView(["closed", "all"]), "closed")
   assert.deepEqual(
