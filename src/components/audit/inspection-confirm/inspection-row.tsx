@@ -21,6 +21,8 @@ export type InspectionRowProps = {
   statusLabels: Record<InspectionTargetStatusName, string>
   /** The tick (Task 3 wires the selection). Only rendered when canConfirm. */
   tick?: React.ReactNode
+  /** The id of the handoverUnclear text, which a disabled tick points at with aria-describedby. */
+  unclearId?: string
 }
 
 /** The status a row would take: a not-found row becomes Missing (plan 2's data); otherwise the confirm target. */
@@ -28,7 +30,7 @@ function rowTarget(row: InspectionPageRow): InspectionTargetStatusName | null {
   return row.tab === "notFound" ? "Missing" : row.targetStatusName
 }
 
-function useRowParts({ locale, row, statusLabels }: Pick<InspectionRowProps, "locale" | "row" | "statusLabels">) {
+function useRowParts({ locale, row, statusLabels, unclearId }: Pick<InspectionRowProps, "locale" | "row" | "statusLabels" | "unclearId">) {
   const t = useTranslations("inspectionConfirmPage")
   const tRound = useTranslations("auditRound")
   const badge = auditRoundResultBadge(row.auditStatus, row.auditResult)
@@ -52,7 +54,7 @@ function useRowParts({ locale, row, statusLabels }: Pick<InspectionRowProps, "lo
   const targetCell = target ? (
     <StatusBadge label={statusLabels[target]} tone={getAssetStateTone(target)} />
   ) : (
-    <span className="text-warning text-pretty">{t("handoverUnclear")}</span>
+    <span id={unclearId} className="text-warning text-pretty">{t("handoverUnclear")}</span>
   )
   const findingLink = findingHref ? (
     <Link href={findingHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
@@ -64,8 +66,8 @@ function useRowParts({ locale, row, statusLabels }: Pick<InspectionRowProps, "lo
 }
 
 /** The desktop row: tick (Task 3) · ครุภัณฑ์ · ผลตรวจนับ · ที่ตั้ง · ผู้ถือครอง · จะตั้งสถานะเป็น. */
-export function InspectionTableRow({ locale, row, canConfirm, statusLabels, tick }: InspectionRowProps) {
-  const { assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, row, statusLabels })
+export function InspectionTableRow({ locale, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
+  const { assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, row, statusLabels, unclearId })
   return (
     <DataTableRow>
       {canConfirm ? <DataTableCell className="w-10">{tick}</DataTableCell> : null}
@@ -85,8 +87,8 @@ export function InspectionTableRow({ locale, row, canConfirm, statusLabels, tick
 }
 
 /** The phone card: the same data, the same tick when the viewer can confirm. */
-export function InspectionRowCard({ locale, row, canConfirm, statusLabels, tick }: InspectionRowProps) {
-  const { t, assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, row, statusLabels })
+export function InspectionRowCard({ locale, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
+  const { t, assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, row, statusLabels, unclearId })
   return (
     <article className="min-w-0 rounded-md border border-border bg-background p-3">
       <div className="flex min-w-0 items-start gap-2">

@@ -106,3 +106,63 @@ test("phone cards below md, the table from md (the house classes)", () => {
   assert.match(workspace, /<InspectionRowCard /)
   assert.match(workspace, /<InspectionTableRow /)
 })
+
+// Plan 3 task 3: the selection, the confirm dialog and the result.
+const DIALOG = "src/components/audit/inspection-confirm/inspection-confirm-dialog.tsx"
+
+test("the dialog posts { assetIds, reason, outcome: \"confirm\" } to the round's confirm-results route (plan 3 task 3)", () => {
+  const dialog = read(DIALOG)
+  assert.match(dialog, /^"use client"/)
+  assert.match(dialog, /fetch\(`\/api\/audit-rounds\/\$\{roundId\}\/confirm-results`/)
+  assert.match(dialog, /JSON\.stringify\(\{ assetIds, reason, outcome: "confirm" \}\)/)
+})
+
+test("a 409 reads blocked and maps its codes through inspectionBlockedMessageKeys; refresh after 200 and 409", () => {
+  const dialog = read(DIALOG)
+  const workspace = read(WORKSPACE)
+  const conflict = dialog.slice(dialog.indexOf("response.status === 409"))
+  assert.ok(dialog.includes("response.status === 409"))
+  assert.match(conflict.slice(0, 400), /payload\?\.blocked/)
+  assert.match(workspace, /inspectionBlockedMessageKeys\[/)
+  const ok = dialog.slice(dialog.indexOf("if (response.ok)"))
+  assert.ok(dialog.includes("if (response.ok)"))
+  assert.match(ok.slice(0, 300), /router\.refresh\(\)/)
+  assert.match(conflict.slice(0, 600), /router\.refresh\(\)/)
+})
+
+test("the dialog: AccessibleDialog with busy, the reason prefilled with reasonDefault and auditNo, 3–500 after trim", () => {
+  const dialog = read(DIALOG)
+  assert.match(dialog, /<AccessibleDialog/)
+  assert.match(dialog, /busy=\{isSubmitting\}/)
+  assert.match(dialog, /t\("reasonDefault", \{ auditNo \}\)/)
+  assert.match(dialog, /minLength\(values\.reason, 3\)/)
+  assert.match(dialog, /maxLength\(values\.reason\.trim\(\), 500\)/)
+  assert.match(dialog, /fieldErrors\.applyServer\(payload\)/)
+  assert.match(dialog, /t\("historyNote"\)/)
+  assert.match(dialog, /status: "In Use", key: "dialogLineInUse"/)
+  assert.match(dialog, /\{t\(line\.key\)\}/)
+  assert.match(dialog, /returnFocusRef=\{returnFocusRef\}/)
+  // A second submit while posting is ignored.
+  assert.match(dialog, /if \(submittingRef\.current\) return/)
+})
+
+test("select-all uses selectAllInspectionRows and says when it caps; the bars: DesktopSelectionBar and a md:hidden phone bar", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /selectAllInspectionRows\(/)
+  assert.match(workspace, /t\("cappedNotice", \{ max: /)
+  assert.match(workspace, /<DesktopSelectionBar/)
+  assert.match(workspace, /sticky bottom-\[calc\(3\.75rem\+env\(safe-area-inset-bottom\)\)\][^"]*md:hidden/)
+  assert.match(workspace, /t\("selectionSummary", \{/)
+  assert.match(workspace, /t\("confirmOpen"\)/)
+  assert.match(workspace, /isInspectionRowSelectable\(/)
+})
+
+test("a ready row with no target has a disabled tick described by its handoverUnclear text; the selection is per tab", () => {
+  const workspace = read(WORKSPACE)
+  const row = read(ROW)
+  assert.match(workspace, /aria-describedby=\{/)
+  assert.match(row, /id=\{unclearId\}/)
+  assert.match(workspace, /selection\.tab === tab/)
+  assert.match(workspace, /t\("successNotice", \{ count: /)
+  assert.match(workspace, /t\("changedNotice"\)/)
+})

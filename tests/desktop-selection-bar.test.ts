@@ -34,6 +34,8 @@ test("DesktopSelectionBar's callers: three lists with ticks and the labels page'
     "src/components/assets/asset-label-batch-tool.tsx",
     "src/components/assets/asset-register-table.tsx",
     "src/components/audit/audit-findings-batch-actions.tsx",
+    // Inspection-confirm plan 3 Task 3: the ยืนยันผลตรวจ page's ready tab, with its own md:hidden phone bar.
+    "src/components/audit/inspection-confirm/inspection-confirm-workspace.tsx",
     // Group 6 plan 4 Task 3: the disposal queue's approved tab (spec §10.2) is the sixth caller.
     "src/components/disposal/disposal-round-selection.tsx",
   ])
