@@ -7186,7 +7186,14 @@
     "ldapSyncPreviewRequired": "ดูตัวอย่างก่อนซิงก์",
     "ldapSyncResultChanged": "ผลซิงก์เปลี่ยนไปจากตัวอย่าง กรุณาดูตัวอย่างอีกครั้ง",
     "inspectionConfirmChanged": "บางชิ้นเปลี่ยนไปแล้ว โหลดใหม่และลองอีกครั้ง",
-    "inspectionConfirmDamagedOneAsset": "ยืนยันชิ้นที่เสียหายได้ครั้งละ 1 ชิ้น"
+    "inspectionConfirmDamagedOneAsset": "ยืนยันชิ้นที่เสียหายได้ครั้งละ 1 ชิ้น",
+    "assetInspectionNotUnderInspection": "ทรัพย์สินนี้ไม่ได้อยู่ระหว่างตรวจสอบแล้ว โหลดหน้าใหม่",
+    "assetInspectionInRound": "ยืนยันผลตรวจในรอบตรวจนับ",
+    "assetInspectionHandoverUnclear": "ใบส่งมอบหรือใบยืมไม่ชัด ต้องแก้ในหน้าคุณภาพข้อมูลก่อน",
+    "assetInspectionHandoverStatus": "ใบส่งมอบหรือใบยืมยังเปิดอยู่ สถานะเป็นไปตามใบนั้น",
+    "assetInspectionHandoverLocked": "ใบส่งมอบหรือใบยืมยังเปิดอยู่ เปลี่ยนผู้ถือครองหรือที่ตั้งไม่ได้",
+    "assetInspectionHolderRequired": "สถานะใช้งานอยู่ต้องมีผู้ถือครอง",
+    "assetInspectionChanged": "ทรัพย์สินนี้เปลี่ยนไปแล้ว โหลดหน้าใหม่และลองอีกครั้ง"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

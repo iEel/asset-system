@@ -44,6 +44,7 @@ const WRITERS = [
   "src/app/api/disposal-batches/route.ts",
   "src/app/api/disposal-requests/route.ts",
   "src/lib/asset-component-sync.ts",
+  "src/lib/asset-confirm-inspection-service.ts",
   "src/lib/asset-register-edit.ts",
   "src/lib/asset-state-review-service.ts",
   "src/lib/asset-transaction-cancellation-prisma.ts",

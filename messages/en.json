@@ -7186,7 +7186,14 @@
     "ldapSyncPreviewRequired": "Preview before syncing",
     "ldapSyncResultChanged": "The sync result changed from the preview. Preview again.",
     "inspectionConfirmChanged": "Some assets changed. Reload and try again.",
-    "inspectionConfirmDamagedOneAsset": "Confirm one damaged asset at a time."
+    "inspectionConfirmDamagedOneAsset": "Confirm one damaged asset at a time.",
+    "assetInspectionNotUnderInspection": "This asset is no longer under inspection. Reload the page.",
+    "assetInspectionInRound": "Confirm the inspection in the audit round",
+    "assetInspectionHandoverUnclear": "The open handover or loan is unclear. Fix it on the data quality page first.",
+    "assetInspectionHandoverStatus": "A handover or loan is still open. The status follows it.",
+    "assetInspectionHandoverLocked": "A handover or loan is still open. The holder and location cannot change.",
+    "assetInspectionHolderRequired": "In Use needs a holder",
+    "assetInspectionChanged": "This asset has changed. Reload the page and try again."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

@@ -197,6 +197,15 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Integration scopes JSON must be a string": "integrationScopesInvalid",
   "Integration scopes must be an array": "integrationScopesInvalid",
   "Integration scopes must contain only non-blank strings": "integrationScopesInvalid",
+  // ยืนยันผลตรวจ (inspection-confirm plan 5): the single-asset confirm-inspection refusals (asset-confirm-inspection-service.ts).
+  "Asset is not under inspection": "assetInspectionNotUnderInspection",
+  "Confirm this asset in its audit round": "assetInspectionInRound",
+  "The open handover of this asset is unclear": "assetInspectionHandoverUnclear",
+  "An open handover sets this asset's status": "assetInspectionHandoverStatus",
+  "An open handover locks the holder and location": "assetInspectionHandoverLocked",
+  "In Use needs a holder": "assetInspectionHolderRequired",
+  "This asset changed before its inspection was confirmed": "assetInspectionChanged",
+  "ASSET_INSPECTION_CHANGED": "assetInspectionChanged",
   // ยืนยันผลตรวจ (inspection-confirm plan 2): the confirm-results form refusals.
   "INSPECTION_CONFIRM_DAMAGED_ONE_ASSET": "inspectionConfirmDamagedOneAsset",
   "INSPECTION_CONFIRM_DUPLICATE_ASSET": "batchCheckinDuplicateAsset",

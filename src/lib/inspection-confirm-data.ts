@@ -93,21 +93,7 @@ export async function loadRoundInspectionRows(db: InspectionDb, auditRoundId: st
     }
   }
 
-  // Open handovers, as asset-state-review-service.ts reads them: not returned and active, counted by handoverMode.
-  const handoversByAsset = new Map<string, InspectionHandoverCounts>()
-  for (const chunk of chunkAuditIds(itemAssetIds, AUDIT_ID_CHUNK_SIZE)) {
-    const checkouts = await db.assetCheckout.findMany({
-      where: { assetId: { in: chunk }, isReturned: false, transactionStatus: "active" },
-      select: { assetId: true, handoverMode: true },
-    })
-    for (const checkout of checkouts) {
-      const counts = handoversByAsset.get(checkout.assetId) ?? { permanent: 0, temporary: 0, unknown: 0 }
-      if (checkout.handoverMode === "permanent_assignment") counts.permanent += 1
-      else if (checkout.handoverMode === "temporary_loan") counts.temporary += 1
-      else counts.unknown += 1
-      handoversByAsset.set(checkout.assetId, counts)
-    }
-  }
+  const handoversByAsset = await loadOpenHandoverCounts(db, itemAssetIds)
 
   const rows = items.map((item): InspectionRow => {
     const { asset } = item
@@ -155,6 +141,103 @@ export async function countUnconfirmedAssetsByRound(db: InspectionDb, auditRound
 
 export async function countRoundUnconfirmedAssets(db: InspectionDb, auditRoundId: string): Promise<number> {
   return db.auditItem.count({ where: roundInspectionItemWhere(auditRoundId) })
+}
+
+// Open handovers, as asset-state-review-service.ts reads them: not returned and active, counted by handoverMode. An asset
+// with none is absent from the map. The round rows and the single-asset confirm (asset-confirm-inspection-service.ts)
+// both read them here.
+export async function loadOpenHandoverCounts(db: InspectionDb, assetIds: readonly string[]): Promise<Map<string, InspectionHandoverCounts>> {
+  const handoversByAsset = new Map<string, InspectionHandoverCounts>()
+  for (const chunk of chunkAuditIds(assetIds, AUDIT_ID_CHUNK_SIZE)) {
+    const checkouts = await db.assetCheckout.findMany({
+      where: { assetId: { in: chunk }, isReturned: false, transactionStatus: "active" },
+      select: { assetId: true, handoverMode: true },
+    })
+    for (const checkout of checkouts) {
+      const counts = handoversByAsset.get(checkout.assetId) ?? { permanent: 0, temporary: 0, unknown: 0 }
+      if (checkout.handoverMode === "permanent_assignment") counts.permanent += 1
+      else if (checkout.handoverMode === "temporary_loan") counts.temporary += 1
+      else counts.unknown += 1
+      handoversByAsset.set(checkout.assetId, counts)
+    }
+  }
+  return handoversByAsset
+}
+
+export type InspectionRoundCandidate = {
+  roundId: string
+  auditNo: string
+  startDate: Date
+  roundStatus: string
+  roundActive: boolean
+  tab: InspectionConfirmTab
+}
+
+export type AssetInspectionRound = { roundId: string; auditNo: string; tab: InspectionConfirmTab }
+
+// The tabs the confirm page can act on now; awaitingReview and notScanned wait for something else first.
+const actionableRoundTabs: ReadonlySet<InspectionConfirmTab> = new Set(["ready", "damaged", "notFound"])
+
+/**
+ * ยืนยันผลตรวจ plan 5 (spec §7): the round an Under Inspection asset is confirmed in. Active, not cancelled rounds only;
+ * the newest by startDate among those where its tab is ready, damaged or notFound, else the newest whatever the tab;
+ * none = null (the asset detail page offers the single-asset dialog). Equal start dates fall back to the higher auditNo.
+ */
+export function pickInspectionRound(candidates: readonly InspectionRoundCandidate[]): AssetInspectionRound | null {
+  const live = candidates.filter((candidate) => candidate.roundActive && candidate.roundStatus !== "cancelled")
+  const newest = (list: readonly InspectionRoundCandidate[]) =>
+    list.reduce<InspectionRoundCandidate | null>((best, candidate) => {
+      if (!best) return candidate
+      const byDate = candidate.startDate.getTime() - best.startDate.getTime()
+      if (byDate !== 0) return byDate > 0 ? candidate : best
+      return candidate.auditNo > best.auditNo ? candidate : best
+    }, null)
+  const picked = newest(live.filter((candidate) => actionableRoundTabs.has(candidate.tab))) ?? newest(live)
+  return picked ? { roundId: picked.roundId, auditNo: picked.auditNo, tab: picked.tab } : null
+}
+
+/**
+ * The asset's items in active, non-cancelled rounds, classified as the confirm page classifies them. The findings are
+ * read by round and asset ids, as loadRoundInspectionRows reads them (one item per asset per round, so the round id
+ * groups them as the item id would).
+ */
+export async function findAssetInspectionRound(db: InspectionDb, assetId: string): Promise<AssetInspectionRound | null> {
+  const items = await db.auditItem.findMany({
+    where: { assetId, auditRound: { isActive: true, status: { not: "cancelled" } } },
+    select: {
+      auditRoundId: true,
+      auditStatus: true,
+      auditResult: true,
+      auditRound: { select: { auditNo: true, startDate: true, status: true, isActive: true } },
+      asset: { select: { condition: { select: { name: true } } } },
+    },
+  })
+  if (items.length === 0) return null
+
+  const findingsByRound = new Map<string, Array<{ findingType: string; reviewStatus: string }>>()
+  const findings = await db.auditFinding.findMany({
+    where: { assetId, auditRoundId: { in: items.map((item) => item.auditRoundId) } },
+    select: { auditRoundId: true, findingType: true, reviewStatus: true },
+  })
+  for (const { auditRoundId, ...finding } of findings) {
+    const list = findingsByRound.get(auditRoundId)
+    if (list) list.push(finding)
+    else findingsByRound.set(auditRoundId, [finding])
+  }
+
+  return pickInspectionRound(items.map((item): InspectionRoundCandidate => ({
+    roundId: item.auditRoundId,
+    auditNo: item.auditRound.auditNo,
+    startDate: item.auditRound.startDate,
+    roundStatus: item.auditRound.status,
+    roundActive: item.auditRound.isActive,
+    tab: classifyInspectionItem({
+      auditStatus: item.auditStatus,
+      auditResult: item.auditResult,
+      findings: findingsByRound.get(item.auditRoundId) ?? [],
+      conditionName: item.asset.condition?.name ?? null,
+    }),
+  })))
 }
 
 export type RoundDisposalSummary = {
