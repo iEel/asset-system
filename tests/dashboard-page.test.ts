@@ -52,7 +52,7 @@ const noInbox = { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 }
 test("งานที่รอคุณ: the visible queue kinds with a count in the shared order, the kinds at zero, the backlog and the oldest (spec §6.3; group 9 §3.1)", () => {
   const counts = {
     approvalInbox: 9, openRepairs: 4, stuckRepairs: 2, duePm: 0, pendingAuditFindings: 3, openAuditActions: 0,
-    auditActionsDueSoon: 0, pendingDisposals: 1, approvedDisposals: 0, returnsDueSoon: 5, warrantyExpiringSoon: 7, licenseExpiringSoon: 0,
+    auditActionsDueSoon: 0, pendingDisposals: 1, approvedDisposals: 0, returnsDueSoon: 5, warrantyExpiringSoon: 7, licenseExpiringSoon: 0, consumablesLow: 0,
   }
   const visibleKeys: WaitingWorkKey[] = ["openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon"]
   const ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>> = {
@@ -78,7 +78,7 @@ test("งานที่รอคุณ: the visible queue kinds with a count in
 test("buildDashboardWaiting total excludes advance warnings", () => {
   const counts = {
     approvalInbox: 19, openRepairs: 7, stuckRepairs: 0, duePm: 3, pendingAuditFindings: 0, openAuditActions: 4,
-    auditActionsDueSoon: 2, pendingDisposals: 0, approvedDisposals: 3, returnsDueSoon: 2, warrantyExpiringSoon: 5, licenseExpiringSoon: 1,
+    auditActionsDueSoon: 2, pendingDisposals: 0, approvedDisposals: 3, returnsDueSoon: 2, warrantyExpiringSoon: 5, licenseExpiringSoon: 1, consumablesLow: 0,
   }
   const visibleKeys = WAITING_WORK_KEYS.filter((key) => key !== "pendingAuditFindings" && key !== "pendingDisposals")
   const work = { counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 15, findings: 14, rounds: 1 } }
@@ -90,7 +90,7 @@ test("buildDashboardWaiting total excludes advance warnings", () => {
 test("advanceRows hold returns, warranty and licence", () => {
   const counts = {
     approvalInbox: 0, openRepairs: 1, stuckRepairs: 0, duePm: 0, pendingAuditFindings: 0, openAuditActions: 0,
-    auditActionsDueSoon: 0, pendingDisposals: 0, approvedDisposals: 0, returnsDueSoon: 2, warrantyExpiringSoon: 0, licenseExpiringSoon: 1,
+    auditActionsDueSoon: 0, pendingDisposals: 0, approvedDisposals: 0, returnsDueSoon: 2, warrantyExpiringSoon: 0, licenseExpiringSoon: 1, consumablesLow: 0,
   }
   const ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>> = {
     returnsDueSoon: { kind: "due", days: -3, overdue: true },

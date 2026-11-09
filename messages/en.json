@@ -255,7 +255,9 @@
     "type_warning": "Needs attention",
     "type_danger": "Urgent",
     "type_success": "Done",
-    "clearAssignedFilter": "Clear the assigned filter"
+    "clearAssignedFilter": "Clear the assigned filter",
+    "consumablesLow": "Consumables to restock",
+    "consumablesLowDetail": "Kinds at or below their minimum, out of stock included"
   },
   "nav": {
     "mainNavigation": "Main navigation",
@@ -628,7 +630,8 @@
       "approvedDisposals": "Dispose",
       "returnsDueSoon": "Check in",
       "warrantyExpiringSoon": "View assets",
-      "licenseExpiringSoon": "View licenses"
+      "licenseExpiringSoon": "View licenses",
+      "consumablesLow": "View consumables"
     },
     "statusTitle": "By status",
     "statusColumn": "Status",

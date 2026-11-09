@@ -43,6 +43,7 @@ function digestLabel(locale: NotificationDigestLocale, key: string) {
       returnsDueSoon: "รายการยืมใช้ชั่วคราวใกล้ครบกำหนดคืน",
       warrantyExpiringSoon: "ประกันใกล้หมดอายุ",
       licenseExpiringSoon: "License ใกล้หมดอายุ",
+      consumablesLow: "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม",
     },
     en: {
       approvalInbox: "Approval work",
@@ -57,6 +58,7 @@ function digestLabel(locale: NotificationDigestLocale, key: string) {
       returnsDueSoon: "Returns due soon",
       warrantyExpiringSoon: "Warranty expiring soon",
       licenseExpiringSoon: "Licenses expiring soon",
+      consumablesLow: "Consumables to restock",
     },
   }
   return labels[locale][key] ?? key

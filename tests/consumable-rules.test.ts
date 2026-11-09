@@ -9,6 +9,7 @@ import {
   consumableAdjustError,
   consumableBlockedIssueStatusNames,
   consumableIssueAssetError,
+  consumableLowWhere,
   consumableOftenChanged,
   consumableStockState,
   isConsumableLow,
@@ -40,6 +41,14 @@ test("stock state: out first, then low", () => {
   assert.equal(isConsumableLow({ onHand: 2, minQuantity: 2 }), true)
   assert.equal(isConsumableLow({ onHand: 0, minQuantity: 0 }), false)
   assert.equal(isConsumableLow({ onHand: 3, minQuantity: 2 }), false)
+})
+
+// Consumables plan 4 task 1: the one "active and low" where the bell's counter and the list's ?state=low share. Prisma
+// compares two columns through a field reference (prisma.consumableItem.fields.minQuantity), which only the database
+// client holds, so the caller passes it in and this module stays client-safe.
+test("the low where: active, a minimum set, and on-hand at or under the minimum column (isConsumableLow)", () => {
+  const minQuantity = { modelName: "ConsumableItem", name: "minQuantity" } as never
+  assert.deepEqual(consumableLowWhere(minQuantity), { isActive: true, minQuantity: { gt: 0 }, onHand: { lte: minQuantity } })
 })
 
 test("adjust: a count equal to on-hand is no change, outside 0–99999 is out of range", () => {

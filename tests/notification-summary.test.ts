@@ -44,6 +44,13 @@ test("the two repair kinds follow approvals, and every row links where the share
   assert.deepEqual(buildNotificationSummaryItems("th", emptyCounts()), [])
 })
 
+test("low consumables link to the list's low filter in the warning tone (consumables plan 4 task 1)", () => {
+  const items = buildNotificationSummaryItems("th", { ...emptyCounts(), consumablesLow: 3 })
+  assert.deepEqual(items.map((item) => [item.key, item.count, item.href, item.tone]), [["consumablesLow", 3, "/th/consumables?state=low", "warning"]])
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")) as { notifications: Record<string, string> }
+  assert.equal(th.notifications.consumablesLow, "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม")
+})
+
 test("return reminders count temporary loans only", () => {
   const source = readFileSync("src/lib/waiting-work-rules.ts", "utf8")
   assert.match(source, /handoverMode:\s*"temporary_loan"/)

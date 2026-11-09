@@ -40,6 +40,12 @@ test("the digest names pending findings รายการไม่ตรงท�
   assert.match(buildDailyDigestMessage("th", items), /- รายการไม่ตรงทะเบียนรอพิจารณา: 4/)
 })
 
+test("the digest names low consumables (consumables plan 4 task 1)", () => {
+  const items = [{ key: "consumablesLow", count: 2, href: "/th/consumables?state=low", tone: "warning" as const }]
+  assert.match(buildDailyDigestMessage("th", items), /- ของใช้สิ้นเปลืองต้องซื้อเพิ่ม: 2/)
+  assert.match(buildDailyDigestMessage("en", items), /- Consumables to restock: 2/)
+})
+
 test("uses highest severity tone in digest", () => {
   assert.equal(resolveDigestTone([{ key: "returnsDueSoon", count: 1, href: "/th", tone: "warning" }]), "warning")
   assert.equal(

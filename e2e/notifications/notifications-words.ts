@@ -32,9 +32,10 @@ export const TOPIC_TITLES = {
   returnsDueSoon: "ใกล้/เกินกำหนดคืน",
   warrantyExpiringSoon: "ประกันใกล้หมดอายุ",
   licenseExpiringSoon: "License ใกล้หมดอายุ",
+  consumablesLow: "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม",
 } as const
 
 export type TopicKey = keyof typeof TOPIC_TITLES
 
 // The เตือนล่วงหน้า section's keys (src/lib/work-queues.ts ADVANCE_WARNING_KEYS).
-export const ADVANCE_KEYS: readonly TopicKey[] = ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"]
+export const ADVANCE_KEYS: readonly TopicKey[] = ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon", "consumablesLow"]

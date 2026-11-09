@@ -22,6 +22,7 @@ const notificationTones: Record<WaitingWorkKey, NotificationSummaryItem["tone"]>
   returnsDueSoon: "primary",
   warrantyExpiringSoon: "warning",
   licenseExpiringSoon: "warning",
+  consumablesLow: "warning",
 }
 
 export function buildNotificationSummaryItems(locale: string, counts: WaitingWorkCounts): NotificationSummaryItem[] {

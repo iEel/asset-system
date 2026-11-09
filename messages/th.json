@@ -255,7 +255,9 @@
     "type_warning": "ควรติดตาม",
     "type_danger": "เร่งด่วน",
     "type_success": "เรียบร้อย",
-    "clearAssignedFilter": "ล้างตัวกรองมอบหมายแล้ว"
+    "clearAssignedFilter": "ล้างตัวกรองมอบหมายแล้ว",
+    "consumablesLow": "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม",
+    "consumablesLowDetail": "ชนิดที่คงเหลือไม่เกินขั้นต่ำ รวมชนิดที่หมดแล้ว"
   },
   "nav": {
     "mainNavigation": "เมนูหลัก",
@@ -628,7 +630,8 @@
       "approvedDisposals": "ตัดจำหน่าย",
       "returnsDueSoon": "รับคืน",
       "warrantyExpiringSoon": "ดูทรัพย์สิน",
-      "licenseExpiringSoon": "ดู License"
+      "licenseExpiringSoon": "ดู License",
+      "consumablesLow": "ดูของใช้สิ้นเปลือง"
     },
     "statusTitle": "ตามสถานะ",
     "statusColumn": "สถานะ",

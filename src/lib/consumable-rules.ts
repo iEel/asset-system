@@ -1,5 +1,6 @@
 // ของใช้สิ้นเปลือง (consumables spec): stock state, adjust and issue-target checks, and the "changed often" signal.
-// Pure and client-safe: no Prisma import, so node --test and the consumables pages import it.
+// Pure and client-safe: Prisma for types only, so node --test and the consumables pages import it.
+import type { Prisma } from "@prisma/client"
 
 import { formatCount } from "./display-format.ts"
 
@@ -22,6 +23,17 @@ export type ConsumableStockState = "ok" | "low" | "out"
 /** Low only when a minimum is set: minQuantity > 0 and onHand <= minQuantity. */
 export function isConsumableLow(item: { onHand: number; minQuantity: number }): boolean {
   return item.minQuantity > 0 && item.onHand <= item.minQuantity
+}
+
+/**
+ * The database's "active and low" (consumables plan 4): isConsumableLow as a where, shared by the bell's counter and the
+ * list's ?state=low. onHand <= minQuantity compares two columns, which Prisma does through a field reference held by the
+ * client (its consumableItem.fields.minQuantity); the caller passes it so this module never imports the client.
+ */
+export function consumableLowWhere(
+  minQuantity: Prisma.IntFieldRefInput<"ConsumableItem">,
+): Prisma.ConsumableItemWhereInput {
+  return { isActive: true, minQuantity: { gt: 0 }, onHand: { lte: minQuantity } }
 }
 
 /** Out (onHand 0) wins over low. */

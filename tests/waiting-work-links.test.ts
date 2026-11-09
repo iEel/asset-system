@@ -48,6 +48,7 @@ test("each waiting kind has one link, to a list (group 1 spec §6.3)", () => {
     returnsDueSoon: "/th/assets?dataQuality=returnDue&exact=1",
     warrantyExpiringSoon: "/th/assets?dataQuality=warranty&exact=1",
     licenseExpiringSoon: "/th/assets?dataQuality=licenseExpiry&exact=1",
+    consumablesLow: "/th/consumables?state=low",
   })
   assert.equal(buildWaitingWorkHref("en", "stuckRepairs"), "/en/maintenance#stuck")
   assert.equal(buildWaitingWorkHref("en", "returnsDueSoon"), "/en/assets?dataQuality=returnDue&exact=1")
