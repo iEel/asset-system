@@ -1,6 +1,6 @@
 // The disposal queue's approved-tab selection (group 6 plan 4 Task 3, spec §10.2, P4-R2): up to 200 requests (one
-// round), kept across pages in sessionStorage and reset when the search, the type or the request dates change. The
-// round page (/disposal/rounds/new) reads the ids from the same key. It mirrors the inbox selection
+// round), kept across pages in sessionStorage and reset when the search, the type, the request dates or the audit round
+// change. The round page (/disposal/rounds/new) reads the ids from the same key. It mirrors the inbox selection
 // (approval-inbox-selection.ts) with one kind only. Pure and client-safe: no imports, so node --test loads it.
 
 export const disposalRoundSelectionStorageKey = "disposal-round-selection"
@@ -9,9 +9,13 @@ export const DISPOSAL_ROUND_SELECTION_MAX = 200
 
 export type StoredRoundSelection = { ids: string[]; scope: string }
 
-/** The approved tab's search, type and request dates joined: a selection belongs to one of these. */
-export function disposalRoundSelectionScope(query: { search: string; disposalType: string; dateFrom: string; dateTo: string }): string {
-  return JSON.stringify([query.search.trim(), query.disposalType, query.dateFrom, query.dateTo])
+/**
+ * The approved tab's search, type, request dates and audit round joined: a selection belongs to one of these. The
+ * round (ยืนยันผลตรวจ plan 4) is a fifth entry only when set, so a scope without it reads as before.
+ */
+export function disposalRoundSelectionScope(query: { search: string; disposalType: string; dateFrom: string; dateTo: string; auditRound?: string }): string {
+  const parts = [query.search.trim(), query.disposalType, query.dateFrom, query.dateTo]
+  return JSON.stringify(query.auditRound ? [...parts, query.auditRound] : parts)
 }
 
 /** sessionStorage's text as a selection; anything malformed (or nothing) is no selection. */
@@ -70,7 +74,7 @@ export function selectAllRound(
 }
 
 /**
- * The approved tab with the search, type and dates the selection was made under (group 6 plan 4 Task 4): the round
+ * The approved tab with the search, type, dates and audit round the selection was made under (group 6 plan 4 Task 4): the round
  * page's "เพิ่มจากรายการอนุมัติแล้ว" goes back there, so the queue restores the same selection. A missing or malformed
  * scope gives the bare approved tab.
  */
@@ -83,7 +87,7 @@ export function disposalRoundApprovedTabHref(locale: string, scope: string | nul
     value = null
   }
   const parts: unknown[] = Array.isArray(value) ? value : []
-  const keys = ["search", "disposalType", "dateFrom", "dateTo"] as const
+  const keys = ["search", "disposalType", "dateFrom", "dateTo", "auditRound"] as const
   keys.forEach((key, index) => {
     const entry = parts[index]
     if (typeof entry === "string" && entry !== "") params.set(key, entry)

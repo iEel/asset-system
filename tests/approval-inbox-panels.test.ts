@@ -89,6 +89,10 @@ const fakeDb = {
       record("auditRound.findFirst", args)
       return state.rounds.find((round) => matches(round, args.where)) ?? null
     },
+    async findMany(args: Args) {
+      record("auditRound.findMany", args)
+      return []
+    },
   },
   user: {
     async findUnique(args: Args) {

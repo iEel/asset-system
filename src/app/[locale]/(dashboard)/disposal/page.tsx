@@ -6,7 +6,7 @@ import { ChevronRight, Download, Layers, Plus, SlidersHorizontal, Trash2 } from 
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildDisposalQueryString, buildDisposalWhere, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, type DisposalListParams } from "@/lib/disposal-query"
+import { buildDisposalQueryString, buildDisposalWhere, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, readAuditRoundFindingIds, type DisposalListParams } from "@/lib/disposal-query"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -28,6 +28,7 @@ import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { FilterChipList } from "@/components/ui/filter-chips"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { PageHeader } from "@/components/ui/page-header"
@@ -66,12 +67,19 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const canApprove = hasPermission(user, "disposal", "approve")
   const canEdit = hasPermission(user, "disposal", "edit")
   const canExport = hasPermission(user, "disposal", "export")
-  const [t, tCommon] = await Promise.all([getTranslations("disposalPage"), getTranslations("common")])
+  const [t, tCommon, tAsset] = await Promise.all([getTranslations("disposalPage"), getTranslations("common"), getTranslations("asset")])
   const now = new Date()
   const query = buildDisposalQueryString(filters)
   const disposalReturnHref = `/${locale}/disposal${query ? `?${query}` : ""}`
-  const requestWhere = buildDisposalWhere(filters)
-  const stageWhere = buildDisposalWhere({ ...filters, status: "" })
+  // "มาจากรอบตรวจนับ" (ยืนยันผลตรวจ plan 4): the round's number for the chip and its finding ids for the where.
+  const [auditRoundFilter, auditRoundFindingIds] = filters.auditRound
+    ? await Promise.all([
+        prisma.auditRound.findUnique({ where: { id: filters.auditRound }, select: { auditNo: true } }),
+        readAuditRoundFindingIds(prisma, filters.auditRound),
+      ])
+    : [null, []]
+  const requestWhere = buildDisposalWhere(filters, { auditRoundFindingIds })
+  const stageWhere = buildDisposalWhere({ ...filters, status: "" }, { auditRoundFindingIds })
   // The approved tab's ticks (spec §10.2): only with disposal:edit, the permission a round needs.
   const roundSelectionEnabled = canEdit && filters.status === "approved"
 
@@ -190,9 +198,17 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   ]
   const resultRange = paginationRange(filters.page, filters.pageSize, total)
   // The tabs are not a filter (spec §10.2): clearing the filters keeps the tab.
-  const hasActiveFilters = Boolean(filters.search || filters.disposalType || filters.dateFrom || filters.dateTo)
+  const hasActiveFilters = Boolean(filters.search || filters.disposalType || filters.dateFrom || filters.dateTo || filters.auditRound)
   // The phone filter summary says how many filters are on (spec 2B §5.10 #5). It used to read "ล้างตัวกรอง" but only folded the panel.
-  const activeFilterCount = [filters.search, filters.disposalType, filters.dateFrom, filters.dateTo].filter(Boolean).length
+  const activeFilterCount = [filters.search, filters.disposalType, filters.dateFrom, filters.dateTo, filters.auditRound].filter(Boolean).length
+  // The round filter has no field: a removable chip says which round, removing it keeps the tab and the other filters.
+  const auditRoundChips = filters.auditRound
+    ? [{
+        key: "auditRound",
+        label: t("filterAuditRound", { auditNo: auditRoundFilter?.auditNo ?? filters.auditRound }),
+        href: `/${locale}/disposal?${buildDisposalQueryString(filters, { auditRound: "", page: 1 })}`,
+      }]
+    : []
   const clearHref = `/${locale}/disposal${filters.status ? `?status=${filters.status}` : ""}`
   const emptyState = disposalEmptyState({ locale, t, hasActiveFilters, canCreate, clearHref })
   const nextActionLabels: DisposalNextActionLabels = {
@@ -239,6 +255,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         <div className="hidden md:block">
           <DisposalFilterForm formId="disposal-filter-desktop" {...filterFormProps} />
         </div>
+        <FilterChipList chips={auditRoundChips} label={tAsset("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />
         {pendingInboxNote ? (
           <p data-disposal-inbox-note className="text-meta text-muted-foreground">
             {pendingInboxNote}
@@ -409,7 +426,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
 
       {roundSelectionEnabled ? (
         <DisposalRoundSelectionProvider
-          scope={disposalRoundSelectionScope({ search: filters.search, disposalType: filters.disposalType, dateFrom: filters.dateFrom, dateTo: filters.dateTo })}
+          scope={disposalRoundSelectionScope({ search: filters.search, disposalType: filters.disposalType, dateFrom: filters.dateFrom, dateTo: filters.dateTo, auditRound: filters.auditRound })}
           tickable={tickableIds}
           createHref={`/${locale}/disposal/rounds/new`}
           copy={roundSelectionCopy}
@@ -431,6 +448,7 @@ function DisposalFilterForm({ formId, locale, filters, hasActiveFilters, clearHr
   return (
     <form id={formId} role="search" action={`/${locale}/disposal`} className="flex flex-wrap items-center gap-2">
       {filters.status ? <input type="hidden" name="status" value={filters.status} /> : null}
+      {filters.auditRound ? <input type="hidden" name="auditRound" value={filters.auditRound} /> : null}
       <input type="hidden" name="pageSize" value={filters.pageSize} />
       <SearchField name="search" defaultValue={filters.search} fieldSize="md" aria-label={tCommon("search")} placeholder={t("searchPlaceholder")} className="w-full md:w-72" />
       <FilterSelect label={t("queue.colType")} hideLabel fieldSize="md" name="disposalType" defaultValue={filters.disposalType} allLabel={`${t("queue.colType")}: ${tCommon("all")}`} options={disposalTypeFilters.map((type) => ({ value: type, label: t(`types.${type}`) }))} className="w-full md:w-44" />

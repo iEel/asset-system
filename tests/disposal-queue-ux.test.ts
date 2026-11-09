@@ -158,7 +158,7 @@ test("the approved tab renders DisposalRoundSelectionProvider, the ticks, select
   assert.match(page, /<DisposalRoundSelectionBar\b/)
   assert.match(page, /getDisposalRoundTickBlocks\(prisma, /, "the reasons come from the round service's own checks")
   assert.match(page, /roundSelectionEnabled && tickBlock \? <p data-disposal-round-block className="[^"]*md:block">\{tickReasons\[tickBlock\]\}<\/p>/, "a disabled tick says why in words under the next step")
-  assert.match(page, /disposalRoundSelectionScope\(\{ search: filters\.search, disposalType: filters\.disposalType, dateFrom: filters\.dateFrom, dateTo: filters\.dateTo \}\)/)
+  assert.match(page, /disposalRoundSelectionScope\(\{ search: filters\.search, disposalType: filters\.disposalType, dateFrom: filters\.dateFrom, dateTo: filters\.dateTo, auditRound: filters\.auditRound \}\)/)
   assert.match(page, /createHref=\{`\/\$\{locale\}\/disposal\/rounds\/new`\}/)
   assert.doesNotMatch(page, /DisposalBulkExecution|DisposalExecutionButton/)
   const selection = read(SELECTION)
@@ -207,4 +207,41 @@ test("on the phone the approved tab has no ticks and says where a round is made"
 
 test("getDisposalOptions had no caller left and is deleted", () => {
   assert.equal(existsSync("src/lib/disposal-options.ts"), false)
+})
+
+// ยืนยันผลตรวจ plan 4 task 2: "มาจากรอบตรวจนับ {auditNo}", a removable chip; the search, the tabs and the export keep it.
+test("the audit round filter: read once, a removable chip, kept by the form, counted as a filter, applied by the export", () => {
+  const page = read(queuePath)
+  assert.match(page, /readAuditRoundFindingIds\(prisma, filters\.auditRound\)/)
+  assert.match(page, /prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.auditRound \}, select: \{ auditNo: true \} \}\)/)
+  assert.match(page, /const requestWhere = buildDisposalWhere\(filters, \{ auditRoundFindingIds \}\)/)
+  assert.match(page, /const stageWhere = buildDisposalWhere\(\{ \.\.\.filters, status: "" \}, \{ auditRoundFindingIds \}\)/)
+  assert.match(page, /t\("filterAuditRound", \{ auditNo: auditRoundFilter\?\.auditNo \?\? filters\.auditRound \}\)/)
+  assert.match(page, /buildDisposalQueryString\(filters, \{ auditRound: "", page: 1 \}\)/, "removing the chip keeps the tab and the other filters")
+  assert.match(page, /<FilterChipList chips=\{auditRoundChips\} label=\{tAsset\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
+  assert.match(page, /filters\.dateTo \|\| filters\.auditRound\)/, "a round filter counts for hasActiveFilters")
+  const form = page.slice(page.indexOf("function DisposalFilterForm("), page.indexOf("function disposalEmptyState("))
+  assert.match(form, /\{filters\.auditRound \? <input type="hidden" name="auditRound" value=\{filters\.auditRound\} \/> : null\}/, "a search keeps the round")
+  const route = read("src/app/api/disposal-requests/export/route.ts")
+  assert.match(route, /const auditRoundFindingIds = await readAuditRoundFindingIds\(prisma, filters\.auditRound\)/)
+  assert.match(route, /where: buildDisposalWhere\(filters, \{ auditRoundFindingIds \}\)/)
+  const th = JSON.parse(read("messages/th.json")).disposalPage
+  const en = JSON.parse(read("messages/en.json")).disposalPage
+  assert.equal(th.filterAuditRound, "มาจากรอบตรวจนับ {auditNo}")
+  assert.equal(en.filterAuditRound, "From audit round {auditNo}")
+  assert.equal(th.sourceAuditRound, "ตรวจนับ {number}")
+  assert.equal(en.sourceAuditRound, "Audit {number}")
+})
+
+test("every source label reads disposalSourceLabelKey, so an audit round source has its own words", () => {
+  for (const path of [
+    "src/app/api/disposal-requests/export/route.ts",
+    "src/app/[locale]/(dashboard)/disposal/[id]/page.tsx",
+    "src/app/[locale]/(print)/disposal/[id]/print/page.tsx",
+    "src/components/approvals/approval-disposal-panel.tsx",
+  ]) {
+    const source = read(path)
+    assert.match(source, /disposalSourceLabelKey\((?:link|sourceLink|panel\.source)\.kind\)/, path)
+    assert.doesNotMatch(source, /"sourceAuditFinding"/, path)
+  }
 })

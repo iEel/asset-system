@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import type { DisposalInboxPanel } from "@/lib/approval-inbox-panels"
 import { formatApprovalInboxDay } from "@/lib/approval-inbox"
 import type { DisposalSodReason } from "@/lib/disposal-policy"
+import { disposalSourceLabelKey } from "@/lib/disposal-source"
 import { formatCount, formatMoney, isBlankValue } from "@/lib/display-format"
 
 // A separation-of-duties block names its reason in the row's words (spec §7.3).
@@ -62,9 +63,7 @@ export async function ApprovalDisposalPanel({
       ? panel.source.text
       : (
           <Link href={panel.source.href} className={linkVariants({ size: "inherit" })}>
-            {panel.source.kind === "maintenance"
-              ? tDisposal("sourceMaintenance", { number: panel.source.number })
-              : tDisposal("sourceAuditFinding", { number: panel.source.number })}
+            {tDisposal(disposalSourceLabelKey(panel.source.kind), { number: panel.source.number })}
           </Link>
         )
   const location = [asset.locationName, asset.branchName].filter((part): part is string => !isBlankValue(part)).join(" · ")

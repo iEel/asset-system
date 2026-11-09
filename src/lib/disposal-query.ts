@@ -6,6 +6,7 @@ export type DisposalListParams = {
   disposalType?: string | string[]
   dateFrom?: string | string[]
   dateTo?: string | string[]
+  auditRound?: string | string[]
   page?: string | string[] | number
   pageSize?: string | string[] | number
 }
@@ -24,17 +25,41 @@ export function parseDisposalListParams(input: URLSearchParams | DisposalListPar
   const disposalType = normalizeOption(getValue("disposalType"), disposalTypeFilters)
   const dateFrom = normalizeDate(getValue("dateFrom"))
   const dateTo = normalizeDate(getValue("dateTo"))
+  const auditRound = normalizeUuid(getValue("auditRound"))
   const page = normalizePage(getValue("page"))
   const pageSize = normalizePageSize(getValue("pageSize"))
 
-  return { search, status, disposalType, dateFrom, dateTo, page, pageSize }
+  return { search, status, disposalType, dateFrom, dateTo, auditRound, page, pageSize }
 }
 
-export function buildDisposalWhere(filters: ReturnType<typeof parseDisposalListParams>): Prisma.DisposalRequestWhereInput {
+/**
+ * What the where needs from the database (it is sync): the audit round filter's finding ids, read by the caller with
+ * readAuditRoundFindingIds.
+ */
+export type DisposalWhereContext = { auditRoundFindingIds?: readonly string[] }
+
+export function buildDisposalWhere(
+  filters: ReturnType<typeof parseDisposalListParams>,
+  context: DisposalWhereContext = {},
+): Prisma.DisposalRequestWhereInput {
   const hasValidDateRange = getDisposalDateRangeError(filters) === null
 
   return {
     isActive: true,
+    // "มาจากรอบตรวจนับ" (ยืนยันผลตรวจ plan 4): a request made from the round's confirm page, or from one of its findings
+    // on the findings page. In an AND, so the search's OR stays its own.
+    ...(filters.auditRound
+      ? {
+          AND: [
+            {
+              OR: [
+                { sourceType: "audit_round", sourceId: filters.auditRound },
+                { sourceType: "audit_finding", sourceId: { in: [...(context.auditRoundFindingIds ?? [])] } },
+              ],
+            },
+          ],
+        }
+      : {}),
     ...(filters.status ? { requestStatus: filters.status } : {}),
     ...(filters.disposalType ? { disposalType: filters.disposalType } : {}),
     ...(hasValidDateRange && (filters.dateFrom || filters.dateTo)
@@ -79,9 +104,26 @@ export function buildDisposalQueryString(
   if (merged.disposalType) params.set("disposalType", merged.disposalType)
   if (merged.dateFrom) params.set("dateFrom", merged.dateFrom)
   if (merged.dateTo) params.set("dateTo", merged.dateTo)
+  if (merged.auditRound) params.set("auditRound", merged.auditRound)
   params.set("page", String(merged.page))
   params.set("pageSize", String(merged.pageSize))
   return params.toString()
+}
+
+/** The audit round filter's finding ids; no round, no read. */
+export async function readAuditRoundFindingIds(
+  db: { auditFinding: { findMany(args: { where: { auditRoundId: string }; select: { id: true } }): Promise<Array<{ id: string }>> } },
+  auditRoundId: string,
+): Promise<string[]> {
+  if (!auditRoundId) return []
+  const rows = await db.auditFinding.findMany({ where: { auditRoundId }, select: { id: true } })
+  return rows.map((row) => row.id)
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function normalizeUuid(value: string | undefined) {
+  return value && UUID_PATTERN.test(value) ? value : ""
 }
 
 function normalizeOption<T extends readonly string[]>(value: string | undefined, allowed: T): T[number] | "" {

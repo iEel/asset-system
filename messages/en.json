@@ -4907,7 +4907,9 @@
       "colProgress": "Progress",
       "machineCount": "{count} machines",
       "stripLine": "{requests} requests from {batches} batches"
-    }
+    },
+    "filterAuditRound": "From audit round {auditNo}",
+    "sourceAuditRound": "Audit {number}"
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

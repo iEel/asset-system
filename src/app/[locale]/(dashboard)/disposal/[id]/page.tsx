@@ -31,7 +31,7 @@ import { listDisposalPhotos, isDisposalPhotoFile } from "@/lib/disposal-photo"
 import { formatMovementType } from "@/lib/asset-detail-format"
 import { getAssetStateTone, getPanelClasses } from "@/lib/design-system"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
-import { readDisposalSourceLinks } from "@/lib/disposal-source"
+import { disposalSourceLabelKey, readDisposalSourceLinks } from "@/lib/disposal-source"
 import { disposalRequestRoundSelect } from "@/lib/disposal-round-page-data"
 
 type DisposalDetailPageProps = {
@@ -130,9 +130,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       ? sourceLink.text
       : (
           <Link href={sourceLink.href} className={linkVariants({ size: "inherit" })}>
-            {sourceLink.kind === "maintenance"
-              ? t("sourceMaintenance", { number: sourceLink.number })
-              : t("sourceAuditFinding", { number: sourceLink.number })}
+            {t(disposalSourceLabelKey(sourceLink.kind), { number: sourceLink.number })}
           </Link>
         )
   const movementLabels = await getMovementDisplayLabels(movements)

@@ -141,3 +141,11 @@ test("a request in a round shows the round on the request page and on the print"
   }
   assert.match(read(REQUEST_PAGE), /data-disposal-execution-round/)
 })
+
+test("the approved tab link keeps the audit round the selection was made under", () => {
+  const scope = disposalRoundSelectionScope({ search: "", disposalType: "", dateFrom: "", dateTo: "", auditRound: "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b" })
+  const url = new URL(disposalRoundApprovedTabHref("th", scope), "http://x")
+  assert.equal(url.searchParams.get("status"), "approved")
+  assert.equal(url.searchParams.get("auditRound"), "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b")
+  assert.equal(new URL(disposalRoundApprovedTabHref("th", disposalRoundSelectionScope({ search: "", disposalType: "", dateFrom: "", dateTo: "" })), "http://x").searchParams.has("auditRound"), false)
+})

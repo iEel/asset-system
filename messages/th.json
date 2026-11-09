@@ -4907,7 +4907,9 @@
       "colProgress": "ความคืบหน้า",
       "machineCount": "{count} เครื่อง",
       "stripLine": "{requests} คำขอจาก {batches} ชุด"
-    }
+    },
+    "filterAuditRound": "มาจากรอบตรวจนับ {auditNo}",
+    "sourceAuditRound": "ตรวจนับ {number}"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/display-format"
 import { formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
-import { readDisposalSourceLinks } from "@/lib/disposal-source"
+import { disposalSourceLabelKey, readDisposalSourceLinks } from "@/lib/disposal-source"
 import { disposalRequestRoundSelect } from "@/lib/disposal-round-page-data"
 
 type DisposalPrintPageProps = {
@@ -108,9 +108,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
     ? null
     : sourceLink.kind === "other"
       ? sourceLink.text
-      : sourceLink.kind === "maintenance"
-        ? t("sourceMaintenance", { number: sourceLink.number })
-        : t("sourceAuditFinding", { number: sourceLink.number })
+      : t(disposalSourceLabelKey(sourceLink.kind), { number: sourceLink.number })
 
   return (
     <OperationDocumentPrint

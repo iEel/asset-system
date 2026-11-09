@@ -89,3 +89,11 @@ test("a stored selection is read defensively: anything malformed is no selection
     assert.equal(parseStoredRoundSelection(raw), null, String(raw))
   }
 })
+
+// ยืนยันผลตรวจ plan 4 task 2: the audit round filter is part of the scope, and only when set.
+test("the scope carries the audit round only when set, and changes with it", () => {
+  const base = { search: "", disposalType: "", dateFrom: "", dateTo: "" }
+  assert.equal(disposalRoundSelectionScope({ ...base, auditRound: "" }), disposalRoundSelectionScope(base))
+  assert.equal(disposalRoundSelectionScope(base), JSON.stringify(["", "", "", ""]), "a scope without a round reads as before")
+  assert.notEqual(disposalRoundSelectionScope({ ...base, auditRound: "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b" }), disposalRoundSelectionScope(base))
+})

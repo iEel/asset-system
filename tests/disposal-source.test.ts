@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { readDisposalSourceLinks, toDisposalSourceLink } from "../src/lib/disposal-source.ts"
+import { disposalSourceLabelKey, readDisposalSourceLinks, toDisposalSourceLink } from "../src/lib/disposal-source.ts"
 
 test("a maintenance source links to its repair with the repair number", () => {
   assert.deepEqual(
@@ -15,6 +15,24 @@ test("an audit finding source links to the findings page with the round number",
     toDisposalSourceLink("th", { sourceType: "audit_finding", sourceId: "f-1" }, { auditNo: "AUD-2026-0003" }),
     { kind: "audit_finding", number: "AUD-2026-0003", href: "/th/audit/findings?finding=f-1" },
   )
+})
+
+test("an audit round source links to the round page with its number", () => {
+  assert.deepEqual(
+    toDisposalSourceLink("th", { sourceType: "audit_round", sourceId: "r-1" }, { auditNo: "AUD-2026-0004" }),
+    { kind: "audit_round", number: "AUD-2026-0004", href: "/th/audit/rounds/r-1" },
+  )
+  assert.deepEqual(toDisposalSourceLink("en", { sourceType: "audit_round", sourceId: "r-9" }, {}), {
+    kind: "other",
+    text: "audit_round / r-9",
+    href: null,
+  })
+})
+
+test("each linked kind has its own label key", () => {
+  assert.equal(disposalSourceLabelKey("maintenance"), "sourceMaintenance")
+  assert.equal(disposalSourceLabelKey("audit_finding"), "sourceAuditFinding")
+  assert.equal(disposalSourceLabelKey("audit_round"), "sourceAuditRound")
 })
 
 test("no source gives null", () => {
@@ -59,6 +77,12 @@ test("readDisposalSourceLinks reads each source table once and maps every reques
         return [{ id: "f-1", auditRound: { auditNo: "AUD-2026-0003" } }]
       },
     },
+    auditRound: {
+      async findMany(args: FindManyArgs) {
+        calls.push({ table: "auditRound", args })
+        return [{ id: "round-1", auditNo: "AUD-2026-0004" }]
+      },
+    },
   }
 
   const links = await readDisposalSourceLinks(db, "en", [
@@ -66,9 +90,12 @@ test("readDisposalSourceLinks reads each source table once and maps every reques
     { id: "r2", sourceType: "audit_finding", sourceId: "f-1" },
     { id: "r3", sourceType: null, sourceId: null },
     { id: "r4", sourceType: "maintenance", sourceId: "mt-gone" },
+    { id: "r5", sourceType: "audit_round", sourceId: "round-1" },
   ])
 
-  assert.equal(calls.length, 2)
+  assert.equal(calls.length, 3)
+  assert.deepEqual(calls.find((call) => call.table === "auditRound")?.args.where.id.in, ["round-1"])
+  assert.deepEqual(links.get("r5"), { kind: "audit_round", number: "AUD-2026-0004", href: "/en/audit/rounds/round-1" })
   assert.deepEqual(calls.find((call) => call.table === "maintenanceTicket")?.args.where.id.in, ["mt-1", "mt-gone"])
   assert.deepEqual(calls.find((call) => call.table === "auditFinding")?.args.where.id.in, ["f-1"])
   assert.deepEqual(links.get("r1"), { kind: "maintenance", number: "MT-20261012-0045", href: "/en/maintenance/mt-1" })
@@ -87,6 +114,12 @@ test("readDisposalSourceLinks skips a table with no ids", async () => {
       },
     },
     auditFinding: {
+      async findMany() {
+        reads += 1
+        return []
+      },
+    },
+    auditRound: {
       async findMany() {
         reads += 1
         return []
