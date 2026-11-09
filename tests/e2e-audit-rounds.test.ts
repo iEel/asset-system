@@ -331,3 +331,66 @@ test("the damaged and not-found ยืนยันผลตรวจ spec walks 
   }
   assert.ok(!spec.includes("cancelAsItHead") && !/action: "cancel"/.test(spec), "nothing cancels the round")
 })
+
+test("the detail-page ยืนยันผลตรวจ spec reads the app's own words, key by key (inspection-confirm plan 5 task 4)", async () => {
+  const { INSPECTION_DETAIL_WORDS: W } = await import("../e2e/audit/inspection-detail-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const notice = th.assetInspectionNotice as Record<string, string>
+  const page = th.inspectionConfirmPage as Record<string, string>
+  const byKey: Record<keyof typeof W, string> = {
+    noticeTitle: notice.title,
+    roundLink: notice.roundLink,
+    button: notice.button,
+    dialogTitle: notice.dialogTitle,
+    inUseNeedsHolder: notice.inUseNeedsHolder,
+    submit: notice.submit,
+    success: notice.success,
+    tabReady: page.tab_ready,
+    tabAwaitingReview: page.tab_awaitingReview,
+    tabDamaged: page.tab_damaged,
+    tabNotFound: page.tab_notFound,
+    tabNotScanned: page.tab_notScanned,
+    handoffConfirm: th.auditFinding.handoffConfirm,
+    handoffConfirmLink: th.auditFinding.handoffConfirmLink,
+    statusCorrection: th.asset.statusCorrectionButton,
+    movementStatusCorrection: th.asset.movementTypes.status_correction,
+    movementCustodianChange: th.asset.movementTypes.custodian_change,
+    movementLocationChange: th.asset.movementTypes.location_change,
+    statusInUse: th.asset.quickFilterInUse,
+  }
+  assert.deepEqual({ ...W }, byKey)
+  // The hand-off reads พิจารณา, never อนุมัติ (the glossary, plan 3 ruling).
+  assert.ok(W.handoffConfirm.startsWith("พิจารณา") && !W.handoffConfirm.includes("อนุมัติ"))
+})
+
+test("the detail-page ยืนยันผลตรวจ spec walks one asset into its own round, writes once, follows the notice, the dialog and the findings hand-off (inspection-confirm plan 5 task 4)", () => {
+  const spec = read("e2e/audit/inspection-detail.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  assert.ok(spec.includes(`test.skip(e2eTheme === "dark",`), "the light projects")
+  assert.ok(spec.includes(`const prefix = recordPrefix(testInfo, "IND")`), "run-marked records")
+  assert.ok(spec.includes("scopeLocationId: roundRoomId,"), "its own round over its own room")
+  const order = [
+    "/api/audit-rounds/${round.id}/scan`",
+    "await markUnderInspection(runId, [assets.inRound.id, assets.noRound.id])",
+    "fillTemplate(W.roundLink, { auditNo: round.auditNo })",
+    "await expectNoStatusCorrection(page, e2eDevice)",
+    "W.handoffConfirm",
+    "W.handoffConfirmLink",
+    "W.inUseNeedsHolder",
+    "/confirm-inspection`",
+    "W.success",
+    "W.movementStatusCorrection",
+  ]
+  let from = 0
+  for (const text of order) {
+    const at = spec.indexOf(text, from)
+    assert.ok(at >= 0, `${text} (in order)`)
+    from = at + 1
+  }
+  assert.equal(spec.split("markUnderInspection(").length - 1, 1, "one write")
+  // The toast and the refreshed page are waited for together; the confirm page's back link is not asserted (the fix
+  // wave changes its target).
+  assert.match(spec, /await Promise\.all\(\[\n\s*expect\(page\.getByText\(W\.success, \{ exact: true \}\)\)\.toBeVisible\(\),/)
+  assert.ok(!spec.includes("backToRound"), "no back-link target")
+  assert.ok(!spec.includes("cancelAsItHead") && !/action: "(?:cancel|close)"/.test(spec), "the round stays open")
+})
