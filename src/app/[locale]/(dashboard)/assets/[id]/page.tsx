@@ -6,6 +6,8 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCount } from "@/lib/display-format"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
+import { getAssetConsumableIssues } from "@/lib/consumable-service"
+import { consumableIssueAssetError } from "@/lib/consumable-rules"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
 import { AssetComponentsTab } from "@/components/assets/detail/asset-components-tab"
 import { AssetDetailActions } from "@/components/assets/detail/asset-detail-actions"
@@ -72,6 +74,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const canViewDisposal = hasPermission(user, "disposal", "view")
   const canViewEmployee = hasPermission(user, "employee", "view")
   const canViewAudit = hasPermission(user, "audit", "view")
+  const canViewConsumables = hasPermission(user, "consumable", "view")
+  const canCreateConsumables = hasPermission(user, "consumable", "create")
   // The one document access record of the overview and the tabs (R12): each document page's own permission.
   const documentAccess = assetDocumentAccess((module, action) => hasPermission(user, module, action))
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
@@ -183,6 +187,20 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ]),
     { route: "/assets/[id]", locale },
   )
+  // ของใช้สิ้นเปลือง plan 3: the overview's panel, only with consumable:view; the dialog's kinds only for someone who may
+  // record (consumable:create) on an asset that can take consumables, and only when the panel shows.
+  const consumablesEligible = consumableIssueAssetError({ isActive: asset.isActive, statusName: asset.status.name }) === null
+  const canRecordConsumables = canCreateConsumables && consumablesEligible
+  const consumableIssues = canViewConsumables && assetDetailView === "overview"
+    ? await withPerformanceTiming("asset-detail.consumables", () => getAssetConsumableIssues(prisma, asset.id, 10), { route: "/assets/[id]", locale })
+    : null
+  const consumableKinds = canRecordConsumables && consumableIssues
+    ? await prisma.consumableItem.findMany({
+        where: { isActive: true },
+        orderBy: [{ name: "asc" }],
+        select: { id: true, name: true, unit: true, onHand: true },
+      })
+    : []
   // The history tab's own loader (R24): every event, newest first, at most 500, only on its tab.
   const history = assetDetailView === "history"
     ? await withPerformanceTiming("asset-detail.history-tab", () => getAssetHistory(asset.id, locale), { route: "/assets/[id]", locale })
@@ -561,6 +579,19 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const recent = recentHistory
     ? { events: recentHistory, total: detailCounts.history, historyHref: buildAssetDetailViewHref(locale, asset.id, "history", returnToHref) }
     : null
+  // Hidden when it would be empty and the viewer cannot record.
+  const consumablesPanel = consumableIssues && (consumableIssues.total > 0 || canRecordConsumables)
+    ? {
+        locale,
+        assetId: asset.id,
+        issues: consumableIssues.issues,
+        total: consumableIssues.total,
+        often: consumableIssues.often,
+        canRecord: canRecordConsumables,
+        items: consumableKinds,
+        lockedAsset: { id: asset.id, label: `${asset.assetTag} · ${asset.name}` },
+      }
+    : null
 
   return (
     <div className={`space-y-6 ${actionBarPagePadding.single}`}>
@@ -714,6 +745,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             href: dataGapHref(gap),
           }))}
           inspection={inspectionNotice}
+          consumables={consumablesPanel}
         />
       ) : null}
 

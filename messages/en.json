@@ -7512,5 +7512,16 @@
     "type_adjust": "Adjust",
     "receivedOn": "Received {date}",
     "detail_asset": "Asset"
+  },
+  "assetConsumables": {
+    "title": "Consumables",
+    "record": "+ Record a replacement",
+    "all": "View all {count, plural, one {# entry} other {# entries}}",
+    "often": "This machine had {itemName} replaced {count, plural, one {# time} other {# times}} in 90 days",
+    "col_date": "Date",
+    "col_item": "Kind",
+    "col_qty": "Quantity",
+    "col_by": "By",
+    "empty": "No replacements recorded for this machine yet"
   }
 }

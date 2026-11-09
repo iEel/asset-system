@@ -7512,5 +7512,16 @@
     "type_adjust": "ปรับยอด",
     "receivedOn": "รับเมื่อ {date}",
     "detail_asset": "เครื่อง"
+  },
+  "assetConsumables": {
+    "title": "ของใช้สิ้นเปลือง",
+    "record": "+ บันทึกเปลี่ยนของ",
+    "all": "ดูทั้งหมด {count, number} รายการ",
+    "often": "เครื่องนี้เปลี่ยน{itemName} {count, number} ครั้งใน 90 วัน",
+    "col_date": "วันที่",
+    "col_item": "ชนิด",
+    "col_qty": "จำนวน",
+    "col_by": "โดย",
+    "empty": "ยังไม่มีการเปลี่ยนของให้เครื่องนี้"
   }
 }

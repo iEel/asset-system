@@ -2,6 +2,7 @@ import { Fragment } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { AssetPhotoFrame } from "@/components/assets/asset-photo-frame"
+import { AssetConsumablesPanel, type AssetConsumablesPanelProps } from "@/components/assets/detail/asset-consumables-panel"
 import { AssetInspectionNotice, type AssetInspectionNoticeProps } from "@/components/assets/detail/asset-inspection-notice"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
@@ -56,7 +57,8 @@ const standaloneLink = cn(linkVariants(), "inline-flex min-h-11 items-center md:
 
 // The overview tab (group 1 spec §7.5, canvas B): the R59 line of missing details, then the 12-column grid from lg in
 // the phone's DOM order: รูป (4, right), ข้อมูลทรัพย์สิน (8, left; the #overview and #purchase anchors, R23), the latest
-// three events (8) and the components (4). Every write control needs asset:edit (canEdit). Server-rendered.
+// three events (8), the components (4) and, with consumable:view, ของใช้สิ้นเปลือง (8; consumables plan 3). Every write
+// control needs asset:edit (canEdit), except the consumables panel's own record button. Server-rendered.
 export function AssetOverview({
   locale,
   canEdit,
@@ -70,6 +72,7 @@ export function AssetOverview({
   components,
   dataGaps,
   inspection = null,
+  consumables = null,
 }: {
   locale: string
   canEdit: boolean
@@ -89,6 +92,8 @@ export function AssetOverview({
   dataGaps: { key: string; label: string; href: string }[]
   /** ยืนยันผลตรวจ plan 5: an asset stuck Under Inspection, first among the notices. */
   inspection?: AssetInspectionNoticeProps | null
+  /** ของใช้สิ้นเปลือง plan 3: the machine's replacements; null without consumable:view (or off the overview). */
+  consumables?: AssetConsumablesPanelProps | null
 }) {
   const t = useTranslations("assetDetail")
   const tAsset = useTranslations("asset")
@@ -364,6 +369,11 @@ export function AssetOverview({
             )}
           </ContentPanel>
         </div>
+        {consumables ? (
+          <div className="min-w-0 lg:col-span-8">
+            <AssetConsumablesPanel {...consumables} />
+          </div>
+        ) : null}
       </div>
     </div>
   )
