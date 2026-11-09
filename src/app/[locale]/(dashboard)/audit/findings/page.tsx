@@ -20,6 +20,7 @@ import { cn, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { linkVariants } from "@/components/ui/button-variants"
+import { Notice } from "@/components/ui/notice"
 import { Chip } from "@/components/ui/chip"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
@@ -119,6 +120,9 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const findingHref = (id: string) => buildAuditFindingsHref(locale, filters, { page: listPage.page, pageSize: listPage.pageSize, finding: id })
   const closeHref = buildAuditFindingsHref(locale, filters, { page: listPage.page, pageSize: listPage.pageSize })
   const clearSearchHref = filterHref({ search: "" })
+  // ยืนยันผลตรวจ as the next step (inspection-confirm plan 5 task 3): the round's confirm page, with this list as the way
+  // back, as the round page's confirmHref carries its own.
+  const confirmHandoffHref = data.confirmHandoff ? appendOperationalReturnTo(`/${locale}/audit/rounds/${data.confirmHandoff.roundId}/confirm`, auditFindingsReturnHref) : null
   // The disposal request from a finding, back to this list and its finding (Appendix A §10 bullet 4). Task 4's panel
   // takes it too.
   const disposalHrefFor = (finding: { id: string; findingType: string; asset: { id: string } | null; auditRound: { auditNo: string } }) =>
@@ -269,6 +273,20 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           none open the pane is not shown there. AuditFindingPaneTop opens each finding at its top. */}
       <div data-audit-findings-panes className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-4">
         <div data-audit-findings-list className={cn("min-w-0 space-y-4", chosen && "max-xl:hidden")}>
+          {/* Every finding of the chosen round decided, assets left Under Inspection: the round's next step. */}
+          {data.confirmHandoff && confirmHandoffHref ? (
+            <Notice
+              tone="info"
+              data-audit-findings-confirm-handoff
+              action={
+                <Link href={confirmHandoffHref} className={linkVariants()}>
+                  {t("handoffConfirmLink")}
+                </Link>
+              }
+            >
+              {t("handoffConfirm", { auditNo: data.confirmHandoff.auditNo, count: data.confirmHandoff.count })}
+            </Notice>
+          ) : null}
           <div>
             <TabNav aria-label={t("quickFilters")} items={resolutionFilters} current={view.tab} scroll={false} />
             {view.tab === "followUp" ? <TabNav aria-label={t("followUpChipsLabel")} items={followUpChips} current={view.chip ?? ""} scroll={false} /> : null}

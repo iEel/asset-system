@@ -3706,7 +3706,9 @@
     "actionTaken_component_confirmed_with_parent_mismatch": "Component confirmed with its parent, data differs",
     "actionTaken_component_confirmed_with_parent_mismatch_resolved": "Component confirmed again, data matches",
     "actionTaken_found_later_by_component_confirmation": "Found later, confirmed with its parent",
-    "actionTaken_found_later_by_audit_scan": "Found later by a check scan"
+    "actionTaken_found_later_by_audit_scan": "Found later by a check scan",
+    "handoffConfirm": "Every discrepancy of round {auditNo} is reviewed · Next: confirm the results of {count, plural, one {# asset} other {# assets}}",
+    "handoffConfirmLink": "Confirm results"
   },
   "auditPending": {
     "title": "Pending Assets",

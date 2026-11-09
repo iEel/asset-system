@@ -21,6 +21,7 @@ import {
 import { formatAuditUserLabel } from "@/lib/audit-round-page-rules"
 import { auditRoundCoverageWhere, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { isSameAuditActor } from "@/lib/audit-segregation"
+import { countRoundUnconfirmedAssets } from "@/lib/inspection-confirm-data"
 import { listPageWindow } from "@/lib/list-pagination"
 import type { WaitingWorkRules } from "@/lib/waiting-work-rules"
 
@@ -248,12 +249,15 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
 
   // B. The rows and every count, in parallel. Each tab and sub-chip counts with the list's own builder, within the
   // round, the type and the search (spec §5 "counts equal lists"); a bell kind's list counts itself.
-  const [rows, statusCounts, waitingTotal, reviewableTotal, filterRound, roundOptions, queue] = await Promise.all([
+  // The ยืนยันผลตรวจ hand-off (inspection-confirm plan 5 task 3): with a round chosen, the round's pending findings, by
+  // the pending tab's own where within the round alone (a search or a topic never hides the others), and its assets
+  // still "Under Inspection".
+  const [rows, statusCounts, waitingTotal, reviewableTotal, filterRound, roundOptions, queue, handoffCounts] = await Promise.all([
     prisma.auditFinding.findMany({ where: listWhere, include: rowInclude, orderBy: auditFindingsListOrderBy, skip, take }),
     Promise.all(auditFindingCountedStatuses.map((status) => prisma.auditFinding.count({ where: whereFor(status) }))),
     isAuditFindingWaitingStatus(filters.status) ? prisma.auditFinding.count({ where: listWhere }) : Promise.resolve(null),
     canApprove ? prisma.auditFinding.count({ where: reviewableWhere }) : Promise.resolve(null),
-    filters.roundId ? prisma.auditRound.findUnique({ where: { id: filters.roundId }, select: { id: true, auditNo: true, name: true } }) : Promise.resolve(null),
+    filters.roundId ? prisma.auditRound.findUnique({ where: { id: filters.roundId }, select: { id: true, auditNo: true, name: true, status: true, isActive: true } }) : Promise.resolve(null),
     // "รอบ:" lists every round the list shows without a round: active and not cancelled (the coverage scope).
     prisma.auditRound.findMany({ where: { isActive: true, status: auditRoundCoverageWhere }, select: { id: true, auditNo: true, name: true }, orderBy: [{ startDate: "desc" }, { id: "asc" }] }),
     chosen && canApprove
@@ -262,6 +266,12 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
           prisma.auditFinding.count({ where: { AND: [reviewableWhere, auditFindingsBeforeWhere(chosen)] } }),
           candidates(auditFindingsAfterWhere(chosen)),
           candidates(auditFindingsBeforeWhere(chosen)),
+        ])
+      : Promise.resolve(null),
+    filters.roundId
+      ? Promise.all([
+          prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", roundId: filters.roundId, now, rules, typeSearchLabels }) }),
+          countRoundUnconfirmedAssets(prisma, filters.roundId),
         ])
       : Promise.resolve(null),
   ])
@@ -283,6 +293,12 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
   const evidenceByFindingId = groupEvidence(rowAttachments)
   const counts = Object.fromEntries(auditFindingCountedStatuses.map((status, index) => [status, statusCounts[index]])) as AuditFindingCounts
   const total = isAuditFindingWaitingStatus(filters.status) ? (waitingTotal ?? 0) : counts[filters.status]
+  // Every finding of the round decided and assets left to confirm: the page names ยืนยันผลตรวจ as the next step. A
+  // cancelled or inactive round has no confirm step.
+  const confirmHandoff =
+    filterRound && filterRound.isActive && filterRound.status !== "cancelled" && handoffCounts && handoffCounts[0] === 0 && handoffCounts[1] > 0
+      ? { roundId: filterRound.id, auditNo: filterRound.auditNo, count: handoffCounts[1] }
+      : null
 
   return {
     counts,
@@ -294,6 +310,7 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
     employees: chosenPanel?.employees ?? [],
     filterRound,
     roundOptions,
+    confirmHandoff,
     panel: chosenPanel
       ? {
           ...chosenPanel.panel,

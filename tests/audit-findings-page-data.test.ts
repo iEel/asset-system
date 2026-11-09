@@ -98,8 +98,9 @@ test("each tab and sub-chip counts with the list's own where, within the round, 
   assert.deepEqual(list.where, whereFor(params, "action_open"))
   assert.deepEqual(list.orderBy, auditFindingsListOrderBy)
   assert.deepEqual([list.skip, list.take], [0, 25])
-  // One count per tab and sub-chip, and the viewer's decidable count (P4-R18): no other.
-  assert.equal(callsTo("auditFinding.count").length, auditFindingCountedStatuses.length + 1)
+  // One count per tab and sub-chip, the viewer's decidable count (P4-R18) and, with a round chosen, the round's pending
+  // count for the ยืนยันผลตรวจ hand-off (inspection-confirm plan 5 task 3): no other.
+  assert.equal(callsTo("auditFinding.count").length, auditFindingCountedStatuses.length + 2)
   assert.ok(callsTo("auditFinding.count").some((args) => isDeepStrictEqual(args.where, { AND: [whereFor(params, "action_open"), auditFindingReviewableWhere("user-head")] })))
   assert.equal(data.reviewableTotal, 0)
   assert.equal(callsTo("employee.findMany").filter((args) => isDeepStrictEqual(args.where, { isActive: true })).length, 0, "no finding open: no owner list, even for audit:approve (M-5)")
@@ -276,8 +277,43 @@ test("รอบ: lists every active round that is not cancelled; a chosen round 
   }
   const data = await load({ roundId: "round-1", returnTo: "/th/audit/rounds?status=open" })
   assert.deepEqual(callsTo("auditRound.findMany")[0], { where: { isActive: true, status: { not: "cancelled" } }, select: { id: true, auditNo: true, name: true }, orderBy: [{ startDate: "desc" }, { id: "asc" }] })
-  assert.deepEqual(callsTo("auditRound.findUnique")[0], { where: { id: "round-1" }, select: { id: true, auditNo: true, name: true } })
+  assert.deepEqual(callsTo("auditRound.findUnique")[0], { where: { id: "round-1" }, select: { id: true, auditNo: true, name: true, status: true, isActive: true } })
   assert.deepEqual(data.filterRound, { id: "round-1", auditNo: "AUD-2026-0007", name: "ตรวจนับห้อง IT" })
   assert.equal(data.roundOptions.length, 1)
   assert.deepEqual(data.back, { href: "/th/audit/rounds?status=open", target: "rounds" })
+})
+
+test("the ยืนยันผลตรวจ hand-off (inspection-confirm plan 5 task 3): a round with no pending finding and assets left Under Inspection names the next step; the round's pending count is the pending tab's where within the round alone", async () => {
+  const { roundInspectionItemWhere } = await import(pathToFileURL("src/lib/inspection-confirm-data.ts").href) as typeof import("../src/lib/inspection-confirm-data.ts")
+  const roundPendingWhere = whereFor({ roundId: "round-1" }, "pending")
+  const setup = ({ pending, unconfirmed, round }: { pending: number; unconfirmed: number; round?: Record<string, unknown> | null }) => {
+    state.calls = []
+    state.respond = (call, args) => {
+      if (call === "auditRound.findUnique") return round === undefined ? { id: "round-1", auditNo: "AUD-2026-0007", name: "ตรวจนับห้อง IT", status: "open", isActive: true } : round
+      if (call === "auditFinding.count" && isDeepStrictEqual(args.where, roundPendingWhere)) return pending
+      if (call === "auditItem.count") return unconfirmed
+      return undefined
+    }
+  }
+
+  // A search and a topic narrow the list, never the round's pending count.
+  setup({ pending: 0, unconfirmed: 3 })
+  const ready = await load({ roundId: "round-1", search: "GRL", findingType: "wrong_location" })
+  assert.deepEqual(ready.confirmHandoff, { roundId: "round-1", auditNo: "AUD-2026-0007", count: 3 })
+  assert.ok(callsTo("auditFinding.count").some((args) => isDeepStrictEqual(args.where, roundPendingWhere)), "the pending tab's builder, within the round alone")
+  assert.deepEqual(callsTo("auditItem.count"), [{ where: roundInspectionItemWhere("round-1") }], "countRoundUnconfirmedAssets")
+
+  setup({ pending: 2, unconfirmed: 3 })
+  assert.equal((await load({ roundId: "round-1" })).confirmHandoff, null, "findings still to decide")
+  setup({ pending: 0, unconfirmed: 0 })
+  assert.equal((await load({ roundId: "round-1" })).confirmHandoff, null, "nothing left to confirm")
+  setup({ pending: 0, unconfirmed: 3, round: { id: "round-1", auditNo: "AUD-2026-0007", name: "ตรวจนับห้อง IT", status: "cancelled", isActive: true } })
+  assert.equal((await load({ roundId: "round-1" })).confirmHandoff, null, "a cancelled round")
+  setup({ pending: 0, unconfirmed: 3, round: null })
+  assert.equal((await load({ roundId: "round-1" })).confirmHandoff, null, "an unknown round")
+
+  // Unfiltered: no banner, and neither count is read.
+  setup({ pending: 0, unconfirmed: 3 })
+  assert.equal((await load()).confirmHandoff, null)
+  assert.deepEqual(callsTo("auditItem.count"), [])
 })

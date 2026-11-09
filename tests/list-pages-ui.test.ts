@@ -308,7 +308,7 @@ test("findings: PageHeader with the way back and ส่งออก ▾, TabNav 
   assert.match(source, /<AuditFindingsSelectionProvider key=\{selectionKey\} filterKey=\{filterKey\} findings=\{selectableFindings\}>/, "another page or filter starts the ticks empty")
   assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{\{ icon: <FileText \/>, \.\.\.empty, actionVariant: "secondary" \}\} \/>/)
   // Task 2's pin, kept: the round select names a round that is not among its options (I24).
-  assert.match(read("src/lib/audit-findings-page-data.ts"), /filters\.roundId \? prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.roundId \}, select: \{ id: true, auditNo: true, name: true \} \}\)/, "the round select names its round (I24)")
+  assert.match(read("src/lib/audit-findings-page-data.ts"), /filters\.roundId \? prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.roundId \}, select: \{ id: true, auditNo: true, name: true, status: true, isActive: true \} \}\)/, "the round select names its round (I24); its status and isActive gate the ยืนยันผลตรวจ hand-off")
   assert.doesNotMatch(source, /<StatStrip\b|<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(|sticky="right"/)
 })
 

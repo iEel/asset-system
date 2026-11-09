@@ -3706,7 +3706,9 @@
     "actionTaken_component_confirmed_with_parent_mismatch": "ยืนยันส่วนควบพร้อมทรัพย์สินหลัก แต่ข้อมูลไม่ตรง",
     "actionTaken_component_confirmed_with_parent_mismatch_resolved": "ยืนยันส่วนควบอีกครั้ง ข้อมูลตรงแล้ว",
     "actionTaken_found_later_by_component_confirmation": "พบภายหลังเมื่อยืนยันส่วนควบพร้อมทรัพย์สินหลัก",
-    "actionTaken_found_later_by_audit_scan": "พบภายหลังจากการสแกนตรวจนับ"
+    "actionTaken_found_later_by_audit_scan": "พบภายหลังจากการสแกนตรวจนับ",
+    "handoffConfirm": "พิจารณารายการของรอบ {auditNo} ครบแล้ว · ขั้นต่อไป: ยืนยันผลตรวจ {count, number} ชิ้น",
+    "handoffConfirmLink": "ไปยืนยันผลตรวจ"
   },
   "auditPending": {
     "title": "รายการรอตรวจ",
