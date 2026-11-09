@@ -57,10 +57,9 @@
 
 1. **A viewer of the asset without `consumable:view`.** They see no panel. Their page does not even query
    consumables. Task 2 pins it.
-2. **A machine with a long history.** The panel shows the latest 10 with a link to the full list. The full list is the
-   kind history page filtered by asset? No: link to `/consumables/movements?asset=` is not a page. Ruling: the panel
-   shows the latest 10 and a "ดูทั้งหมด n รายการ" link to the report filtered to this machine (`?view=frequent&asset=`).
-   The report lists that machine's issues when `asset` is set. Task 3 pins it.
+2. **A machine with a long history.** The panel shows the latest 10 and a "ดูทั้งหมด n รายการ" link to the report
+   filtered to this machine (`?view=frequent&asset=`), which then shows that machine's row. Ruling: no separate
+   per-machine movements page. Task 3 pins it.
 3. **A disposed machine.** The panel stays readable, and "+ บันทึกเปลี่ยนของ" is hidden. The server would refuse it,
    and the picker is locked anyway. Task 2 pins it.
 4. **The report for a kind that was later deactivated.** It still counts, and the kind filter lists inactive kinds
