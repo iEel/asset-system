@@ -31,6 +31,8 @@ export type DisposalRoundBlockCode =
   | "DISPOSAL_ASSET_INELIGIBLE"
   | "DISPOSAL_SOD_CONFLICT"
   | "DISPOSAL_EVIDENCE_REQUIRED"
+  // A lost request (an asset never found) is recorded only by a lost round: no other method may carry it out.
+  | "DISPOSAL_ROUND_LOST_METHOD"
 
 export type DisposalRoundItem = {
   requestId: string
@@ -82,6 +84,8 @@ const ROUND_TRANSACTION_OPTIONS = { isolationLevel: "Serializable", timeout: 120
 type RoundCheckInput = {
   mode?: DisposalRoundInput["mode"]
   requestIds: readonly string[]
+  // The round's method; unknown in a preview before it is chosen and on the queue's ticks.
+  disposalType?: string | null
   executedById?: string | null
   useHistoricalEvidenceException?: boolean
 }
@@ -242,7 +246,8 @@ function assertRoundAllowed(input: { useHistoricalEvidenceException?: boolean },
 }
 
 // One read of every selected request and its evidence, then the per-machine checks of today's execution, in the order
-// the ids were given. The round's method replaces each request's, so the request's own type is not checked.
+// the ids were given. The round's method replaces each request's, except that a lost request keeps its method: only a
+// lost round may record it (DISPOSAL_ROUND_LOST_METHOD).
 async function inspectDisposalRound(
   db: Pick<DisposalRoundReader, "disposalRequest" | "attachment" | "systemSetting">,
   input: RoundCheckInput,
@@ -279,6 +284,7 @@ async function inspectDisposalRound(
       executedById: input.executedById ?? null,
       segregationRequired,
       hasEvidence: effectiveEvidenceCount > 0 || exceptionApplies,
+      roundDisposalType: input.disposalType ?? null,
     })
     items.push({
       requestId: candidate.id,
@@ -297,11 +303,20 @@ async function inspectDisposalRound(
 
 function getRoundBlockCode(
   candidate: DisposalExecutionCandidate,
-  context: { actor: DisposalRoundActor; executedById: string | null; segregationRequired: boolean; hasEvidence: boolean },
+  context: {
+    actor: DisposalRoundActor
+    executedById: string | null
+    segregationRequired: boolean
+    hasEvidence: boolean
+    roundDisposalType: string | null
+  },
 ): DisposalRoundBlockCode | null {
   if (!candidate.isActive) return "DISPOSAL_REQUEST_NOT_FOUND"
   if (candidate.requestStatus !== "approved" || candidate.completedAt) return "DISPOSAL_INVALID_STAGE"
   if (getDisposalApprovalAssetStatusError(candidate.asset.status)) return "DISPOSAL_ASSET_INELIGIBLE"
+  if (candidate.disposalType === "lost" && context.roundDisposalType && context.roundDisposalType !== "lost") {
+    return "DISPOSAL_ROUND_LOST_METHOD"
+  }
   if (getDisposalSegregationError({
     action: "execute",
     segregationRequired: context.segregationRequired,

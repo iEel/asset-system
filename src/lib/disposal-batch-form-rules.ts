@@ -20,8 +20,14 @@ export const DISPOSAL_BATCH_REASON_MAX = 4000
 
 export type DisposalBatchFormField = "assets" | "lotFiles" | "disposalType" | "reason" | "requestedById"
 
+// The machines' error when a หาไม่พบ machine is chosen under a method other than สูญหาย (ยืนยันผลตรวจ plan 4 final review):
+// the server would refuse the whole batch, so the send stops at the machines.
+export const DISPOSAL_BATCH_LOST_ONLY = "batchLostOnly"
+
 export function validateDisposalBatchForm(input: {
   assetCount: number
+  /** The chosen machines only สูญหาย takes (หาไม่พบ) while another method is chosen. */
+  lostOnlyCount?: number
   lotFiles: readonly { type: string; name: string }[]
   disposalType: string
   reason: string
@@ -31,7 +37,7 @@ export function validateDisposalBatchForm(input: {
   const check = (key: DisposalBatchFormField, code: string | null) => {
     if (code) errors[key] = code
   }
-  check("assets", input.assetCount < DISPOSAL_BATCH_MIN_ASSETS ? "batchMinAssets" : null)
+  check("assets", input.assetCount < DISPOSAL_BATCH_MIN_ASSETS ? "batchMinAssets" : (input.lostOnlyCount ?? 0) > 0 ? DISPOSAL_BATCH_LOST_ONLY : null)
   check("lotFiles", getDisposalPhotoRequirementError(input.lotFiles, input.disposalType))
   check("disposalType", required(input.disposalType))
   // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).

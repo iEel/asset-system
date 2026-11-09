@@ -22,6 +22,8 @@ export type DisposalAssetOption = {
   assetTag?: string
   name?: string
   serialNumber?: string | null
+  /** A หาไม่พบ asset: only a สูญหาย (lost) request takes it (toDisposalAssetOption). */
+  lostOnly?: boolean
 }
 
 // id names the search field, so a form's focusFirst reaches it; error shows under the picker and is tied to the search

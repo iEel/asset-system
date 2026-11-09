@@ -509,6 +509,33 @@ test("the approved tab's ticks: the viewer's own approval and missing evidence b
   assert.equal((await getDisposalRoundTickBlocks(asDb(database), [], actor)).size, 0)
 })
 
+// Plan 4 final review: a lost request (an asset never found) keeps its method; only a lost round records it.
+test("a lost request is blocked in a sell round, in the preview and the commit, and passes in a lost round", async () => {
+  const state = makeState(2, { 1: { disposalType: "lost" } })
+  const database = makeDatabase(state)
+  const input = commitInput(state)
+
+  const preview = await previewDisposalRound(asDb(database), { ...input, mode: "preview" }, actor)
+  assert.deepEqual(preview.items.map((item) => item.code), ["DISPOSAL_ROUND_LOST_METHOD", null])
+  const untyped = await previewDisposalRound(asDb(database), { mode: "preview", requestIds: input.requestIds }, actor)
+  assert.deepEqual(untyped.items.map((item) => item.code), [null, null])
+
+  await assert.rejects(createDisposalRound(asDb(database), input, actor, now), (error: unknown) => {
+    assert.ok(error instanceof DisposalRoundServiceError)
+    assert.equal(error.code, "DISPOSAL_ROUND_BLOCKED")
+    assert.deepEqual(error.items.map((item) => item.code), ["DISPOSAL_ROUND_LOST_METHOD", null])
+    return true
+  })
+  assert.equal(state.rounds.length, 0)
+  assert.deepEqual(state.requests.map((request) => request.requestStatus), ["approved", "approved"])
+
+  const lostInput = commitInput(state, { disposalType: "lost", saleValue: null })
+  const lostPreview = await previewDisposalRound(asDb(database), { ...lostInput, mode: "preview" }, actor)
+  assert.deepEqual(lostPreview.items.map((item) => item.code), [null, null])
+  await createDisposalRound(asDb(database), lostInput, actor, now)
+  assert.deepEqual(state.requests.map((request) => [request.requestStatus, request.disposalType]), [["disposed", "lost"], ["disposed", "lost"]])
+})
+
 test("(e) a round number taken at the same moment is retried with the next sequence", async () => {
   const state = makeState(2)
   const database = makeDatabase(state, { roundNoConflicts: 1 })

@@ -122,10 +122,13 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // block (all keyed on count) and the disposal line "ขอตัดจำหน่ายจากรอบนี้: n รายการ · อนุมัติแล้ว n" (keyed on requests).
   // Inspection-confirm plan 4 Task 4 added 1: the batch form's "เลือกทรัพย์สินที่ตั้งเป็นหาไม่พบจากรอบ … ไว้ให้ n ชิ้น" (count).
   // Inspection-confirm plan 4 Task 4b added 1: the closed round's "ขอตัดจำหน่ายจากรอบนี้ได้ n ชิ้น" (count).
-  assert.equal(pluralKeys.size, 236,[...pluralKeys.keys()].join(", "))
+  // The plan 4 final review added 2: the batch form's "n ชิ้นยังขอไม่ได้: …" in the round notice and its machines'
+  // error "เครื่องที่หาไม่พบ n เครื่อง ขอได้เฉพาะวิธีสูญหาย" (both keyed on count).
+  assert.equal(pluralKeys.size, 238,[...pluralKeys.keys()].join(", "))
   for (const key of ["selectedCount", "dialogTitle", "submit", "successNotice", "missingDialogTitle", "missingSubmit", "missingSuccess", "lostBlock"]) assert.equal(pluralKeys.get(`inspectionConfirmPage.${key}`), "count", key)
   assert.equal(pluralKeys.get("inspectionConfirmPage.disposalLine"), "requests")
   assert.equal(pluralKeys.get("disposalPage.batchForm.fromRoundNotice"), "count")
+  for (const key of ["fromRoundBlocked", "lostOnlyAssets"]) assert.equal(pluralKeys.get(`disposalPage.batchForm.${key}`), "count", key)
   assert.equal(pluralKeys.get("auditRound.closedDisposalLine"), "count")
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")

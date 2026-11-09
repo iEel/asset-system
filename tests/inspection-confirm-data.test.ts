@@ -184,8 +184,63 @@ test("roundDamagedForDisposalItemWhere: round items of active Ready/In Use asset
       status: { name: { in: ["Ready", "In Use"] } },
       disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
       maintenanceTickets: { none: openRepairRecordWhere },
+      movements: { some: { movementType: "status_correction", referenceType: "audit_round", referenceId: "r1" } },
     },
   })
+})
+
+// Plan 4 final review: only assets this round's confirm page set (its status_correction movement referencing the round),
+// and only those nothing else refuses, so an old round never lists an asset damaged or lost since.
+test("roundMissingForDisposalItemWhere: not-found items of active Missing assets confirmed through this round, no open request", async () => {
+  const { roundMissingForDisposalItemWhere, confirmedThroughRoundAssetWhere } = await import("../src/lib/inspection-confirm-data.ts")
+  assert.deepEqual(confirmedThroughRoundAssetWhere("r1"), {
+    movements: { some: { movementType: "status_correction", referenceType: "audit_round", referenceId: "r1" } },
+  })
+  assert.deepEqual(roundMissingForDisposalItemWhere("r1"), {
+    auditRoundId: "r1",
+    auditResult: "not_found",
+    asset: {
+      isActive: true,
+      status: { name: "Missing" },
+      disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
+      movements: { some: { movementType: "status_correction", referenceType: "audit_round", referenceId: "r1" } },
+    },
+  })
+})
+
+test("roundDisposalReadinessSelect is the disposal readiness read without this round's own item and findings", async () => {
+  const { roundDisposalReadinessSelect } = await import("../src/lib/inspection-confirm-data.ts")
+  const { disposalReadinessAssetSelect } = await import("../src/lib/disposal-readiness.ts")
+  const select = roundDisposalReadinessSelect("r1")
+  const base = disposalReadinessAssetSelect._count.select
+  assert.deepEqual(select, {
+    ...disposalReadinessAssetSelect,
+    _count: {
+      select: {
+        ...base,
+        auditItems: { where: { ...base.auditItems.where, auditRoundId: { not: "r1" } } },
+        auditFindings: { where: { ...base.auditFindings.where, auditRoundId: { not: "r1" } } },
+      },
+    },
+  })
+  // Every other count is the shared read's own.
+  for (const key of ["checkouts", "maintenanceTickets", "parentComponents", "installedInLinks", "assignedLicenses"] as const) {
+    assert.equal(select._count.select[key], base[key], key)
+  }
+})
+
+test("isRoundAssetReadyForDisposal: no readiness blocker, and a status the request allows (หาไม่พบ only as lost)", async () => {
+  const { isRoundAssetReadyForDisposal } = await import("../src/lib/inspection-confirm-data.ts")
+  const zero = { checkouts: 0, maintenanceTickets: 0, auditItems: 0, auditFindings: 0, parentComponents: 0, installedInLinks: 0, assignedLicenses: 0 }
+  const missing = { status: { name: "Missing", nameTh: "หาไม่พบ" }, licenseAssignedAssetId: null, parentComponents: [], installedInLinks: [], _count: zero }
+  assert.equal(isRoundAssetReadyForDisposal(missing, "lost"), true)
+  assert.equal(isRoundAssetReadyForDisposal(missing), false, "หาไม่พบ without the lost method")
+  assert.equal(isRoundAssetReadyForDisposal({ ...missing, _count: { ...zero, checkouts: 1 } }, "lost"), false, "an open handover")
+  assert.equal(isRoundAssetReadyForDisposal({ ...missing, _count: { ...zero, auditItems: 1 } }, "lost"), false, "another open round")
+  assert.equal(isRoundAssetReadyForDisposal({ ...missing, licenseAssignedAssetId: "x" }, "lost"), false, "a licence")
+  const damaged = { ...missing, status: { name: "In Use", nameTh: "ใช้งานอยู่" } }
+  assert.equal(isRoundAssetReadyForDisposal(damaged), true)
+  assert.equal(isRoundAssetReadyForDisposal({ ...damaged, _count: { ...zero, checkouts: 1 } }), false, "a held damaged asset")
 })
 
 test("toDamagedForDisposal keeps the condition-blocked assets (เสียหาย, ใช้งานไม่ได้, ซาก), by tag", async () => {
@@ -205,8 +260,12 @@ test("loadRoundDisposalSummary reads the damaged list through that where and ret
   const data = read("src/lib/inspection-confirm-data.ts")
   const body = data.slice(data.indexOf("export async function loadRoundDisposalSummary("))
   assert.match(body, /where: roundDamagedForDisposalItemWhere\(auditRoundId\)/)
-  assert.match(body, /toDamagedForDisposal\(/)
-  assert.match(body, /return \{ missingForDisposal, damagedForDisposal, requests, approved \}/)
+  // Both lists read the readiness without this round's own item, and keep only the assets nothing refuses.
+  assert.match(body, /const readinessSelect = roundDisposalReadinessSelect\(auditRoundId\)/)
+  assert.equal(body.match(/\.\.\.readinessSelect/g)?.length, 2)
+  assert.match(body, /toDamagedForDisposal\(damagedItems\.filter\(\(item\) => isRoundAssetReadyForDisposal\(item\.asset\)\)\)/)
+  assert.match(body, /if \(isRoundAssetReadyForDisposal\(item\.asset, "lost"\)\) missingForDisposal\.push\(entry\)\n\s+else missingBlockedForDisposal\.push\(entry\)/)
+  assert.match(body, /return \{ missingForDisposal, missingBlockedForDisposal, damagedForDisposal, requests, approved \}/)
   assert.match(data, /import \{ openRepairRecordWhere \} from "\.\/repair-record-policy\.ts"/)
   assert.match(data, /import \{ getCheckoutConditionBlock \} from "\.\/asset-lifecycle-policy\.ts"/)
 })

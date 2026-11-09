@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
+  DISPOSAL_BATCH_LOST_ONLY,
   disposalBatchPhotoCount,
   planDisposalBatchUploads,
   runWithLimit,
@@ -18,6 +19,15 @@ const filled = { disposalType: "dispose", reason: "เครื่องเส�
 test("validateDisposalBatchForm: one machine is refused, a row without its own photo is not", () => {
   assert.deepEqual(validateDisposalBatchForm({ assetCount: 1, lotFiles: [jpeg], ...filled }), { assets: "batchMinAssets" })
   assert.deepEqual(validateDisposalBatchForm({ assetCount: 2, lotFiles: [jpeg], ...filled }), {})
+})
+
+// ยืนยันผลตรวจ plan 4 final review: a หาไม่พบ machine chosen under another method stops the send at the machines.
+test("validateDisposalBatchForm: chosen หาไม่พบ machines under another method are refused at the machines", () => {
+  assert.equal(DISPOSAL_BATCH_LOST_ONLY, "batchLostOnly")
+  assert.deepEqual(validateDisposalBatchForm({ assetCount: 2, lostOnlyCount: 1, lotFiles: [jpeg], ...filled }), { assets: "batchLostOnly" })
+  assert.deepEqual(validateDisposalBatchForm({ assetCount: 2, lostOnlyCount: 0, lotFiles: [jpeg], ...filled }), {})
+  // Too few machines reads first.
+  assert.deepEqual(validateDisposalBatchForm({ assetCount: 1, lostOnlyCount: 1, lotFiles: [jpeg], ...filled }), { assets: "batchMinAssets" })
 })
 
 test("validateDisposalBatchForm: no lot photo is refused; a lost batch accepts a PDF alone", () => {

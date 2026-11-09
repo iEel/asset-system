@@ -4799,7 +4799,8 @@
           "DISPOSAL_ASSET_INELIGIBLE": "ทรัพย์สินไม่อยู่ในสถานะรอตัดจำหน่าย",
           "DISPOSAL_EVIDENCE_REQUIRED": "ยังไม่มีหลักฐาน · ให้ผู้ดูแลระบบบันทึก",
           "evidenceAdmin": "ยังไม่มีหลักฐาน · ติ๊กบันทึกย้อนหลังด้านล่าง หรือนำออก",
-          "DISPOSAL_REQUEST_NOT_FOUND": "ไม่พบคำขอนี้"
+          "DISPOSAL_REQUEST_NOT_FOUND": "ไม่พบคำขอนี้",
+          "DISPOSAL_ROUND_LOST_METHOD": "ขอเป็นสูญหาย · บันทึกได้เฉพาะรอบวิธีสูญหาย"
         },
         "sectionDetail": "ข้อมูลการตัดจำหน่าย",
         "method": "วิธีจำหน่าย",
@@ -4887,7 +4888,11 @@
       "uploadFailedLot": "รูปรวมของชุดส่งไม่สำเร็จ {count} ไฟล์",
       "openBatch": "เปิดหน้าชุดคำขอ",
       "fromRoundNotice": "เลือกทรัพย์สินที่ตั้งเป็นหาไม่พบจากรอบ {auditNo} ไว้ให้ {count, number} ชิ้น",
-      "fromRoundCapped": "เลือกให้ 100 ชิ้นแรก ส่งชุดนี้แล้วกลับมาขอชุดถัดไป"
+      "fromRoundCapped": "เลือกให้ 100 ชิ้นแรก ส่งชุดนี้แล้วกลับมาขอชุดถัดไป",
+      "backToConfirm": "กลับไปหน้ายืนยันผลตรวจ",
+      "fromRoundBlocked": "{count, number} ชิ้นยังขอไม่ได้: {tags}",
+      "lostOnlyAssets": "เครื่องที่หาไม่พบ {count, number} เครื่อง ขอได้เฉพาะวิธีสูญหาย · เลือกวิธีสูญหายหรือนำออก",
+      "phoneFromRound": "จากรอบตรวจนับ {auditNo}: ยื่นคำขอแบบสูญหายทีละเครื่อง"
     },
     "batchMinAssets": "เลือกอย่างน้อย 2 เครื่อง",
     "batchPage": {
@@ -7364,7 +7369,7 @@
     "missingReasonDefault": "ตรวจนับรอบ {auditNo} ไม่พบ",
     "missingSubmit": "ตั้งเป็นหาไม่พบ {count, number} ชิ้น",
     "missingSuccess": "ตั้งเป็นหาไม่พบแล้ว {count, number} ชิ้น",
-    "lostBlock": "ชิ้นที่ตั้งเป็นหาไม่พบจากรอบนี้: {count, number} ชิ้น",
+    "lostBlock": "ชิ้นหาไม่พบจากรอบนี้ที่ยังไม่ได้ขอตัดจำหน่าย: {count, number} ชิ้น",
     "lostLink": "ขอตัดจำหน่ายแบบสูญหาย…",
     "disposalLine": "ขอตัดจำหน่ายจากรอบนี้: {requests, number} รายการ · อนุมัติแล้ว {approved, number}",
     "disposalRoundLink": "ไปสร้างรอบตัดจำหน่าย",
@@ -7372,6 +7377,7 @@
     "lostAfterClose": "ขอตัดจำหน่ายแบบสูญหายได้หลังปิดรอบตรวจนับ",
     "afterCloseTitle": "ตัดจำหน่ายหลังปิดรอบ",
     "damagedForDisposalTitle": "ชิ้นสภาพเสียหายที่ยืนยันจากรอบนี้",
-    "damagedDisposeLink": "ขอตัดจำหน่าย"
+    "damagedDisposeLink": "ขอตัดจำหน่าย",
+    "damagedDialogTitle": "ยืนยันผลตรวจ {assetTag}"
   }
 }

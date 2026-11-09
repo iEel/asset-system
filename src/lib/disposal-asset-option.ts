@@ -54,5 +54,7 @@ export function toDisposalAssetOption(asset: DisposalOptionAsset, disposalType: 
     eligible: blockers.length === 0,
     blockers: [...blockers],
     outstandingComponentTags: getDisposalOutstandingComponentTags(asset),
+    // Allowed only by the method สูญหาย (a หาไม่พบ asset): the batch form blocks it again when the method leaves lost.
+    lostOnly: getDisposalAssetEligibilityError(asset.status, null) !== null && getDisposalAssetEligibilityError(asset.status, "lost") === null,
   }
 }

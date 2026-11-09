@@ -13,6 +13,8 @@ import {
   getDisposalReadinessBlockersForAsset,
 } from "@/lib/disposal-readiness"
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function GET() {
   try {
     const user = await requireAuth()
@@ -93,6 +95,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // A batch from an audit round records the round only on the assets that round counted (an item in it); any other
+    // asset added to the same batch gets no source, so it never counts as the round's (plan 4 final review).
+    const roundAssetIds = packet.sourceType === "audit_round" && packet.sourceId
+      ? uuidPattern.test(packet.sourceId)
+        ? new Set((await prisma.auditItem.findMany({
+          where: { auditRoundId: packet.sourceId, assetId: { in: packet.assetIds } },
+          select: { assetId: true },
+        })).map((item) => item.assetId))
+        : new Set<string>()
+      : null
+    const sourceOf = (assetId: string) => {
+      if (roundAssetIds === null) return { sourceType: packet.sourceType ?? null, sourceId: packet.sourceId ?? null }
+      return roundAssetIds.has(assetId) ? { sourceType: "audit_round", sourceId: packet.sourceId ?? null } : { sourceType: null, sourceId: null }
+    }
+
     const previousStatusIdByAsset = new Map<string, string>()
     for (const asset of assets) {
       const restoreStatusName = getDisposalRequestRestoreStatusName(asset.status, asset.custodianId)
@@ -147,8 +164,7 @@ export async function POST(request: NextRequest) {
               approverId: packet.approverId,
               saleValue: packet.saleValue,
               salvageValue: packet.salvageValue,
-              sourceType: packet.sourceType ?? null,
-              sourceId: packet.sourceId ?? null,
+              ...sourceOf(assetId),
               createdBy: user.id,
               updatedBy: user.id,
             },
@@ -179,14 +195,26 @@ export async function POST(request: NextRequest) {
       action: "create_batch",
       module: "disposal",
       recordId: result.batch.id,
-      newValue: { batchNo: result.batch.batchNo, assetIds: packet.assetIds, disposalType: packet.disposalType },
+      newValue: {
+        batchNo: result.batch.batchNo,
+        assetIds: packet.assetIds,
+        disposalType: packet.disposalType,
+        sourceType: packet.sourceType ?? null,
+        sourceId: packet.sourceId ?? null,
+      },
     })
     await Promise.all(result.requests.map((child) => logAudit({
       userId: user.id,
       action: "create",
       module: "disposal",
       recordId: child.id,
-      newValue: { disposalNo: child.disposalNo, assetId: child.assetId, batchId: result.batch.id, disposalType: packet.disposalType },
+      newValue: {
+        disposalNo: child.disposalNo,
+        assetId: child.assetId,
+        batchId: result.batch.id,
+        disposalType: packet.disposalType,
+        ...sourceOf(child.assetId),
+      },
     })))
 
     return NextResponse.json(result, { status: 201 })

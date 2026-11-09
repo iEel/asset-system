@@ -134,10 +134,11 @@ test("disposal batch: the machines, the lot photo, the method, the reason and th
     toasts: 0,
   })
   const rules = validateBody(source)
-  assert.ok(rules.includes("return validateDisposalBatchForm({ assetCount, lotFiles: lotFiles.map((item) => item.file), ...values })"))
-  assert.match(source, /event\.preventDefault\(\)\n\s+if \(uploadFailure\) return\n\s+setLotTried\(true\)\n\s+fieldErrors\.setErrors\(validate\(values, machines\.length, lotFiles\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setSaving\(true\)/)
+  // Plan 4 final review: a หาไม่พบ machine under a method other than สูญหาย stops the send at the machines' field.
+  assert.ok(rules.includes("return validateDisposalBatchForm({ assetCount, lostOnlyCount, lotFiles: lotFiles.map((item) => item.file), ...values })"))
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(uploadFailure\) return\n\s+setLotTried\(true\)\n\s+fieldErrors\.setErrors\(validate\(values, machines\.length, lotFiles, lostOnlyBlocked\.length\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setSaving\(true\)/)
   assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })"))
-  assert.ok(source.includes('error={fieldErrors.errors.assets ? t("batchMinAssets") : undefined}'))
+  assert.match(source, /error=\{fieldErrors\.errors\.assets === DISPOSAL_BATCH_LOST_ONLY\n\s+\? t\("batchForm\.lostOnlyAssets", \{ count: lostOnlyBlocked\.length \}\)\n\s+: fieldErrors\.errors\.assets \? t\("batchMinAssets"\) : undefined\}/)
   assert.ok(source.includes('error={fieldErrors.errors.disposalType ? t("methodRequired") : undefined}'))
   assert.ok(source.includes('<Field label={t("batchForm.lotLabel")} id="disposal-batch-lot-files" required hint={t("batchForm.lotHelp")} error={lotError}>'))
   assert.ok(source.includes('{lotRefused ? <FieldError data-disposal-photo-refused>{t("photoTypeRefused")}</FieldError> : null}'))

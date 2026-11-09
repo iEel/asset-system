@@ -251,6 +251,7 @@ test("the damaged and not-found ยืนยันผลตรวจ spec reads 
     emptyTitle: page.emptyTitle,
     selectedCount: page.selectedCount,
     dialogTitle: page.dialogTitle,
+    damagedDialogTitle: page.damagedDialogTitle,
     dialogLineReady: page.dialogLineReady,
     submit: page.submit,
     damagedRepair: page.damagedRepair,
@@ -319,7 +320,10 @@ test("the damaged and not-found ยืนยันผลตรวจ spec walks 
   }
   assert.equal(spec.split("markUnderInspection(").length - 1, 1, "one write")
   // While the round is open the damaged row offers no disposal, and the lost block has no link.
-  assert.ok(spec.includes(`getByRole("button", { name: W.damagedDispose, exact: true })).toHaveCount(0)`))
+  assert.ok(spec.includes(`getByRole("button", { name: W.damagedDispose })).toHaveCount(0)`))
+  // The damaged buttons are named with the row's tag and name, the dialog's title with the tag (plan 4 final review).
+  assert.ok(spec.includes("const damagedName = (label: string) => `${label} ${assets.damaged.tag} ${assets.damaged.name}`"))
+  assert.ok(spec.includes("fillTemplate(W.damagedDialogTitle, { assetTag: assets.damaged.tag })"))
   assert.ok(spec.includes(`getByRole("link", { name: W.lostLink, exact: true })).toHaveCount(0)`))
   // No form is sent: the repair form, the batch form and the single request form are only read.
   for (const text of ["saveRepairForm", "sendBatch", "sendRequestButton", "createBatchThroughApi", "/api/disposal-requests", "/api/disposal-batches", "/api/maintenance"]) {

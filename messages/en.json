@@ -4799,7 +4799,8 @@
           "DISPOSAL_ASSET_INELIGIBLE": "The asset is not pending disposal",
           "DISPOSAL_EVIDENCE_REQUIRED": "No evidence yet · a system admin must record it",
           "evidenceAdmin": "No evidence yet · tick the record-back option below, or remove it",
-          "DISPOSAL_REQUEST_NOT_FOUND": "Request not found"
+          "DISPOSAL_REQUEST_NOT_FOUND": "Request not found",
+          "DISPOSAL_ROUND_LOST_METHOD": "Requested as lost · only a lost round can record it"
         },
         "sectionDetail": "Disposal details",
         "method": "Disposal method",
@@ -4887,7 +4888,11 @@
       "uploadFailedLot": "{count} batch photo files did not upload",
       "openBatch": "Open the batch",
       "fromRoundNotice": "Selected {count, plural, one {# asset} other {# assets}} set as not found in round {auditNo}",
-      "fromRoundCapped": "The first 100 are selected. Send this batch, then come back for the next one."
+      "fromRoundCapped": "The first 100 are selected. Send this batch, then come back for the next one.",
+      "backToConfirm": "Back to confirm results",
+      "fromRoundBlocked": "{count, plural, one {# asset cannot be requested yet} other {# assets cannot be requested yet}}: {tags}",
+      "lostOnlyAssets": "{count, plural, one {# machine is} other {# machines are}} not found and can only be requested as lost · choose lost or remove them",
+      "phoneFromRound": "From audit round {auditNo}: request lost disposal one machine at a time"
     },
     "batchMinAssets": "Select at least 2 machines",
     "batchPage": {
@@ -7364,7 +7369,7 @@
     "missingReasonDefault": "Not found in audit round {auditNo}",
     "missingSubmit": "Set {count, plural, one {# asset} other {# assets}} as not found",
     "missingSuccess": "Set {count, plural, one {# asset} other {# assets}} as not found",
-    "lostBlock": "Set as not found from this round: {count, plural, one {# asset} other {# assets}}",
+    "lostBlock": "Not found in this round, no disposal request yet: {count, plural, one {# asset} other {# assets}}",
     "lostLink": "Request disposal as lost…",
     "disposalLine": "Disposal requests from this round: {requests, plural, one {# request} other {# requests}} · {approved, number} approved",
     "disposalRoundLink": "Create a disposal round",
@@ -7372,6 +7377,7 @@
     "lostAfterClose": "Request disposal as lost after the round is closed",
     "afterCloseTitle": "Disposal after the round",
     "damagedForDisposalTitle": "Damaged assets confirmed in this round",
-    "damagedDisposeLink": "Request disposal"
+    "damagedDisposeLink": "Request disposal",
+    "damagedDialogTitle": "Confirm the result of {assetTag}"
   }
 }

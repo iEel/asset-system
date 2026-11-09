@@ -96,11 +96,14 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
   ) as Record<InspectionTargetStatusName, string>
 
   // The disposal line (plan 4 task 3): requests made from this round, and once some are approved the way to a disposal
-  // round, the queue filtered to this round's approved requests.
-  const disposalLine = disposal.requests > 0 ? (
+  // round, the queue filtered to this round's approved requests. The line only with disposal:view and the link only with
+  // disposal:edit (plan 4 final review): nobody is offered a page or a round the app would refuse.
+  const canViewDisposal = hasPermission(user, "disposal", "view")
+  const canCreateDisposalRound = hasPermission(user, "disposal", "edit")
+  const disposalLine = canViewDisposal && disposal.requests > 0 ? (
     <p className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
       <span>{t("disposalLine", { requests: disposal.requests, approved: disposal.approved })}</span>
-      {disposal.approved > 0 ? (
+      {canCreateDisposalRound && disposal.approved > 0 ? (
         <Link href={`/${locale}/disposal?status=approved&auditRound=${round.id}`} className={`${linkVariants({ size: "inherit" })} inline-flex min-h-11 items-center md:min-h-0`}>
           {t("disposalRoundLink")}
         </Link>

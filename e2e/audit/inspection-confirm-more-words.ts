@@ -12,6 +12,7 @@ export const INSPECTION_CONFIRM_MORE_WORDS = {
   emptyTitle: "ยืนยันผลตรวจครบแล้ว",
   selectedCount: "เลือก {count, number} ชิ้น",
   dialogTitle: "ยืนยันผลตรวจ {count, number} ชิ้น",
+  damagedDialogTitle: "ยืนยันผลตรวจ {assetTag}",
   dialogLineReady: "ตั้งเป็น พร้อมใช้งาน",
   submit: "ยืนยัน {count, number} ชิ้น",
   damagedRepair: "ยืนยันแล้วบันทึกซ่อม",
@@ -25,7 +26,7 @@ export const INSPECTION_CONFIRM_MORE_WORDS = {
   missingSubmit: "ตั้งเป็นหาไม่พบ {count, number} ชิ้น",
   missingSuccess: "ตั้งเป็นหาไม่พบแล้ว {count, number} ชิ้น",
   // The lost block, its note while the round is open, and the after-close section.
-  lostBlock: "ชิ้นที่ตั้งเป็นหาไม่พบจากรอบนี้: {count, number} ชิ้น",
+  lostBlock: "ชิ้นหาไม่พบจากรอบนี้ที่ยังไม่ได้ขอตัดจำหน่าย: {count, number} ชิ้น",
   lostAfterClose: "ขอตัดจำหน่ายแบบสูญหายได้หลังปิดรอบตรวจนับ",
   lostLink: "ขอตัดจำหน่ายแบบสูญหาย…",
   afterCloseTitle: "ตัดจำหน่ายหลังปิดรอบ",

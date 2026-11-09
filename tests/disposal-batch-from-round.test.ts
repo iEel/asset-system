@@ -51,7 +51,7 @@ test("the page passes the prefill to the form: machines, the lost method, the au
   assert.match(page, /initialMachines=\{prefill\?\.machines\}/)
   assert.match(page, /initialDisposalType=\{prefill \? "lost" : undefined\}/)
   assert.match(page, /source=\{prefill \? \{ sourceType: "audit_round", sourceId: prefill\.roundId \} : undefined\}/)
-  assert.match(page, /roundNotice=\{prefill \? \{ auditNo: prefill\.auditNo, count: prefill\.machines\.length, href: prefill\.confirmHref \} : undefined\}/)
+  assert.match(page, /roundNotice=\{prefill \? \{ auditNo: prefill\.auditNo, count: prefill\.machines\.length, href: prefill\.confirmHref, blocked: prefill\.blocked \} : undefined\}/)
   assert.match(page, /const confirmPath = `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/confirm`/)
   assert.match(page, /confirmHref: returnToHref\.startsWith\(`\$\{confirmPath\}\?`\) \|\| returnToHref === confirmPath \? returnToHref : `\$\{confirmPath\}\?tab=notFound`,/)
 })
@@ -81,14 +81,54 @@ test("the form starts with the given machines and method, and its POST carries t
 test("the form shows the round notice with a link back to the confirm page, and the capped line", () => {
   const form = read(FORM)
   assert.match(form, /t\("batchForm\.fromRoundNotice", \{ auditNo: roundNotice\.auditNo, count: roundNotice\.count \}\)/)
-  assert.match(form, /<Link href=\{roundNotice\.href\}/)
-  assert.match(form, /tConfirm\("title"\)/)
+  // Plan 4 final review: a link (not an outline button) that says where it goes.
+  assert.match(form, /<Link href=\{roundNotice\.href\} data-disposal-batch-round-back="" className=\{linkVariants\(\)\}>\n\s+\{t\("batchForm\.backToConfirm"\)\}/)
+  assert.doesNotMatch(form, /tConfirm|inspectionConfirmPage/)
   assert.match(form, /capNotice \? <p data-disposal-batch-capped[^>]*>\{t\("batchForm\.fromRoundCapped"\)\}<\/p> : null/)
+})
+
+// Plan 4 final review: the round's หาไม่พบ assets that cannot be requested yet are named in the notice; the cap counts
+// the eligible ones only (missingForDisposal leaves the blocked out).
+test("the page names the round's blocked หาไม่พบ assets in the notice, by tag", () => {
+  const page = read(PAGE)
+  assert.match(page, /\.\.\.summary\.missingBlockedForDisposal\.map\(\(item\) => item\.assetTag\),\n\s+\.\.\.kept\.filter\(\(item\) => !chosen\.has\(item\.assetId\)\)\.map\(\(item\) => item\.assetTag\),/)
+  assert.match(page, /blocked: \{ count: blockedTags\.length, tags: blockedTags\.slice\(0, ROUND_BLOCKED_TAGS\) \},/)
+  const form = read(FORM)
+  assert.match(form, /roundNotice\.blocked && roundNotice\.blocked\.count > 0 \?/)
+  assert.match(form, /t\("batchForm\.fromRoundBlocked", \{\n\s+count: roundNotice\.blocked\.count,/)
+})
+
+// Plan 4 final review: on a phone the single form keeps the round's context.
+test("the phone notice from a round links to the single lost form with the round as source and the way back, and names the round", () => {
+  const page = read(PAGE)
+  assert.match(page, /`\/\$\{locale\}\/disposal\/new\?type=lost&sourceType=audit_round&sourceId=\$\{encodeURIComponent\(prefill\.roundId\)\}&returnTo=\$\{encodeURIComponent\(prefill\.confirmHref\)\}`/)
+  assert.match(page, /: `\/\$\{locale\}\/disposal\/new`/)
+  assert.match(page, /<Link href=\{phoneHref\}/)
+  assert.match(page, /t\("batchForm\.phoneFromRound", \{ auditNo: prefill\.auditNo \}\)/)
+})
+
+// Plan 4 final review: a หาไม่พบ machine goes only with สูญหาย; under another method its row is blocked.
+test("the form blocks the chosen หาไม่พบ machines in their rows when the method leaves lost, and allows them again on lost", () => {
+  const form = read(FORM)
+  assert.match(form, /const lostOnlyBlocked = values\.disposalType !== "" && !lost \? machines\.filter\(\(machine\) => machine\.lostOnly\) : \[\]/)
+  assert.match(form, /blockedReason=\{lostOnlyBlockedIds\.has\(row\.machine\.id\) \? t\("readinessBlockers\.lifecycle_status"\) : undefined\}/)
+  assert.match(form, /if \(field === "disposalType" && value === "lost" && fieldErrors\.errors\.assets === DISPOSAL_BATCH_LOST_ONLY\) fieldErrors\.clear\("assets"\)/)
+  assert.match(form, /done: machines\.length >= DISPOSAL_BATCH_MIN_ASSETS && lostOnlyBlocked\.length === 0/)
+  const row = read("src/components/disposal/disposal-batch-machine-row.tsx")
+  assert.match(row, /\{blockedReason \? \(\n\s+<p data-disposal-batch-machine-blocked="" className="mt-1 text-meta font-medium text-danger">\{blockedReason\}<\/p>/)
 })
 
 test("the messages: th as written, en a plural on count", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.disposalPage.batchForm.backToConfirm, "กลับไปหน้ายืนยันผลตรวจ")
+  assert.equal(en.disposalPage.batchForm.backToConfirm, "Back to confirm results")
+  assert.equal(th.disposalPage.batchForm.fromRoundBlocked, "{count, number} ชิ้นยังขอไม่ได้: {tags}")
+  assert.equal(th.inspectionConfirmPage.lostBlock, "ชิ้นหาไม่พบจากรอบนี้ที่ยังไม่ได้ขอตัดจำหน่าย: {count, number} ชิ้น")
+  assert.match(en.inspectionConfirmPage.lostBlock, /\{count, plural, one \{[^}]*\} other \{[^}]*\}\}/)
+  assert.equal(th.inspectionConfirmPage.damagedDialogTitle, "ยืนยันผลตรวจ {assetTag}")
+  assert.equal(th.disposalPage.rounds.form.blocked.DISPOSAL_ROUND_LOST_METHOD, "ขอเป็นสูญหาย · บันทึกได้เฉพาะรอบวิธีสูญหาย")
+  assert.equal(typeof en.disposalPage.rounds.form.blocked.DISPOSAL_ROUND_LOST_METHOD, "string")
   assert.equal(th.disposalPage.batchForm.fromRoundNotice, "เลือกทรัพย์สินที่ตั้งเป็นหาไม่พบจากรอบ {auditNo} ไว้ให้ {count, number} ชิ้น")
   assert.equal(th.disposalPage.batchForm.fromRoundCapped, "เลือกให้ 100 ชิ้นแรก ส่งชุดนี้แล้วกลับมาขอชุดถัดไป")
   assert.match(en.disposalPage.batchForm.fromRoundNotice, /\{count, plural, one \{[^}]*\} other \{[^}]*\}\}/)
@@ -118,12 +158,16 @@ test("toDisposalAssetOption: eligibility by the type, readiness blockers, the la
     eligible: true,
     blockers: [],
     outstandingComponentTags: [],
+    lostOnly: true,
   })
   const other = toDisposalAssetOption(asset, null)
   assert.equal(other.eligible, false)
   assert.deepEqual(other.blockers, ["lifecycle_status"])
   const held = toDisposalAssetOption({ ...asset, custodian: { code: "E1", fullNameTh: "สมชาย" } }, "lost")
   assert.equal(held.metadata, "หาไม่พบ · C1/B1 · Room 1 · E1 - สมชาย")
+  const ready = toDisposalAssetOption({ ...asset, status: { name: "Ready", nameTh: "พร้อมใช้งาน" } }, "lost")
+  assert.equal(ready.lostOnly, false, "a Ready asset is not held to the lost method")
+  assert.equal(other.lostOnly, true)
 })
 
 test("normalizeDisposalFormReturnTo keeps the queue and one round's confirm page, else the queue", () => {

@@ -169,6 +169,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     DISPOSAL_ASSET_INELIGIBLE: t("errors.DISPOSAL_ASSET_INELIGIBLE"),
     DISPOSAL_INVALID_STAGE: t("errors.DISPOSAL_INVALID_STAGE"),
     DISPOSAL_REQUEST_NOT_FOUND: t("errors.DISPOSAL_REQUEST_NOT_FOUND"),
+    DISPOSAL_ROUND_LOST_METHOD: t("rounds.form.blocked.DISPOSAL_ROUND_LOST_METHOD"),
   }
   const tickableIds = approvedIds.map((request) => request.id).filter((id) => tickBlocks.get(id) === null)
   const roundSelectionCopy: DisposalRoundSelectionCopy = {

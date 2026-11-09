@@ -86,6 +86,7 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
     DISPOSAL_ASSET_INELIGIBLE: t("errors.DISPOSAL_ASSET_INELIGIBLE"),
     DISPOSAL_INVALID_STAGE: t("errors.DISPOSAL_INVALID_STAGE"),
     DISPOSAL_REQUEST_NOT_FOUND: t("errors.DISPOSAL_REQUEST_NOT_FOUND"),
+    DISPOSAL_ROUND_LOST_METHOD: t("rounds.form.blocked.DISPOSAL_ROUND_LOST_METHOD"),
   }
   const blockedReasons = [...new Set(roundCandidates.blocked.map((entry) => tickReasons[entry.code]))].join(" · ")
   const showRound = canEdit && roundCandidates.joinableIds.length > 0

@@ -16,6 +16,8 @@ import { ActionEmptyState } from "@/components/ui/action-empty-state"
 
 const PENDING_DISPOSAL_STATUS = "Pending Disposal"
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// The round notice names at most this many of the round's หาไม่พบ assets that cannot be requested yet.
+const ROUND_BLOCKED_TAGS = 20
 
 type NewDisposalBatchPageProps = {
   params: Promise<{ locale: string }>
@@ -79,10 +81,19 @@ export default async function NewDisposalBatchPage({ params, searchParams }: New
       const option = byId.get(item.assetId)
       return option && option.eligible ? [option] : []
     })
+    // The round's หาไม่พบ assets left out because something still refuses them: the summary's blocked ones and any the
+    // option read refused since, named by tag (the first ROUND_BLOCKED_TAGS) in the notice.
+    const chosen = new Set(machines.map((machine) => machine.id))
+    const blockedTags = [
+      ...summary.missingBlockedForDisposal.map((item) => item.assetTag),
+      ...kept.filter((item) => !chosen.has(item.assetId)).map((item) => item.assetTag),
+    ].sort()
     return {
       roundId: round.id,
       auditNo: round.auditNo,
       machines,
+      blocked: { count: blockedTags.length, tags: blockedTags.slice(0, ROUND_BLOCKED_TAGS) },
+      // The cap counts the eligible ones only (missingForDisposal leaves the blocked out).
       capped: summary.missingForDisposal.length > DISPOSAL_BATCH_MAX_ASSETS,
       // The notice links back to the confirm page: the one returnTo names (with its tab and way back) when it is this
       // round's, else its not-found tab.
@@ -109,14 +120,22 @@ export default async function NewDisposalBatchPage({ params, searchParams }: New
   // The requester starts as the signed-in user's employee; with no link it stays empty and the hint says so.
   const requester = defaultDisposalRequester({ employeeId: user.employeeId ?? null }, employeeOptions)
 
+  // On a phone the single form stands in. From a round it keeps the context: the method สูญหาย, the round as the source
+  // and the way back to its confirm page (plan 4 final review).
+  const phoneHref = prefill
+    ? `/${locale}/disposal/new?type=lost&sourceType=audit_round&sourceId=${encodeURIComponent(prefill.roundId)}&returnTo=${encodeURIComponent(prefill.confirmHref)}`
+    : `/${locale}/disposal/new`
+
   return <>
     <div data-disposal-batch-phone className="space-y-6 md:hidden">
       <PageHeader title={t("batchCreateTitle")} meta={t("batchCreateHelp")} back={back} />
       <Notice
         tone="info"
         title={t("batchForm.phoneTitle")}
-        action={<Link href={`/${locale}/disposal/new`} className={buttonVariants({ variant: "outline", size: "md" })}>{t("batchForm.phoneLink")}</Link>}
-      />
+        action={<Link href={phoneHref} className={buttonVariants({ variant: "outline", size: "md" })}>{t("batchForm.phoneLink")}</Link>}
+      >
+        {prefill ? <p data-disposal-batch-phone-round="">{t("batchForm.phoneFromRound", { auditNo: prefill.auditNo })}</p> : null}
+      </Notice>
     </div>
     <DisposalBatchForm
       breadcrumbs={[{ label: t("title"), href: `/${locale}/disposal` }, { label: t("batchCreateTitle") }]}
@@ -130,7 +149,7 @@ export default async function NewDisposalBatchPage({ params, searchParams }: New
       initialMachines={prefill?.machines}
       initialDisposalType={prefill ? "lost" : undefined}
       source={prefill ? { sourceType: "audit_round", sourceId: prefill.roundId } : undefined}
-      roundNotice={prefill ? { auditNo: prefill.auditNo, count: prefill.machines.length, href: prefill.confirmHref } : undefined}
+      roundNotice={prefill ? { auditNo: prefill.auditNo, count: prefill.machines.length, href: prefill.confirmHref, blocked: prefill.blocked } : undefined}
       capNotice={prefill?.capped ?? false}
     />
   </>

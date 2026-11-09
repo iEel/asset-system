@@ -60,6 +60,7 @@ export function InspectionConfirmDialog({
   outcome,
   assetIds,
   summary,
+  assetTag = null,
   returnFocusRef,
   fallbackFocusRef,
   onClose,
@@ -72,6 +73,8 @@ export function InspectionConfirmDialog({
   outcome: InspectionConfirmOutcome
   assetIds: readonly string[]
   summary: Partial<Record<InspectionTargetStatusName, number>>
+  /** The damaged row's asset, named in the title (plan 4 final review); null for the bulk outcomes. */
+  assetTag?: string | null
   returnFocusRef?: RefObject<HTMLElement | null>
   /** Where focus goes when the opener is gone with the selection bar (the owner's result region). */
   fallbackFocusRef?: RefObject<HTMLElement | null>
@@ -127,7 +130,11 @@ export function InspectionConfirmDialog({
   return (
     <AccessibleDialog
       open={open}
-      title={outcome === "missing" ? t("missingDialogTitle", { count: assetIds.length }) : t("dialogTitle", { count: assetIds.length })}
+      title={outcome === "missing"
+        ? t("missingDialogTitle", { count: assetIds.length })
+        : outcome === "damaged" && assetTag
+          ? t("damagedDialogTitle", { assetTag })
+          : t("dialogTitle", { count: assetIds.length })}
       busy={isSubmitting}
       initialFocusRef={reasonRef}
       returnFocusRef={returnFocusRef}

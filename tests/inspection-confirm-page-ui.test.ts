@@ -266,7 +266,9 @@ test("a damaged row with no target shows its buttons disabled, described by its 
   assert.match(workspace, /function damagedActionsFor\(row: InspectionPageRow, view: "card" \| "table"\)/)
   assert.match(workspace, /const unclear = row\.targetStatusName === null/)
   assert.match(workspace, /const describedBy = unclear \? unclearIdFor\(view, row\.assetId\) : undefined/)
-  assert.equal(workspace.match(/disabled=\{unclear\} aria-describedby=\{describedBy\}/g)?.length, 3)
+  assert.equal(workspace.match(/disabled=\{unclear\} aria-label=\{nameFor\(t\("damaged(?:Repair|Dispose|ConfirmOnly)"\)\)\} aria-describedby=\{describedBy\}/g)?.length, 3)
+  // Plan 4 final review: each button's name carries the row's tag and name, as the ticks do.
+  assert.match(workspace, /const nameFor = \(label: string\) => `\$\{label\} \$\{row\.assetTag\} \$\{row\.assetName\}`/)
   assert.match(workspace, /actions=\{damagedActionsFor\(row, "card"\)\}/)
   assert.match(workspace, /actions=\{damagedActionsFor\(row, "table"\)\}/)
   // The row renders the handoverUnclear text with that id when it has no target.
@@ -283,6 +285,10 @@ test("the not-found bar opens the dialog with outcome missing; the dialog's defa
   assert.match(dialog, /t\("missingReasonDefault", \{ auditNo \}\)/)
   assert.match(dialog, /status: "Missing", key: "missingDialogLine"/)
   assert.match(dialog, /t\("missingDialogTitle", \{ count: assetIds\.length \}\)/)
+  // A damaged row's dialog names its asset (plan 4 final review).
+  assert.match(dialog, /outcome === "damaged" && assetTag\n\s+\? t\("damagedDialogTitle", \{ assetTag \}\)/)
+  assert.match(workspace, /outcome: "damaged", assetIds: \[row\.assetId\], summary, next, assetTag: row\.assetTag \}/)
+  assert.match(workspace, /assetTag=\{dialog\.assetTag\}/)
   assert.match(dialog, /t\("missingSubmit", \{ count: assetIds\.length \}\)/)
   assert.match(workspace, /t\("missingSuccess", \{ count: /)
 })
@@ -338,11 +344,13 @@ test("the after-close section: above the tabs, also with no rows left, with disp
   assert.match(page, /damagedForDisposal=\{disposal\.damagedForDisposal\}/)
 })
 
-test("the disposal line under the header: requests and approved, the round link when approved > 0", () => {
+test("the disposal line under the header: requests and approved with disposal:view, the round link when approved > 0 with disposal:edit", () => {
   const page = read(PAGE)
-  assert.match(page, /disposal\.requests > 0 \?/)
+  assert.match(page, /const canViewDisposal = hasPermission\(user, "disposal", "view"\)/)
+  assert.match(page, /const canCreateDisposalRound = hasPermission\(user, "disposal", "edit"\)/)
+  assert.match(page, /const disposalLine = canViewDisposal && disposal\.requests > 0 \?/)
   assert.match(page, /t\("disposalLine", \{ requests: disposal\.requests, approved: disposal\.approved \}\)/)
-  assert.match(page, /disposal\.approved > 0 \?/)
+  assert.match(page, /\{canCreateDisposalRound && disposal\.approved > 0 \?/)
   assert.match(page, /`\/\$\{locale\}\/disposal\?status=approved&auditRound=\$\{round\.id\}`/)
   assert.match(page, /t\("disposalRoundLink"\)/)
 })
@@ -351,9 +359,8 @@ test("loadRoundDisposalSummary: not-found items of Missing assets with no open r
   const data = read(DATA)
   const body = data.slice(data.indexOf("export async function loadRoundDisposalSummary("))
   assert.ok(data.includes("export async function loadRoundDisposalSummary("))
-  assert.match(body, /auditResult: "not_found"/)
-  assert.match(body, /status: \{ name: "Missing" \}/)
-  assert.match(body, /requestStatus: \{ in: \["pending", "approved"\] \}/)
+  // The where itself is pinned in tests/inspection-confirm-data.test.ts (roundMissingForDisposalItemWhere).
+  assert.match(body, /where: roundMissingForDisposalItemWhere\(auditRoundId\)/)
   assert.match(body, /loadAuditRoundDisposalFindingIds\(db, auditRoundId\)/)
   assert.match(body, /sourceType: "audit_round", sourceId: auditRoundId/)
   assert.match(body, /requestStatus: "approved"/)

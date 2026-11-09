@@ -169,15 +169,17 @@ test("ยืนยันผลตรวจ: a damaged asset goes on to the repai
   await expect(confirmRows(page, e2eDevice, prefix)).toHaveCount(1)
   const damagedRow = confirmRows(page, e2eDevice, assets.damaged.tag)
   await expect(damagedRow).toHaveCount(1)
-  await expect(damagedRow.getByRole("button", { name: W.damagedRepair, exact: true })).toBeEnabled()
-  await expect(damagedRow.getByRole("button", { name: W.damagedConfirmOnly, exact: true })).toBeEnabled()
-  await expect(page.getByRole("main").getByRole("button", { name: W.damagedDispose, exact: true })).toHaveCount(0)
+  // Each button's name carries the row's tag and name (plan 4 final review).
+  const damagedName = (label: string) => `${label} ${assets.damaged.tag} ${assets.damaged.name}`
+  await expect(damagedRow.getByRole("button", { name: damagedName(W.damagedRepair), exact: true })).toBeEnabled()
+  await expect(damagedRow.getByRole("button", { name: damagedName(W.damagedConfirmOnly), exact: true })).toBeEnabled()
+  await expect(page.getByRole("main").getByRole("button", { name: W.damagedDispose })).toHaveCount(0)
   await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)
   await measure.recordPage("confirm page, สภาพเสียหาย, round open (IT staff)")
 
   // "ยืนยันแล้วบันทึกซ่อม": the dialog of the one asset (→ พร้อมใช้งาน) with its reason, then the repair form.
-  await damagedRow.getByRole("button", { name: W.damagedRepair, exact: true }).click()
-  const damagedDialog = page.getByRole("dialog", { name: fillTemplate(W.dialogTitle, { count: 1 }) })
+  await damagedRow.getByRole("button", { name: damagedName(W.damagedRepair), exact: true }).click()
+  const damagedDialog = page.getByRole("dialog", { name: fillTemplate(W.damagedDialogTitle, { assetTag: assets.damaged.tag }) })
   await expect(damagedDialog).toBeVisible()
   await expect(damagedDialog.getByRole("listitem")).toHaveText([new RegExp(`^${W.dialogLineReady}\\s*1$`)])
   await expect(damagedDialog.getByRole("textbox")).toHaveValue(fillTemplate(W.damagedReasonDefault, { auditNo: round.auditNo }))
@@ -290,6 +292,8 @@ test("ยืนยันผลตรวจ: a damaged asset goes on to the repai
     await measure.recordPage("batch form from the round, 2 หาไม่พบ (IT head, not sent)")
     // Another method: the picker does not offer a หาไม่พบ asset (its status), so ขาย cannot take it.
     await chooseMethod(page, W.methodSell)
+    // The chosen หาไม่พบ machines say they cannot go under ขาย (plan 4 final review).
+    for (const asset of [assets.lost1, assets.lost2]) await expect(batchMachineRow(page, { id: asset.id, assetTag: asset.tag, name: asset.name })).toContainText(W.blockerStatus)
     await batchSearch(page).fill(assets.lost1.tag)
     const option = page.getByRole("option", { name: new RegExp(escapeRegExp(assets.lost1.tag)) })
     await expect(option).toBeDisabled()

@@ -28,6 +28,7 @@ import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { getAssetStateTone } from "@/lib/design-system"
 import {
+  DISPOSAL_BATCH_LOST_ONLY,
   DISPOSAL_BATCH_MAX_ASSETS,
   DISPOSAL_BATCH_MIN_ASSETS,
   DISPOSAL_BATCH_REASON_MAX,
@@ -79,8 +80,9 @@ const FIELD_ORDER = Object.keys(FIELD_IDS) as DisposalBatchFormField[]
 
 // noValidate turns the browser's check off, so this restates every send rule (validateDisposalBatchForm): 2+ machines,
 // the lot photo (any file for สูญหาย), the method, the reason and the requester. A machine's own photo is never required.
-function validate(values: DisposalBatchValues, assetCount: number, lotFiles: readonly DisposalBatchQueuedFile[]) {
-  return validateDisposalBatchForm({ assetCount, lotFiles: lotFiles.map((item) => item.file), ...values })
+// lostOnlyCount: the chosen หาไม่พบ machines while the method is not สูญหาย (plan 4 final review).
+function validate(values: DisposalBatchValues, assetCount: number, lotFiles: readonly DisposalBatchQueuedFile[], lostOnlyCount: number) {
+  return validateDisposalBatchForm({ assetCount, lostOnlyCount, lotFiles: lotFiles.map((item) => item.file), ...values })
 }
 
 const isPhoto = (file: File) => (disposalPhotoMimeTypes as readonly string[]).includes(file.type.toLowerCase())
@@ -127,15 +129,17 @@ export function DisposalBatchForm({
   initialDisposalType?: "lost"
   /** Sent in the POST body: a batch from a round records the round as its source. */
   source?: { sourceType: "audit_round"; sourceId: string }
-  /** The notice over the machines: the round, how many were chosen, and the way back to its confirm page. */
-  roundNotice?: { auditNo: string; count: number; href: string }
+  /**
+   * The notice over the machines: the round, how many were chosen, the way back to its confirm page, and the round's
+   * หาไม่พบ assets that cannot be requested yet (their count and the first tags).
+   */
+  roundNotice?: { auditNo: string; count: number; href: string; blocked?: { count: number; tags: string[] } }
   /** More than DISPOSAL_BATCH_MAX_ASSETS were left out: the first 100 are chosen, the rest come in the next batch. */
   capNotice?: boolean
 }) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("disposalPage")
-  const tConfirm = useTranslations("inspectionConfirmPage")
   const tOperation = useTranslations("assetOperation")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
@@ -153,6 +157,10 @@ export function DisposalBatchForm({
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
   const lost = values.disposalType === "lost"
+  // A หาไม่พบ machine goes only with สูญหาย: under another chosen method its row says so and the send stops at the
+  // machines' field, instead of the server refusing the whole batch.
+  const lostOnlyBlocked = values.disposalType !== "" && !lost ? machines.filter((machine) => machine.lostOnly) : []
+  const lostOnlyBlockedIds = new Set(lostOnlyBlocked.map((machine) => machine.id))
   // A lost batch has no photo slot per machine: the rows' files stay queued but are neither counted nor sent.
   const rows = machines.map((machine) => ({
     machine,
@@ -163,6 +171,8 @@ export function DisposalBatchForm({
   function setField(field: keyof DisposalBatchValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field in FIELD_IDS) fieldErrors.clear(field as DisposalBatchFormField)
+    // Back to สูญหาย: the หาไม่พบ machines can go again.
+    if (field === "disposalType" && value === "lost" && fieldErrors.errors.assets === DISPOSAL_BATCH_LOST_ONLY) fieldErrors.clear("assets")
   }
 
   function queue(files: File[]): DisposalBatchQueuedFile[] {
@@ -196,7 +206,7 @@ export function DisposalBatchForm({
     event.preventDefault()
     if (uploadFailure) return
     setLotTried(true)
-    fieldErrors.setErrors(validate(values, machines.length, lotFiles))
+    fieldErrors.setErrors(validate(values, machines.length, lotFiles, lostOnlyBlocked.length))
     if (focusFirstError()) return
     setSaving(true)
 
@@ -257,7 +267,7 @@ export function DisposalBatchForm({
   const locked = saving || uploadFailure !== null
 
   const checklist = [
-    { key: "assets", label: t("batchMinAssets"), done: machines.length >= DISPOSAL_BATCH_MIN_ASSETS },
+    { key: "assets", label: t("batchMinAssets"), done: machines.length >= DISPOSAL_BATCH_MIN_ASSETS && lostOnlyBlocked.length === 0 },
     { key: "method", label: t("createForm.checkMethod"), done: values.disposalType !== "" },
     { key: "requesterReason", label: t("createForm.checkRequesterReason"), done: values.requestedById !== "" && reasonOk },
     {
@@ -350,11 +360,19 @@ export function DisposalBatchForm({
                 data-disposal-batch-from-round=""
                 title={t("batchForm.fromRoundNotice", { auditNo: roundNotice.auditNo, count: roundNotice.count })}
                 action={(
-                  <Link href={roundNotice.href} className={buttonVariants({ variant: "outline", size: "md" })}>
-                    {tConfirm("title")}
+                  <Link href={roundNotice.href} data-disposal-batch-round-back="" className={linkVariants()}>
+                    {t("batchForm.backToConfirm")}
                   </Link>
                 )}
               >
+                {roundNotice.blocked && roundNotice.blocked.count > 0 ? (
+                  <p data-disposal-batch-round-blocked="">
+                    {t("batchForm.fromRoundBlocked", {
+                      count: roundNotice.blocked.count,
+                      tags: roundNotice.blocked.tags.join(", ") + (roundNotice.blocked.count > roundNotice.blocked.tags.length ? " …" : ""),
+                    })}
+                  </p>
+                ) : null}
                 {capNotice ? <p data-disposal-batch-capped="">{t("batchForm.fromRoundCapped")}</p> : null}
               </Notice>
             ) : null}
@@ -367,7 +385,9 @@ export function DisposalBatchForm({
               showSelectedList={false}
               searchPlaceholder={t("batchForm.search")}
               emptyLabel={tCommon("searchSelectNoResults")}
-              error={fieldErrors.errors.assets ? t("batchMinAssets") : undefined}
+              error={fieldErrors.errors.assets === DISPOSAL_BATCH_LOST_ONLY
+                ? t("batchForm.lostOnlyAssets", { count: lostOnlyBlocked.length })
+                : fieldErrors.errors.assets ? t("batchMinAssets") : undefined}
               disposalType={values.disposalType}
             />
             {machines.length > 0 ? (
@@ -383,6 +403,7 @@ export function DisposalBatchForm({
                     }}
                     files={row.files}
                     showPhoto={!lost}
+                    blockedReason={lostOnlyBlockedIds.has(row.machine.id) ? t("readinessBlockers.lifecycle_status") : undefined}
                     disabled={locked}
                     onAddFiles={(files) => setMachineFiles((current) => ({ ...current, [row.machine.id]: [...(current[row.machine.id] ?? []), ...queue(files)] }))}
                     onRemoveFile={(fileId) => setMachineFiles((current) => ({ ...current, [row.machine.id]: (current[row.machine.id] ?? []).filter((item) => item.id !== fileId) }))}

@@ -75,7 +75,8 @@ type Selection = { tab: InspectionConfirmTab; ids: ReadonlySet<string>; capped: 
 type ConfirmAnswer = { kind: "success"; confirmed: number; outcome: "confirm" | "missing" } | { kind: "changed"; blocked: InspectionBlockedEntry[] }
 /**
  * The dialog: a new key per opening, its outcome, and for a damaged row its one asset, that asset's line and the form a
- * 200 goes on to (assetIds, summary and next are null for the bulk outcomes, which read the ticks).
+ * 200 goes on to (assetIds, summary, next and assetTag are null for the bulk outcomes, which read the ticks). assetTag
+ * names the damaged row's asset in the dialog's title.
  */
 type DialogState = {
   open: boolean
@@ -84,6 +85,7 @@ type DialogState = {
   assetIds: string[] | null
   summary: Partial<Record<InspectionTargetStatusName, number>> | null
   next: string | null
+  assetTag: string | null
 }
 
 const EMPTY_IDS: ReadonlySet<string> = new Set()
@@ -122,7 +124,7 @@ export function InspectionConfirmWorkspace({
   const [selection, setSelection] = useState<Selection>({ tab, ids: EMPTY_IDS, capped: false })
   // The last answer is kept above the page (confirm/layout.tsx), so the refresh's remount does not drop it.
   const { result, setResult } = useInspectionConfirmResult()
-  const [dialog, setDialog] = useState<DialogState>({ open: false, key: 0, outcome: "confirm", assetIds: null, summary: null, next: null })
+  const [dialog, setDialog] = useState<DialogState>({ open: false, key: 0, outcome: "confirm", assetIds: null, summary: null, next: null, assetTag: null })
   const openerRef = useRef<HTMLElement | null>(null)
   const selectAllTickRef = useRef<HTMLInputElement | null>(null)
   // The result region: always mounted, so it is the dialog's fallback when the bar that opened it is gone, and focus
@@ -213,7 +215,7 @@ export function InspectionConfirmWorkspace({
   function openBulk(event: React.MouseEvent<HTMLElement>, outcome: "confirm" | "missing") {
     openerRef.current = event.currentTarget
     setResult(null)
-    setDialog((current) => ({ open: true, key: current.key + 1, outcome, assetIds: null, summary: null, next: null }))
+    setDialog((current) => ({ open: true, key: current.key + 1, outcome, assetIds: null, summary: null, next: null, assetTag: null }))
   }
 
   // A damaged row's button: that one asset (the route takes exactly one), then next once the route answers 200; a null
@@ -222,7 +224,7 @@ export function InspectionConfirmWorkspace({
     openerRef.current = event.currentTarget
     setResult(null)
     const summary: Partial<Record<InspectionTargetStatusName, number>> = row.targetStatusName ? { [row.targetStatusName]: 1 } : {}
-    setDialog((current) => ({ open: true, key: current.key + 1, outcome: "damaged", assetIds: [row.assetId], summary, next }))
+    setDialog((current) => ({ open: true, key: current.key + 1, outcome: "damaged", assetIds: [row.assetId], summary, next, assetTag: row.assetTag }))
   }
 
   function closeDialog() {
@@ -414,25 +416,28 @@ export function InspectionConfirmWorkspace({
   // The damaged row's buttons (inspectionDamagedButtons), each confirming the one asset first: บันทึกซ่อม, and
   // ขอตัดจำหน่าย once the round is closed, else ยืนยันผลอย่างเดียว (task 4b). A row with no target (handover unclear) has
   // them disabled, described by its handoverUnclear text in this render (plan 4 task 4): the route would refuse it.
+  // Each button's name carries the row's tag and name, so a screen reader moving through the buttons knows the asset
+  // (plan 4 final review), as the ticks do.
   function damagedActionsFor(row: InspectionPageRow, view: "card" | "table") {
     if (!damagedActions) return undefined
     const back = tabHref("damaged")
     const unclear = row.targetStatusName === null
     const describedBy = unclear ? unclearIdFor(view, row.assetId) : undefined
+    const nameFor = (label: string) => `${label} ${row.assetTag} ${row.assetName}`
     return (
       <div className="flex min-w-0 flex-wrap gap-2">
         {damagedButtons.includes("repair") ? (
-          <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
+          <Button variant="outline" size="md" disabled={unclear} aria-label={nameFor(t("damagedRepair"))} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
             {t("damagedRepair")}
           </Button>
         ) : null}
         {damagedButtons.includes("dispose") ? (
-          <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedDisposalHref(locale, roundId, row.assetId, back))}>
+          <Button variant="outline" size="md" disabled={unclear} aria-label={nameFor(t("damagedDispose"))} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedDisposalHref(locale, roundId, row.assetId, back))}>
             {t("damagedDispose")}
           </Button>
         ) : null}
         {damagedButtons.includes("confirmOnly") ? (
-          <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, null)}>
+          <Button variant="outline" size="md" disabled={unclear} aria-label={nameFor(t("damagedConfirmOnly"))} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, null)}>
             {t("damagedConfirmOnly")}
           </Button>
         ) : null}
@@ -552,6 +557,7 @@ export function InspectionConfirmWorkspace({
           outcome={dialog.outcome}
           assetIds={dialog.assetIds ?? selectedIds}
           summary={dialog.summary ?? summary}
+          assetTag={dialog.assetTag}
           returnFocusRef={openerRef}
           fallbackFocusRef={resultRegionRef}
           onClose={closeDialog}

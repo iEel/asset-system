@@ -27,6 +27,7 @@ export function DisposalBatchMachineRow({
   onAddFiles,
   onRemoveFile,
   onRemove,
+  blockedReason,
 }: {
   machine: DisposalBatchMachine
   files: DisposalBatchQueuedFile[]
@@ -35,6 +36,8 @@ export function DisposalBatchMachineRow({
   onAddFiles: (files: File[]) => void
   onRemoveFile: (id: string) => void
   onRemove: () => void
+  /** Why the machine cannot be sent with the chosen method (a หาไม่พบ machine outside สูญหาย); none when it can. */
+  blockedReason?: string
 }) {
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
@@ -59,6 +62,9 @@ export function DisposalBatchMachineRow({
             {t("batchForm.serial")} <span className="num text-foreground">{machine.serialNumber || t("batchForm.none")}</span>
           </span>
         </p>
+        {blockedReason ? (
+          <p data-disposal-batch-machine-blocked="" className="mt-1 text-meta font-medium text-danger">{blockedReason}</p>
+        ) : null}
       </div>
       {showPhoto ? (
         <div data-disposal-batch-machine-photo className="grid min-w-0 gap-2">

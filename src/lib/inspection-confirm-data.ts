@@ -4,7 +4,9 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { getCheckoutConditionBlock } from "./asset-lifecycle-policy.ts"
 import { AUDIT_ID_CHUNK_SIZE, chunkAuditIds } from "./audit-round-counts-rules.ts"
+import { getDisposalAssetEligibilityError, type DisposalLifecycleStatus } from "./disposal-policy.ts"
 import { loadAuditRoundDisposalFindingIds } from "./disposal-query.ts"
+import { disposalReadinessAssetSelect, getDisposalReadinessBlockersForAsset } from "./disposal-readiness.ts"
 import {
   INSPECTION_STATUS_NAME,
   classifyInspectionItem,
@@ -156,11 +158,17 @@ export async function countRoundUnconfirmedAssets(db: InspectionDb, auditRoundId
 }
 
 export type RoundDisposalSummary = {
-  /** The round's not-found assets now หาไม่พบ with no open request (pending or approved), by tag. */
-  missingForDisposal: Array<{ assetId: string; assetTag: string }>
   /**
-   * The round's assets confirmed damaged (plan 4 task 4b): a condition the checkout refuses, Ready or In Use, no open
-   * request and no open repair record, by tag. The confirm page offers them for disposal once the round is closed.
+   * The round's not-found assets set หาไม่พบ through this round's confirm page, with no open request (pending or
+   * approved) and nothing else refusing a lost request (isRoundAssetReadyForDisposal), by tag.
+   */
+  missingForDisposal: Array<{ assetId: string; assetTag: string }>
+  /** The same assets that something else still refuses (a handover, a component, a licence, another open round), by tag. */
+  missingBlockedForDisposal: Array<{ assetId: string; assetTag: string }>
+  /**
+   * The round's assets confirmed damaged through this round (plan 4 task 4b): a condition the checkout refuses, Ready or
+   * In Use, no open request, no open repair record and no readiness blocker, by tag. The confirm page offers them for
+   * disposal once the round is closed.
    */
   damagedForDisposal: Array<{ assetId: string; assetTag: string; assetName: string }>
   /** Active requests made from this round: from its confirm page (audit_round) or one of its findings (audit_finding). */
@@ -169,9 +177,19 @@ export type RoundDisposalSummary = {
 }
 
 /**
- * Plan 4 task 4b: the round's items whose asset could go to disposal after a damaged confirm: active, Ready or In Use, no
- * open disposal request and no open repair record (openRepairRecordWhere, as the disposal readiness counts it). The
- * condition is checked on what this returns (toDamagedForDisposal), through getCheckoutConditionBlock.
+ * Plan 4 final review: an asset counts for this round only when this round's confirm page set its status, i.e. the
+ * status_correction movement confirm-results writes (inspection-confirm-service.ts) with the round as its reference. An
+ * asset damaged or lost later, or confirmed through another round, is not this round's.
+ */
+export function confirmedThroughRoundAssetWhere(auditRoundId: string): Prisma.AssetWhereInput {
+  return { movements: { some: { movementType: "status_correction", referenceType: "audit_round", referenceId: auditRoundId } } }
+}
+
+/**
+ * Plan 4 task 4b: the round's items whose asset could go to disposal after a damaged confirm: active, Ready or In Use,
+ * confirmed through this round, no open disposal request and no open repair record (openRepairRecordWhere, as the
+ * disposal readiness counts it). The readiness and the condition are checked on what this returns
+ * (isRoundAssetReadyForDisposal, then toDamagedForDisposal through getCheckoutConditionBlock).
  */
 export function roundDamagedForDisposalItemWhere(auditRoundId: string): Prisma.AuditItemWhereInput {
   return {
@@ -181,8 +199,58 @@ export function roundDamagedForDisposalItemWhere(auditRoundId: string): Prisma.A
       status: { name: { in: ["Ready", "In Use"] } },
       disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
       maintenanceTickets: { none: openRepairRecordWhere },
+      ...confirmedThroughRoundAssetWhere(auditRoundId),
     },
   }
+}
+
+/** Plan 4 task 3: the round's not-found items whose asset is now หาไม่พบ through this round, with no open request. */
+export function roundMissingForDisposalItemWhere(auditRoundId: string): Prisma.AuditItemWhereInput {
+  return {
+    auditRoundId,
+    auditResult: "not_found",
+    asset: {
+      isActive: true,
+      status: { name: "Missing" },
+      disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
+      ...confirmedThroughRoundAssetWhere(auditRoundId),
+    },
+  }
+}
+
+/**
+ * The disposal readiness read (disposalReadinessAssetSelect) without this round's own item and findings: after the close
+ * they no longer count anyway, and before it this open round would hide every asset from the not-yet-closed note. Any
+ * other open round still blocks.
+ */
+export function roundDisposalReadinessSelect(auditRoundId: string) {
+  const counts = disposalReadinessAssetSelect._count.select
+  return {
+    ...disposalReadinessAssetSelect,
+    _count: {
+      select: {
+        ...counts,
+        auditItems: { where: { ...counts.auditItems.where, auditRoundId: { not: auditRoundId } } },
+        auditFindings: { where: { ...counts.auditFindings.where, auditRoundId: { not: auditRoundId } } },
+      },
+    },
+  } satisfies Prisma.AssetSelect
+}
+
+/**
+ * A request could be made for the asset now: no readiness blocker and a status the request allows, with the method
+ * สูญหาย for a หาไม่พบ asset ("lost") and with no method for a damaged one.
+ */
+export function isRoundAssetReadyForDisposal(
+  asset: Parameters<typeof getDisposalReadinessBlockersForAsset>[0] & { status: DisposalLifecycleStatus | null },
+  disposalType?: "lost",
+): boolean {
+  return getDisposalReadinessBlockersForAsset(asset).length === 0 && getDisposalAssetEligibilityError(asset.status, disposalType) === null
+}
+
+// `<` / `>`, as loadRoundInspectionRows sorts.
+function byAssetTag<T extends { assetTag: string }>(left: T, right: T) {
+  return left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0
 }
 
 /** The condition-blocked ones (เสียหาย, ใช้งานไม่ได้, ซาก), by tag. */
@@ -192,36 +260,36 @@ export function toDamagedForDisposal(
   return items
     .filter((item) => getCheckoutConditionBlock(item.asset.condition?.name) !== null)
     .map((item) => ({ assetId: item.assetId, assetTag: item.asset.assetTag, assetName: item.asset.name }))
-    // `<` / `>`, as loadRoundInspectionRows sorts.
-    .sort((left, right) => (left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0))
+    .sort(byAssetTag)
 }
 
 // ยืนยันผลตรวจ plan 4 task 3: the confirm page's lost-disposal block and its disposal line. The requests are the disposal
 // list's round filter (disposal-query.ts), counted; the finding ids come in chunks for SQL Server's parameter limit.
 export async function loadRoundDisposalSummary(db: InspectionDb, auditRoundId: string): Promise<RoundDisposalSummary> {
+  const readinessSelect = roundDisposalReadinessSelect(auditRoundId)
   const items = await db.auditItem.findMany({
-    where: {
-      auditRoundId,
-      auditResult: "not_found",
-      asset: {
-        isActive: true,
-        status: { name: "Missing" },
-        disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
-      },
-    },
-    select: { assetId: true, asset: { select: { assetTag: true } } },
+    where: roundMissingForDisposalItemWhere(auditRoundId),
+    select: { assetId: true, asset: { select: { assetTag: true, status: { select: { name: true, nameTh: true } }, ...readinessSelect } } },
   })
   // One item per asset per round (@@unique([auditRoundId, assetId])).
-  const missingForDisposal = items
-    .map((item) => ({ assetId: item.assetId, assetTag: item.asset.assetTag }))
-    // `<` / `>`, as loadRoundInspectionRows sorts.
-    .sort((left, right) => (left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0))
+  const missingForDisposal: RoundDisposalSummary["missingForDisposal"] = []
+  const missingBlockedForDisposal: RoundDisposalSummary["missingBlockedForDisposal"] = []
+  for (const item of items) {
+    const entry = { assetId: item.assetId, assetTag: item.asset.assetTag }
+    if (isRoundAssetReadyForDisposal(item.asset, "lost")) missingForDisposal.push(entry)
+    else missingBlockedForDisposal.push(entry)
+  }
+  missingForDisposal.sort(byAssetTag)
+  missingBlockedForDisposal.sort(byAssetTag)
 
   const damagedItems = await db.auditItem.findMany({
     where: roundDamagedForDisposalItemWhere(auditRoundId),
-    select: { assetId: true, asset: { select: { assetTag: true, name: true, condition: { select: { name: true } } } } },
+    select: {
+      assetId: true,
+      asset: { select: { assetTag: true, name: true, condition: { select: { name: true } }, status: { select: { name: true, nameTh: true } }, ...readinessSelect } },
+    },
   })
-  const damagedForDisposal = toDamagedForDisposal(damagedItems)
+  const damagedForDisposal = toDamagedForDisposal(damagedItems.filter((item) => isRoundAssetReadyForDisposal(item.asset)))
 
   const findingIds = await loadAuditRoundDisposalFindingIds(db, auditRoundId)
   const sourceWheres: Prisma.DisposalRequestWhereInput[] = [
@@ -238,5 +306,5 @@ export async function loadRoundDisposalSummary(db: InspectionDb, auditRoundId: s
     requests += all
     approved += done
   }
-  return { missingForDisposal, damagedForDisposal, requests, approved }
+  return { missingForDisposal, missingBlockedForDisposal, damagedForDisposal, requests, approved }
 }
