@@ -50,7 +50,8 @@ export async function markNotFound(page: Page, device: E2eDevice, asset: Pending
   await dialog.getByRole("button", { name: "ยืนยันว่าไม่พบ" }).click()
   const response = await marked
   expect(response.status(), "the not-found save").toBe(200)
-  await expect(page.getByText("บันทึกว่าไม่พบ และสร้างรายการไม่ตรงทะเบียนรอพิจารณาแล้ว")).toBeVisible()
+  // .last(): two marks in a row leave two toasts up at once (inspection-confirm plan 4 E2E-1109O).
+  await expect(page.getByText("บันทึกว่าไม่พบ และสร้างรายการไม่ตรงทะเบียนรอพิจารณาแล้ว").last()).toBeVisible()
   await expect(dialog).toBeHidden()
   return ((await response.json()) as { findingId: string }).findingId
 }
