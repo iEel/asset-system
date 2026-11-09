@@ -14,7 +14,7 @@ import { expect } from "../support/fixtures.ts"
 import { auditRecords, type AuditAssetKey, type AuditRecords } from "./audit-plan.ts"
 import type { RunData } from "../support/state.ts"
 
-export type AuditMasterIds = { categoryDesktop: string; categoryComponent: string; statusReady: string; conditionGood: string; conditionFair: string }
+export type AuditMasterIds = { categoryDesktop: string; categoryComponent: string; statusReady: string; conditionGood: string; conditionFair: string; conditionDamaged: string }
 
 export type AuditWalkData = {
   records: AuditRecords
@@ -62,6 +62,8 @@ export async function readAuditMasters(page: Page): Promise<AuditMasterIds> {
       statusReady: optionId(statuses, (label) => label === "พร้อมใช้งาน", "Ready status"),
       conditionGood: optionId(conditions, (label) => label === "ดี", "Good condition"),
       conditionFair: optionId(conditions, (label) => label === "พอใช้", "Fair condition"),
+      // เสียหาย: the ยืนยันผลตรวจ damaged path (inspection-confirm plan 4 task 5) checks an asset as found in this condition.
+      conditionDamaged: optionId(conditions, (label) => label === "เสียหาย", "Damaged condition"),
     }
   } finally {
     await form.close()

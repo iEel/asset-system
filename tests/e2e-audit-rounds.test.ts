@@ -234,3 +234,96 @@ test("the ยืนยันผลตรวจ spec opens its own round, sets th
   assert.ok(spec.includes(`await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)`))
   assert.ok(spec.includes(`expect(await answer.json()).toMatchObject({ confirmed: 2 })`))
 })
+
+test("the damaged and not-found ยืนยันผลตรวจ spec reads the app's own words, key by key (inspection-confirm plan 4 task 5)", async () => {
+  const { INSPECTION_CONFIRM_MORE_WORDS: W } = await import("../e2e/audit/inspection-confirm-more-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const page = th.inspectionConfirmPage as Record<string, string>
+  const round = th.auditRound as Record<string, string>
+  const disposal = th.disposalPage
+  const byKey: Record<keyof typeof W, string> = {
+    title: page.title,
+    tabReady: page.tab_ready,
+    tabAwaitingReview: page.tab_awaitingReview,
+    tabDamaged: page.tab_damaged,
+    tabNotFound: page.tab_notFound,
+    tabNotScanned: page.tab_notScanned,
+    emptyTitle: page.emptyTitle,
+    selectedCount: page.selectedCount,
+    dialogTitle: page.dialogTitle,
+    dialogLineReady: page.dialogLineReady,
+    submit: page.submit,
+    damagedRepair: page.damagedRepair,
+    damagedDispose: page.damagedDispose,
+    damagedConfirmOnly: page.damagedConfirmOnly,
+    damagedReasonDefault: page.damagedReasonDefault,
+    missingOpen: page.missingOpen,
+    missingDialogTitle: page.missingDialogTitle,
+    missingDialogLine: page.missingDialogLine,
+    missingReasonDefault: page.missingReasonDefault,
+    missingSubmit: page.missingSubmit,
+    missingSuccess: page.missingSuccess,
+    lostBlock: page.lostBlock,
+    lostAfterClose: page.lostAfterClose,
+    lostLink: page.lostLink,
+    afterCloseTitle: page.afterCloseTitle,
+    damagedForDisposalTitle: page.damagedForDisposalTitle,
+    damagedDisposeLink: page.damagedDisposeLink,
+    closeRound: round.closeRound,
+    closeConfirm: round.closeConfirm,
+    closeSuccess: round.closeSuccess,
+    stepsClosedTitle: round.stepsClosedTitle,
+    closedDisposalLine: round.closedDisposalLine,
+    fromRoundNotice: disposal.batchForm.fromRoundNotice,
+    batchPhoneNote: disposal.batchForm.phoneTitle,
+    methodLost: disposal.types.lost,
+    methodSell: disposal.types.sell,
+    blockerStatus: disposal.readinessBlockers.lifecycle_status,
+  }
+  assert.deepEqual({ ...W }, byKey)
+  // The glossary: the repair action reads บันทึกซ่อม, never แจ้งซ่อม.
+  assert.ok(W.damagedRepair.endsWith("บันทึกซ่อม") && !W.damagedRepair.includes("แจ้งซ่อม"))
+})
+
+test("the damaged and not-found ยืนยันผลตรวจ spec walks its own round, writes once, closes as the IT head and submits no form (inspection-confirm plan 4 task 5)", () => {
+  const spec = read("e2e/audit/inspection-confirm-more.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  assert.ok(spec.includes(`test.skip(e2eTheme === "dark",`), "the light projects")
+  assert.ok(spec.includes(`const prefix = recordPrefix(testInfo, "INM")`), "run-marked records")
+  assert.ok(spec.includes("scopeLocationId: roomId,"), "its own round over its own room")
+  assert.ok(spec.includes("actualConditionId: masters.conditionDamaged"), "the damaged asset is checked as เสียหาย")
+  // The walk, the IT head's approvals, the one write, IT staff on the confirm page, the IT head's close, the forms.
+  const order = [
+    "/api/audit-rounds/${round.id}/scan`",
+    "await pending.markNotFound(",
+    `await actAs(page, "itHead", e2eTheme)`,
+    "/review`",
+    "await markUnderInspection(runId, [assets.found.id, assets.damaged.id, assets.lost1.id, assets.lost2.id])",
+    `await actAs(page, "itStaff", e2eTheme)`,
+    "W.damagedRepair",
+    "/th/maintenance/new",
+    "W.missingOpen",
+    "W.lostAfterClose",
+    `await actAs(page, "itHead", e2eTheme)\n  await measure.visit(roundPath`,
+    "W.closeConfirm",
+    "W.closedDisposalLine",
+    "W.afterCloseTitle",
+    "/th/disposal/batch/new",
+    "/th/disposal/new",
+  ]
+  let from = 0
+  for (const text of order) {
+    const at = spec.indexOf(text, from)
+    assert.ok(at >= 0, `${text} (in order)`)
+    from = at + 1
+  }
+  assert.equal(spec.split("markUnderInspection(").length - 1, 1, "one write")
+  // While the round is open the damaged row offers no disposal, and the lost block has no link.
+  assert.ok(spec.includes(`getByRole("button", { name: W.damagedDispose, exact: true })).toHaveCount(0)`))
+  assert.ok(spec.includes(`getByRole("link", { name: W.lostLink, exact: true })).toHaveCount(0)`))
+  // No form is sent: the repair form, the batch form and the single request form are only read.
+  for (const text of ["saveRepairForm", "sendBatch", "sendRequestButton", "createBatchThroughApi", "/api/disposal-requests", "/api/disposal-batches", "/api/maintenance"]) {
+    assert.ok(!spec.includes(text), `no ${text}`)
+  }
+  assert.ok(!spec.includes("cancelAsItHead") && !/action: "cancel"/.test(spec), "nothing cancels the round")
+})
