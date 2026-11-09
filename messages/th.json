@@ -7378,6 +7378,7 @@
     "afterCloseTitle": "ตัดจำหน่ายหลังปิดรอบ",
     "damagedForDisposalTitle": "ชิ้นสภาพเสียหายที่ยืนยันจากรอบนี้",
     "damagedDisposeLink": "ขอตัดจำหน่าย",
-    "damagedDialogTitle": "ยืนยันผลตรวจ {assetTag}"
+    "damagedDialogTitle": "ยืนยันผลตรวจ {assetTag}",
+    "eyebrowClosed": "รอบ {auditNo} · ปิดรอบแล้ว"
   }
 }

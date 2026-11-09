@@ -7378,6 +7378,7 @@
     "afterCloseTitle": "Disposal after the round",
     "damagedForDisposalTitle": "Damaged assets confirmed in this round",
     "damagedDisposeLink": "Request disposal",
-    "damagedDialogTitle": "Confirm the result of {assetTag}"
+    "damagedDialogTitle": "Confirm the result of {assetTag}",
+    "eyebrowClosed": "Round {auditNo} · closed"
   }
 }

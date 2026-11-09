@@ -374,3 +374,8 @@ test("/disposal/new starts with the method of a valid ?type= (the lost link pass
   assert.match(form, /initialDisposalType\?: string/)
   assert.match(form, /disposalType: initialDisposalType \?\? "",/)
 })
+
+test("a closed round's confirm page says the round is closed, not step 3 of 4 (inspection-confirm plan 4 look step)", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/confirm/page.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(page, /t\(round\.status === "closed" \? "eyebrowClosed" : "eyebrow", \{ auditNo: round\.auditNo \}\)/)
+})

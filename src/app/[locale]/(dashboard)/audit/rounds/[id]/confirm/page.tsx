@@ -60,7 +60,7 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
       title={t("title")}
       meta={
         <>
-          <span>{t("eyebrow", { auditNo: round.auditNo })}</span>
+          <span>{t(round.status === "closed" ? "eyebrowClosed" : "eyebrow", { auditNo: round.auditNo })}</span>
           <span>{t("lead")}</span>
         </>
       }
