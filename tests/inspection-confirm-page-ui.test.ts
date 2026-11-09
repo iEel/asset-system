@@ -35,7 +35,8 @@ test("the header: the trail ตรวจนับ › รอบตรวจน�
   assert.match(page, /\{ label: t\("crumbRounds"\), href: `\/\$\{locale\}\/audit\/rounds` \}/)
   assert.match(page, /\{ label: round\.auditNo, href: links\.round, code: true \}/)
   assert.match(page, /\{ label: t\("title"\) \}/)
-  assert.match(page, /t\("eyebrow", \{ auditNo: round\.auditNo \}\)/)
+  // An open round reads ขั้นที่ 3 จาก 4; a closed one ปิดรอบแล้ว (plan 4 look step).
+  assert.match(page, /"eyebrowClosed" : "eyebrow", \{ auditNo: round\.auditNo \}\)/)
   assert.match(page, /t\("lead"\)/)
   assert.match(page, /<PageBackLink href=\{links\.round\} label=\{t\("backToRound"\)\} \/>/)
 })
