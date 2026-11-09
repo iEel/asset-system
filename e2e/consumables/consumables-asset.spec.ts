@@ -124,7 +124,8 @@ test.describe("the machine's consumables as the seed admin: the panel, the often
     await issueOne(4)
     const often = panel(page).locator('[data-slot="asset-consumables-often"]')
     await Promise.all([
-      expect(toast(page, fillTemplate(W.issueToast, { name: kindName }))).toBeVisible(),
+      // .last(): the first issue's toast can still be up (E2E-1110C).
+      expect(toast(page, fillTemplate(W.issueToast, { name: kindName })).last()).toBeVisible(),
       expect(panelRows(page, e2eDevice)).toHaveCount(2),
     ])
     await expect(issueDialog).toBeHidden()
