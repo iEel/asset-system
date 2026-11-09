@@ -6,6 +6,10 @@
 
 ## 2026-11-09
 
+### กลุ่มหน้า 12 merge แล้ว
+
+- `feat/group12-admin` fast-forward เข้า master ที่ `dffde716` และ push ทั้ง origin และ company (2026-11-09 ผู้ใช้สั่ง) · unit test บน master 5,237/0 (ข้าม 1) · ไม่มี migration · ยังไม่ deploy
+
 ### กลุ่มหน้า 12 แผน 5: ตั้งค่าระบบ (บอร์ด AD-Settings) · กลุ่ม 12 ครบ
 
 plan `docs/superpowers/plans/2026-11-09-group12-settings.md` · branch `feat/group12-admin` · ทำระหว่างคืนตามที่ผู้ใช้สั่ง ("ทำทั้ง 5 แผนต่อได้เลย")
