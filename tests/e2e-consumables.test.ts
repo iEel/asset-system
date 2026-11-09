@@ -169,3 +169,84 @@ test("the asset story: empty panel, record twice with the machine locked, the of
   assert.ok((spec.match(/await Promise\.all\(\[\n\s*expect\(toast\(page, /g) ?? []).length >= 2, "each issue waits for its toast with the refresh")
   assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 7, "axe on every state")
 })
+
+// Plan 4 Task 3 (.superpowers/sdd/2026-11-10-consumables-4-low-stock-warning): the low-stock warning on the work
+// center, the notifications page, the bell and the filtered list, in e2e/consumables/consumables-warning.spec.ts.
+const WARNING_SPEC = "e2e/consumables/consumables-warning.spec.ts"
+
+test("the warning spec reads the topic's, the chip's and the work center's own words (consumables plan 4 task 3)", async () => {
+  const { CONSUMABLES_WORDS: W } = await import("../e2e/consumables/consumables-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  assert.equal(W.filterLow, th.consumablesPage.filterLow)
+  assert.equal(W.lowTopic, th.notifications.consumablesLow)
+  assert.equal(W.bellEmpty, th.notifications.bellEmpty)
+  assert.equal(W.notificationsTitle, th.notifications.title)
+  assert.equal(W.advanceSection, th.notifications.sections.advance)
+  assert.equal(W.topicMenu, th.notifications.actions.menu)
+  assert.equal(W.workCenterTitle, th.workCenter.title)
+  assert.equal(W.trackingAdvance, th.workCenter.tracking.advance)
+  // The bell's row and the topic's link: the filtered list (Task 1's href); the chip from Task 2's list page.
+  assert.ok(read("src/lib/waiting-work-rules.ts").includes("consumablesLow: (locale) => `/${locale}/consumables?state=low`"), "the topic's href")
+  assert.ok(read("src/app/[locale]/(dashboard)/consumables/page.tsx").includes(`label: t("filterLow")`), "the list's chip")
+  assert.match(read("src/components/work-center/work-center-tracking.tsx"), /href=\{`\/\$\{locale\}\/notifications#advance`\}/)
+  assert.ok(read("src/components/layout/notification-bell.tsx").includes(`tNotifications("bellEmpty")`), "the bell's empty state")
+})
+
+test("the warning spec runs as the seed admin, light only, with a run-marked kind deactivated at the end and IT staff in their own context (consumables plan 4 task 3)", () => {
+  const spec = read(WARNING_SPEC)
+  assert.ok(spec.includes(`import { expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!spec.includes(`from "@playwright/test"`), "nothing from @playwright/test")
+  assert.ok(spec.includes("test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })"), "the seed admin's saved session")
+  assert.ok(spec.includes(`test.skip(e2eTheme === "dark", LIGHT_ONLY)`), "desktop-light and phone-light")
+  assert.ok(spec.includes(`import { recordSettled } from "../audit/settle.ts"`), "axe once settled")
+  assert.ok(!spec.includes("measure.recordPage("), "axe through recordSettled")
+  assert.ok(!spec.split("\n").some((line) => line.trim() === "runPhoneOnWebKit()"), "the phone on Chromium")
+  assert.ok(spec.includes("const kindName = `${runId} ${projectCode(testInfo.project.name)} หมึกทดสอบ`"), "a run-marked kind per project")
+  assert.doesNotMatch(spec, /method: "DELETE"|\.delete\(|signInOnce\(|\/api\/admin\/|prisma|sqlcmd/)
+  // The setup through the API (min 2, 1 received); the restock through the page.
+  assert.ok(spec.includes("data: { name: kindName, unit: UNIT, minQuantity: 2 }"))
+  assert.ok(spec.includes("data: { itemId: kindId, quantity: 1, receivedDate: bangkokDate() }"))
+  assert.doesNotMatch(spec, /quantity: 5/, "the restock through the row's ⋯")
+  // The deactivation in finally, so a failed step leaves no low kind behind.
+  const finallyAt = spec.lastIndexOf("} finally {")
+  assert.ok(finallyAt > 0 && spec.indexOf("page.request.patch(`/api/consumables/${kindId}`, { data: { isActive: false } })") > finallyAt, "deactivated in finally")
+  // IT staff in their own saved session while the kind is low, before the restock.
+  const staffAt = spec.indexOf(`storageState: fromRoot(authStateFile(runId, "itStaff"))`)
+  assert.ok(staffAt > 0 && staffAt < spec.indexOf("W.menu_receive"), "IT staff while the kind is low")
+  assert.ok(spec.includes(`expect(keys, "IT staff's summary has no consumablesLow").not.toContain("consumablesLow")`))
+  assert.ok(spec.includes("await expect(bellRow(staffBox)).toHaveCount(0)"))
+})
+
+test("the warning story: the work center and the notifications page before the bell, the bell's link to the filtered list, then restocked (consumables plan 4 task 3)", () => {
+  const spec = read(WARNING_SPEC)
+  const steps = [
+    // The work center's เตือนล่วงหน้า row, at least 1, to the notifications page's section.
+    `await expect(advanceRow).toHaveAttribute("href", "/th/notifications#advance")`,
+    // The notifications page's section, ทั้งหมด.
+    `"/th/notifications?status=all#advance"`,
+    `fillTemplate(W.topicMenu, { title: W.lowTopic })`,
+    // The bell: the topic, at least 1, its link the filtered list (clicked after the pages above: it marks the topic read).
+    "await expect(row).toHaveAttribute(\"href\", LOW_LIST)",
+    `expect(toNumber(await row.locator(".num").innerText()), "the bell's count").toBeGreaterThanOrEqual(1)`,
+    "await row.click()",
+    // The filtered list: the chip, the kind ต้องซื้อเพิ่ม, the banner.
+    "`${W.clearDrilldownFilter}: ${W.filterLow}`",
+    `toHaveText(W.state_low)`,
+    "fillTemplate(W.lowItem, { name: kindName, onHand: 1 })",
+    // The restock: 5 more, the kind leaves the filtered list.
+    `await page.locator("#consumable-receive-quantity").fill("5")`,
+    "expect(kindLink(page, kindName)).toHaveCount(0)",
+  ]
+  let at = -1
+  for (const step of steps) {
+    const next = spec.indexOf(step, at + 1)
+    assert.ok(next > at, `in order: ${step}`)
+    at = next
+  }
+  // Shared dev data: counts are at least 1, never exact, and never asserted back to 0.
+  assert.equal((spec.match(/toBeGreaterThanOrEqual\(1\)/g) ?? []).length, 3, "the three counts")
+  assert.doesNotMatch(spec, /toBe\(0\)|toEqual\(0\)/)
+  assert.ok((spec.match(/await Promise\.all\(\[\n\s*expect\(toast\(page, /g) ?? []).length >= 1, "the restock waits for its toast with the refresh")
+  assert.ok(spec.includes("expect(toast(page, fillTemplate(W.receiveToast, { name: kindName })).last()).toBeVisible()"), "the latest toast")
+  assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 6, "axe on every state")
+})

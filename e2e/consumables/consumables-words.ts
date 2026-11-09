@@ -37,4 +37,11 @@ export const CONSUMABLES_WORDS = {
   // chip group and its remove link).
   tab_frequent: "เครื่องที่เปลี่ยนของบ่อย", col_count: "ครั้งที่เปลี่ยน", latest_value: "{date} · {item}", asset_chip: "เครื่อง {tag}",
   activeFilters: "ตัวกรองที่ใช้อยู่", clearDrilldownFilter: "ล้างตัวกรองนี้",
+  // Plan 4: the low-stock warning. The list's chip (consumablesPage.filterLow); the bell's and the notifications page's
+  // topic (notifications.consumablesLow), the bell's empty state, the page's title, its เตือนล่วงหน้า section and a
+  // topic's ⋯ (notifications.*); the work center's title and its เตือนล่วงหน้า row (workCenter.*).
+  filterLow: "เฉพาะที่ต้องซื้อเพิ่ม",
+  lowTopic: "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม", bellEmpty: "ไม่มีงานค้าง", notificationsTitle: "การแจ้งเตือน",
+  advanceSection: "เตือนล่วงหน้า", topicMenu: "ตัวเลือกของ {title}",
+  workCenterTitle: "ศูนย์งานค้าง", trackingAdvance: "เตือนล่วงหน้า (คืน · ประกัน · License)",
 } as const
