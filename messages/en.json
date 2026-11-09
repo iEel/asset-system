@@ -4884,7 +4884,9 @@
       "uploadFailedMachine": "{disposalNo} · {assetTag}",
       "attachPhoto": "Attach photo",
       "uploadFailedLot": "{count} batch photo files did not upload",
-      "openBatch": "Open the batch"
+      "openBatch": "Open the batch",
+      "fromRoundNotice": "Selected {count, plural, one {# asset} other {# assets}} set as not found in round {auditNo}",
+      "fromRoundCapped": "The first 100 are selected. Send this batch, then come back for the next one."
     },
     "batchMinAssets": "Select at least 2 machines",
     "batchPage": {

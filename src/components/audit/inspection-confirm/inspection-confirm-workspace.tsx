@@ -363,19 +363,23 @@ export function InspectionConfirmWorkspace({
     </Button>
   )
 
-  // The damaged row's two ways on, each confirming the one asset first; a missing permission hides its button.
-  function damagedActionsFor(row: InspectionPageRow) {
+  // The damaged row's two ways on, each confirming the one asset first; a missing permission hides its button. A row
+  // with no target (handover unclear) has both disabled, described by its handoverUnclear text in this render (plan 4
+  // task 4): the route would refuse it.
+  function damagedActionsFor(row: InspectionPageRow, view: "card" | "table") {
     if (!damagedActions) return undefined
     const back = tabHref("damaged")
+    const unclear = row.targetStatusName === null
+    const describedBy = unclear ? unclearIdFor(view, row.assetId) : undefined
     return (
       <div className="flex min-w-0 flex-wrap gap-2">
         {canRepair ? (
-          <Button variant="outline" size="md" onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
+          <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
             {t("damagedRepair")}
           </Button>
         ) : null}
         {canDispose ? (
-          <Button variant="outline" size="md" onClick={(event) => openDamaged(event, row, damagedDisposalHref(locale, roundId, row.assetId, back))}>
+          <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedDisposalHref(locale, roundId, row.assetId, back))}>
             {t("damagedDispose")}
           </Button>
         ) : null}
@@ -421,7 +425,7 @@ export function InspectionConfirmWorkspace({
                 <ActionEmptyState title={t("emptyTabTitle")} />
               ) : (
                 rows.map((row) => (
-                  <InspectionRowCard key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "card")} unclearId={unclearIdFor("card", row.assetId)} actions={damagedActionsFor(row)} />
+                  <InspectionRowCard key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "card")} unclearId={unclearIdFor("card", row.assetId)} actions={damagedActionsFor(row, "card")} />
                 ))
               )}
             </div>
@@ -442,7 +446,7 @@ export function InspectionConfirmWorkspace({
                   <TableEmptyRow colSpan={columnCount} emptyState={{ title: t("emptyTabTitle") }} />
                 ) : (
                   rows.map((row) => (
-                    <InspectionTableRow key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "table")} unclearId={unclearIdFor("table", row.assetId)} actions={damagedActionsFor(row)} />
+                    <InspectionTableRow key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "table")} unclearId={unclearIdFor("table", row.assetId)} actions={damagedActionsFor(row, "table")} />
                   ))
                 )}
               </DataTableBody>

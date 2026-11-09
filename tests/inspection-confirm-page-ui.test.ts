@@ -257,6 +257,21 @@ test("the damaged buttons open the dialog with outcome damaged for one asset; ro
   assert.match(workspace, /tabHref\("damaged"\)/)
 })
 
+// Plan 4 task 4 (controller addition B): a damaged row whose target is null (handover unclear) shows both buttons
+// disabled, each described by that row's handoverUnclear text in the render it sits in.
+test("a damaged row with no target shows its buttons disabled, described by its handoverUnclear text", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /function damagedActionsFor\(row: InspectionPageRow, view: "card" \| "table"\)/)
+  assert.match(workspace, /const unclear = row\.targetStatusName === null/)
+  assert.match(workspace, /const describedBy = unclear \? unclearIdFor\(view, row\.assetId\) : undefined/)
+  assert.equal(workspace.match(/disabled=\{unclear\} aria-describedby=\{describedBy\}/g)?.length, 2)
+  assert.match(workspace, /actions=\{damagedActionsFor\(row, "card"\)\}/)
+  assert.match(workspace, /actions=\{damagedActionsFor\(row, "table"\)\}/)
+  // The row renders the handoverUnclear text with that id when it has no target.
+  const row = read(ROW)
+  assert.match(row, /<span id=\{unclearId\} className="text-warning text-pretty">\{t\("handoverUnclear"\)\}<\/span>/)
+})
+
 test("the not-found bar opens the dialog with outcome missing; the dialog's defaults and lines follow the outcome", () => {
   const workspace = read(WORKSPACE)
   assert.match(workspace, /t\("missingOpen"\)/)

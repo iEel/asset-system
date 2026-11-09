@@ -35,7 +35,8 @@ test("keeps the disposal list queue-first and puts request creation on its own r
   assert.doesNotMatch(newSource, /prisma\.asset\.findMany/)
   assert.match(newSource, /prisma\.asset\.findFirst/)
   assert.match(newSource, /<DisposalRequestForm/)
-  assert.match(newSource, /normalizeOperationalReturnTo\(locale, "disposal", rawSearchParams\.returnTo\)/)
+  // Inspection-confirm plan 4 task 4: the queue or one round's confirm page (normalizeDisposalFormReturnTo).
+  assert.match(newSource, /normalizeDisposalFormReturnTo\(locale, rawSearchParams\.returnTo\)/)
   assert.match(newSource, /<PageBackLink href=\{returnToHref\}/)
   assert.match(newSource, /initialAsset=\{eligibleInitialAsset\}/)
   assert.match(newSource, /initialReason=\{getSingleSearchParam\(rawSearchParams\.reason\)\}/)
@@ -70,13 +71,18 @@ test("searches eligible disposal assets remotely instead of rendering the full a
   assert.match(pickerSource, /\/api\/disposal-assets\?q=/)
   assert.match(requestFormSource, /<DisposalAssetPicker/)
   assert.match(batchFormSource, /<DisposalAssetPicker/)
-  assert.doesNotMatch(batchPageSource, /prisma\.asset\.findMany/)
+  // The batch page reads assets only for a round's prefill, by their ids (inspection-confirm plan 4 task 4).
+  assert.equal(batchPageSource.match(/prisma\.asset\.findMany\(/g)?.length, 1)
+  assert.match(batchPageSource, /prisma\.asset\.findMany\(\{ where: \{ id: \{ in: kept\.map\(\(item\) => item\.assetId\) \}, isActive: true \}, select: disposalAssetOptionSelect \}\)/)
   assert.doesNotMatch(batchPageSource, /getDisposalOptions/)
   assert.match(routeSource, /requirePermission\(user, "disposal", "create"\)/)
   assert.match(routeSource, /take: id \? 1 : 100/)
   assert.match(routeSource, /slice\(0, 50\)/)
-  assert.match(routeSource, /getDisposalReadinessBlockers/)
-  assert.match(routeSource, /eligible: blockers\.length === 0/)
+  // The option is mapped by the shared mapper (inspection-confirm plan 4 task 4), which the batch page's prefill uses too.
+  const optionSource = readFileSync("src/lib/disposal-asset-option.ts", "utf8")
+  assert.match(routeSource, /toDisposalAssetOption\(asset, disposalType\)/)
+  assert.match(optionSource, /getDisposalReadinessBlockers/)
+  assert.match(optionSource, /eligible: blockers\.length === 0/)
   // ?id= also returns the request form's asset card, with the register photo as the asset page picks it (group 6
   // plan 3 Task 1); the q= branch carries no card and reads no photo.
   assert.match(routeSource, /const cardPhotoId = id && assets\.length > 0 \? await readAssetRegisterPhotoId\(assets\[0\]\.id\) : null/)

@@ -80,11 +80,14 @@ test("every blocker has words, and both screens read them with the tags (spec §
     for (const call of calls) assert.match(call[1], /^, \{ tags: /, file)
   }
   assert.match(readFileSync("src/lib/asset-detail-frame.ts", "utf8"), /disposalOutstandingComponentTags: readiness \? getDisposalOutstandingComponentTags\(readiness\) : \[\]/)
-  assert.match(readFileSync("src/app/api/disposal-assets/route.ts", "utf8"), /outstandingComponentTags: getDisposalOutstandingComponentTags\(asset\),/)
+  // The picker's option comes from the shared mapper (inspection-confirm plan 4 task 4).
+  assert.match(readFileSync("src/lib/disposal-asset-option.ts", "utf8"), /outstandingComponentTags: getDisposalOutstandingComponentTags\(asset\),/)
 })
 
 test("the asset search item carries assetTag, name and the register's Serial (null when none)", () => {
-  const route = readFileSync("src/app/api/disposal-assets/route.ts", "utf8")
+  // The route maps its options with the shared mapper (inspection-confirm plan 4 task 4).
+  assert.match(readFileSync("src/app/api/disposal-assets/route.ts", "utf8"), /toDisposalAssetOption\(asset, disposalType\)/)
+  const route = readFileSync("src/lib/disposal-asset-option.ts", "utf8")
   assert.match(route, /serialNumber: true,/)
   // \s+ spans CRLF and LF checkouts alike.
   assert.match(route, /assetTag: asset\.assetTag,\s+name: asset\.name,\s+serialNumber: asset\.serialNumber \?\? null,/)

@@ -104,6 +104,11 @@ export function DisposalBatchForm({
   initialRequesterId,
   requesterNeedsChoice,
   pendingDisposalLabel,
+  initialMachines,
+  initialDisposalType,
+  source,
+  roundNotice,
+  capNotice = false,
 }: {
   breadcrumbs: BreadcrumbItem[]
   back: ReactNode
@@ -116,14 +121,25 @@ export function DisposalBatchForm({
   requesterNeedsChoice: boolean
   /** The Thai name of the status the machines move to (รอตัดจำหน่าย). */
   pendingDisposalLabel: string
+  /** ยืนยันผลตรวจ plan 4 task 4: a round's หาไม่พบ assets, read as the picker reads them for a lost request. */
+  initialMachines?: DisposalAssetOption[]
+  /** The method the form starts with: สูญหาย when it opens from a round. */
+  initialDisposalType?: "lost"
+  /** Sent in the POST body: a batch from a round records the round as its source. */
+  source?: { sourceType: "audit_round"; sourceId: string }
+  /** The notice over the machines: the round, how many were chosen, and the way back to its confirm page. */
+  roundNotice?: { auditNo: string; count: number; href: string }
+  /** More than DISPOSAL_BATCH_MAX_ASSETS were left out: the first 100 are chosen, the rest come in the next batch. */
+  capNotice?: boolean
 }) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("disposalPage")
+  const tConfirm = useTranslations("inspectionConfirmPage")
   const tOperation = useTranslations("assetOperation")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
-  const [machines, setMachines] = useState<DisposalAssetOption[]>([])
+  const [machines, setMachines] = useState<DisposalAssetOption[]>(initialMachines ?? [])
   const [machineFiles, setMachineFiles] = useState<Record<string, DisposalBatchQueuedFile[]>>({})
   const [lotFiles, setLotFiles] = useState<DisposalBatchQueuedFile[]>([])
   const nextFileId = useRef(0)
@@ -131,7 +147,7 @@ export function DisposalBatchForm({
   // After a send was tried, the lot error follows the files and the method live, as the single form's photo.
   const [lotTried, setLotTried] = useState(false)
   const [uploadFailure, setUploadFailure] = useState<UploadFailure | null>(null)
-  const [values, setValues] = useState<DisposalBatchValues>({ disposalType: "", reason: "", requestedById: initialRequesterId, approverId: "" })
+  const [values, setValues] = useState<DisposalBatchValues>({ disposalType: initialDisposalType ?? "", reason: "", requestedById: initialRequesterId, approverId: "" })
   const fieldErrors = useFieldErrors<DisposalBatchFormField>()
   const validationMessage = useValidationMessage()
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
@@ -194,6 +210,7 @@ export function DisposalBatchForm({
           reason: values.reason,
           requestedById: values.requestedById,
           approverId: values.approverId || null,
+          ...(source ? { sourceType: source.sourceType, sourceId: source.sourceId } : {}),
         }),
       })
       const payload = await response.json().catch(() => null)
@@ -327,6 +344,20 @@ export function DisposalBatchForm({
 
         <FormSection number={1} title={t("batchForm.sectionAssets")}>
           <div className="grid gap-3">
+            {roundNotice ? (
+              <Notice
+                tone="info"
+                data-disposal-batch-from-round=""
+                title={t("batchForm.fromRoundNotice", { auditNo: roundNotice.auditNo, count: roundNotice.count })}
+                action={(
+                  <Link href={roundNotice.href} className={buttonVariants({ variant: "outline", size: "md" })}>
+                    {tConfirm("title")}
+                  </Link>
+                )}
+              >
+                {capNotice ? <p data-disposal-batch-capped="">{t("batchForm.fromRoundCapped")}</p> : null}
+              </Notice>
+            ) : null}
             <DisposalAssetPicker
               id="disposal-batch-assets"
               label={t("asset")}

@@ -104,12 +104,33 @@ export function normalizeMaintenanceReturnTo(locale: string, value: ReturnToPara
     // `new` is the asset create route, not an asset page.
     if (assetId.length > 0 && assetId !== "new" && !assetId.includes("/")) return `${url.pathname}${url.search}`
     // One round's confirm page, with its query (ยืนยันผลตรวจ plan 4: a damaged asset's บันทึกซ่อม returns to its tab).
-    const rounds = `/${locale}/audit/rounds/`
-    const confirmSuffix = "/confirm"
-    if (url.pathname.startsWith(rounds) && url.pathname.endsWith(confirmSuffix)) {
-      const roundId = url.pathname.slice(rounds.length, url.pathname.length - confirmSuffix.length)
-      if (uuidPattern.test(roundId)) return `${url.pathname}${url.search}`
-    }
+    if (isAuditRoundConfirmPath(locale, url.pathname)) return `${url.pathname}${url.search}`
+    return fallback
+  } catch {
+    return fallback
+  }
+}
+
+// `/<locale>/audit/rounds/<uuid>/confirm`, one round's ยืนยันผลตรวจ page, and nothing deeper.
+function isAuditRoundConfirmPath(locale: string, pathname: string): boolean {
+  const rounds = `/${locale}/audit/rounds/`
+  const confirmSuffix = "/confirm"
+  if (!pathname.startsWith(rounds) || !pathname.endsWith(confirmSuffix)) return false
+  return uuidPattern.test(pathname.slice(rounds.length, pathname.length - confirmSuffix.length))
+}
+
+// The single and the batch disposal forms' way back (ยืนยันผลตรวจ plan 4 task 4): the disposal queue (with its query and
+// hash), or one round's confirm page (with its query) that linked here. Anything else is the queue.
+export function normalizeDisposalFormReturnTo(locale: string, value: ReturnToParam): string {
+  const fallback = operationalReturnPaths.disposal(locale)
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return fallback
+
+  try {
+    const url = new URL(raw, "http://asset.local")
+    if (url.origin !== "http://asset.local") return fallback
+    if (url.pathname === fallback) return `${url.pathname}${url.search}${url.hash}`
+    if (isAuditRoundConfirmPath(locale, url.pathname)) return `${url.pathname}${url.search}`
     return fallback
   } catch {
     return fallback

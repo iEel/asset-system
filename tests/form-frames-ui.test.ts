@@ -83,7 +83,8 @@ test("the two disposal create pages are the operation frame with crumbs and the 
   const batch = read(`${D}disposal/batch/new/page.tsx`)
   assert.ok(batch.includes(HEADER_IMPORT), "disposal/batch/new imports PageHeader and PageBackLink")
   // The icon-only link with an aria-label becomes the words "กลับคิวตัดจำหน่าย" from md and a 44px icon below md.
-  assert.match(batch, /const back = <PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\n/)
+  // Inspection-confirm plan 4 task 4: the link follows returnTo (the queue, or the confirm page with the common back).
+  assert.match(batch, /const back = <PageBackLink href=\{returnToHref\} label=\{backLabel\} \/>\n/)
   assert.equal(batch.match(/<PageHeader title=\{t\("batchCreateTitle"\)\} meta=\{t\("batchCreateHelp"\)\} back=\{back\} \/>/g)?.length, 2, "the missing schema and the phone")
   assert.match(batch, /<div data-disposal-batch-phone className="space-y-6 md:hidden">/)
   assert.match(batch, /<DisposalBatchForm\n\s+breadcrumbs=\{\[\{ label: t\("title"\), href: `\/\$\{locale\}\/disposal` \}, \{ label: t\("batchCreateTitle"\) \}\]\}\n\s+back=\{back\}/)

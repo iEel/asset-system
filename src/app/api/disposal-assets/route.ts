@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
-import { getDisposalAssetEligibilityError } from "@/lib/disposal-policy"
-import {
-  disposalReadinessAssetSelect,
-  getDisposalOutstandingComponentTags,
-  getDisposalReadinessBlockersForAsset,
-} from "@/lib/disposal-readiness"
+import { disposalAssetOptionSelect, toDisposalAssetOption } from "@/lib/disposal-asset-option"
 import { isThumbnailable } from "@/lib/attachment-thumbnail"
 
 export async function GET(request: NextRequest) {
@@ -34,18 +29,7 @@ export async function GET(request: NextRequest) {
               ],
             }),
       },
-      select: {
-        id: true,
-        assetTag: true,
-        name: true,
-        serialNumber: true,
-        status: { select: { name: true, nameTh: true } },
-        company: { select: { code: true } },
-        branch: { select: { code: true, name: true } },
-        currentLocation: { select: { code: true, name: true } },
-        custodian: { select: { code: true, fullNameTh: true } },
-        ...disposalReadinessAssetSelect,
-      },
+      select: disposalAssetOptionSelect,
       orderBy: { assetTag: "asc" },
       take: id ? 1 : 100,
     })
@@ -55,42 +39,23 @@ export async function GET(request: NextRequest) {
     const cardPhotoId = id && assets.length > 0 ? await readAssetRegisterPhotoId(assets[0].id) : null
 
     return NextResponse.json({
-      data: assets.slice(0, 50).map((asset) => {
-        const readinessBlockers = getDisposalReadinessBlockersForAsset(asset)
-        const lifecycleBlocked = getDisposalAssetEligibilityError(asset.status, disposalType) !== null
-        const blockers = lifecycleBlocked ? ["lifecycle_status", ...readinessBlockers] : readinessBlockers
-        return {
-          id: asset.id,
-          label: `${asset.assetTag} - ${asset.name}`,
-          // The batch form's row shows the tag, the name and the register's Serial apart (request batches spec §4).
-          assetTag: asset.assetTag,
-          name: asset.name,
-          serialNumber: asset.serialNumber ?? null,
-          metadata: [
-            asset.status.nameTh,
-            `${asset.company.code}/${asset.branch.code}`,
-            asset.currentLocation.name,
-            asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
-          ].filter(Boolean).join(" · "),
-          eligible: blockers.length === 0,
-          blockers,
-          outstandingComponentTags: getDisposalOutstandingComponentTags(asset),
-          ...(id
-            ? {
-                card: {
-                  name: asset.name,
-                  assetTag: asset.assetTag,
-                  statusName: asset.status.name,
-                  statusNameTh: asset.status.nameTh,
-                  locationName: asset.currentLocation.name,
-                  branchName: asset.branch.name,
-                  custodianName: asset.custodian?.fullNameTh ?? null,
-                  photoAttachmentId: cardPhotoId,
-                },
-              }
-            : {}),
-        }
-      }),
+      data: assets.slice(0, 50).map((asset) => ({
+        ...toDisposalAssetOption(asset, disposalType),
+        ...(id
+          ? {
+              card: {
+                name: asset.name,
+                assetTag: asset.assetTag,
+                statusName: asset.status.name,
+                statusNameTh: asset.status.nameTh,
+                locationName: asset.currentLocation.name,
+                branchName: asset.branch.name,
+                custodianName: asset.custodian?.fullNameTh ?? null,
+                photoAttachmentId: cardPhotoId,
+              },
+            }
+          : {}),
+      })),
     })
   } catch (error) {
     return errorResponse(error)

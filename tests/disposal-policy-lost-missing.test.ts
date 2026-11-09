@@ -42,7 +42,10 @@ test("each server caller passes the request's type to the eligibility check", ()
 
   const picker = readFileSync("src/app/api/disposal-assets/route.ts", "utf8")
   assert.match(picker, /const disposalType = \(request\.nextUrl\.searchParams\.get\("type"\) \?\? ""\)\.trim\(\) \|\| null\r?\n/)
-  assert.match(picker, /getDisposalAssetEligibilityError\(asset\.status, disposalType\) !== null/)
+  // The picker's option goes through the shared mapper (inspection-confirm plan 4 task 4), which makes the check.
+  assert.match(picker, /toDisposalAssetOption\(asset, disposalType\)/)
+  const option = readFileSync("src/lib/disposal-asset-option.ts", "utf8")
+  assert.match(option, /getDisposalAssetEligibilityError\(asset\.status, disposalType\) !== null/)
 
   const prefill = readFileSync("src/app/[locale]/(dashboard)/disposal/new/page.tsx", "utf8")
   assert.match(prefill, /const initialDisposalType = getSingleSearchParam\(rawSearchParams\.type\) \?\? null\r?\n/)

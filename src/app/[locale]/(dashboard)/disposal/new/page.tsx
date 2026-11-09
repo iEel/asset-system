@@ -9,7 +9,7 @@ import {
 } from "@/lib/disposal-readiness"
 import { defaultDisposalRequester, initialDisposalAsset } from "@/lib/disposal-request-form-rules"
 import { disposalTypeFilters } from "@/lib/disposal-query"
-import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { normalizeDisposalFormReturnTo } from "@/lib/operational-return-navigation"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
 import { PageBackLink } from "@/components/ui/page-header"
 
@@ -58,7 +58,7 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
     // Every active status by its name: the summary's รอตัดจำหน่าย and its footnote (spec §8.5).
     prisma.assetStatus.findMany({ where: { isActive: true }, select: { name: true, nameTh: true } }),
   ])
-  const returnToHref = normalizeOperationalReturnTo(locale, "disposal", rawSearchParams.returnTo)
+  const returnToHref = normalizeDisposalFormReturnTo(locale, rawSearchParams.returnTo)
   // The ?assetId= prefill (plan 3 Task 1, review focus 5): readiness as the POST computes it. A ready asset is
   // preselected; a blocked one is not, and the page says why.
   const initialBlockers = initialAsset

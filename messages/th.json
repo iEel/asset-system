@@ -4884,7 +4884,9 @@
       "uploadFailedMachine": "{disposalNo} · {assetTag}",
       "attachPhoto": "แนบรูป",
       "uploadFailedLot": "รูปรวมของชุดส่งไม่สำเร็จ {count} ไฟล์",
-      "openBatch": "เปิดหน้าชุดคำขอ"
+      "openBatch": "เปิดหน้าชุดคำขอ",
+      "fromRoundNotice": "เลือกทรัพย์สินที่ตั้งเป็นหาไม่พบจากรอบ {auditNo} ไว้ให้ {count, number} ชิ้น",
+      "fromRoundCapped": "เลือกให้ 100 ชิ้นแรก ส่งชุดนี้แล้วกลับมาขอชุดถัดไป"
     },
     "batchMinAssets": "เลือกอย่างน้อย 2 เครื่อง",
     "batchPage": {
