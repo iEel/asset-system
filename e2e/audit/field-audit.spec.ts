@@ -836,6 +836,8 @@ test.describe("The IT head reviews and closes", () => {
     await expect(close).toBeEnabled()
     await roundPage.expectInside(close, nextStep)
     await expect(page.getByText(W.openerCannotClose)).toHaveCount(0)
+    // The suite's assets are Ready, so ยืนยันผลตรวจ has nothing waiting (inspection-confirm plan 2).
+    await expect(nextStep.getByText(W.noUnconfirmed, { exact: true })).toBeVisible()
     await close.click()
     const confirm = page.getByRole("alertdialog", { name: "ยืนยันปิดรอบตรวจนับนี้?" })
     await expect(confirm).toBeVisible()

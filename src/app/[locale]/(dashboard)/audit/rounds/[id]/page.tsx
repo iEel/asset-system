@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Check, ChevronRight, Eye, FileText, ListChecks, Pencil, ScanLine } from "lucide-react"
+import { ArrowLeft, Check, ChevronRight, ClipboardCheck, Eye, FileText, ListChecks, Pencil, ScanLine } from "lucide-react"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
@@ -127,6 +127,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
+  // ยืนยันผลตรวจ (inspection-confirm plan 3 builds the page): the step's main link and the close line's link.
+  const confirmHref = `/${locale}/audit/rounds/${round.id}/confirm`
   const stepsState = buildAuditRoundPageSteps({ status: round.status, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, unconfirmedAssets: data.steps.close.checklist.unconfirmedAssets })
   const mainAction = buildAuditRoundPageMainAction({ steps: stepsState, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, unconfirmedAssets: data.steps.close.checklist.unconfirmedAssets, canClose: data.steps.close.canClose, openedByViewer: data.steps.close.openedByViewer, canScan, canApprove, canConfirm })
   const stepLabels: Record<AuditRoundPageStepKey, string> = { walk: t("stepWalk"), review: t("stepReview"), confirm: t("stepConfirm"), close: t("stepClose") }
@@ -138,16 +140,23 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ? { href: mainAction.target === "scan" ? scanHref : pendingHref, label: t("nextStepContinueScan", { count: formatCount(mainAction.count) }), icon: mainAction.target === "scan" ? <ScanLine className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />, primary: true }
       : mainAction?.kind === "review"
         ? { href: pendingReviewFindingsHref, label: mainAction.decide ? t("nextStepReviewItems", { count: formatCount(mainAction.count) }) : t("nextStepViewPendingFindings", { count: formatCount(mainAction.count) }), icon: <FileText className="h-4 w-4" />, primary: mainAction.decide }
-        : null
-  // The four conditions the close API checks (audit-round-close.ts getAuditRoundCloseChecklist, and the route's
+        // Step 3 without asset:edit: a neutral link to the same page, never a call to confirm.
+        : mainAction?.kind === "confirm"
+          ? { href: confirmHref, label: mainAction.act ? t("nextStepConfirm", { count: formatCount(mainAction.count) }) : t("nextStepViewConfirm", { count: formatCount(mainAction.count) }), icon: <ClipboardCheck className="h-4 w-4" />, primary: mainAction.act }
+          : null
+  // The five conditions the close API checks (audit-round-close.ts getAuditRoundCloseChecklist, and the route's
   // closeOwnRound), each linked to its rows while it blocks; the counts are the API's (findings, P2-R3). The opener is
   // told they cannot close (spec §8). A closed round reads one met line, "รอบนี้ปิดแล้ว", and no opener's sentence
   // (P2-R8, final review M1).
   const checklist = data.steps.close.checklist
-  const closeConditions: Array<{ key: string; ok: boolean; label: string; href?: string }> = round.status === "closed" ? [{ key: "closed", ok: true, label: t("stepsClosedTitle") }] : [
+  // Assets of the round still Under Inspection (inspection-confirm spec §3): the close waits for them; a closed round
+  // shows the line too while any remain, so they can still be released.
+  const unconfirmedCondition = { key: "unconfirmed", ok: checklist.unconfirmedAssets === 0, label: checklist.unconfirmedAssets === 0 ? t("closeNoUnconfirmed") : t("closeUnconfirmedCount", { count: formatCount(checklist.unconfirmedAssets) }), href: confirmHref }
+  const closeConditions: Array<{ key: string; ok: boolean; label: string; href?: string }> = round.status === "closed" ? [{ key: "closed", ok: true, label: t("stepsClosedTitle") }, ...(checklist.unconfirmedAssets > 0 ? [unconfirmedCondition] : [])] : [
     { key: "pendingItems", ok: checklist.pendingItems === 0, label: checklist.pendingItems === 0 ? t("closeNoPendingItems") : t("closePendingItemsCount", { count: formatCount(checklist.pendingItems) }), href: pendingHref },
     { key: "pendingFindings", ok: checklist.pendingFindings === 0, label: checklist.pendingFindings === 0 ? t("closeNoPendingFindings") : t("closePendingFindingsCount", { count: formatCount(checklist.pendingFindings) }), href: pendingReviewFindingsHref },
     { key: "openActions", ok: checklist.openActions === 0, label: checklist.openActions === 0 ? t("closeNoOpenActions") : t("openActionsCount", { count: formatCount(checklist.openActions) }), href: openActionFindingsHref },
+    unconfirmedCondition,
     { key: "opener", ok: !data.steps.close.openedByViewer, label: data.steps.close.openedByViewer ? t("closeOwnRoundNotice") : t("closeSeparateApprover") },
   ]
   const barActions: ActionBarLink[] = [

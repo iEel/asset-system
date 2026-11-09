@@ -3347,7 +3347,12 @@
     "varianceMetric_outOfScopeFindings": "Out-of-scope Findings",
     "varianceMetric_outOfScopeAssets": "Out-of-scope Assets",
     "varianceMetric_pendingReview": "Pending Review Findings",
-    "varianceMetric_openActions": "Open Action Plans"
+    "varianceMetric_openActions": "Open Action Plans",
+    "stepConfirm": "Confirm results",
+    "closeNoUnconfirmed": "All audit results confirmed",
+    "closeUnconfirmedCount": "{count} still under inspection",
+    "nextStepConfirm": "Confirm results ({count})",
+    "nextStepViewConfirm": "View assets awaiting confirmation ({count})"
   },
   "auditScan": {
     "title": "Audit Scan",

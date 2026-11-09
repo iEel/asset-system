@@ -91,11 +91,36 @@ test("the next-step card: three Steps, each step's line under them, the main but
   assert.doesNotMatch(card, /truncate|whitespace-nowrap|w-30/, "nothing in the card is cut")
   assert.match(page, /\{ key: "opener", ok: !data\.steps\.close\.openedByViewer, label: data\.steps\.close\.openedByViewer \? t\("closeOwnRoundNotice"\) : t\("closeSeparateApprover"\) \}/)
   // A closed round: one met line, "รอบนี้ปิดแล้ว", and no opener's row or warning (P2-R8, final review M1).
-  assert.match(page, /const closeConditions: Array<\{ key: string; ok: boolean; label: string; href\?: string \}> = round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}\] : \[\n\s+\{ key: "pendingItems"/)
+  assert.match(page, /const closeConditions: Array<\{ key: string; ok: boolean; label: string; href\?: string \}> = round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}, \.\.\.\(checklist\.unconfirmedAssets > 0 \? \[unconfirmedCondition\] : \[\]\)\] : \[\n\s+\{ key: "pendingItems"/)
   const close = read("src/components/audit/audit-round-close-button.tsx")
   assert.match(close, /export function AuditRoundCloseButton\(\{ roundId, disabled \}: \{ roundId: string; disabled: boolean \}\)/)
   assert.match(close, /return \(\s*<Button onClick=\{closeRound\} busy=\{saving\} disabled=\{disabled\}>\s*<Lock aria-hidden="true" \/>\s*\{t\("closeRound"\)\}\s*<\/Button>\s*\)/)
   assert.doesNotMatch(close, /ContentPanel|StatStrip|Notice|checklist/)
+})
+
+test("ยืนยันผลตรวจ: the fourth step, its main link to the confirm page, and the unconfirmed close line on open and closed rounds (inspection-confirm plan 2 task 4, spec §3)", () => {
+  const page = read(PAGE)
+  assert.match(page, /const canConfirm = hasPermission\(user, "asset", "edit"\)/)
+  assert.match(page, /const confirmHref = `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/confirm`/)
+  assert.match(page, /const stepLabels: Record<AuditRoundPageStepKey, string> = \{ walk: t\("stepWalk"\), review: t\("stepReview"\), confirm: t\("stepConfirm"\), close: t\("stepClose"\) \}/)
+  // asset:edit acts (primary); anyone else gets a neutral link to the same page.
+  assert.match(page, /mainAction\?\.kind === "confirm"\n\s+\? \{ href: confirmHref, label: mainAction\.act \? t\("nextStepConfirm", \{ count: formatCount\(mainAction\.count\) \}\) : t\("nextStepViewConfirm", \{ count: formatCount\(mainAction\.count\) \}\), icon: <ClipboardCheck className="h-4 w-4" \/>, primary: mainAction\.act \}/)
+  assert.match(page, /import \{[^}]*\bClipboardCheck\b[^}]*\} from "lucide-react"/)
+  // The line reads checklist.unconfirmedAssets and links the confirm page.
+  assert.match(page, /const unconfirmedCondition = \{ key: "unconfirmed", ok: checklist\.unconfirmedAssets === 0, label: checklist\.unconfirmedAssets === 0 \? t\("closeNoUnconfirmed"\) : t\("closeUnconfirmedCount", \{ count: formatCount\(checklist\.unconfirmedAssets\) \}\), href: confirmHref \}/)
+  // Open round: after openActions, before the opener.
+  const open = between(page, '{ key: "openActions"', '{ key: "opener"')
+  assert.match(open, /\n\s+unconfirmedCondition,\n\s+$/)
+  // Closed round: its one closed line, then the unconfirmed line only while assets still wait.
+  assert.match(page, /round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}, \.\.\.\(checklist\.unconfirmedAssets > 0 \? \[unconfirmedCondition\] : \[\]\)\] : \[/)
+  const th = JSON.parse(read("messages/th.json")).auditRound
+  const en = JSON.parse(read("messages/en.json")).auditRound
+  assert.deepEqual([th.stepWalk, th.stepReview, th.stepConfirm, th.stepClose], ["เดินตรวจ", "หัวหน้า IT พิจารณา", "ยืนยันผลตรวจ", "ปิดรอบ"])
+  assert.equal(th.closeNoUnconfirmed, "ยืนยันผลตรวจครบแล้ว")
+  assert.equal(th.closeUnconfirmedCount, "ยังมี {count} ชิ้นค้างสถานะอยู่ระหว่างตรวจสอบ")
+  assert.equal(th.nextStepConfirm, "ยืนยันผลตรวจ {count} ชิ้น")
+  assert.equal(th.nextStepViewConfirm, "ดูชิ้นที่รอยืนยันผล ({count})")
+  assert.deepEqual([en.stepConfirm, en.closeNoUnconfirmed, en.closeUnconfirmedCount, en.nextStepConfirm, en.nextStepViewConfirm], ["Confirm results", "All audit results confirmed", "{count} still under inspection", "Confirm results ({count})", "View assets awaiting confirmation ({count})"])
 })
 
 test("the phone bar: the main step first, the pending list, the findings to decide, back; no scan item without audit:edit (spec §8, P2-R7)", () => {

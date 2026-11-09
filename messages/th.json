@@ -3347,7 +3347,12 @@
     "varianceMetric_outOfScopeFindings": "รายการไม่ตรงทะเบียนนอกขอบเขต",
     "varianceMetric_outOfScopeAssets": "ทรัพย์สินนอกขอบเขต",
     "varianceMetric_pendingReview": "รายการไม่ตรงทะเบียนรอพิจารณา",
-    "varianceMetric_openActions": "แผนแก้ไขที่ยังเปิดอยู่"
+    "varianceMetric_openActions": "แผนแก้ไขที่ยังเปิดอยู่",
+    "stepConfirm": "ยืนยันผลตรวจ",
+    "closeNoUnconfirmed": "ยืนยันผลตรวจครบแล้ว",
+    "closeUnconfirmedCount": "ยังมี {count} ชิ้นค้างสถานะอยู่ระหว่างตรวจสอบ",
+    "nextStepConfirm": "ยืนยันผลตรวจ {count} ชิ้น",
+    "nextStepViewConfirm": "ดูชิ้นที่รอยืนยันผล ({count})"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",

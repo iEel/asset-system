@@ -88,6 +88,7 @@ test("the round page and pending list steps read the app's own words (group 2 pl
   assert.equal(ROUND_PAGE_WORDS.nextStep, round.nextStep)
   assert.equal(ROUND_PAGE_WORDS.continueScan, round.nextStepContinueScan)
   assert.equal(ROUND_PAGE_WORDS.closeRound, round.closeRound)
+  assert.equal(ROUND_PAGE_WORDS.noUnconfirmed, round.closeNoUnconfirmed)
   assert.equal(ROUND_PAGE_WORDS.cancelRound, round.cancelRound)
   assert.equal(ROUND_PAGE_WORDS.activeFilters, round.activeFilters)
   assert.equal(ROUND_PAGE_WORDS.clearFilter, round.clearFilter)

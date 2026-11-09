@@ -8,6 +8,8 @@ export const ROUND_PAGE_WORDS = {
   reviewWaiting: "รอ {count}",
   viewPendingFindings: "ดูรายการไม่ตรงทะเบียนรอพิจารณา ({count})",
   closeRound: "ปิดรอบตรวจ",
+  // Step 3 ยืนยันผลตรวจ (inspection-confirm plan 2) sits before ปิดรอบ; the close waits for this line.
+  noUnconfirmed: "ยืนยันผลตรวจครบแล้ว",
   openerCannotClose: "ผู้เปิดรอบปิดรอบเองไม่ได้ ให้หัวหน้าคนอื่นปิด",
   // The header's menus.
   exportMenu: "ส่งออก",
