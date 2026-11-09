@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       return disposalApiError("DISPOSAL_OPEN_REQUEST", `This asset already has an open disposal request: ${existingOpenRequest.disposalNo}`)
     }
 
-    const eligibilityError = getDisposalAssetEligibilityError(asset.status)
+    const eligibilityError = getDisposalAssetEligibilityError(asset.status, input.disposalType)
     if (eligibilityError) return disposalApiError("DISPOSAL_ASSET_INELIGIBLE", eligibilityError)
     const readinessBlockers = getDisposalReadinessBlockersForAsset(asset)
     if (readinessBlockers.length > 0) {

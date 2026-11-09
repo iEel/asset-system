@@ -144,6 +144,9 @@ export function DisposalRequestForm({
   const [photoTried, setPhotoTried] = useState(false)
   const [selectedAssets, setSelectedAssets] = useState<DisposalAssetOption[]>(initialAsset ? [initialAsset] : [])
   const [card, setCard] = useState<DisposalAssetCardData | null>(null)
+  // The ?type= the card was read with: a สูญหาย method reads a หาไม่พบ asset as eligible (ยืนยันผลตรวจ plan 4), so a change
+  // between lost and another method reads the card again while the old one stays on screen.
+  const [cardTypeQuery, setCardTypeQuery] = useState("")
   const [cardFailedFor, setCardFailedFor] = useState<string | null>(null)
   const [cardAttempt, setCardAttempt] = useState(0)
   // Set only by the picker's onChange: the card that replaces it takes focus. A ?assetId= load leaves focus alone.
@@ -159,26 +162,28 @@ export function DisposalRequestForm({
   const validationMessage = useValidationMessage()
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
   const currentCard = card?.id === values.assetId ? card : null
+  const typeQuery = values.disposalType === "lost" ? "&type=lost" : ""
 
   // The chosen asset's card, read once per asset. A change aborts the read in flight, and an answer for another asset
   // is ignored, so a slow answer never shows the wrong asset.
   useEffect(() => {
     const assetId = values.assetId
-    if (!assetId || card?.id === assetId) return
+    if (!assetId || (card?.id === assetId && cardTypeQuery === typeQuery)) return
     const controller = new AbortController()
-    fetch(`/api/disposal-assets?id=${encodeURIComponent(assetId)}`, { signal: controller.signal })
+    fetch(`/api/disposal-assets?id=${encodeURIComponent(assetId)}${typeQuery}`, { signal: controller.signal })
       .then((response) => (response.ok ? (response.json() as Promise<{ data?: DisposalAssetReadRow[] }>) : null))
       .then((payload) => {
         if (controller.signal.aborted) return
         const row = payload?.data?.find((candidate) => candidate.id === assetId)
         if (!row?.card) return setCardFailedFor(assetId)
         setCard({ id: row.id, ...row.card, eligible: row.eligible, blockers: row.blockers, outstandingComponentTags: row.outstandingComponentTags ?? [] })
+        setCardTypeQuery(typeQuery)
       })
       .catch(() => {
         if (!controller.signal.aborted) setCardFailedFor(assetId)
       })
     return () => controller.abort()
-  }, [card?.id, values.assetId, cardAttempt])
+  }, [card?.id, cardTypeQuery, typeQuery, values.assetId, cardAttempt])
 
   useEffect(() => {
     if (!currentCard || !focusCardAfterPick.current) return
@@ -382,6 +387,7 @@ export function DisposalRequestForm({
                 searchPlaceholder={tCommon("searchSelectPlaceholder")}
                 emptyLabel={tCommon("searchSelectNoResults")}
                 error={fieldErrors.message("assetId")}
+                disposalType={values.disposalType}
               />
             )}
             {values.assetId && !currentCard && cardFailedFor === values.assetId ? (

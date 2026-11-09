@@ -23,7 +23,7 @@ test("keeps the disposal list queue-first and puts request creation on its own r
   assert.match(listSource, /buildDisposalQueryString\(filters, \{ page: filters\.page \+ 1 \}\)/)
   assert.match(newSource, /requirePagePermission\(locale, "disposal", "create"\)/)
   // The ?assetId= prefill (group 6 plan 3 Task 1): lifecycle and readiness as the POST computes them, through the rule.
-  assert.match(newSource, /getDisposalAssetEligibilityError\(initialAsset\.status\) !== null \? \["lifecycle_status" as const\]/)
+  assert.match(newSource, /getDisposalAssetEligibilityError\(initialAsset\.status, initialDisposalType\) !== null \? \["lifecycle_status" as const\]/)
   assert.match(newSource, /getDisposalReadinessBlockersForAsset\(initialAsset\)/)
   assert.match(newSource, /\.\.\.disposalReadinessAssetSelect/)
   assert.match(newSource, /initialDisposalAsset\(initialAsset \? \{ eligible: initialBlockers\.length === 0, blockers: initialBlockers \} : null\)/)

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     if (employees.length !== (packet.approverId ? 2 : 1)) return batchError("DISPOSAL_BATCH_EMPLOYEE_NOT_FOUND", "Requester or approver is inactive or missing")
     if (!pendingDisposalStatus) return batchError("DISPOSAL_PENDING_STATUS_MISSING", "Pending Disposal asset status is not configured")
 
-    const ineligible = assets.find((asset) => getDisposalAssetEligibilityError(asset.status) !== null)
+    const ineligible = assets.find((asset) => getDisposalAssetEligibilityError(asset.status, packet.disposalType) !== null)
     if (ineligible) return batchError("DISPOSAL_BATCH_ASSET_INELIGIBLE", `Asset ${ineligible.assetTag} is not eligible for disposal`)
     const blocked = assets.find((asset) => getDisposalReadinessBlockersForAsset(asset).length > 0)
     if (blocked) {
@@ -147,6 +147,8 @@ export async function POST(request: NextRequest) {
               approverId: packet.approverId,
               saleValue: packet.saleValue,
               salvageValue: packet.salvageValue,
+              sourceType: packet.sourceType ?? null,
+              sourceId: packet.sourceId ?? null,
               createdBy: user.id,
               updatedBy: user.id,
             },

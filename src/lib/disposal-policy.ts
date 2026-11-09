@@ -61,8 +61,15 @@ const thaiStatusAliases = new Map<string, string>([
   ["รอซ่อม", "pending repair"],
 ])
 
-export function getDisposalAssetEligibilityError(status: DisposalLifecycleStatus | null | undefined) {
-  if (!blockedRequestSourceStatuses.has(normalizeStatus(status))) return null
+// The one server check for a new disposal request. หาไม่พบ (Missing) passes only for a สูญหาย (lost) request: a round's
+// not-found asset is written off as lost (ยืนยันผลตรวจ plan 4). Callers with no type (asset detail) keep refusing it.
+export function getDisposalAssetEligibilityError(
+  status: DisposalLifecycleStatus | null | undefined,
+  disposalType?: string | null,
+) {
+  const normalized = normalizeStatus(status)
+  if (normalized === "missing" && disposalType?.trim().toLowerCase() === "lost") return null
+  if (!blockedRequestSourceStatuses.has(normalized)) return null
   return "Asset status does not allow a new disposal request"
 }
 

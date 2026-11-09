@@ -1,3 +1,5 @@
+import { optionalText } from "./validations/shared.ts"
+
 export type DisposalBatchPacketInput = {
   assetIds: string[]
   disposalType: string
@@ -6,6 +8,9 @@ export type DisposalBatchPacketInput = {
   approverId?: string | null
   saleValue?: number | string | null
   salvageValue?: number | string | null
+  /** The batch's source (a round's lost request: "audit_round" + the round id), checked as the single request's. */
+  sourceType?: string | null
+  sourceId?: string | null
 }
 
 export type DisposalBatchPacket = {
@@ -16,6 +21,9 @@ export type DisposalBatchPacket = {
   approverId: string | null
   saleValue: number | null
   salvageValue: number | null
+  /** Present only when the input named one; every request of the batch is created with it. */
+  sourceType?: string | null
+  sourceId?: string | null
 }
 
 export const disposalBatchTypes = ["sell", "donate", "destroy", "lost", "dispose"] as const
@@ -45,7 +53,14 @@ export function prepareDisposalBatchPacket(input: DisposalBatchPacketInput): Dis
     approverId: input.approverId?.trim() || null,
     saleValue: normalizeOptionalAmount(input.saleValue, "Sale value"),
     salvageValue: normalizeOptionalAmount(input.salvageValue, "Salvage value"),
+    ...normalizeSource(input),
   }
+}
+
+// Without a source the packet is unchanged; with one, each part reads as the single request's optionalText.
+function normalizeSource(input: DisposalBatchPacketInput): Pick<DisposalBatchPacket, "sourceType" | "sourceId"> {
+  if (input.sourceType == null && input.sourceId == null) return {}
+  return { sourceType: optionalText.parse(input.sourceType) ?? null, sourceId: optionalText.parse(input.sourceId) ?? null }
 }
 
 function normalizeOptionalAmount(value: number | string | null | undefined, label: string) {

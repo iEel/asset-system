@@ -19,6 +19,7 @@ type NewDisposalPageProps = {
     reason?: string | string[]
     sourceType?: string | string[]
     sourceId?: string | string[]
+    type?: string | string[]
     returnTo?: string | string[]
   }>
 }
@@ -28,6 +29,9 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "disposal", "create")
   const initialAssetId = getSingleSearchParam(rawSearchParams.assetId)
+  // ?type= (a lost request) is checked with the asset as the POST will; without it a หาไม่พบ asset stays blocked here
+  // and the picker re-checks it once สูญหาย is chosen.
+  const initialDisposalType = getSingleSearchParam(rawSearchParams.type) ?? null
   const [t, tCommon, initialAsset, employees, statuses] = await Promise.all([
     getTranslations("disposalPage"),
     getTranslations("common"),
@@ -56,7 +60,7 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
   // preselected; a blocked one is not, and the page says why.
   const initialBlockers = initialAsset
     ? [
-        ...(getDisposalAssetEligibilityError(initialAsset.status) !== null ? ["lifecycle_status" as const] : []),
+        ...(getDisposalAssetEligibilityError(initialAsset.status, initialDisposalType) !== null ? ["lifecycle_status" as const] : []),
         ...getDisposalReadinessBlockersForAsset(initialAsset),
       ]
     : []

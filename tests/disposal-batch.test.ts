@@ -216,3 +216,29 @@ test("batch detail owns shared evidence and exposes every child request", () => 
   assert.match(attachmentRoute, /referenceId: batch\.id/)
   assert.match(attachmentAccess, /module === "disposal_batch"/)
 })
+
+// ยืนยันผลตรวจ plan 4 Task 1: a batch may carry its source (a round's lost request), checked as the single request's
+// optionalText; without one the packet is unchanged.
+test("the batch packet accepts an audit_round source and its absence", () => {
+  const validInput = {
+    assetIds: ["asset-1", "asset-2"],
+    disposalType: "lost",
+    reason: "Not found in audit round AUD-2026-0001",
+    requestedById: "employee-1",
+  }
+  const roundId = "3f1c2b8e-9d4a-4c1e-8b7a-2f6d5e4c3b2a"
+
+  const sourced = prepareDisposalBatchPacket({ ...validInput, sourceType: " audit_round ", sourceId: roundId })
+  assert.equal(sourced.sourceType, "audit_round")
+  assert.equal(sourced.sourceId, roundId)
+
+  const plain = prepareDisposalBatchPacket(validInput)
+  assert.equal("sourceType" in plain, false)
+  assert.equal("sourceId" in plain, false)
+
+  const blank = prepareDisposalBatchPacket({ ...validInput, sourceType: "  ", sourceId: null })
+  assert.equal(blank.sourceType ?? null, null)
+  assert.equal(blank.sourceId ?? null, null)
+
+  assert.throws(() => prepareDisposalBatchPacket({ ...validInput, sourceType: 5 as unknown as string }))
+})

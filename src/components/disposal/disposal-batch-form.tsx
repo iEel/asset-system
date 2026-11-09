@@ -337,6 +337,7 @@ export function DisposalBatchForm({
               searchPlaceholder={t("batchForm.search")}
               emptyLabel={tCommon("searchSelectNoResults")}
               error={fieldErrors.errors.assets ? t("batchMinAssets") : undefined}
+              disposalType={values.disposalType}
             />
             {machines.length > 0 ? (
               <ul aria-label={t("batchForm.machines")} data-disposal-batch-machines className="divide-y divide-border-soft rounded-md border border-border">

@@ -33,7 +33,9 @@ function preventEnterSubmit(event: React.KeyboardEvent<HTMLInputElement>) {
   if (event.key === "Enter") event.preventDefault()
 }
 
-export function DisposalAssetPicker({ id, label, selected, onChange, max = 1, searchPlaceholder, emptyLabel, selectedCountLabel, error, showSelectedList = true }: { id?: string; label: string; selected: DisposalAssetOption[]; onChange: (assets: DisposalAssetOption[]) => void; max?: number; searchPlaceholder: string; emptyLabel: string; selectedCountLabel?: string; error?: React.ReactNode; showSelectedList?: boolean }) {
+// disposalType: the form's chosen method. A สูญหาย (lost) one asks with ?type=lost, so หาไม่พบ assets are eligible, and a
+// change of method searches again (ยืนยันผลตรวจ plan 4).
+export function DisposalAssetPicker({ id, label, selected, onChange, max = 1, searchPlaceholder, emptyLabel, selectedCountLabel, error, showSelectedList = true, disposalType }: { id?: string; label: string; selected: DisposalAssetOption[]; onChange: (assets: DisposalAssetOption[]) => void; max?: number; searchPlaceholder: string; emptyLabel: string; selectedCountLabel?: string; error?: React.ReactNode; showSelectedList?: boolean; disposalType?: string }) {
   const t = useTranslations("disposalPage")
   const tAssetTools = useTranslations("assetTools")
   const listboxId = useId()
@@ -41,10 +43,12 @@ export function DisposalAssetPicker({ id, label, selected, onChange, max = 1, se
   const inputId = id ?? generatedId
   const errorId = error ? `${inputId}-error` : undefined
   const [query, setQuery] = useState("")
-  const [result, setResult] = useState<{ query: string; options: DisposalAssetOption[] }>({ query: "", options: [] })
+  const [result, setResult] = useState<{ query: string; typeQuery?: string; options: DisposalAssetOption[] }>({ query: "", options: [] })
   const [loadingQuery, setLoadingQuery] = useState("")
   const normalizedQuery = query.trim()
-  const options = result.query === normalizedQuery ? result.options : []
+  const typeQuery = disposalType === "lost" ? "&type=lost" : ""
+  // An answer for another method is stale: its eligibility was read without (or with) ?type=lost.
+  const options = result.query === normalizedQuery && (result.typeQuery ?? "") === typeQuery ? result.options : []
   const loading = loadingQuery === normalizedQuery && normalizedQuery.length >= 2
 
   useEffect(() => {
@@ -54,20 +58,20 @@ export function DisposalAssetPicker({ id, label, selected, onChange, max = 1, se
     const timer = window.setTimeout(async () => {
       setLoadingQuery(normalized)
       try {
-        const response = await fetch(`/api/disposal-assets?q=${encodeURIComponent(normalized)}`, { signal: controller.signal })
+        const response = await fetch(`/api/disposal-assets?q=${encodeURIComponent(normalized)}${typeQuery}`, { signal: controller.signal })
         const payload = await response.json().catch(() => null)
-        if (response.ok) setResult({ query: normalized, options: payload?.data ?? [] })
-        else setResult({ query: normalized, options: [] })
+        if (response.ok) setResult({ query: normalized, typeQuery, options: payload?.data ?? [] })
+        else setResult({ query: normalized, typeQuery, options: [] })
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setResult({ query: normalized, options: [] })
+          setResult({ query: normalized, typeQuery, options: [] })
         }
       } finally {
         if (!controller.signal.aborted) setLoadingQuery("")
       }
     }, 250)
     return () => { window.clearTimeout(timer); controller.abort() }
-  }, [query])
+  }, [query, typeQuery])
 
   const showSearch = max > 1 || selected.length === 0
 

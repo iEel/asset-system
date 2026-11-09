@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     requirePermission(user, "disposal", "create")
     const query = (request.nextUrl.searchParams.get("q") ?? "").trim()
     const id = (request.nextUrl.searchParams.get("id") ?? "").trim()
+    // ?type=lost (the forms send it for a สูญหาย request) lets หาไม่พบ through; without it nothing changes.
+    const disposalType = (request.nextUrl.searchParams.get("type") ?? "").trim() || null
     if (!id && query.length < 2) return NextResponse.json({ data: [] })
 
     const assets = await prisma.asset.findMany({
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: assets.slice(0, 50).map((asset) => {
         const readinessBlockers = getDisposalReadinessBlockersForAsset(asset)
-        const lifecycleBlocked = getDisposalAssetEligibilityError(asset.status) !== null
+        const lifecycleBlocked = getDisposalAssetEligibilityError(asset.status, disposalType) !== null
         const blockers = lifecycleBlocked ? ["lifecycle_status", ...readinessBlockers] : readinessBlockers
         return {
           id: asset.id,
