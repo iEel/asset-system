@@ -43,5 +43,5 @@ export const CONSUMABLES_WORDS = {
   filterLow: "เฉพาะที่ต้องซื้อเพิ่ม",
   lowTopic: "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม", bellEmpty: "ไม่มีงานค้าง", notificationsTitle: "การแจ้งเตือน",
   advanceSection: "เตือนล่วงหน้า", topicMenu: "ตัวเลือกของ {title}",
-  workCenterTitle: "ศูนย์งานค้าง", trackingAdvance: "เตือนล่วงหน้า (คืน · ประกัน · License)",
+  workCenterTitle: "ศูนย์งานค้าง", trackingAdvance: "เตือนล่วงหน้า",
 } as const

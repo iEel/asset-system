@@ -37,10 +37,6 @@ export type DashboardWaiting = {
 }
 
 /**
- * The visible queue kinds with a count in the shared order, the advance warnings (เตือนล่วงหน้า) with a count apart,
- * the kinds at zero, the work center's งานค้างทั้งหมด and the oldest wait (spec §6.3; group 9 spec §3.1).
- */
-/**
  * Consumables plan 4: the restock warning (consumablesLow) belongs to the bell and the work center, never the
  * dashboard, so the dashboard reads, lists and zero-lines only the other visible keys.
  */
@@ -50,6 +46,10 @@ export function dashboardWaitingKeys(visibleKeys: readonly WaitingWorkKey[]): Wa
   return visibleKeys.filter((key) => !DASHBOARD_HIDDEN_WAITING_KEYS.includes(key))
 }
 
+/**
+ * The visible queue kinds with a count in the shared order, the advance warnings (เตือนล่วงหน้า) with a count apart,
+ * the kinds at zero, the work center's งานค้างทั้งหมด and the oldest wait (spec §6.3; group 9 spec §3.1).
+ */
 export function buildDashboardWaiting(
   work: WorkQueueInput,
   ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>>,

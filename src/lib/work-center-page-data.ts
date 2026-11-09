@@ -67,6 +67,13 @@ export const MINE_SCOPED_KEYS = [
 
 export type MineScopedKey = (typeof MINE_SCOPED_KEYS)[number]
 
+/**
+ * The team's kinds that are no user's own work (consumables plan 4, spec §4): ของใช้สิ้นเปลืองต้องซื้อเพิ่ม is the IT
+ * team's restock, so งานของฉัน leaves it out of the summary (the advance warnings and their total). ภาพรวมทีม and the
+ * daily counts keep it.
+ */
+export const TEAM_ONLY_KEYS = ["consumablesLow"] as const satisfies readonly WaitingWorkKey[]
+
 export type TrackingRoundCandidate = { id: string; auditNo: string; name: string; total: number; pending: number }
 
 export type WorkCenterAssetIssue = {
@@ -294,7 +301,9 @@ export async function getWorkCenterPageData(
     const values = await Promise.all(keys.map((key) => d.countMine(key, { today, rules: work.rules, scope: userScope })))
     counts = { ...work.counts, ...Object.fromEntries(keys.map((key, index) => [key, values[index]])) }
   }
-  const summary = buildWorkQueueSummary({ counts, visibleKeys: work.visibleKeys, approvalInbox: work.approvalInbox })
+  const teamOnly = new Set<WaitingWorkKey>(TEAM_ONLY_KEYS)
+  const summaryKeys = isMine ? work.visibleKeys.filter((key) => !teamOnly.has(key)) : work.visibleKeys
+  const summary = buildWorkQueueSummary({ counts, visibleKeys: summaryKeys, approvalInbox: work.approvalInbox })
 
   // A queue the user cannot see, or ข้อมูลไม่ครบ without asset:view, falls back to ภาพรวม before anything uses the
   // panel: the rows, the return link, the tabs' aria-current and the empty words follow the visible tabs.

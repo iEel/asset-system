@@ -26,8 +26,9 @@ export function isConsumableLow(item: { onHand: number; minQuantity: number }): 
 }
 
 /**
- * The database's "active and low" (consumables plan 4): isConsumableLow as a where, shared by the bell's counter and the
- * list's ?state=low. onHand <= minQuantity compares two columns, which Prisma does through a field reference held by the
+ * The database's "active and low" (consumables plan 4): isConsumableLow as a where, the bell's counter (waiting-work.ts).
+ * The list's ?state=low and its banner apply the same rule in memory (filterConsumablesByListState), so the bell's n,
+ * the banner and the filtered list agree. onHand <= minQuantity compares two columns, which Prisma does through a field reference held by the
  * client (its consumableItem.fields.minQuantity); the caller passes it so this module never imports the client.
  */
 export function consumableLowWhere(
@@ -50,9 +51,12 @@ export function parseConsumableListState(value: string | undefined): ConsumableL
   return value === "low" ? "low" : null
 }
 
-/** ?state=low keeps the low and out kinds (the banner's list); no filter returns the list as it is. */
-export function filterConsumablesByListState<Row extends { state: ConsumableStockState }>(rows: Row[], state: ConsumableListState | null): Row[] {
-  return state === "low" ? rows.filter((row) => row.state !== "ok") : rows
+/**
+ * ?state=low and the banner keep the kinds the bell counts (isConsumableLow: a minimum set and on hand at or under it),
+ * out or not; a kind with no minimum is never kept (spec §2, "0 means no warning"). No filter returns the list as it is.
+ */
+export function filterConsumablesByListState<Row extends { onHand: number; minQuantity: number }>(rows: Row[], state: ConsumableListState | null): Row[] {
+  return state === "low" ? rows.filter(isConsumableLow) : rows
 }
 
 /** A count is a whole number 0–99999 and must differ from the current on-hand. */

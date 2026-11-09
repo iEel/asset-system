@@ -75,6 +75,7 @@ const ROW_MENU = "[data-consumable-actions] [aria-haspopup]"
 export function ConsumablesWorkspace({
   locale,
   rows,
+  allRows,
   lowRows,
   chips = [],
   canCreate,
@@ -84,7 +85,9 @@ export function ConsumablesWorkspace({
   locale: string
   // The kinds the list shows: all of them, or the low and out ones under ?state=low (plan 4).
   rows: ConsumableUsageRow[]
-  // The banner's low and out kinds, always from the whole list.
+  // Every active kind, filtered or not: เบิกไปใช้ / รับเข้า pick from it (plan 4 final review).
+  allRows: ConsumableUsageRow[]
+  // The banner's kinds (the bell's rule, isConsumableLow), always from the whole list.
   lowRows: ConsumableUsageRow[]
   // The list's filter chips (?state=low), under the tabs.
   chips?: FilterChipItem[]
@@ -154,8 +157,15 @@ export function ConsumablesWorkspace({
     // first kind: that kind's name, else + เพิ่มชนิดของ.
     const added = currentIds.filter((id) => !previousIds.includes(id))
     const rowId = openerRowRef.current
+    // Under ?state=low, รับเข้า / ปรับยอด can lift the kind out of the list (plan 4 final review): its neighbour's name,
+    // as after ปิดใช้งาน.
+    const goneNeighbourId =
+      rowId && !current.has(rowId) && previousIds.includes(rowId)
+        ? componentFocusAfterRemoval(previousIds.filter((id) => id === rowId || current.has(id)), rowId)
+        : null
     const target =
       (rowId && current.has(rowId) ? visibleInRow(root, rowId, ROW_MENU) : null) ??
+      (goneNeighbourId ? visibleInRow(root, goneNeighbourId, ROW_NAME) : null) ??
       (added.length === 1 ? visibleInRow(root, added[0], ROW_NAME) : null) ??
       createButtonRef.current ??
       pageHeading(root)
@@ -267,7 +277,7 @@ export function ConsumablesWorkspace({
       ) : null}
 
       {rows.length === 0 && chips.length > 0 ? (
-        <ContentPanel>
+        <ContentPanel divided flush>
           <EmptyNote padded>{t("filterLowEmpty")}</EmptyNote>
         </ContentPanel>
       ) : rows.length === 0 ? (
@@ -364,7 +374,7 @@ export function ConsumablesWorkspace({
         <ConsumableIssueDialog
           key={`issue-${opening}`}
           open={dialogOpen && active?.kind === "issue"}
-          items={rows}
+          items={allRows}
           initialItemId={active?.item?.id}
           returnFocusRef={openerRef}
           onClose={closeDialog}
@@ -374,7 +384,7 @@ export function ConsumablesWorkspace({
         <ConsumableReceiveDialog
           key={`receive-${opening}`}
           open={dialogOpen && active?.kind === "receive"}
-          items={rows}
+          items={allRows}
           initialItemId={active?.item?.id}
           returnFocusRef={openerRef}
           onClose={closeDialog}

@@ -207,21 +207,38 @@ test("the warning spec runs as the seed admin, light only, with a run-marked kin
   assert.ok(spec.includes("data: { name: kindName, unit: UNIT, minQuantity: 2 }"))
   assert.ok(spec.includes("data: { itemId: kindId, quantity: 1, receivedDate: bangkokDate() }"))
   assert.doesNotMatch(spec, /quantity: 5/, "the restock through the row's ⋯")
-  // The deactivation in finally, so a failed step leaves no low kind behind.
-  const finallyAt = spec.lastIndexOf("} finally {")
-  assert.ok(finallyAt > 0 && spec.indexOf("page.request.patch(`/api/consumables/${kindId}`, { data: { isActive: false } })") > finallyAt, "deactivated in finally")
+  // Plan 4 final review: the deactivation in test.afterEach through a request context of its own, so a failed step or a
+  // test timeout (which ends the test's own page) leaves no low kind behind.
+  assert.ok(spec.includes("let kindId: string | null = null"), "the kind's id at describe scope")
+  assert.ok(spec.includes("kindId = ((await created.json()) as { id: string }).id"), "recorded as soon as it is created")
+  const afterAt = spec.indexOf("test.afterEach(async ({ playwright }) => {")
+  assert.ok(afterAt > 0, "the cleanup in test.afterEach")
+  const after = spec.slice(afterAt)
+  assert.ok(after.includes("const admin = await playwright.request.newContext({ baseURL, storageState: fromRoot(ADMIN_STATE_FILE) })"), "its own admin context")
+  assert.ok(after.includes("admin.patch(`/api/consumables/${id}`, { data: { isActive: false } })"), "deactivated")
+  assert.ok(after.includes("await admin.dispose()"), "the context disposed")
+  assert.ok(!spec.includes("page.request.patch("), "never through the test's page")
   // IT staff in their own saved session while the kind is low, before the restock.
   const staffAt = spec.indexOf(`storageState: fromRoot(authStateFile(runId, "itStaff"))`)
   assert.ok(staffAt > 0 && staffAt < spec.indexOf("W.menu_receive"), "IT staff while the kind is low")
   assert.ok(spec.includes(`expect(keys, "IT staff's summary has no consumablesLow").not.toContain("consumablesLow")`))
+  // Plan 4 final review: the summary reads every queue of the dev copy, so it gets the heavy timeout (also the admin's).
+  assert.ok(spec.includes(`staffPage.request.get("/api/notifications", { timeout: HEAVY_MS })`), "IT staff's summary, heavy timeout")
+  assert.doesNotMatch(spec, /\.get\("\/api\/notifications"\)/, "no summary read without the heavy timeout")
   assert.ok(spec.includes("await expect(bellRow(staffBox)).toHaveCount(0)"))
 })
 
-test("the warning story: the work center and the notifications page before the bell, the bell's link to the filtered list, then restocked (consumables plan 4 task 3)", () => {
+test("the warning story: the work center and the notifications page before the bell, the bell's link to the filtered list, then restocked (consumables plan 4 task 3)", async () => {
   const spec = read(WARNING_SPEC)
   const steps = [
-    // The work center's เตือนล่วงหน้า row, at least 1, to the notifications page's section.
+    // Plan 4 final review: the admin's summary lists consumablesLow, at least 1, just before the work center…
+    `page.request.get("/api/notifications", { timeout: HEAVY_MS })`,
+    `expect(low?.count ?? 0, "the admin's summary: consumablesLow").toBeGreaterThanOrEqual(1)`,
+    `await page.goto("/th/work-center", { waitUntil: "load", timeout: HEAVY_MS })`,
+    // …whose เตือนล่วงหน้า row links to the notifications page's section and counts the summary's advance keys.
     `await expect(advanceRow).toHaveAttribute("href", "/th/notifications#advance")`,
+    `.toBe(advanceSum)`,
+    "}).toPass({ timeout: HEAVY_MS * 2 })",
     // The notifications page's section, ทั้งหมด.
     `"/th/notifications?status=all#advance"`,
     `fillTemplate(W.topicMenu, { title: W.lowTopic })`,
@@ -244,7 +261,12 @@ test("the warning story: the work center and the notifications page before the b
     at = next
   }
   // Shared dev data: counts are at least 1, never exact, and never asserted back to 0.
+  // Plan 4 final review: the admin's consumablesLow, the notifications page and the bell (the work center's row is the
+  // summary's advance sum, exactly).
   assert.equal((spec.match(/toBeGreaterThanOrEqual\(1\)/g) ?? []).length, 3, "the three counts")
+  // The advance keys the spec sums are the work center's (src/lib/work-queues.ts).
+  const { ADVANCE_WARNING_KEYS } = await import("../src/lib/work-queues.ts")
+  assert.ok(spec.includes(`const ADVANCE_KEYS: readonly string[] = ${JSON.stringify(ADVANCE_WARNING_KEYS).replaceAll(",", ", ")}`), "the advance keys")
   assert.doesNotMatch(spec, /toBe\(0\)|toEqual\(0\)/)
   assert.ok((spec.match(/await Promise\.all\(\[\n\s*expect\(toast\(page, /g) ?? []).length >= 1, "the restock waits for its toast with the refresh")
   assert.ok(spec.includes("expect(toast(page, fillTemplate(W.receiveToast, { name: kindName })).last()).toBeVisible()"), "the latest toast")

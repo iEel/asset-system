@@ -34,9 +34,10 @@ test("workspace: a client component on the main-system parts", () => {
   assert.match(ws, /useTranslations\("consumablesPage"\)/)
 })
 
-test("workspace: the low banner renders only when a kind is low or out", () => {
+test("workspace: the low banner renders only when a kind is low (the bell's rule)", () => {
   const ws = read(workspacePath)
-  // Consumables plan 4: the page hands the banner its low and out kinds from the whole list, so ?state=low keeps it.
+  // Consumables plan 4: the page hands the banner its kinds from the whole list, so ?state=low keeps it. Plan 4 final
+  // review: the filter is isConsumableLow (tests/consumable-rules.test.ts), so a kind with no minimum is never named.
   assert.match(read(pagePath), /lowRows=\{filterConsumablesByListState\(rows, "low"\)\}/)
   assert.match(ws, /lowRows: ConsumableUsageRow\[\]/)
   assert.match(ws, /\{lowRows\.length > 0 \? \(\s*<Notice tone="warning"/)
@@ -177,7 +178,13 @@ test("focus when the opener goes: เบิก of the last unit → that row's �
   assert.match(ws, /openerRowRef\.current = item\?\.id \?\? null/)
   assert.match(
     ws,
-    /\(rowId && current\.has\(rowId\) \? visibleInRow\(root, rowId, ROW_MENU\) : null\) \?\?\n\s*\(added\.length === 1 \? visibleInRow\(root, added\[0\], ROW_NAME\) : null\) \?\?\n\s*createButtonRef\.current \?\?\n\s*pageHeading\(root\)/,
+    /\(rowId && current\.has\(rowId\) \? visibleInRow\(root, rowId, ROW_MENU\) : null\) \?\?\n\s*\(goneNeighbourId \? visibleInRow\(root, goneNeighbourId, ROW_NAME\) : null\) \?\?\n\s*\(added\.length === 1 \? visibleInRow\(root, added\[0\], ROW_NAME\) : null\) \?\?\n\s*createButtonRef\.current \?\?\n\s*pageHeading\(root\)/,
+  )
+  // Plan 4 final review: under ?state=low, รับเข้า / ปรับยอด can lift the opener's kind out of the list; its neighbour's
+  // name takes focus, as after ปิดใช้งาน.
+  assert.match(
+    ws,
+    /const goneNeighbourId =\n\s*rowId && !current\.has\(rowId\) && previousIds\.includes\(rowId\)\n\s*\? componentFocusAfterRemoval\(previousIds\.filter\(\(id\) => id === rowId \|\| current\.has\(id\)\), rowId\)\n\s*: null/,
   )
   assert.match(ws, /\}, \[rows\]\)/)
 })
@@ -215,7 +222,8 @@ test("workspace: the chips under the tabs, and a filtered list with nothing left
   const ws = read(workspacePath)
   assert.match(ws, /chips\?: FilterChipItem\[\]/)
   assert.match(ws, /<FilterChipList chips=\{chips\} label=\{tAsset\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
-  assert.match(ws, /rows\.length === 0 && chips\.length > 0 \? \(\s*<ContentPanel>\s*<EmptyNote padded>\{t\("filterLowEmpty"\)\}<\/EmptyNote>/)
+  // Plan 4 final review: EmptyNote padded sits in <ContentPanel divided flush> (its contract).
+  assert.match(ws, /rows\.length === 0 && chips\.length > 0 \? \(\s*<ContentPanel divided flush>\s*<EmptyNote padded>\{t\("filterLowEmpty"\)\}<\/EmptyNote>/)
 })
 
 test("words: the low filter chip and its empty line", () => {
@@ -223,4 +231,15 @@ test("words: the low filter chip and its empty line", () => {
   assert.equal(messages("th").consumablesPage.filterLowEmpty, "ไม่มีชนิดที่ต้องซื้อเพิ่ม")
   assert.equal(messages("en").consumablesPage.filterLow, "Only to restock")
   assert.equal(messages("en").consumablesPage.filterLowEmpty, "No kinds to restock")
+})
+
+// ---------------------------------------------------------------- plan 4 final review: the dialogs keep the whole list
+
+test("page and workspace: เบิกไปใช้ / รับเข้า pick from every active kind, even under ?state=low", () => {
+  const page = read(pagePath)
+  const ws = read(workspacePath)
+  assert.match(page, /allRows=\{rows\}/)
+  assert.match(ws, /allRows: ConsumableUsageRow\[\]/)
+  assert.equal(ws.match(/items=\{allRows\}/g)?.length, 2, "both the issue and the receive dialog")
+  assert.doesNotMatch(ws, /items=\{rows\}/)
 })

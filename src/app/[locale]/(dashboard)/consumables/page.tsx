@@ -14,8 +14,9 @@ import { TabNav, type TabNavItem } from "@/components/ui/tab-nav"
 // edit, deactivate) decide which buttons the workspace renders.
 // Plan 3 Task 3: TabNav รายการ (no view) / เครื่องที่เปลี่ยนของบ่อย (?view=frequent), each keeping the other params. The
 // report reads ?days= (30/90/180/365, default 90), ?item= (one kind, active or not) and ?asset= (one machine).
-// Plan 4 Task 2: the list reads ?state=low (the bell's ของใช้สิ้นเปลืองต้องซื้อเพิ่ม), keeping the low and out kinds with a
-// removable chip; the banner still reads the whole list.
+// Plan 4 Task 2: the list reads ?state=low (the bell's ของใช้สิ้นเปลืองต้องซื้อเพิ่ม), keeping the kinds the bell counts
+// (isConsumableLow, plan 4 final review) with a removable chip; the banner and the เบิก / รับเข้า dialogs still read the
+// whole list.
 type RawParam = string | string[] | undefined
 
 type ConsumablesPageProps = {
@@ -98,6 +99,7 @@ export default async function ConsumablesPage({ params, searchParams }: Consumab
     <ConsumablesWorkspace
       locale={locale}
       rows={filterConsumablesByListState(rows, listState)}
+      allRows={rows}
       lowRows={filterConsumablesByListState(rows, "low")}
       chips={listChips}
       canCreate={canCreate}

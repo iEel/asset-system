@@ -117,15 +117,18 @@ test("schemas: receive date, quantity, default unit, reason length", () => {
   assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 100000, reason: "นับใหม่" }).success, false)
 })
 
-test("the list's ?state=low (consumables plan 4): only low and out kinds; anything else is the whole list", () => {
+// Consumables plan 4 final review: ?state=low and the banner follow the bell's rule (isConsumableLow, spec §2 "0 means
+// no warning"), so a kind with no minimum is never kept, out or not; the row's badge (หมด / ต้องซื้อเพิ่ม) is unchanged.
+test("the list's ?state=low (consumables plan 4): only the kinds the bell counts (isConsumableLow); anything else is the whole list", () => {
   assert.equal(parseConsumableListState("low"), "low")
   for (const value of [undefined, "", "ok", "out", "LOW", "all"]) assert.equal(parseConsumableListState(value), null, String(value))
   const rows = [
-    { id: "a", state: "ok" as const },
-    { id: "b", state: "low" as const },
-    { id: "c", state: "out" as const },
-    { id: "d", state: "ok" as const },
+    { id: "a", onHand: 5, minQuantity: 2 },
+    { id: "b", onHand: 2, minQuantity: 2 },
+    { id: "c", onHand: 0, minQuantity: 2 },
+    { id: "d", onHand: 9, minQuantity: 0 },
+    { id: "e", onHand: 0, minQuantity: 0 },
   ]
-  assert.deepEqual(filterConsumablesByListState(rows, "low").map((row) => row.id), ["b", "c"])
+  assert.deepEqual(filterConsumablesByListState(rows, "low").map((row) => row.id), ["b", "c"], "min 0, onHand 0 (e) is not kept")
   assert.equal(filterConsumablesByListState(rows, null), rows, "no filter: the same list, unchanged")
 })

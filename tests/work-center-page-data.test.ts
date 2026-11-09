@@ -322,3 +322,18 @@ test("a forbidden panel falls back to the overview", async () => {
   assert.deepEqual(noAssetView.calls.rows, [{ queue: null, show: 8, scope: null }])
   assert.notEqual(assets.table, null)
 })
+
+// Consumables plan 4 final review: the restock warning is the IT team's, not a user's own work — งานของฉัน leaves it
+// out of the advance warnings (spec §4); ภาพรวมทีม keeps it.
+test("งานของฉัน leaves consumablesLow out of the advance warnings; ภาพรวมทีม keeps it", async () => {
+  const waiting = () => work({ warrantyExpiringSoon: 2, licenseExpiringSoon: 1, consumablesLow: 4 })
+  const mine = await loader.getWorkCenterPageData(user(allPermissions), input({ view: "mine" }), fakes({ waiting: waiting() }).deps)
+  assert.equal(mine.summary.advance.keys.includes("consumablesLow"), false)
+  assert.equal(mine.summary.advance.total, 3)
+  assert.equal(mine.tracking.advanceTotal, 3)
+
+  const all = await loader.getWorkCenterPageData(user(allPermissions), input(), fakes({ waiting: waiting() }).deps)
+  assert.equal(all.summary.advance.keys.includes("consumablesLow"), true)
+  assert.equal(all.summary.advance.total, 7)
+  assert.equal(all.tracking.advanceTotal, 7)
+})

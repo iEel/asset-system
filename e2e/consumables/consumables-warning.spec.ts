@@ -9,10 +9,13 @@
 //   projects' kinds apart) with ขั้นต่ำ 2 and 1 received, through the consumables API as the setup, so it is low. The
 //   work center's เตือนล่วงหน้า row counts at least 1 and links to /th/notifications#advance, where the section lists
 //   "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม" (status=all, whatever the admin's read state). The work center comes before the bell:
-//   the bell's row marks the topic read when it is clicked. The bell's box lists the topic with at least 1; its link is
+//   the bell's row marks the topic read when it is clicked. Just before the work center, the admin's own summary
+//   (GET /api/notifications) must list consumablesLow with at least 1, and the work center's advance number must be the
+//   sum of that summary's advance keys, so the low kind is proven to reach the row. The bell's box lists the topic with at least 1; its link is
 //   /th/consumables?state=low, where the run kind is listed ต้องซื้อเพิ่ม, the chip "เฉพาะที่ต้องซื้อเพิ่ม" shows and the
 //   banner names the kind. รับเข้า 5 more from the row's ⋯ → the kind leaves the filtered list (the chip stays).
-// - The run kind is deactivated at the end (API, also when a step fails) so later runs do not inherit a low kind.
+// - The run kind is deactivated in test.afterEach, through an admin request context of its own (API), so later runs do
+//   not inherit a low kind: also when a step fails or the test times out (the test's own page is gone by then).
 // Writes: the run kind, its two receipts and its deactivation; the admin's own read state of the topic (the bell's row
 // click). No other kind is touched; no DELETE; no database access outside the app. axe through recordSettled.
 import type { Locator, Page } from "../shell/shell-steps.ts"
@@ -37,6 +40,9 @@ const UNIT = "ชิ้น"
 const HEAVY_MS = 90_000
 const NUMBER = "[\\d,]+"
 const toNumber = (text: string) => Number(text.trim().replaceAll(",", ""))
+// The work center's เตือนล่วงหน้า keys (src/lib/work-queues.ts ADVANCE_WARNING_KEYS; tests/e2e-consumables.test.ts pins
+// the copy).
+const ADVANCE_KEYS: readonly string[] = ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon", "consumablesLow"]
 
 // The kind's name link: in the table from md and on its card below md (both in the DOM; one shows).
 const kindLink = (page: Page, name: string) => page.getByRole("main").getByRole("link", { name, exact: true })
@@ -75,6 +81,25 @@ test.describe("the low-stock warning as the seed admin: the work center, the bel
   // The seed admin's saved session (written by the global setup): no run role holds consumable:*.
   test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })
 
+  // The run kind, once created; test.afterEach deactivates it.
+  let kindId: string | null = null
+
+  // The run kind leaves the cabinet's list, so later runs do not inherit a low kind (its history stays). A request
+  // context of its own: after a test timeout the test's page is already closed.
+  test.afterEach(async ({ playwright }) => {
+    const id = kindId
+    kindId = null
+    if (!id) return
+    const { baseURL } = readRunState()
+    const admin = await playwright.request.newContext({ baseURL, storageState: fromRoot(ADMIN_STATE_FILE) })
+    try {
+      const deactivated = await admin.patch(`/api/consumables/${id}`, { data: { isActive: false } })
+      expect.soft(deactivated.status(), `PATCH /api/consumables/${id}: ${(await deactivated.text()).slice(0, 300)}`).toBe(200)
+    } finally {
+      await admin.dispose()
+    }
+  })
+
   test("a low run kind on the work center, the notifications page and the bell, the filtered list, IT staff without it, then restocked", async ({ page, measure, e2eDevice, e2eTheme, browser }, testInfo) => {
     test.skip(e2eTheme === "dark", LIGHT_ONLY)
     test.setTimeout(300_000)
@@ -84,101 +109,107 @@ test.describe("the low-stock warning as the seed admin: the work center, the bel
     // Setup: the run kind with ขั้นต่ำ 2 and 1 received, through the API: คงเหลือ 1, ต้องซื้อเพิ่ม.
     const created = await page.request.post("/api/consumables", { data: { name: kindName, unit: UNIT, minQuantity: 2 } })
     expect(created.status(), `POST /api/consumables: ${(await created.text()).slice(0, 300)}`).toBe(201)
-    const kindId = ((await created.json()) as { id: string }).id
+    kindId = ((await created.json()) as { id: string }).id
     expect(kindId, "the new kind's id").toBeTruthy()
-    try {
-      const received = await page.request.post("/api/consumables/receive", { data: { itemId: kindId, quantity: 1, receivedDate: bangkokDate() } })
-      expect(received.status(), `POST /api/consumables/receive: ${(await received.text()).slice(0, 300)}`).toBe(200)
+    const received = await page.request.post("/api/consumables/receive", { data: { itemId: kindId, quantity: 1, receivedDate: bangkokDate() } })
+    expect(received.status(), `POST /api/consumables/receive: ${(await received.text()).slice(0, 300)}`).toBe(200)
 
-      // The work center: ติดตามแยก's เตือนล่วงหน้า row (the panel renders twice, one shows) counts at least 1 and links
-      // to the notifications page's section.
+    // The work center: ติดตามแยก's เตือนล่วงหน้า row (the panel renders twice, one shows) links to the notifications
+    // page's section and counts the advance warnings. Just before it, the admin's own summary (the bell's) lists
+    // consumablesLow with at least 1; the row's number is the sum of that summary's advance keys, so the low kind
+    // reaches the row. Both read the same waiting work (view=all, and the admin sees every key), but each at its own
+    // moment: the other project's run or another spec can change a key between the two reads, so the pair is read
+    // again until it agrees.
+    const advancePattern = new RegExp(`^${escapeRegExp(W.trackingAdvance)}\\s*(${NUMBER})$`)
+    const advanceRow = page.getByRole("link", { name: advancePattern }).filter({ visible: true })
+    await expect(async () => {
+      const adminSummary = await page.request.get("/api/notifications", { timeout: HEAVY_MS })
+      expect(adminSummary.status(), "GET /api/notifications as the seed admin").toBe(200)
+      const items = ((await adminSummary.json()) as { items: { key: string; count: number }[] }).items
+      const low = items.find((item) => item.key === "consumablesLow")
+      expect(low?.count ?? 0, "the admin's summary: consumablesLow").toBeGreaterThanOrEqual(1)
+      const advanceSum = items.filter((item) => ADVANCE_KEYS.includes(item.key)).reduce((sum, item) => sum + item.count, 0)
       await page.goto("/th/work-center", { waitUntil: "load", timeout: HEAVY_MS })
       await expect(page.getByRole("heading", { level: 1, name: W.workCenterTitle, exact: true })).toBeVisible({ timeout: HEAVY_MS })
-      const advancePattern = new RegExp(`^${escapeRegExp(W.trackingAdvance)}\\s*(${NUMBER})$`)
-      const advanceRow = page.getByRole("link", { name: advancePattern }).filter({ visible: true })
       await expect(advanceRow).toHaveCount(1)
       await expect(advanceRow).toHaveAttribute("href", "/th/notifications#advance")
       const advanceName = ((await advanceRow.textContent()) ?? "").trim()
-      expect(toNumber(advancePattern.exec(advanceName)?.[1] ?? "0"), `the work center's advance row: ${advanceName}`).toBeGreaterThanOrEqual(1)
-      await recordSettled(page, measure, "work center: advance warnings with a low kind")
+      expect(toNumber(advancePattern.exec(advanceName)?.[1] ?? "0"), `the work center's advance row: ${advanceName}`).toBe(advanceSum)
+    }).toPass({ timeout: HEAVY_MS * 2 })
+    await recordSettled(page, measure, "work center: advance warnings with a low kind")
 
-      // The notifications page's เตือนล่วงหน้า (ทั้งหมด, whatever the admin's read state): the topic's row, at least 1.
-      await page.goto("/th/notifications?status=all#advance", { waitUntil: "load", timeout: HEAVY_MS })
-      await expect(page.getByRole("heading", { level: 1, name: W.notificationsTitle, exact: true })).toBeVisible({ timeout: HEAVY_MS })
-      const advance = page.locator("section#advance")
-      await expect(advance.getByRole("heading", { level: 2, name: W.advanceSection, exact: true })).toBeVisible()
-      const topicRow = advance.locator("li").filter({ has: page.getByRole("button", { name: fillTemplate(W.topicMenu, { title: W.lowTopic }), exact: true }) })
-      await expect(topicRow).toHaveCount(1)
-      await expect(topicRow).toContainText(W.lowTopic)
-      expect(toNumber(await topicRow.locator(".num").first().innerText()), "the notifications page's count").toBeGreaterThanOrEqual(1)
-      await recordSettled(page, measure, "notifications: advance with a low kind")
+    // The notifications page's เตือนล่วงหน้า (ทั้งหมด, whatever the admin's read state): the topic's row, at least 1.
+    await page.goto("/th/notifications?status=all#advance", { waitUntil: "load", timeout: HEAVY_MS })
+    await expect(page.getByRole("heading", { level: 1, name: W.notificationsTitle, exact: true })).toBeVisible({ timeout: HEAVY_MS })
+    const advance = page.locator("section#advance")
+    await expect(advance.getByRole("heading", { level: 2, name: W.advanceSection, exact: true })).toBeVisible()
+    const topicRow = advance.locator("li").filter({ has: page.getByRole("button", { name: fillTemplate(W.topicMenu, { title: W.lowTopic }), exact: true }) })
+    await expect(topicRow).toHaveCount(1)
+    await expect(topicRow).toContainText(W.lowTopic)
+    expect(toNumber(await topicRow.locator(".num").first().innerText()), "the notifications page's count").toBeGreaterThanOrEqual(1)
+    await recordSettled(page, measure, "notifications: advance with a low kind")
 
-      // The bell's box: the topic with at least 1, linking to the filtered list.
-      await page.goto(LIST, { waitUntil: "load" })
-      await expect(page.getByRole("heading", { level: 1, name: W.title, exact: true })).toBeVisible()
-      const box = await openBellBox(page)
-      const row = bellRow(box)
-      await expect(row).toHaveCount(1, { timeout: HEAVY_MS })
-      await expect(row).toHaveAttribute("href", LOW_LIST)
-      expect(toNumber(await row.locator(".num").innerText()), "the bell's count").toBeGreaterThanOrEqual(1)
-      await recordSettled(page, measure, "bell: the low-stock topic")
+    // The bell's box: the topic with at least 1, linking to the filtered list.
+    await page.goto(LIST, { waitUntil: "load" })
+    await expect(page.getByRole("heading", { level: 1, name: W.title, exact: true })).toBeVisible()
+    const box = await openBellBox(page)
+    const row = bellRow(box)
+    await expect(row).toHaveCount(1, { timeout: HEAVY_MS })
+    await expect(row).toHaveAttribute("href", LOW_LIST)
+    expect(toNumber(await row.locator(".num").innerText()), "the bell's count").toBeGreaterThanOrEqual(1)
+    await recordSettled(page, measure, "bell: the low-stock topic")
 
-      // Its link: the filtered list, the chip, the run kind ต้องซื้อเพิ่ม at 1, and the banner names it.
-      await row.click()
-      await page.waitForURL((url) => url.pathname === LIST && url.searchParams.get("state") === "low")
-      await expect(page.getByRole("heading", { level: 1, name: W.title, exact: true })).toBeVisible()
-      const chips = page.getByRole("group", { name: W.activeFilters, exact: true })
-      const chip = chips.getByRole("link", { name: `${W.clearDrilldownFilter}: ${W.filterLow}`, exact: true })
-      await expect(chip).toBeVisible()
-      await expect(chip).toHaveAttribute("href", LIST)
-      const kind = kindRow(page, e2eDevice, kindName)
-      await expect(kind).toHaveCount(1)
-      await expect(kind.locator('[data-slot="status-badge"]')).toHaveText(W.state_low)
-      const lowBanner = page.getByRole("main").getByRole("status").filter({ hasText: fillTemplate(W.lowItem, { name: kindName, onHand: 1 }) })
-      await expect(lowBanner).toBeVisible()
-      await recordSettled(page, measure, "consumables list, filtered to low")
+    // Its link: the filtered list, the chip, the run kind ต้องซื้อเพิ่ม at 1, and the banner names it.
+    await row.click()
+    await page.waitForURL((url) => url.pathname === LIST && url.searchParams.get("state") === "low")
+    await expect(page.getByRole("heading", { level: 1, name: W.title, exact: true })).toBeVisible()
+    const chips = page.getByRole("group", { name: W.activeFilters, exact: true })
+    const chip = chips.getByRole("link", { name: `${W.clearDrilldownFilter}: ${W.filterLow}`, exact: true })
+    await expect(chip).toBeVisible()
+    await expect(chip).toHaveAttribute("href", LIST)
+    const kind = kindRow(page, e2eDevice, kindName)
+    await expect(kind).toHaveCount(1)
+    await expect(kind.locator('[data-slot="status-badge"]')).toHaveText(W.state_low)
+    const lowBanner = page.getByRole("main").getByRole("status").filter({ hasText: fillTemplate(W.lowItem, { name: kindName, onHand: 1 }) })
+    await expect(lowBanner).toBeVisible()
+    await recordSettled(page, measure, "consumables list, filtered to low")
 
-      // Without permission: IT staff (no consumable:view), in a context of their own saved session while the kind is
-      // low, see no such topic on the bell, and their summary has no such item.
-      const staff = await browser.newContext({ baseURL, viewport: page.viewportSize(), storageState: fromRoot(authStateFile(runId, "itStaff")) })
-      try {
-        const staffPage = await staff.newPage()
-        const summary = await staffPage.request.get("/api/notifications")
-        expect(summary.status(), "GET /api/notifications as IT staff").toBe(200)
-        const keys = ((await summary.json()) as { items: { key: string }[] }).items.map((item) => item.key)
-        expect(keys, "IT staff's summary has no consumablesLow").not.toContain("consumablesLow")
-        await staffPage.goto("/th/dashboard", { waitUntil: "load", timeout: HEAVY_MS })
-        const staffBox = await openBellBox(staffPage)
-        await expect(bellRow(staffBox)).toHaveCount(0)
-      } finally {
-        await staff.close()
-      }
-
-      // Clearing: รับเข้า 5 more from the row's ⋯ → คงเหลือ 6, so the kind leaves the filtered list; the chip stays.
-      await chooseFromMenu(page, e2eDevice, kindName, W.menu_receive)
-      const receiveDialog = page.getByRole("dialog", { name: W.receiveTitle, exact: true })
-      await expect(receiveDialog).toBeVisible()
-      await expect(page.locator("#consumable-receive-item")).toContainText(kindName)
-      await page.locator("#consumable-receive-quantity").fill("5")
-      await recordSettled(page, measure, "consumables: receive on the low list")
-      const answered = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/consumables/receive")
-      await receiveDialog.getByRole("button", { name: W.receiveSubmit, exact: true }).click()
-      const response = await answered
-      expect(response.status(), `POST /api/consumables/receive: ${(await response.text()).slice(0, 300)}`).toBeLessThan(300)
-      // The toast and the refresh together: on a slow server the toast can end before the refreshed page arrives.
-      await Promise.all([
-        expect(toast(page, fillTemplate(W.receiveToast, { name: kindName })).last()).toBeVisible(),
-        expect(kindLink(page, kindName)).toHaveCount(0),
-      ])
-      await expect(receiveDialog).toBeHidden()
-      await expect(page).toHaveURL((url) => url.pathname === LIST && url.searchParams.get("state") === "low")
-      await expect(chip).toBeVisible()
-      await expect(page.getByRole("main").getByRole("status").filter({ hasText: kindName })).toHaveCount(0)
-      await recordSettled(page, measure, "consumables list, filtered, after restock")
+    // Without permission: IT staff (no consumable:view), in a context of their own saved session while the kind is
+    // low, see no such topic on the bell, and their summary has no such item.
+    const staff = await browser.newContext({ baseURL, viewport: page.viewportSize(), storageState: fromRoot(authStateFile(runId, "itStaff")) })
+    try {
+      const staffPage = await staff.newPage()
+      const summary = await staffPage.request.get("/api/notifications", { timeout: HEAVY_MS })
+      expect(summary.status(), "GET /api/notifications as IT staff").toBe(200)
+      const keys = ((await summary.json()) as { items: { key: string }[] }).items.map((item) => item.key)
+      expect(keys, "IT staff's summary has no consumablesLow").not.toContain("consumablesLow")
+      await staffPage.goto("/th/dashboard", { waitUntil: "load", timeout: HEAVY_MS })
+      const staffBox = await openBellBox(staffPage)
+      await expect(bellRow(staffBox)).toHaveCount(0)
     } finally {
-      // The run kind leaves the cabinet's list, so later runs do not inherit a low kind (its history stays).
-      const deactivated = await page.request.patch(`/api/consumables/${kindId}`, { data: { isActive: false } })
-      expect.soft(deactivated.status(), `PATCH /api/consumables/${kindId}: ${(await deactivated.text()).slice(0, 300)}`).toBe(200)
+      await staff.close()
     }
+
+    // Clearing: รับเข้า 5 more from the row's ⋯ → คงเหลือ 6, so the kind leaves the filtered list; the chip stays.
+    await chooseFromMenu(page, e2eDevice, kindName, W.menu_receive)
+    const receiveDialog = page.getByRole("dialog", { name: W.receiveTitle, exact: true })
+    await expect(receiveDialog).toBeVisible()
+    await expect(page.locator("#consumable-receive-item")).toContainText(kindName)
+    await page.locator("#consumable-receive-quantity").fill("5")
+    await recordSettled(page, measure, "consumables: receive on the low list")
+    const answered = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/consumables/receive")
+    await receiveDialog.getByRole("button", { name: W.receiveSubmit, exact: true }).click()
+    const response = await answered
+    expect(response.status(), `POST /api/consumables/receive: ${(await response.text()).slice(0, 300)}`).toBeLessThan(300)
+    // The toast and the refresh together: on a slow server the toast can end before the refreshed page arrives.
+    await Promise.all([
+      expect(toast(page, fillTemplate(W.receiveToast, { name: kindName })).last()).toBeVisible(),
+      expect(kindLink(page, kindName)).toHaveCount(0),
+    ])
+    await expect(receiveDialog).toBeHidden()
+    await expect(page).toHaveURL((url) => url.pathname === LIST && url.searchParams.get("state") === "low")
+    await expect(chip).toBeVisible()
+    await expect(page.getByRole("main").getByRole("status").filter({ hasText: kindName })).toHaveCount(0)
+    await recordSettled(page, measure, "consumables list, filtered, after restock")
   })
 })
