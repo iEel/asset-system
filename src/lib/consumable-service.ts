@@ -11,6 +11,7 @@ import {
   CONSUMABLE_OFTEN_DAYS,
   consumableAdjustError,
   consumableIssueAssetError,
+  consumableOftenChanged,
   consumableStockState,
   type ConsumableStockState,
 } from "./consumable-rules.ts"
@@ -267,6 +268,160 @@ export async function getConsumableHistory(db: ConsumableHistoryDb, id: string, 
 }
 
 export type ConsumableHistory = NonNullable<Awaited<ReturnType<typeof getConsumableHistory>>>
+
+const actorSelect = { id: true, username: true, displayName: true, email: true, employee: { select: { code: true, fullNameTh: true } } } as const
+
+/** The machine page's panel read (consumables plan 3): the client the caller passes, prisma or a test stand-in. */
+export type AssetConsumableDb = Pick<typeof prisma, "consumableMovement" | "user">
+
+export type AssetConsumableIssue = {
+  id: string
+  performedAt: Date
+  itemId: string
+  itemName: string
+  unit: string
+  /** Units given out: -quantityChange of the issue movement. */
+  quantity: number
+  /** performedBy as the kind history shows it (assetHistoryActorLabel); the id when the user is gone. */
+  performedByName: string | null
+  note: string | null
+}
+
+/**
+ * One machine's issues, newest first, `limit` of them, with the total; `often` names each kind issued to it
+ * CONSUMABLE_OFTEN_COUNT or more times within CONSUMABLE_OFTEN_DAYS (consumableOftenChanged), newest first seen.
+ */
+export async function getAssetConsumableIssues(db: AssetConsumableDb, assetId: string, limit: number): Promise<{
+  issues: AssetConsumableIssue[]
+  total: number
+  often: Array<{ itemId: string; itemName: string; count: number }>
+}> {
+  const now = new Date()
+  const since = new Date(now.getTime() - CONSUMABLE_OFTEN_DAYS * 86_400_000)
+  const where = { assetId, type: "issue" }
+  const [total, movements, recent] = await Promise.all([
+    db.consumableMovement.count({ where }),
+    db.consumableMovement.findMany({
+      where,
+      orderBy: [{ performedAt: "desc" }, { id: "desc" }],
+      take: limit,
+      select: {
+        id: true, performedAt: true, itemId: true, quantityChange: true, performedBy: true, note: true,
+        item: { select: { name: true, unit: true } },
+      },
+    }),
+    db.consumableMovement.findMany({
+      where: { ...where, performedAt: { gte: since } },
+      orderBy: [{ performedAt: "desc" }, { id: "desc" }],
+      select: { itemId: true, performedAt: true, item: { select: { name: true } } },
+    }),
+  ])
+  const userIds = [...new Set(movements.map((movement) => movement.performedBy))]
+  const users = userIds.length > 0
+    ? await db.user.findMany({ where: { id: { in: userIds } }, select: actorSelect })
+    : []
+  const actors = new Map(users.map((user) => [user.id, assetHistoryActorLabel(user)]))
+  const names = new Map(recent.map((issue) => [issue.itemId, issue.item.name]))
+  return {
+    issues: movements.map((movement) => ({
+      id: movement.id,
+      performedAt: movement.performedAt,
+      itemId: movement.itemId,
+      itemName: movement.item.name,
+      unit: movement.item.unit,
+      quantity: -movement.quantityChange,
+      performedByName: actors.get(movement.performedBy) ?? movement.performedBy,
+      note: movement.note,
+    })),
+    total,
+    often: consumableOftenChanged(recent, now).map((kind) => ({ itemId: kind.itemId, itemName: names.get(kind.itemId) ?? kind.itemId, count: kind.count })),
+  }
+}
+
+/** The frequent-replacement report (consumables plan 3): ช่วง in days, ?days=, default 90. */
+export const consumableReportDays = [30, 90, 180, 365] as const
+export type ConsumableReportDays = (typeof consumableReportDays)[number]
+export const CONSUMABLE_REPORT_ROWS = 100
+
+export function parseConsumableReportDays(value: string | undefined): ConsumableReportDays {
+  const days = value !== undefined && /^\d{1,3}$/.test(value) ? Number(value) : NaN
+  return (consumableReportDays as readonly number[]).includes(days) ? (days as ConsumableReportDays) : 90
+}
+
+export type ConsumableReportDb = Pick<typeof prisma, "consumableMovement" | "asset">
+
+export type ConsumableFrequentRow = {
+  assetId: string
+  assetTag: string
+  assetName: string
+  /** The custodian's Thai name, or null. */
+  holderName: string | null
+  /** Issue movements in the window, one each whatever the quantity. */
+  count: number
+  latestAt: Date
+  latestItemName: string
+}
+
+/**
+ * Machines ranked by issue movements in the last `days` (one kind when itemId is given, one machine when assetId is),
+ * by count then the latest issue: one groupBy in the database for the top CONSUMABLE_REPORT_ROWS (+1 to know `more`),
+ * then one asset read and one latest-movement read for those rows (≤ 100 ids, inside SQL Server's parameter limit).
+ */
+export async function getConsumableFrequentReport(
+  db: ConsumableReportDb,
+  input: { days: ConsumableReportDays; itemId?: string | null; assetId?: string | null; now: Date },
+): Promise<{ rows: ConsumableFrequentRow[]; more: boolean }> {
+  const since = new Date(input.now.getTime() - input.days * 86_400_000)
+  const where: Prisma.ConsumableMovementWhereInput = {
+    type: "issue",
+    performedAt: { gte: since },
+    assetId: input.assetId ? input.assetId : { not: null },
+    ...(input.itemId ? { itemId: input.itemId } : {}),
+  }
+  const groups = await db.consumableMovement.groupBy({
+    by: ["assetId"],
+    where,
+    _count: { id: true },
+    _max: { performedAt: true },
+    orderBy: [{ _count: { id: "desc" } }, { _max: { performedAt: "desc" } }],
+    take: CONSUMABLE_REPORT_ROWS + 1,
+  })
+  const more = groups.length > CONSUMABLE_REPORT_ROWS
+  const top = groups.slice(0, CONSUMABLE_REPORT_ROWS).filter((group) => group.assetId !== null && group._max.performedAt !== null)
+  if (top.length === 0) return { rows: [], more }
+  const [assets, latest] = await Promise.all([
+    db.asset.findMany({
+      where: { id: { in: top.map((group) => group.assetId!) } },
+      select: { id: true, assetTag: true, name: true, custodian: { select: { fullNameTh: true } } },
+    }),
+    db.consumableMovement.findMany({
+      where: {
+        type: "issue",
+        ...(input.itemId ? { itemId: input.itemId } : {}),
+        OR: top.map((group) => ({ assetId: group.assetId!, performedAt: group._max.performedAt! })),
+      },
+      orderBy: [{ performedAt: "desc" }, { id: "desc" }],
+      select: { assetId: true, item: { select: { name: true } } },
+    }),
+  ])
+  const assetById = new Map(assets.map((asset) => [asset.id, asset]))
+  // Newest first, so on a tie at the same instant the reversed map keeps the first (highest id) movement.
+  const latestName = new Map(latest.toReversed().map((movement) => [movement.assetId, movement.item.name]))
+  const rows = top.flatMap((group): ConsumableFrequentRow[] => {
+    const asset = assetById.get(group.assetId!)
+    if (!asset) return []
+    return [{
+      assetId: asset.id,
+      assetTag: asset.assetTag,
+      assetName: asset.name,
+      holderName: asset.custodian?.fullNameTh ?? null,
+      count: group._count.id,
+      latestAt: group._max.performedAt!,
+      latestItemName: latestName.get(asset.id) ?? "",
+    }]
+  })
+  return { rows, more }
+}
 
 // ---------------------------------------------------------------- kinds
 

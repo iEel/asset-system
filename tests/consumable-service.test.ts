@@ -28,17 +28,19 @@ const mockedModuleSources = new Map<string, string>([
 
 type Item = { id: string; name: string; unit: string; minQuantity: number; onHand: number; isActive: boolean; createdBy: string; updatedBy: string | null }
 type Movement = Record<string, unknown>
-type Asset = { id: string; isActive: boolean; status: { name: string } }
+type Asset = { id: string; isActive: boolean; status: { name: string }; assetTag?: string; name?: string; custodian?: { fullNameTh: string } | null }
+type User = { id: string; username: string; displayName: string; email: string | null; employee: { code: string; fullNameTh: string } | null }
 
 const globals = globalThis as unknown as { __consumablePrisma: unknown; __consumableAudits: Array<Record<string, unknown>> }
 
-function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number; movements?: Movement[] }) {
+function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number; movements?: Movement[]; users?: User[] }) {
   const items = new Map((seed.items ?? []).map((item) => [item.id, { ...item }]))
   const assets = new Map((seed.assets ?? []).map((asset) => [asset.id, asset]))
   const movements: Movement[] = [...(seed.movements ?? [])]
   const groupBys: unknown[] = []
   const transactions: unknown[] = []
   const calls: string[] = []
+  const reads: Array<{ op: string; args: Record<string, unknown> }> = []
   let deadlocks = seed.deadlocks ?? 0
   let nextId = 1
   const matches = (item: Item, where: Record<string, unknown>) => {
@@ -96,22 +98,67 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number; mo
         movements.push(movement)
         return movement
       },
-      // by itemId, filtered by type and performedAt >= gte, summing quantityChange.
-      groupBy: async (args: { by: string[]; where: { type?: string; performedAt?: { gte?: Date } }; _sum: Record<string, boolean> }) => {
+      // Grouped by one key; where as movementMatches; _sum / _count / _max; orderBy _count then _max (desc); take.
+      groupBy: async (args: {
+        by: string[]
+        where: Record<string, unknown>
+        _sum?: Record<string, boolean>
+        _count?: Record<string, boolean>
+        _max?: Record<string, boolean>
+        orderBy?: Array<Record<string, Record<string, string>>>
+        take?: number
+      }) => {
         groupBys.push(args)
-        const sums = new Map<string, number>()
+        const key = args.by[0]
+        const groups = new Map<string, Movement[]>()
         for (const movement of movements) {
-          if (args.where.type !== undefined && movement.type !== args.where.type) continue
-          const gte = args.where.performedAt?.gte
-          if (gte && (movement.performedAt as Date).getTime() < gte.getTime()) continue
-          const itemId = movement.itemId as string
-          sums.set(itemId, (sums.get(itemId) ?? 0) + (movement.quantityChange as number))
+          if (!movementMatches(movement, args.where)) continue
+          const value = movement[key] as string
+          groups.set(value, [...(groups.get(value) ?? []), movement])
         }
-        return [...sums].map(([itemId, quantityChange]) => ({ itemId, _sum: { quantityChange } }))
+        let rows = [...groups].map(([value, members]) => ({
+          [key]: value,
+          ...(args._sum ? { _sum: { quantityChange: members.reduce((sum, member) => sum + (member.quantityChange as number), 0) } } : {}),
+          ...(args._count ? { _count: { id: members.length } } : {}),
+          ...(args._max ? { _max: { performedAt: new Date(Math.max(...members.map((member) => (member.performedAt as Date).getTime()))) } } : {}),
+        })) as Array<Record<string, unknown> & { _count?: { id: number }; _max?: { performedAt: Date } }>
+        if (args.orderBy) {
+          rows = rows.sort((a, b) => {
+            for (const order of args.orderBy!) {
+              if (order._count) { const diff = b._count!.id - a._count!.id; if (diff) return diff }
+              if (order._max) { const diff = b._max!.performedAt.getTime() - a._max!.performedAt.getTime(); if (diff) return diff }
+            }
+            return 0
+          })
+        }
+        return args.take === undefined ? rows : rows.slice(0, args.take)
+      },
+      count: async ({ where }: { where: Record<string, unknown> }) => {
+        reads.push({ op: "movement.count", args: { where } })
+        return movements.filter((movement) => movementMatches(movement, where)).length
+      },
+      // Newest first (performedAt desc, id desc); each row carries its kind as `item`.
+      findMany: async (args: { where: Record<string, unknown>; take?: number }) => {
+        reads.push({ op: "movement.findMany", args })
+        const found = movements
+          .filter((movement) => movementMatches(movement, args.where))
+          .sort((a, b) => (b.performedAt as Date).getTime() - (a.performedAt as Date).getTime() || String(b.id).localeCompare(String(a.id)))
+          .map((movement) => ({ ...movement, item: items.get(movement.itemId as string) }))
+        return args.take === undefined ? found : found.slice(0, args.take)
       },
     },
     asset: {
       findUnique: async ({ where }: { where: { id: string } }) => assets.get(where.id) ?? null,
+      findMany: async (args: { where: { id: { in: string[] } } }) => {
+        reads.push({ op: "asset.findMany", args })
+        return [...assets.values()].filter((asset) => args.where.id.in.includes(asset.id)).map((asset) => ({ custodian: null, ...asset }))
+      },
+    },
+    user: {
+      findMany: async (args: { where: { id: { in: string[] } } }) => {
+        reads.push({ op: "user.findMany", args })
+        return (seed.users ?? []).filter((user) => args.where.id.in.includes(user.id))
+      },
     },
   }
   const prisma = {
@@ -128,7 +175,25 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number; mo
   }
   globals.__consumablePrisma = prisma
   globals.__consumableAudits = []
-  return { prisma, items, movements, transactions, calls, groupBys, audits: () => globals.__consumableAudits }
+  return { prisma, items, movements, transactions, calls, groupBys, reads, audits: () => globals.__consumableAudits }
+}
+
+// The where shapes the service reads with: type, itemId, assetId (a value, { not: null } or { in }), performedAt { gte }
+// or an exact Date, and OR of { assetId, performedAt } pairs (the latest-movement read).
+function movementMatches(movement: Movement, where: Record<string, unknown>): boolean {
+  if (where.type !== undefined && movement.type !== where.type) return false
+  if (where.itemId !== undefined && movement.itemId !== where.itemId) return false
+  const assetId = where.assetId as string | { not?: null; in?: string[] } | undefined
+  if (typeof assetId === "string" && movement.assetId !== assetId) return false
+  if (assetId && typeof assetId === "object") {
+    if ("not" in assetId && (movement.assetId ?? null) === null) return false
+    if (assetId.in && !assetId.in.includes(movement.assetId as string)) return false
+  }
+  const performedAt = where.performedAt as { gte?: Date } | Date | undefined
+  if (performedAt instanceof Date && (movement.performedAt as Date).getTime() !== performedAt.getTime()) return false
+  if (performedAt && !(performedAt instanceof Date) && performedAt.gte && (movement.performedAt as Date).getTime() < performedAt.gte.getTime()) return false
+  if (Array.isArray(where.OR) && !where.OR.some((branch) => movementMatches(movement, branch as Record<string, unknown>))) return false
+  return true
 }
 
 const service = await import(pathToFileURL("src/lib/consumable-service.ts").href) as typeof import("../src/lib/consumable-service.ts")
@@ -512,4 +577,123 @@ test("getConsumableHistory: the kind (inactive too), 50 movements a page newest 
     reason: "นับใหม่", note: null, asset: null, actor: "u-gone",
   })
   assert.deepEqual(last.rows[0].asset, { id: "pc1", assetTag: "IT-001", name: "PC" })
+})
+
+const dayMs = 86_400_000
+const somchai: User = { id: "u1", username: "somchai", displayName: "Somchai", email: null, employee: { code: "E01", fullNameTh: "สมชาย ใจดี" } }
+const mouse = (over: Partial<Item> = {}): Item => toner({ id: "mouse", name: "Mouse", unit: "ชิ้น", ...over })
+
+test("getAssetConsumableIssues: the machine's issues newest first, limited, with the total; often counts one kind 2+ times in 90 days", async () => {
+  const now = Date.now()
+  const at = (daysAgo: number) => new Date(now - daysAgo * dayMs)
+  const db = fakeDb({
+    items: [toner(), mouse()],
+    users: [somchai],
+    movements: [
+      { id: "i1", itemId: "mouse", type: "issue", quantityChange: -1, assetId: "pc1", performedAt: at(10), performedBy: "u1", note: "พัง" },
+      { id: "i2", itemId: "mouse", type: "issue", quantityChange: -1, assetId: "pc1", performedAt: at(60), performedBy: "u-gone", note: null },
+      { id: "i3", itemId: "toner", type: "issue", quantityChange: -3, assetId: "pc1", performedAt: at(5), performedBy: "u1", note: null },
+      { id: "i4", itemId: "toner", type: "issue", quantityChange: -1, assetId: "pc1", performedAt: at(100), performedBy: "u1", note: null },
+      { id: "i5", itemId: "toner", type: "issue", quantityChange: -1, assetId: "pc2", performedAt: at(3), performedBy: "u1", note: null },
+      { id: "r1", itemId: "toner", type: "receive", quantityChange: 9, assetId: null, performedAt: at(1), performedBy: "u1", note: null },
+    ],
+  })
+  const result = await service.getAssetConsumableIssues(db.prisma as never, "pc1", 2)
+  assert.equal(result.total, 4)
+  assert.deepEqual(result.issues, [
+    { id: "i3", performedAt: at(5), itemId: "toner", itemName: "Toner 85A", unit: "ตลับ", quantity: 3, performedByName: "E01 - สมชาย ใจดี", note: null },
+    { id: "i1", performedAt: at(10), itemId: "mouse", itemName: "Mouse", unit: "ชิ้น", quantity: 1, performedByName: "E01 - สมชาย ใจดี", note: "พัง" },
+  ])
+  assert.deepEqual(result.often, [{ itemId: "mouse", itemName: "Mouse", count: 2 }], "toner: one inside 90 days, the one at 100 days does not count")
+
+  const all = await service.getAssetConsumableIssues(db.prisma as never, "pc1", 10)
+  assert.deepEqual(all.issues.map((issue) => issue.id), ["i3", "i1", "i2", "i4"])
+  assert.equal(all.issues[2].performedByName, "u-gone", "a user no longer there shows the id, as the kind history does")
+  assert.equal(db.reads.filter((entry) => entry.op === "user.findMany").length, 2, "one user read per call")
+
+  const empty = await service.getAssetConsumableIssues(db.prisma as never, "pc9", 10)
+  assert.deepEqual(empty, { issues: [], total: 0, often: [] })
+})
+
+test("getConsumableFrequentReport: one row per machine counting issues not quantity, by count then latest, filtered by window, kind and machine", async () => {
+  const now = new Date(Date.UTC(2026, 10, 10, 12))
+  const at = (daysAgo: number) => new Date(now.getTime() - daysAgo * dayMs)
+  const asset = (id: string, tag: string, custodian: { fullNameTh: string } | null): Asset => ({ id, isActive: true, status: { name: "In Use" }, assetTag: tag, name: `PC ${tag}`, custodian })
+  const db = fakeDb({
+    items: [toner(), mouse({ isActive: false })],
+    assets: [asset("a1", "IT-001", { fullNameTh: "สมชาย ใจดี" }), asset("a2", "IT-002", null), asset("a3", "IT-003", null)],
+    movements: [
+      { id: "m1", itemId: "toner", type: "issue", quantityChange: -5, assetId: "a1", performedAt: at(80) },
+      { id: "m2", itemId: "mouse", type: "issue", quantityChange: -1, assetId: "a1", performedAt: at(20) },
+      { id: "m3", itemId: "toner", type: "issue", quantityChange: -1, assetId: "a1", performedAt: at(2) },
+      { id: "m4", itemId: "toner", type: "issue", quantityChange: -1, assetId: "a1", performedAt: at(150) },
+      { id: "m5", itemId: "mouse", type: "issue", quantityChange: -1, assetId: "a2", performedAt: at(30) },
+      { id: "m6", itemId: "mouse", type: "issue", quantityChange: -1, assetId: "a2", performedAt: at(40) },
+      { id: "m7", itemId: "toner", type: "issue", quantityChange: -1, assetId: "a3", performedAt: at(10) },
+      { id: "m8", itemId: "mouse", type: "issue", quantityChange: -1, assetId: "a3", performedAt: at(5) },
+      { id: "m9", itemId: "toner", type: "receive", quantityChange: 20, assetId: null, performedAt: at(1) },
+      { id: "m10", itemId: "toner", type: "adjust", quantityChange: -2, assetId: null, performedAt: at(1) },
+    ],
+  })
+  const report = await service.getConsumableFrequentReport(db.prisma as never, { days: 90, now })
+  assert.equal(report.more, false)
+  assert.deepEqual(report.rows, [
+    { assetId: "a1", assetTag: "IT-001", assetName: "PC IT-001", holderName: "สมชาย ใจดี", count: 3, latestAt: at(2), latestItemName: "Toner 85A" },
+    { assetId: "a3", assetTag: "IT-003", assetName: "PC IT-003", holderName: null, count: 2, latestAt: at(5), latestItemName: "Mouse" },
+    { assetId: "a2", assetTag: "IT-002", assetName: "PC IT-002", holderName: null, count: 2, latestAt: at(30), latestItemName: "Mouse" },
+  ], "a quantity of 5 is one time; a3 and a2 tie on count, a3's latest is newer")
+  assert.equal(db.groupBys.length, 1)
+  const group = db.groupBys[0] as { by: string[]; where: { type: string; performedAt: { gte: Date } } }
+  assert.deepEqual([group.by, group.where.type, group.where.performedAt.gte.getTime()], [["assetId"], "issue", at(90).getTime()])
+  assert.equal(db.reads.filter((entry) => entry.op === "asset.findMany").length, 1, "one asset read")
+  assert.equal(db.reads.filter((entry) => entry.op === "movement.findMany").length, 1, "one latest-movement read")
+
+  const wide = await service.getConsumableFrequentReport(db.prisma as never, { days: 180, now })
+  assert.deepEqual(wide.rows.map((row) => [row.assetId, row.count]), [["a1", 4], ["a3", 2], ["a2", 2]])
+
+  const mice = await service.getConsumableFrequentReport(db.prisma as never, { days: 90, itemId: "mouse", now })
+  assert.deepEqual(mice.rows.map((row) => [row.assetId, row.count, row.latestItemName]), [["a2", 2, "Mouse"], ["a3", 1, "Mouse"], ["a1", 1, "Mouse"]])
+  assert.equal(mice.rows[2].latestAt.getTime(), at(20).getTime(), "the latest is the latest of that kind")
+
+  const one = await service.getConsumableFrequentReport(db.prisma as never, { days: 30, assetId: "a2", now })
+  assert.deepEqual(one.rows.map((row) => [row.assetId, row.count]), [["a2", 1]])
+
+  const none = await service.getConsumableFrequentReport(db.prisma as never, { days: 30, itemId: "nope", now })
+  assert.deepEqual(none, { rows: [], more: false })
+})
+
+test("getConsumableFrequentReport: the top 100 machines, more is true when a 101st exists", async () => {
+  const now = new Date(Date.UTC(2026, 10, 10, 12))
+  const seed = (count: number) => fakeDb({
+    items: [toner()],
+    assets: Array.from({ length: count }, (_, index) => ({ id: `a${index}`, isActive: true, status: { name: "In Use" }, assetTag: `T${index}`, name: `PC ${index}` })),
+    movements: Array.from({ length: count }, (_, index) => ({ id: `m${index}`, itemId: "toner", type: "issue", quantityChange: -1, assetId: `a${index}`, performedAt: new Date(now.getTime() - (index + 1) * 60_000) })),
+  })
+  const full = await service.getConsumableFrequentReport(seed(101).prisma as never, { days: 90, now })
+  assert.equal(full.rows.length, 100)
+  assert.equal(full.more, true)
+  assert.equal(full.rows[99].assetId, "a99", "the 101st (oldest) is left out")
+  const exact = await service.getConsumableFrequentReport(seed(100).prisma as never, { days: 90, now })
+  assert.deepEqual([exact.rows.length, exact.more], [100, false])
+})
+
+test("source: the frequent report groups by assetId in the database, with no per-machine query", () => {
+  const source = read("src/lib/consumable-service.ts")
+  const start = source.indexOf("export async function getConsumableFrequentReport(")
+  assert.ok(start >= 0)
+  const end = source.indexOf("\nexport ", start + 1)
+  const body = source.slice(start, end < 0 ? undefined : end)
+  assert.match(body, /consumableMovement\.groupBy\(\{\s*by: \["assetId"\]/)
+  assert.match(body, /take: CONSUMABLE_REPORT_ROWS \+ 1/)
+  assert.doesNotMatch(body, /for \(|\.forEach\(|Promise\.all\(\s*\w+\.map/, "no loop of queries per machine")
+  assert.ok([...body.matchAll(/await /g)].length <= 3, "groupBy, then one asset read and one latest-movement read")
+})
+
+test("parseConsumableReportDays: 30 / 90 / 180 / 365, anything else is 90", () => {
+  assert.deepEqual([...service.consumableReportDays], [30, 90, 180, 365])
+  assert.equal(service.parseConsumableReportDays(undefined), 90)
+  assert.equal(service.parseConsumableReportDays("30"), 30)
+  assert.equal(service.parseConsumableReportDays("365"), 365)
+  assert.equal(service.parseConsumableReportDays("7"), 90)
+  assert.equal(service.parseConsumableReportDays("90abc"), 90)
 })
