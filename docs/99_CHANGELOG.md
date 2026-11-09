@@ -6,6 +6,15 @@
 
 ## 2026-11-09
 
+### ยืนยันผลตรวจ แผน 1: เปลี่ยนชื่อเป็น "รายการไม่ตรงทะเบียน"
+
+spec `docs/superpowers/specs/2026-11-09-inspection-confirm-design.md` (ผู้ใช้อนุมัติ 2026-11-09) · plan `docs/superpowers/plans/2026-11-09-inspection-confirm-1-rename.md` · branch `feat/inspection-confirm` · ยังไม่ merge
+
+- ข้อความไทย 89 คีย์ "รายการไม่ตรง" → "รายการไม่ตรงทะเบียน" (ผู้ใช้สั่ง) · ข้อความสรุปรายวันของการแจ้งเตือน · อังกฤษและคีย์ไม่เปลี่ยน (`f55a65da`)
+- อภิธานศัพท์ + `tests/thai-glossary.test.ts` ห้ามคำเดิมและห้าม ทะเบียน ซ้ำ · `auditFinding.approvedSuccessNoRegisterChange` อ่าน "อนุมัติรายการไม่ตรงทะเบียนสำเร็จ ข้อมูลทรัพย์สินไม่เปลี่ยน" (ผู้ใช้ให้แก้ `98557ae8`)
+- คำใน E2E ตามชื่อใหม่ + `tests/finding-rename-guard.test.ts` ไล่ src e2e tests public prisma (`d08dcd19`) · รีวิวท้ายแผน 5 ข้อเล็ก แก้ใน `d7238be6` (เอกสาร UAT/handout/DESIGN/workflows ตามชื่อใหม่)
+- E2E `E2E-1109G` (audit dashboard notifications cross-cutting admin/roles) ผ่าน 177/0 · `E2E-1109F` รอบก่อนรันบน build เก่า ตก 18 จากข้อความเดิม ไม่ใช่โค้ดผิด · unit 5,240/0 · ไม่มี migration
+
 ### กลุ่มหน้า 12 merge แล้ว
 
 - `feat/group12-admin` fast-forward เข้า master ที่ `dffde716` และ push ทั้ง origin และ company (2026-11-09 ผู้ใช้สั่ง) · unit test บน master 5,237/0 (ข้าม 1) · ไม่มี migration · ยังไม่ deploy
