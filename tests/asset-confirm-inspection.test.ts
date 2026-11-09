@@ -184,3 +184,23 @@ test("source pins: the route and the service (permission, Serializable, conditio
   const logAt = service.indexOf("logAudit(")
   assert.ok(transactionEnd > 0 && logAt > transactionEnd, "logAudit runs after the transaction")
 })
+
+test("fix 1: installed components follow the parent through the asset edit's shared helper, inside the transaction", () => {
+  const service = read("src/lib/asset-confirm-inspection-service.ts")
+  assert.match(service, /import \{ syncInstalledComponentsWithParent \} from "\.\/asset-component-sync\.ts"/)
+  const call = service.match(/syncInstalledComponentsWithParent\(tx, \{[\s\S]*?\}\)/)?.[0] ?? ""
+  assert.match(call, /parentAssetId: assetId/)
+  assert.match(call, /currentLocationId: input\.locationId/)
+  assert.match(call, /custodianId: input\.custodianId/)
+  assert.match(call, /departmentId,/)
+  assert.match(call, /movementType: "parent_register_update_sync"/)
+  assert.match(call, /referenceType: "register_edit"/)
+  const transactionStart = service.indexOf("prisma.$transaction(")
+  const callAt = service.indexOf("syncInstalledComponentsWithParent(tx,")
+  const transactionEnd = service.indexOf("}, assetConfirmInspectionTransactionOptions)")
+  assert.ok(transactionStart < callAt && callAt < transactionEnd, "the sync runs inside the Serializable transaction")
+
+  const put = read("src/app/api/assets/[id]/route.ts")
+  assert.match(put, /import \{ syncInstalledComponentsWithParent \} from "@\/lib\/asset-component-sync"/)
+  assert.match(put, /syncInstalledComponentsWithParent\(tx, \{[\s\S]*?movementType: "parent_register_update_sync",\s*referenceType: "register_edit",/)
+})

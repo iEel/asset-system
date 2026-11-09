@@ -4,9 +4,11 @@
 // (src/app/api/assets/[id]/confirm-inspection/route.ts) checks the permission and maps the errors; this module re-reads
 // the asset inside one serializable transaction, as the round's confirm-results service does
 // (inspection-confirm-service.ts), and writes one history row per changed field.
+import { randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { logAudit } from "@/lib/audit-log"
 import { prisma } from "@/lib/db"
+import { syncInstalledComponentsWithParent } from "./asset-component-sync.ts"
 import { departmentFollowsHolder, getRegisterDepartment } from "./asset-department-rule.ts"
 import { getAssetLifecycleTransitionError } from "./asset-lifecycle-policy.ts"
 import { normalizeAssetOwnershipType } from "./asset-ownership.ts"
@@ -219,7 +221,24 @@ export async function confirmAssetInspection(
     }
     await tx.assetMovement.createMany({ data: rows })
 
-    return { asset, statusId, statusName, departmentId }
+    // Installed components follow the parent's location, holder and department exactly as the asset edit PUT moves them
+    // (src/app/api/assets/[id]/route.ts): the same shared helper, movement type and reference type, one fresh reference
+    // per save. The helper writes only what differs and skips checked-out components.
+    const componentSync = await syncInstalledComponentsWithParent(tx, {
+      parentAssetId: assetId,
+      changes: {
+        currentLocationId: input.locationId,
+        custodianId: input.custodianId,
+        departmentId,
+      },
+      movementType: "parent_register_update_sync",
+      referenceType: "register_edit",
+      referenceId: randomUUID(),
+      performedBy: userId,
+      reason,
+    })
+
+    return { asset, statusId, statusName, departmentId, componentSync }
   }, assetConfirmInspectionTransactionOptions)
 
   const { asset } = written
@@ -242,6 +261,7 @@ export async function confirmAssetInspection(
       currentLocationId: input.locationId,
       departmentId: written.departmentId,
       reason,
+      componentSync: written.componentSync,
     },
   })
 
