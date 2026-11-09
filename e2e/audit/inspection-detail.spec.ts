@@ -226,7 +226,8 @@ test("ยืนยันผลตรวจ from the asset page: the notice links
 
   // The page reads ใช้งานอยู่, the holder and the room; the register agrees.
   await expect(page.getByRole("main").getByText(W.statusInUse, { exact: true }).filter({ visible: true }).first()).toBeVisible()
-  await expect(factCell(page, DETAIL_WORDS.custodianCell)).toContainText(holder.fullNameTh)
+  // A shared asset's strip names its department, not the holder (asset-detail-fact-strip.tsx): the holder is read from
+  // the register below (E2E-1109U).
   await expect(factCell(page, DETAIL_WORDS.locationCell)).toContainText(rooms.target.name)
   const saved = (await (await page.request.get(`/api/assets/${assets.noRound.id}`)).json()) as { status: { name: string }; custodianId: string | null; currentLocationId: string }
   expect(saved, "the register after ยืนยันผลตรวจ").toMatchObject({ status: { name: "In Use" }, custodianId: holder.id, currentLocationId: targetRoomId })
