@@ -11,7 +11,7 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 
 test("page: ?view=frequent renders the report and reads it with the parsed days, item and asset", () => {
   const page = read(pagePath)
-  assert.match(page, /searchParams: Promise<\{ view\?: string \| string\[\]; days\?: string \| string\[\]; item\?: string \| string\[\]; asset\?: string \| string\[\] \}>/)
+  assert.match(page, /searchParams: Promise<\{ view\?: string \| string\[\]; days\?: string \| string\[\]; item\?: string \| string\[\]; asset\?: string \| string\[\]; state\?: string \| string\[\] \}>/)
   assert.match(page, /const frequent = query\.view === "frequent"/)
   assert.match(page, /const days = parseConsumableReportDays\(query\.days\)/)
   assert.match(page, /getConsumableFrequentReport\(prisma, \{ days, itemId: query\.item, assetId: query\.asset, now: new Date\(\) \}\)/)
@@ -26,7 +26,7 @@ test("page: ?view=frequent renders the report and reads it with the parsed days,
 test("page: the tab links keep the other params; the list tab drops view only", () => {
   const page = read(pagePath)
   assert.match(page, /^function consumablesHref\(locale: string, query: ConsumablesQuery, overrides: Partial<ConsumablesQuery> = \{\}\)/m)
-  assert.match(page, /for \(const key of \["view", "days", "item", "asset"\] as const\)/)
+  assert.match(page, /for \(const key of \["view", "days", "item", "asset", "state"\] as const\)/)
   assert.match(page, /\{ key: "list", label: t\("tab_list"\), href: consumablesHref\(locale, query, \{ view: undefined \}\) \}/)
   assert.match(page, /\{ key: "frequent", label: t\("tab_frequent"\), href: consumablesHref\(locale, query, \{ view: "frequent" \}\) \}/)
   assert.match(page, /<TabNav aria-label=\{t\("title"\)\} items=\{tabItems\} current=\{frequent \? "frequent" : "list"\} scroll=\{false\} \/>/)

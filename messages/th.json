@@ -630,8 +630,7 @@
       "approvedDisposals": "ตัดจำหน่าย",
       "returnsDueSoon": "รับคืน",
       "warrantyExpiringSoon": "ดูทรัพย์สิน",
-      "licenseExpiringSoon": "ดู License",
-      "consumablesLow": "ดูของใช้สิ้นเปลือง"
+      "licenseExpiringSoon": "ดู License"
     },
     "statusTitle": "ตามสถานะ",
     "statusColumn": "สถานะ",
@@ -7529,7 +7528,9 @@
     "col_latest": "ล่าสุด",
     "latest_value": "{date} · {item}",
     "report_more": "แสดง 100 เครื่องแรก",
-    "report_empty": "ไม่มีการเปลี่ยนของในช่วงนี้"
+    "report_empty": "ไม่มีการเปลี่ยนของในช่วงนี้",
+    "filterLow": "เฉพาะที่ต้องซื้อเพิ่ม",
+    "filterLowEmpty": "ไม่มีชนิดที่ต้องซื้อเพิ่ม"
   },
   "assetConsumables": {
     "title": "ของใช้สิ้นเปลือง",

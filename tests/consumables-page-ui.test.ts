@@ -36,7 +36,9 @@ test("workspace: a client component on the main-system parts", () => {
 
 test("workspace: the low banner renders only when a kind is low or out", () => {
   const ws = read(workspacePath)
-  assert.match(ws, /const lowRows = rows\.filter\(\(row\) => row\.state !== "ok"\)/)
+  // Consumables plan 4: the page hands the banner its low and out kinds from the whole list, so ?state=low keeps it.
+  assert.match(read(pagePath), /lowRows=\{filterConsumablesByListState\(rows, "low"\)\}/)
+  assert.match(ws, /lowRows: ConsumableUsageRow\[\]/)
   assert.match(ws, /\{lowRows\.length > 0 \? \(\s*<Notice tone="warning"/)
   assert.match(ws, /t\("lowBanner", \{ count: lowRows\.length, list: /)
   assert.match(ws, /t\("lowItem", \{ name: row\.name, onHand: row\.onHand \}\)/)
@@ -55,6 +57,8 @@ test("workspace: เบิก is disabled with outReason when onHand === 0", () 
   assert.match(ws, /const out = row\.onHand === 0/)
   assert.match(ws, /<Button[^>]*disabled[^>]*aria-describedby=\{reasonId\}/)
   assert.match(ws, /<span id=\{reasonId\}[^>]*>\{t\("outReason"\)\}<\/span>/)
+  // The disabled เบิก keeps the enabled one's ghost look: no border, no fill (as dialog.tsx's close button).
+  assert.match(ws, /<Button variant="ghost" size="sm" disabled aria-describedby=\{reasonId\} className="disabled:border-transparent disabled:bg-transparent">/)
 })
 
 test("workspace: buttons follow the flags", () => {
@@ -191,4 +195,32 @@ test("ปิดใช้งาน lock: no second confirm or PATCH for a kind in
   const rowActions = read("src/components/ui/row-actions.tsx")
   assert.match(rowActions, /busy\?: boolean/)
   assert.match(rowActions, /aria-label=\{menuLabel\} title=\{menuLabel\} busy=\{busy\}>/)
+})
+
+// ---------------------------------------------------------------- plan 4 task 2: ?state=low
+
+test("page: ?state=low keeps the low and out kinds; the chip removes state only; no filter, the whole list", () => {
+  const page = read(pagePath)
+  assert.match(page, /searchParams: Promise<\{ view\?: string \| string\[\]; days\?: string \| string\[\]; item\?: string \| string\[\]; asset\?: string \| string\[\]; state\?: string \| string\[\] \}>/)
+  assert.match(page, /state: oneParam\(raw\.state\)/)
+  assert.match(page, /const listState = parseConsumableListState\(query\.state\)/)
+  assert.match(page, /const rows = await listConsumablesWithUsage\(prisma\)/)
+  assert.match(page, /rows=\{filterConsumablesByListState\(rows, listState\)\}/)
+  assert.match(page, /\{ key: "state", label: t\("filterLow"\), href: consumablesHref\(locale, query, \{ state: undefined \}\) \}/)
+  assert.match(page, /const listChips: FilterChipItem\[\] = listState === "low"/)
+  assert.match(page, /chips=\{listChips\}/)
+})
+
+test("workspace: the chips under the tabs, and a filtered list with nothing left says so", () => {
+  const ws = read(workspacePath)
+  assert.match(ws, /chips\?: FilterChipItem\[\]/)
+  assert.match(ws, /<FilterChipList chips=\{chips\} label=\{tAsset\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
+  assert.match(ws, /rows\.length === 0 && chips\.length > 0 \? \(\s*<ContentPanel>\s*<EmptyNote padded>\{t\("filterLowEmpty"\)\}<\/EmptyNote>/)
+})
+
+test("words: the low filter chip and its empty line", () => {
+  assert.equal(messages("th").consumablesPage.filterLow, "เฉพาะที่ต้องซื้อเพิ่ม")
+  assert.equal(messages("th").consumablesPage.filterLowEmpty, "ไม่มีชนิดที่ต้องซื้อเพิ่ม")
+  assert.equal(messages("en").consumablesPage.filterLow, "Only to restock")
+  assert.equal(messages("en").consumablesPage.filterLowEmpty, "No kinds to restock")
 })

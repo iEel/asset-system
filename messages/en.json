@@ -630,8 +630,7 @@
       "approvedDisposals": "Dispose",
       "returnsDueSoon": "Check in",
       "warrantyExpiringSoon": "View assets",
-      "licenseExpiringSoon": "View licenses",
-      "consumablesLow": "View consumables"
+      "licenseExpiringSoon": "View licenses"
     },
     "statusTitle": "By status",
     "statusColumn": "Status",
@@ -7529,7 +7528,9 @@
     "col_latest": "Latest",
     "latest_value": "{date} · {item}",
     "report_more": "Showing the first 100 machines",
-    "report_empty": "No replacements in this period"
+    "report_empty": "No replacements in this period",
+    "filterLow": "Only to restock",
+    "filterLowEmpty": "No kinds to restock"
   },
   "assetConsumables": {
     "title": "Consumables",

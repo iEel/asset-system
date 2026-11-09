@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
+import { filterConsumablesByListState, parseConsumableListState } from "@/lib/consumable-rules"
 import { getConsumableFrequentReport, listConsumablesWithUsage, parseConsumableReportDays } from "@/lib/consumable-service"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ConsumablesFrequentReport } from "@/components/consumables/consumables-frequent-report"
@@ -13,14 +14,16 @@ import { TabNav, type TabNavItem } from "@/components/ui/tab-nav"
 // edit, deactivate) decide which buttons the workspace renders.
 // Plan 3 Task 3: TabNav รายการ (no view) / เครื่องที่เปลี่ยนของบ่อย (?view=frequent), each keeping the other params. The
 // report reads ?days= (30/90/180/365, default 90), ?item= (one kind, active or not) and ?asset= (one machine).
+// Plan 4 Task 2: the list reads ?state=low (the bell's ของใช้สิ้นเปลืองต้องซื้อเพิ่ม), keeping the low and out kinds with a
+// removable chip; the banner still reads the whole list.
 type RawParam = string | string[] | undefined
 
 type ConsumablesPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ view?: string | string[]; days?: string | string[]; item?: string | string[]; asset?: string | string[] }>
+  searchParams: Promise<{ view?: string | string[]; days?: string | string[]; item?: string | string[]; asset?: string | string[]; state?: string | string[] }>
 }
 
-type ConsumablesQuery = { view?: string; days?: string; item?: string; asset?: string }
+type ConsumablesQuery = { view?: string; days?: string; item?: string; asset?: string; state?: string }
 
 // The first value, trimmed; empty or longer than an id is dropped.
 function oneParam(value: RawParam): string | undefined {
@@ -32,7 +35,7 @@ function oneParam(value: RawParam): string | undefined {
 function consumablesHref(locale: string, query: ConsumablesQuery, overrides: Partial<ConsumablesQuery> = {}) {
   const next = { ...query, ...overrides }
   const search = new URLSearchParams()
-  for (const key of ["view", "days", "item", "asset"] as const) {
+  for (const key of ["view", "days", "item", "asset", "state"] as const) {
     const value = next[key]
     if (value) search.set(key, value)
   }
@@ -46,7 +49,7 @@ export default async function ConsumablesPage({ params, searchParams }: Consumab
   const canCreate = hasPermission(user, "consumable", "create")
   const canEdit = hasPermission(user, "consumable", "edit")
   const raw = await searchParams
-  const query: ConsumablesQuery = { view: oneParam(raw.view), days: oneParam(raw.days), item: oneParam(raw.item), asset: oneParam(raw.asset) }
+  const query: ConsumablesQuery = { view: oneParam(raw.view), days: oneParam(raw.days), item: oneParam(raw.item), asset: oneParam(raw.asset), state: oneParam(raw.state) }
   const frequent = query.view === "frequent"
   const t = await getTranslations("consumablesPage")
 
@@ -85,7 +88,21 @@ export default async function ConsumablesPage({ params, searchParams }: Consumab
     )
   }
 
+  const listState = parseConsumableListState(query.state)
   const rows = await listConsumablesWithUsage(prisma)
+  const listChips: FilterChipItem[] = listState === "low"
+    ? [{ key: "state", label: t("filterLow"), href: consumablesHref(locale, query, { state: undefined }) }]
+    : []
 
-  return <ConsumablesWorkspace locale={locale} rows={rows} canCreate={canCreate} canEdit={canEdit} tabs={tabs} />
+  return (
+    <ConsumablesWorkspace
+      locale={locale}
+      rows={filterConsumablesByListState(rows, listState)}
+      lowRows={filterConsumablesByListState(rows, "low")}
+      chips={listChips}
+      canCreate={canCreate}
+      canEdit={canEdit}
+      tabs={tabs}
+    />
+  )
 }

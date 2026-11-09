@@ -43,6 +43,18 @@ export function consumableStockState(item: { onHand: number; minQuantity: number
   return "ok"
 }
 
+/** The list's ?state= (consumables plan 4): "low" keeps the kinds to restock; any other value is no filter. */
+export type ConsumableListState = "low"
+
+export function parseConsumableListState(value: string | undefined): ConsumableListState | null {
+  return value === "low" ? "low" : null
+}
+
+/** ?state=low keeps the low and out kinds (the banner's list); no filter returns the list as it is. */
+export function filterConsumablesByListState<Row extends { state: ConsumableStockState }>(rows: Row[], state: ConsumableListState | null): Row[] {
+  return state === "low" ? rows.filter((row) => row.state !== "ok") : rows
+}
+
 /** A count is a whole number 0–99999 and must differ from the current on-hand. */
 export function consumableAdjustError(onHand: number, counted: number): "noChange" | "range" | null {
   if (!Number.isInteger(counted) || counted < 0 || counted > CONSUMABLE_ADJUST_MAX) return "range"

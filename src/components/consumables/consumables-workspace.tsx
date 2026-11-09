@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, dataTableRowClasses } from "@/components/ui/data-table"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Notice } from "@/components/ui/notice"
@@ -73,12 +75,19 @@ const ROW_MENU = "[data-consumable-actions] [aria-haspopup]"
 export function ConsumablesWorkspace({
   locale,
   rows,
+  lowRows,
+  chips = [],
   canCreate,
   canEdit,
   tabs,
 }: {
   locale: string
+  // The kinds the list shows: all of them, or the low and out ones under ?state=low (plan 4).
   rows: ConsumableUsageRow[]
+  // The banner's low and out kinds, always from the whole list.
+  lowRows: ConsumableUsageRow[]
+  // The list's filter chips (?state=low), under the tabs.
+  chips?: FilterChipItem[]
   // consumable:create: เบิก and รับเข้า.
   canCreate: boolean
   // consumable:edit: ปรับยอด, เพิ่มชนิดของ, แก้ชื่อหรือขั้นต่ำ and ปิดใช้งาน.
@@ -88,6 +97,7 @@ export function ConsumablesWorkspace({
 }) {
   const t = useTranslations("consumablesPage")
   const tCommon = useTranslations("common")
+  const tAsset = useTranslations("asset")
   // The control that opened the last dialog; Task 3's dialogs give focus back to it.
   const openerRef = useRef<HTMLElement | null>(null)
   const router = useRouter()
@@ -193,7 +203,6 @@ export function ConsumablesWorkspace({
   }
 
   const detailHref = (id: string) => `/${locale}/consumables/${id}`
-  const lowRows = rows.filter((row) => row.state !== "ok")
 
   const rowGroups = (row: ConsumableUsageRow): RowActionGroup[] => [
     {
@@ -249,13 +258,19 @@ export function ConsumablesWorkspace({
 
       {tabs}
 
+      <FilterChipList chips={chips} label={tAsset("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />
+
       {lowRows.length > 0 ? (
         <Notice tone="warning" role="status">
           {t("lowBanner", { count: lowRows.length, list: lowRows.map((row) => t("lowItem", { name: row.name, onHand: row.onHand })).join(", ") })}
         </Notice>
       ) : null}
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && chips.length > 0 ? (
+        <ContentPanel>
+          <EmptyNote padded>{t("filterLowEmpty")}</EmptyNote>
+        </ContentPanel>
+      ) : rows.length === 0 ? (
         <ContentPanel>
           <ActionEmptyState
             title={t("emptyTitle")}
@@ -410,7 +425,7 @@ function KindActions({
       {canCreate ? (
         out ? (
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <Button variant="ghost" size="sm" disabled aria-describedby={reasonId}>
+            <Button variant="ghost" size="sm" disabled aria-describedby={reasonId} className="disabled:border-transparent disabled:bg-transparent">
               {t("issueShort")}
             </Button>
             <span id={reasonId} className="text-meta text-muted-foreground">{t("outReason")}</span>

@@ -12,7 +12,9 @@ import {
   consumableLowWhere,
   consumableOftenChanged,
   consumableStockState,
+  filterConsumablesByListState,
   isConsumableLow,
+  parseConsumableListState,
 } from "../src/lib/consumable-rules.ts"
 import { getBangkokDateKey } from "../src/lib/preventive-maintenance.ts"
 import {
@@ -113,4 +115,17 @@ test("schemas: receive date, quantity, default unit, reason length", () => {
   assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 3, reason: "  ab  " }).success, false)
   assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 0, reason: "นับใหม่" }).success, true)
   assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 100000, reason: "นับใหม่" }).success, false)
+})
+
+test("the list's ?state=low (consumables plan 4): only low and out kinds; anything else is the whole list", () => {
+  assert.equal(parseConsumableListState("low"), "low")
+  for (const value of [undefined, "", "ok", "out", "LOW", "all"]) assert.equal(parseConsumableListState(value), null, String(value))
+  const rows = [
+    { id: "a", state: "ok" as const },
+    { id: "b", state: "low" as const },
+    { id: "c", state: "out" as const },
+    { id: "d", state: "ok" as const },
+  ]
+  assert.deepEqual(filterConsumablesByListState(rows, "low").map((row) => row.id), ["b", "c"])
+  assert.equal(filterConsumablesByListState(rows, null), rows, "no filter: the same list, unchanged")
 })
