@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { emptyAuditRoundCounts } from "../src/lib/audit-round-counts-rules.ts"
@@ -109,8 +110,8 @@ test("pending decisions and open action plans are counted apart, each the way it
     { auditRoundId: "r1", reviewStatus: "approved", actionStatus: "closed", count: 5 },
     { auditRoundId: "r2", reviewStatus: "pending", actionStatus: "planned", count: 1 },
   ])
-  assert.deepEqual(work.get("r1"), { pendingReview: 2, openActions: 3 }, "done is still open: it waits for its closing evidence")
-  assert.deepEqual(work.get("r2"), { pendingReview: 1, openActions: 1 }, "a pending finding with a plan is in both lists")
+  assert.deepEqual(work.get("r1"), { pendingReview: 2, openActions: 3, unconfirmedAssets: 0 }, "done is still open: it waits for its closing evidence")
+  assert.deepEqual(work.get("r2"), { pendingReview: 1, openActions: 1, unconfirmedAssets: 0 }, "a pending finding with a plan is in both lists")
   assert.equal(work.get("r3"), undefined)
 })
 
@@ -145,6 +146,25 @@ test("a round is ready to close only on the close API's three conditions: no pen
   assert.equal(isAuditRoundAwaitingDecision(insights.get("review")!), true, "fully scanned, decisions pending: the badge reads รอพิจารณา")
   assert.equal(isAuditRoundAwaitingDecision(insights.get("pending")!), false)
   assert.equal(isAuditRoundAwaitingDecision({ ...insights.get("review")!, operational: false }), false)
+})
+
+test("a round with assets still Under Inspection is not ready to close: the close checklist's fourth condition (ยืนยันผลตรวจ spec §3)", () => {
+  const rounds = [{ id: "stuck", status: "open" }, { id: "clear", status: "open" }, { id: "both", status: "open" }]
+  const counts = new Map(rounds.map((round) => [round.id, { ...emptyAuditRoundCounts, total: 2, checked: 2 }]))
+  const work = foldAuditRoundFindingWork(
+    [{ auditRoundId: "both", reviewStatus: "approved", actionStatus: "planned", count: 1 }],
+    new Map([["stuck", 2], ["clear", 0], ["both", 1]]),
+  )
+  assert.deepEqual(work.get("stuck"), { pendingReview: 0, openActions: 0, unconfirmedAssets: 2 })
+  assert.equal(work.get("clear"), undefined)
+  assert.deepEqual(work.get("both"), { pendingReview: 0, openActions: 1, unconfirmedAssets: 1 })
+  const insights = buildAuditRoundInsights(rounds, counts, work)
+  assert.equal(insights.get("stuck")?.readyToClose, false)
+  assert.equal(insights.get("clear")?.readyToClose, true)
+  assert.equal(insights.get("both")?.readyToClose, false)
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(page, /countUnconfirmedAssetsByRound\(prisma, roundIds\)/)
+  assert.match(page, /\n    unconfirmedByRoundId,\n  \)/)
 })
 
 test("the tabs split rounds by status, a draft under กำลังดำเนินการ; the work views take open rounds with that work (group 2 spec §6, §14)", () => {

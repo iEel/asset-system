@@ -67,6 +67,7 @@ import {
   type AuditRoundTab,
   type AuditRoundView,
 } from "@/lib/audit-rounds-list-rules"
+import { countUnconfirmedAssetsByRound } from "@/lib/inspection-confirm-data"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { startOfBangkokDay } from "@/lib/waiting-work-rules"
 
@@ -170,7 +171,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const matchedRoundIds = new Set(matchedRounds?.map((round) => round.id))
   const rounds = matchedRounds ? allRounds.filter((round) => matchedRoundIds.has(round.id)) : allRounds
   const roundIds = allRounds.map((round) => round.id)
-  const [countsByRoundId, findingWorkRows] = roundIds.length
+  const [countsByRoundId, findingWorkRows, unconfirmedByRoundId] = roundIds.length
     ? await withPerformanceTiming(
         "audit-rounds.progress-data",
         () => Promise.all([
@@ -185,12 +186,15 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             },
             _count: { _all: true },
           }),
+          // Assets still "Under Inspection": the close checklist's fourth condition (ยืนยันผลตรวจ spec §3).
+          countUnconfirmedAssetsByRound(prisma, roundIds),
         ]),
         { route: "/audit/rounds", locale, roundCount: roundIds.length }
       )
-    : ([new Map<string, AuditRoundCounts>(), []] as const)
+    : ([new Map<string, AuditRoundCounts>(), [], new Map<string, number>()] as const)
   const findingWorkByRoundId = foldAuditRoundFindingWork(
     findingWorkRows.map((row) => ({ auditRoundId: row.auditRoundId, reviewStatus: row.reviewStatus, actionStatus: row.actionStatus, count: row._count._all })),
+    unconfirmedByRoundId,
   )
   const insightsByRoundId = buildAuditRoundInsights(allRounds, countsByRoundId, findingWorkByRoundId)
   const insightOf = (round: { id: string }): AuditRoundListInsight => insightsByRoundId.get(round.id) ?? emptyAuditRoundListInsight

@@ -114,6 +114,21 @@ export async function loadRoundInspectionRows(db: InspectionDb, auditRoundId: st
   return rows.sort((left, right) => (left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0))
 }
 
+// The same count for many rounds at once (the approvals inbox, the rounds list), in chunks of 2,000 ids; a round with
+// none is absent from the map.
+export async function countUnconfirmedAssetsByRound(db: InspectionDb, auditRoundIds: readonly string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  for (const chunk of chunkAuditIds(auditRoundIds, AUDIT_ID_CHUNK_SIZE)) {
+    const rows = await db.auditItem.groupBy({
+      by: ["auditRoundId"],
+      where: { auditRoundId: { in: chunk }, asset: inspectionUnderReviewAssetWhere },
+      _count: { _all: true },
+    })
+    for (const row of rows) if (row._count._all > 0) counts.set(row.auditRoundId, row._count._all)
+  }
+  return counts
+}
+
 export async function countRoundUnconfirmedAssets(db: InspectionDb, auditRoundId: string): Promise<number> {
   return db.auditItem.count({ where: roundInspectionItemWhere(auditRoundId) })
 }

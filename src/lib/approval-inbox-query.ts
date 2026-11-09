@@ -19,6 +19,7 @@ import {
   type WorkflowApprovalPolicy,
 } from "@/lib/workflow-approval"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { countUnconfirmedAssetsByRound } from "@/lib/inspection-confirm-data"
 import { auditFindingTypeShortLabelKeys, resolveAuditFindingType } from "@/lib/audit-finding-filters"
 import { listDisposalPhotos } from "@/lib/disposal-photo"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
@@ -339,7 +340,8 @@ async function getReadyAuditRoundsForClose(currentUserId: string): Promise<{ id:
 async function getReadyAuditRoundIds(roundIds: string[]) {
   if (roundIds.length === 0) return new Set<string>()
 
-  const [pendingItems, pendingFindings, openActions] = await Promise.all([
+  // The close checklist's conditions (audit-round-close.ts getAuditRoundCloseChecklist), ยืนยันผลตรวจ's included.
+  const [pendingItems, pendingFindings, openActions, unconfirmedByRound] = await Promise.all([
     prisma.auditItem.groupBy({
       by: ["auditRoundId"],
       where: { auditRoundId: { in: roundIds }, auditStatus: "pending" },
@@ -355,12 +357,14 @@ async function getReadyAuditRoundIds(roundIds: string[]) {
       where: { auditRoundId: { in: roundIds }, actionStatus: { in: ["planned", "in_progress", "done"] } },
       _count: { _all: true },
     }),
+    countUnconfirmedAssetsByRound(prisma, roundIds),
   ])
 
   const blockedRoundIds = new Set<string>()
   for (const row of [...pendingItems, ...pendingFindings, ...openActions]) {
     if (row._count._all > 0) blockedRoundIds.add(row.auditRoundId)
   }
+  for (const roundId of unconfirmedByRound.keys()) blockedRoundIds.add(roundId)
 
   return new Set(roundIds.filter((roundId) => !blockedRoundIds.has(roundId)))
 }

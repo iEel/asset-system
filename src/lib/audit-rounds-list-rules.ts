@@ -107,13 +107,20 @@ export function buildAuditRoundScopeParts(round: AuditRoundScopeSource): AuditRo
 }
 
 export type AuditRoundFindingWorkRow = { auditRoundId: string; reviewStatus: string; actionStatus: string; count: number }
-export type AuditRoundFindingWork = { pendingReview: number; openActions: number }
+export type AuditRoundFindingWork = { pendingReview: number; openActions: number; unconfirmedAssets: number }
 
-// Pending decisions and open action plans apart, each the way its own findings list counts it (group 2 R3).
-export function foldAuditRoundFindingWork(rows: readonly AuditRoundFindingWorkRow[]): Map<string, AuditRoundFindingWork> {
+// Pending decisions and open action plans apart, each the way its own findings list counts it (group 2 R3), and the
+// round's assets still "Under Inspection" (ยืนยันผลตรวจ spec §3, inspection-confirm-data.ts countUnconfirmedAssetsByRound).
+export function foldAuditRoundFindingWork(
+  rows: readonly AuditRoundFindingWorkRow[],
+  unconfirmedByRoundId: ReadonlyMap<string, number> = new Map(),
+): Map<string, AuditRoundFindingWork> {
   const work = new Map<string, AuditRoundFindingWork>()
+  for (const [auditRoundId, count] of unconfirmedByRoundId) {
+    if (count > 0) work.set(auditRoundId, { pendingReview: 0, openActions: 0, unconfirmedAssets: count })
+  }
   for (const row of rows) {
-    const current = work.get(row.auditRoundId) ?? { pendingReview: 0, openActions: 0 }
+    const current = work.get(row.auditRoundId) ?? { pendingReview: 0, openActions: 0, unconfirmedAssets: 0 }
     if (row.reviewStatus === "pending") current.pendingReview += row.count
     if ((openAuditFindingActionStatuses as readonly string[]).includes(row.actionStatus)) current.openActions += row.count
     work.set(row.auditRoundId, current)
@@ -151,7 +158,7 @@ export function buildAuditRoundInsights(
   const insights = new Map<string, AuditRoundListInsight>()
   for (const { id, status } of rounds) {
     const counts = countsByRoundId.get(id) ?? emptyAuditRoundCounts
-    const work = findingWork.get(id) ?? { pendingReview: 0, openActions: 0 }
+    const work = findingWork.get(id) ?? { pendingReview: 0, openActions: 0, unconfirmedAssets: 0 }
     const operational = isAuditRoundOperationalStatus(status)
     insights.set(id, {
       operational,
@@ -162,9 +169,9 @@ export function buildAuditRoundInsights(
       openActions: work.openActions,
       // From the out-of-scope items, as the round page's list it opens (P2-R4).
       outOfScope: counts.outOfScope,
-      // The close API's checklist (`src/lib/audit-round-close.ts` `getAuditRoundCloseChecklist`, R2); the opener rule is the
-      // round page's (plan 2).
-      readyToClose: operational && counts.pending === 0 && work.pendingReview === 0 && work.openActions === 0,
+      // The close API's checklist (`src/lib/audit-round-close.ts` `getAuditRoundCloseChecklist`, R2), no asset left
+      // "Under Inspection" included (ยืนยันผลตรวจ spec §3); the opener rule is the round page's (plan 2).
+      readyToClose: operational && counts.pending === 0 && work.pendingReview === 0 && work.openActions === 0 && work.unconfirmedAssets === 0,
     })
   }
   return insights

@@ -138,7 +138,7 @@ test("the round page lists the out-of-scope finds as items under every filter, c
 test("the rounds list counts the out-of-scope finds from the items, as the round page's list it opens (P2-R4, R4 closed)", () => {
   const page = read(`${D}audit/rounds/page.tsx`)
   assert.doesNotMatch(page, /auditScanHistory|outOfScopeByRoundId|outOfScopeWorkCounts/)
-  assert.match(page, /const \[countsByRoundId, findingWorkRows\] = roundIds\.length/)
+  assert.match(page, /const \[countsByRoundId, findingWorkRows, unconfirmedByRoundId\] = roundIds\.length/)
   assert.match(page, /buildAuditRoundInsights\(allRounds, countsByRoundId, findingWorkByRoundId\)/)
   assert.match(read("src/lib/audit-rounds-list-rules.ts"), /outOfScope: counts\.outOfScope,/)
 })

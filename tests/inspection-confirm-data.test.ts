@@ -4,6 +4,7 @@ import test from "node:test"
 
 import {
   countRoundUnconfirmedAssets,
+  countUnconfirmedAssetsByRound,
   inspectionUnderReviewAssetWhere,
   loadRoundInspectionRows,
   roundInspectionItemWhere,
@@ -94,6 +95,34 @@ test("loadRoundInspectionRows reads no handovers for an empty round; countRoundU
   const counted = fakeDb([], [], 4)
   assert.equal(await countRoundUnconfirmedAssets(counted.db, "r1"), 4)
   assert.deepEqual(counted.calls[0], { call: "auditItem.count", args: { where: roundInspectionItemWhere("r1") } })
+})
+
+test("countUnconfirmedAssetsByRound groups the same where by round, in chunks of 2,000; a round with none is absent", async () => {
+  const calls: Array<{ by: unknown; where: { auditRoundId: { in: string[] }; asset: unknown }; _count: unknown }> = []
+  const db = {
+    auditItem: {
+      groupBy: async (args: (typeof calls)[number]) => {
+        calls.push(args)
+        return args.where.auditRoundId.in.includes("r2") ? [{ auditRoundId: "r2", _count: { _all: 3 } }] : []
+      },
+    },
+  } as unknown as Parameters<typeof countUnconfirmedAssetsByRound>[0]
+  const roundIds = Array.from({ length: 2001 }, (_, index) => `r${index}`)
+  const counts = await countUnconfirmedAssetsByRound(db, roundIds)
+  assert.deepEqual([...counts], [["r2", 3]])
+  assert.deepEqual(calls.map((args) => args.where.auditRoundId.in.length), [2000, 1])
+  assert.deepEqual(calls[0].by, ["auditRoundId"])
+  assert.deepEqual(calls[0].where.asset, { isActive: true, status: { name: "Under Inspection" } })
+  assert.deepEqual(calls[0]._count, { _all: true })
+  assert.deepEqual(await countUnconfirmedAssetsByRound(db, []), new Map())
+})
+
+test("the approvals inbox's ready-to-close rounds wait for ยืนยันผลตรวจ too (spec §3)", () => {
+  const inbox = read("src/lib/approval-inbox-query.ts")
+  const body = inbox.slice(inbox.indexOf("async function getReadyAuditRoundIds("))
+  const fn = body.slice(0, body.indexOf("\n}\n") + 3)
+  assert.match(fn, /countUnconfirmedAssetsByRound\(prisma, roundIds\)/)
+  assert.match(fn, /for \(const roundId of unconfirmedByRound\.keys\(\)\) blockedRoundIds\.add\(roundId\)/)
 })
 
 test("the close checklist counts the unconfirmed assets and cannot close while any remain (spec §3)", () => {
