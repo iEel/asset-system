@@ -212,18 +212,18 @@ test("getDisposalOptions had no caller left and is deleted", () => {
 // ยืนยันผลตรวจ plan 4 task 2: "มาจากรอบตรวจนับ {auditNo}", a removable chip; the search, the tabs and the export keep it.
 test("the audit round filter: read once, a removable chip, kept by the form, counted as a filter, applied by the export", () => {
   const page = read(queuePath)
-  assert.match(page, /readAuditRoundFindingIds\(prisma, filters\.auditRound\)/)
+  assert.match(page, /loadAuditRoundDisposalFindingIds\(prisma, filters\.auditRound\)/)
   assert.match(page, /prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.auditRound \}, select: \{ auditNo: true \} \}\)/)
   assert.match(page, /const requestWhere = buildDisposalWhere\(filters, \{ auditRoundFindingIds \}\)/)
   assert.match(page, /const stageWhere = buildDisposalWhere\(\{ \.\.\.filters, status: "" \}, \{ auditRoundFindingIds \}\)/)
-  assert.match(page, /t\("filterAuditRound", \{ auditNo: auditRoundFilter\?\.auditNo \?\? filters\.auditRound \}\)/)
+  assert.match(page, /t\("filterAuditRound", \{ auditNo: auditRoundFilter\?\.auditNo \?\? "—" \}\)/)
   assert.match(page, /buildDisposalQueryString\(filters, \{ auditRound: "", page: 1 \}\)/, "removing the chip keeps the tab and the other filters")
   assert.match(page, /<FilterChipList chips=\{auditRoundChips\} label=\{tAsset\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
   assert.match(page, /filters\.dateTo \|\| filters\.auditRound\)/, "a round filter counts for hasActiveFilters")
   const form = page.slice(page.indexOf("function DisposalFilterForm("), page.indexOf("function disposalEmptyState("))
   assert.match(form, /\{filters\.auditRound \? <input type="hidden" name="auditRound" value=\{filters\.auditRound\} \/> : null\}/, "a search keeps the round")
   const route = read("src/app/api/disposal-requests/export/route.ts")
-  assert.match(route, /const auditRoundFindingIds = await readAuditRoundFindingIds\(prisma, filters\.auditRound\)/)
+  assert.match(route, /const auditRoundFindingIds = await loadAuditRoundDisposalFindingIds\(prisma, filters\.auditRound\)/)
   assert.match(route, /where: buildDisposalWhere\(filters, \{ auditRoundFindingIds \}\)/)
   const th = JSON.parse(read("messages/th.json")).disposalPage
   const en = JSON.parse(read("messages/en.json")).disposalPage

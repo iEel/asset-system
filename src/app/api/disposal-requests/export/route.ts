@@ -6,7 +6,7 @@ import { logReportExport, reportExportKeyFor } from "@/lib/report-export-log"
 import { getTranslations } from "next-intl/server"
 import { createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { buildDisposalExportColumns } from "@/lib/disposal-export"
-import { buildDisposalWhere, parseDisposalListParams, readAuditRoundFindingIds } from "@/lib/disposal-query"
+import { buildDisposalWhere, parseDisposalListParams, loadAuditRoundDisposalFindingIds } from "@/lib/disposal-query"
 import { disposalSourceLabelKey, readDisposalSourceLinks, type DisposalSourceLink } from "@/lib/disposal-source"
 
 // Thai words for the type and status (group 6 spec §12); an unknown key keeps its code.
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const tWord = (key: string) => t(key as never) as string
 
     const filters = parseDisposalListParams(request.nextUrl.searchParams)
-    const auditRoundFindingIds = await readAuditRoundFindingIds(prisma, filters.auditRound)
+    const auditRoundFindingIds = await loadAuditRoundDisposalFindingIds(prisma, filters.auditRound)
     const requests = await prisma.disposalRequest.findMany({
       where: buildDisposalWhere(filters, { auditRoundFindingIds }),
       omit: { batchId: true },

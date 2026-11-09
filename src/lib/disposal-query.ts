@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { AUDIT_ID_CHUNK_SIZE, chunkAuditIds } from "./audit-round-counts-rules.ts"
 
 export type DisposalListParams = {
   search?: string | string[]
@@ -34,7 +35,7 @@ export function parseDisposalListParams(input: URLSearchParams | DisposalListPar
 
 /**
  * What the where needs from the database (it is sync): the audit round filter's finding ids, read by the caller with
- * readAuditRoundFindingIds.
+ * loadAuditRoundDisposalFindingIds.
  */
 export type DisposalWhereContext = { auditRoundFindingIds?: readonly string[] }
 
@@ -110,14 +111,40 @@ export function buildDisposalQueryString(
   return params.toString()
 }
 
-/** The audit round filter's finding ids; no round, no read. */
-export async function readAuditRoundFindingIds(
-  db: { auditFinding: { findMany(args: { where: { auditRoundId: string }; select: { id: true } }): Promise<Array<{ id: string }>> } },
-  auditRoundId: string,
-): Promise<string[]> {
+export type AuditRoundDisposalFindingDb = {
+  disposalRequest: {
+    findMany(args: {
+      where: { isActive: true; sourceType: "audit_finding"; sourceId: { not: null } }
+      select: { sourceId: true }
+      distinct: ["sourceId"]
+    }): Promise<Array<{ sourceId: string | null }>>
+  }
+  auditFinding: {
+    findMany(args: { where: { auditRoundId: string; id: { in: string[] } }; select: { id: true } }): Promise<Array<{ id: string }>>
+  }
+}
+
+/**
+ * The audit round filter's finding ids: only the round's findings that have an active disposal request, so the where's
+ * IN list stays small. Reads the distinct audit_finding sources first, then intersects them with the round in chunks
+ * of AUDIT_ID_CHUNK_SIZE (SQL Server's 2,100-parameter limit). No round, no read. The list page, the export and the
+ * round's counts share it.
+ */
+export async function loadAuditRoundDisposalFindingIds(db: AuditRoundDisposalFindingDb, auditRoundId: string): Promise<string[]> {
   if (!auditRoundId) return []
-  const rows = await db.auditFinding.findMany({ where: { auditRoundId }, select: { id: true } })
-  return rows.map((row) => row.id)
+  const sources = await db.disposalRequest.findMany({
+    where: { isActive: true, sourceType: "audit_finding", sourceId: { not: null } },
+    select: { sourceId: true },
+    distinct: ["sourceId"],
+  })
+  const sourceIds = [...new Set(sources.map((row) => row.sourceId).filter((id): id is string => Boolean(id)))]
+  if (sourceIds.length === 0) return []
+  const rows = await Promise.all(
+    chunkAuditIds(sourceIds, AUDIT_ID_CHUNK_SIZE).map((chunk) =>
+      db.auditFinding.findMany({ where: { auditRoundId, id: { in: chunk } }, select: { id: true } }),
+    ),
+  )
+  return rows.flat().map((row) => row.id)
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

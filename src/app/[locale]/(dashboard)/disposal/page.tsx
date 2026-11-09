@@ -6,7 +6,7 @@ import { ChevronRight, Download, Layers, Plus, SlidersHorizontal, Trash2 } from 
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildDisposalQueryString, buildDisposalWhere, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, readAuditRoundFindingIds, type DisposalListParams } from "@/lib/disposal-query"
+import { buildDisposalQueryString, buildDisposalWhere, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, loadAuditRoundDisposalFindingIds, type DisposalListParams } from "@/lib/disposal-query"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -75,7 +75,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const [auditRoundFilter, auditRoundFindingIds] = filters.auditRound
     ? await Promise.all([
         prisma.auditRound.findUnique({ where: { id: filters.auditRound }, select: { auditNo: true } }),
-        readAuditRoundFindingIds(prisma, filters.auditRound),
+        loadAuditRoundDisposalFindingIds(prisma, filters.auditRound),
       ])
     : [null, []]
   const requestWhere = buildDisposalWhere(filters, { auditRoundFindingIds })
@@ -201,11 +201,12 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const hasActiveFilters = Boolean(filters.search || filters.disposalType || filters.dateFrom || filters.dateTo || filters.auditRound)
   // The phone filter summary says how many filters are on (spec 2B §5.10 #5). It used to read "ล้างตัวกรอง" but only folded the panel.
   const activeFilterCount = [filters.search, filters.disposalType, filters.dateFrom, filters.dateTo, filters.auditRound].filter(Boolean).length
-  // The round filter has no field: a removable chip says which round, removing it keeps the tab and the other filters.
+  // The round filter has no field: a removable chip says which round (— for an id that matches no round); removing it
+  // keeps the tab and the other filters.
   const auditRoundChips = filters.auditRound
     ? [{
         key: "auditRound",
-        label: t("filterAuditRound", { auditNo: auditRoundFilter?.auditNo ?? filters.auditRound }),
+        label: t("filterAuditRound", { auditNo: auditRoundFilter?.auditNo ?? "—" }),
         href: `/${locale}/disposal?${buildDisposalQueryString(filters, { auditRound: "", page: 1 })}`,
       }]
     : []

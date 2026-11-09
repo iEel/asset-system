@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -6,7 +7,7 @@ import {
   buildDisposalWhere,
   getDisposalDateRangeError,
   parseDisposalListParams,
-  readAuditRoundFindingIds,
+  loadAuditRoundDisposalFindingIds,
 } from "../src/lib/disposal-query.ts"
 
 test("parses disposal pagination with the supported page sizes", () => {
@@ -136,18 +137,68 @@ test("the href builder keeps auditRound with status=approved", () => {
   assert.equal(buildDisposalQueryString(filters, { auditRound: "" }), "status=pending&page=1&pageSize=25")
 })
 
-test("readAuditRoundFindingIds reads the round's finding ids", async () => {
-  const calls: unknown[] = []
+// Fix round 1: only the round's findings that have a disposal request, intersected in chunks (SQL Server's limit).
+type SourceArgs = { where: Record<string, unknown>; select: Record<string, unknown>; distinct: string[] }
+type FindingArgs = { where: { auditRoundId: string; id: { in: string[] } }; select: { id: true } }
+
+function fakeFindingDb(sourceIds: Array<string | null>, roundFindingIds: Set<string>) {
+  const sourceCalls: SourceArgs[] = []
+  const findingCalls: FindingArgs[] = []
   const db = {
+    disposalRequest: {
+      async findMany(args: SourceArgs) {
+        sourceCalls.push(args)
+        return sourceIds.map((sourceId) => ({ sourceId }))
+      },
+    },
     auditFinding: {
-      async findMany(args: { where: { auditRoundId: string }; select: { id: true } }) {
-        calls.push(args)
-        return [{ id: "f-1" }, { id: "f-2" }]
+      async findMany(args: FindingArgs) {
+        findingCalls.push(args)
+        return args.where.id.in.filter((id) => roundFindingIds.has(id)).map((id) => ({ id }))
       },
     },
   }
-  assert.deepEqual(await readAuditRoundFindingIds(db, ROUND_ID), ["f-1", "f-2"])
-  assert.deepEqual(calls, [{ where: { auditRoundId: ROUND_ID }, select: { id: true } }])
-  assert.deepEqual(await readAuditRoundFindingIds(db, ""), [])
-  assert.equal(calls.length, 1, "no round, no read")
+  return { db, sourceCalls, findingCalls }
+}
+
+test("loadAuditRoundDisposalFindingIds reads distinct audit_finding sources, then the round's in chunks", async () => {
+  const sourceIds = Array.from({ length: 4500 }, (_, index) => `f-${index}`)
+  const { db, sourceCalls, findingCalls } = fakeFindingDb([...sourceIds, null], new Set(["f-1", "f-2500", "f-4499"]))
+  const ids = await loadAuditRoundDisposalFindingIds(db, ROUND_ID)
+
+  assert.deepEqual(sourceCalls, [{
+    where: { isActive: true, sourceType: "audit_finding", sourceId: { not: null } },
+    select: { sourceId: true },
+    distinct: ["sourceId"],
+  }])
+  assert.equal(findingCalls.length, 3, "4,500 sources in chunks of 2,000")
+  for (const call of findingCalls) {
+    assert.equal(call.where.auditRoundId, ROUND_ID)
+    assert.ok(call.where.id.in.length <= 2000)
+    assert.deepEqual(call.select, { id: true })
+  }
+  assert.deepEqual(findingCalls.flatMap((call) => call.where.id.in), sourceIds, "every source once, the null dropped")
+  assert.deepEqual(ids.sort(), ["f-1", "f-2500", "f-4499"])
+})
+
+test("loadAuditRoundDisposalFindingIds reads nothing without a round, and no findings without sources", async () => {
+  const none = fakeFindingDb(["f-1"], new Set(["f-1"]))
+  assert.deepEqual(await loadAuditRoundDisposalFindingIds(none.db, ""), [])
+  assert.equal(none.sourceCalls.length + none.findingCalls.length, 0)
+
+  const empty = fakeFindingDb([], new Set())
+  assert.deepEqual(await loadAuditRoundDisposalFindingIds(empty.db, ROUND_ID), [])
+  assert.equal(empty.sourceCalls.length, 1)
+  assert.equal(empty.findingCalls.length, 0)
+})
+
+test("the helper never reads all of a round's findings: every auditFinding read is bounded by an id chunk", () => {
+  const source = readFileSync("src/lib/disposal-query.ts", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /distinct: \["sourceId"\]/)
+  assert.match(source, /sourceType: "audit_finding"/)
+  assert.match(source, /chunkAuditIds\(sourceIds, AUDIT_ID_CHUNK_SIZE\)/)
+  const reads = source.match(/auditFinding\.findMany\(\{[^)]*\}\)/g) ?? []
+  assert.equal(reads.length, 1)
+  assert.match(reads[0], /where: \{ auditRoundId, id: \{ in: chunk \} \}/)
+  assert.doesNotMatch(source, /readAuditRoundFindingIds/)
 })
