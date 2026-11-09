@@ -312,7 +312,7 @@ test("the phone walk reads the app's own words and the walk's markup: the switch
   assert.ok(!steps.includes('getByRole("button").first()'), "not the first button of a field")
   assert.ok(steps.includes("return page.getByRole(\"heading\", { name: asset.name, exact: true })"), "the sheet's title is the asset's name (bug 23)")
   // The markup the steps read (Tasks 3 and 5).
-  const audit = readdirSync("src/components/audit").map((file) => read(`src/components/audit/${file}`)).join("\n")
+  const audit = readdirSync("src/components/audit").filter((file) => /\.tsx?$/.test(file)).map((file) => read(`src/components/audit/${file}`)).join("\n")
   for (const hook of ["data-audit-scan-progress", "data-audit-scan-room", "data-audit-scan-room-list", "data-audit-scan-row", "data-audit-scan-results", "data-audit-component-row", "data-audit-scan-recorded-out-of-scope", "data-audit-scan-recorded-row"]) assert.ok(audit.includes(hook), hook)
   assert.match(audit, /data-audit-check-field=\{/, "each field carries its key")
 
@@ -428,7 +428,7 @@ test("the findings page in the walk: a row opens the panel with ?finding=, a dec
   const findingsDir = "src/app/[locale]/(dashboard)/audit/findings"
   const sources = [
     ...readdirSync(findingsDir).filter((file) => file.endsWith(".tsx")).map((file) => read(`${findingsDir}/${file}`)),
-    ...readdirSync("src/components/audit").map((file) => read(`src/components/audit/${file}`)),
+    ...readdirSync("src/components/audit").filter((file) => /\.tsx?$/.test(file)).map((file) => read(`src/components/audit/${file}`)),
     read("src/components/ui/desktop-selection-bar.tsx"),
   ].join("\n")
   for (const hook of ["data-audit-finding-row", "data-audit-finding-card", "data-finding-type", "data-audit-finding-subject", "data-audit-finding-panel", "data-audit-finding-panel-empty", "data-finding-id", "data-audit-finding-field", "data-audit-finding-effect", 'data-slot="desktop-selection-bar"', '"audit-review-reason"']) {

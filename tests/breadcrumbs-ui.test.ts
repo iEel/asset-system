@@ -45,10 +45,11 @@ test("every record page ends its breadcrumb trail on a code; the create and list
   // Group 6 plan 3 Task 2: ยื่นคำขอตัดจำหน่าย adds its create trail. Group 6 plan 4 Task 4: the rounds list, the round
   // page and สร้างรอบตัดจำหน่าย add three. Request batches Task 2: สร้างชุดคำขอ moves onto the operation frame with its trail.
   // Request batches Task 4: the batch list takes the rounds list's trail. Group 12 plan 2 Task 4: the approval history
-  // takes "งานรออนุมัติ › ประวัติการตัดสินใจ" (board AD-ApprovalHistory).
-  assert.equal(sites.length, 20, "Breadcrumbs call sites")
+  // takes "งานรออนุมัติ › ประวัติการตัดสินใจ" (board AD-ApprovalHistory). Inspection-confirm plan 3 Task 2: the round's
+  // ยืนยันผลตรวจ page, "ตรวจนับ › รอบตรวจนับ › AUD-… › ยืนยันผลตรวจ", a code mid-trail and the page title last.
+  assert.equal(sites.length, 21, "Breadcrumbs call sites")
   // Group 5 plan 4 Task 4: the PM edit page is a form whose trail ends on "แก้ไขแผน PM" (spec §10); its planNo is in the meta.
-  assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 9, "call sites that mark a code")
+  assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 10, "call sites that mark a code")
 
   const base = "src/app/[locale]/(dashboard)/"
   const lastCode: Record<string, string> = {

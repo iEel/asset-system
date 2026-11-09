@@ -144,7 +144,7 @@ test("the round page and pending steps stand on the result list's chips, the car
   assert.equal((roundBlock.match(/await roundPage\.settlePageRequests\(page\)\s*await page\.goto\(roundHref\)/g) ?? []).length, gotos.length, "every goto of the block is behind the wait")
   // The markup the steps read (Tasks 4-6): the result list's anchor, TabNav's count span, and the pending list's
   // TabNav room chips with the whole row still opening the asset (P2-R28).
-  const audit = ["src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", ...readdirSync("src/components/audit").map((file) => `src/components/audit/${file}`)]
+  const audit = ["src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", ...readdirSync("src/components/audit").filter((file) => /\.tsx?$/.test(file)).map((file) => `src/components/audit/${file}`)]
   assert.ok(audit.some((file) => read(file).includes('id="audit-result-list"')), "the result list's anchor")
   assert.match(read("src/components/ui/tab-nav.tsx"), /<span className=\{cn\("ms-1\.5 text-meta num"/)
   const pendingPage = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx")

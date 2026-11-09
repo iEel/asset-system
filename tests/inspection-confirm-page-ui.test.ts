@@ -1,0 +1,108 @@
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import test from "node:test"
+
+// ยืนยันผลตรวจ, the round's confirm page (inspection-confirm plan 3 task 2): the server page and the read-only list.
+// Sources are read with LF line endings.
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const PAGE = "src/app/[locale]/(dashboard)/audit/rounds/[id]/confirm/page.tsx"
+const WORKSPACE = "src/components/audit/inspection-confirm/inspection-confirm-workspace.tsx"
+const ROW = "src/components/audit/inspection-confirm/inspection-row.tsx"
+
+test("the page gates on audit:view, offers confirm to asset:edit and reads the round's rows (plan 3 task 2)", () => {
+  const page = read(PAGE)
+  assert.match(page, /requirePagePermission\(locale, "audit", "view"\)/)
+  assert.match(page, /hasPermission\(user, "asset", "edit"\)/)
+  assert.match(page, /loadRoundInspectionRows\(prisma, /)
+  assert.match(page, /\.map\(toInspectionPageRow\)/)
+  assert.match(page, /params: Promise<\{ locale: string; id: string \}>/)
+  assert.match(page, /searchParams: Promise</)
+})
+
+test("a missing or inactive round is notFound(); a cancelled round shows the header and cancelledNotice only", () => {
+  const page = read(PAGE)
+  assert.match(page, /if \(!round \|\| !round\.isActive\) notFound\(\)/)
+  const cancelled = page.slice(page.indexOf('if (round.status === "cancelled")'))
+  assert.ok(page.includes('if (round.status === "cancelled")'))
+  const branch = cancelled.slice(0, cancelled.indexOf("const rows"))
+  assert.match(branch, /t\("cancelledNotice"\)/)
+  assert.doesNotMatch(branch, /InspectionConfirmWorkspace/)
+})
+
+test("the header: the trail ตรวจนับ › รอบตรวจนับ › auditNo › ยืนยันผลตรวจ, eyebrow, title, lead and the back link", () => {
+  const page = read(PAGE)
+  assert.match(page, /\{ label: t\("crumbAudit"\)/)
+  assert.match(page, /\{ label: t\("crumbRounds"\), href: `\/\$\{locale\}\/audit\/rounds` \}/)
+  assert.match(page, /\{ label: round\.auditNo, href: links\.round, code: true \}/)
+  assert.match(page, /\{ label: t\("title"\) \}/)
+  assert.match(page, /t\("eyebrow", \{ auditNo: round\.auditNo \}\)/)
+  assert.match(page, /t\("lead"\)/)
+  assert.match(page, /<PageBackLink href=\{links\.round\} label=\{t\("backToRound"\)\} \/>/)
+})
+
+test("the links: the round, its pending findings and the round page's pending list", () => {
+  const page = read(PAGE)
+  assert.match(page, /round: `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}`/)
+  assert.match(page, /pendingFindings: `\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{round\.id\}`/)
+  assert.match(page, /pendingItems: appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/pending`, roundHref\)/)
+  assert.match(page, /prisma\.assetStatus\.findMany\(/)
+})
+
+test("the workspace: no rows at all is ActionEmptyState back to the round, without tabs", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /^"use client"/)
+  const empty = workspace.slice(workspace.indexOf("if (total === 0)"), workspace.indexOf("<TabNav"))
+  assert.match(empty, /<ActionEmptyState/)
+  assert.match(empty, /title=\{t\("emptyTitle"\)\}/)
+  assert.match(empty, /description=\{t\("emptyBody"\)\}/)
+  assert.match(empty, /actionHref=\{links\.round\}/)
+  assert.match(empty, /actionLabel=\{t\("backToRound"\)\}/)
+  assert.match(workspace, /t\("emptyTabTitle"\)/)
+})
+
+test("the tabs: five, each with its count, linking with ?tab=", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /inspectionConfirmTabs\.map\(/)
+  assert.match(workspace, /count: formatCount\(counts\[key\]\)/)
+  assert.match(workspace, /\?tab=\$\{key\}/)
+})
+
+test("the tick column only when canConfirm; noEditNotice otherwise", () => {
+  const workspace = read(WORKSPACE)
+  const row = read(ROW)
+  assert.match(workspace, /\{!canConfirm \? <Notice tone="info"[^>]*>\{t\("noEditNotice"\)\}<\/Notice> : null\}/)
+  assert.match(workspace, /\{canConfirm \? <DataTableHead/)
+  assert.match(row, /\{canConfirm \? <DataTableCell/)
+})
+
+test("tab banners: awaiting review links to pending findings, not scanned to the pending list, damaged and not found carry laterTabNote", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /t\("awaitingReviewBanner"\)/)
+  assert.match(workspace, /href=\{links\.pendingFindings\}/)
+  assert.match(workspace, /t\("notScannedBanner"\)/)
+  assert.match(workspace, /href=\{links\.pendingItems\}/)
+  assert.match(workspace, /tab === "damaged" \|\| tab === "notFound"/)
+  assert.match(workspace, /t\("laterTabNote"\)/)
+})
+
+test("the row: tag links to the asset, result badge from auditRoundResultBadge, holder or noHolder, target badge or handoverUnclear, finding link", () => {
+  const row = read(ROW)
+  assert.match(row, /`\/\$\{locale\}\/assets\/\$\{row\.assetId\}`/)
+  assert.match(row, /auditRoundResultBadge\(row\.auditStatus, row\.auditResult\)/)
+  assert.match(row, /tRound\(badge\.labelKey\)/)
+  assert.match(row, /t\("noHolder"\)/)
+  // A not-found row becomes Missing (plan 2's data computes targetStatusName for "confirm" only).
+  assert.match(row, /return row\.tab === "notFound" \? "Missing" : row\.targetStatusName/)
+  assert.match(row, /statusLabels\[target\]/)
+  assert.match(row, /className="text-warning[^"]*">\{t\("handoverUnclear"\)\}/)
+  assert.match(row, /\/audit\/findings\?finding=\$\{row\.firstPendingFindingId\}/)
+  assert.match(row, /t\("openFinding"\)/)
+})
+
+test("phone cards below md, the table from md (the house classes)", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /getMobileCardListClasses\(\)/)
+  assert.match(workspace, /getDesktopTableOnlyClasses\(\)/)
+  assert.match(workspace, /<InspectionRowCard /)
+  assert.match(workspace, /<InspectionTableRow /)
+})
