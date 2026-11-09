@@ -7426,6 +7426,31 @@
     "roundText": "รอยืนยันผลตรวจในรอบ {auditNo}"
   },
   "consumablesPage": {
-    "pickerBlocked": "เครื่องนี้อยู่ในสถานะที่เบิกของให้ไม่ได้"
+    "pickerBlocked": "เครื่องนี้อยู่ในสถานะที่เบิกของให้ไม่ได้",
+    "title": "ของใช้สิ้นเปลือง",
+    "cabinet": "ตู้สำรอง ห้อง IT",
+    "receive": "รับเข้า",
+    "issue": "เบิกไปใช้",
+    "issueShort": "เบิก",
+    "lowBanner": "ต้องซื้อเพิ่ม {count, number} ชนิด: {list}",
+    "lowItem": "{name} (เหลือ {onHand, number})",
+    "col_name": "ชนิด",
+    "col_onHand": "คงเหลือ",
+    "col_min": "ขั้นต่ำ",
+    "col_state": "สถานะ",
+    "col_used90": "ใช้ไป 90 วัน",
+    "state_ok": "พอใช้",
+    "state_low": "ต้องซื้อเพิ่ม",
+    "state_out": "หมด",
+    "outReason": "ของหมด",
+    "menu_receive": "รับเข้า",
+    "menu_adjust": "ปรับยอดตามที่นับได้",
+    "menu_history": "ดูประวัติ",
+    "menu_edit": "แก้ชื่อหรือขั้นต่ำ",
+    "menu_deactivate": "ปิดใช้งาน",
+    "addKind": "+ เพิ่มชนิดของ",
+    "emptyTitle": "ยังไม่มีชนิดของในตู้",
+    "emptyBody": "เพิ่มชนิดของ เช่น เมาส์ คีย์บอร์ด อะแดปเตอร์ แล้วรับเข้าเพื่อเริ่มนับ",
+    "emptyAction": "เพิ่มชนิดของ"
   }
 }

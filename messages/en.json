@@ -7426,6 +7426,31 @@
     "roundText": "Awaiting confirmation in round {auditNo}"
   },
   "consumablesPage": {
-    "pickerBlocked": "This asset cannot take consumables"
+    "pickerBlocked": "This asset cannot take consumables",
+    "title": "Consumables",
+    "cabinet": "IT room spare cabinet",
+    "receive": "Receive",
+    "issue": "Issue",
+    "issueShort": "Issue",
+    "lowBanner": "Restock {count, plural, one {# kind} other {# kinds}}: {list}",
+    "lowItem": "{name} ({onHand, number} left)",
+    "col_name": "Kind",
+    "col_onHand": "On hand",
+    "col_min": "Minimum",
+    "col_state": "Status",
+    "col_used90": "Used in 90 days",
+    "state_ok": "Enough",
+    "state_low": "Restock",
+    "state_out": "Out",
+    "outReason": "Out of stock",
+    "menu_receive": "Receive",
+    "menu_adjust": "Adjust to the count",
+    "menu_history": "View history",
+    "menu_edit": "Edit name or minimum",
+    "menu_deactivate": "Deactivate",
+    "addKind": "+ Add a kind",
+    "emptyTitle": "No kinds in the cabinet yet",
+    "emptyBody": "Add a kind, such as mouse, keyboard or adapter, then receive stock to start counting",
+    "emptyAction": "Add a kind"
   }
 }

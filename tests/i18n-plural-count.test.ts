@@ -125,9 +125,11 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // The plan 4 final review added 2: the batch form's "n ชิ้นยังขอไม่ได้: …" in the round notice and its machines'
   // error "เครื่องที่หาไม่พบ n เครื่อง ขอได้เฉพาะวิธีสูญหาย" (both keyed on count).
   // Inspection-confirm plan 5 Task 3 added 1: the findings page's hand-off "… ยืนยันผลตรวจ n ชิ้น" (count).
-  assert.equal(pluralKeys.size, 239,[...pluralKeys.keys()].join(", "))
+  // ของใช้สิ้นเปลือง plan 2 Task 2 added 1: the list page's low banner "ต้องซื้อเพิ่ม n ชนิด: …" (count).
+  assert.equal(pluralKeys.size, 240,[...pluralKeys.keys()].join(", "))
   for (const key of ["selectedCount", "dialogTitle", "submit", "successNotice", "missingDialogTitle", "missingSubmit", "missingSuccess", "lostBlock"]) assert.equal(pluralKeys.get(`inspectionConfirmPage.${key}`), "count", key)
   assert.equal(pluralKeys.get("inspectionConfirmPage.disposalLine"), "requests")
+  assert.equal(pluralKeys.get("consumablesPage.lowBanner"), "count")
   assert.equal(pluralKeys.get("auditFinding.handoffConfirm"), "count")
   assert.equal(pluralKeys.get("disposalPage.batchForm.fromRoundNotice"), "count")
   for (const key of ["fromRoundBlocked", "lostOnlyAssets"]) assert.equal(pluralKeys.get(`disposalPage.batchForm.${key}`), "count", key)
