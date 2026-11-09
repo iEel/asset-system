@@ -215,3 +215,8 @@ test("a ready row with no target has a disabled tick described by its handoverUn
   assert.match(workspace, /t\("successNotice", \{ count: /)
   assert.match(workspace, /t\("changedNotice"\)/)
 })
+
+test("a row waiting on a decision or a check shows no target status yet (inspection-confirm plan 3 look step)", () => {
+  const row = readFileSync("src/components/audit/inspection-confirm/inspection-row.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(row, /row\.tab === "awaitingReview" \|\| row\.tab === "notScanned" \? \(\n\s*<Nil \/>/)
+})

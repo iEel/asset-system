@@ -53,7 +53,10 @@ function useRowParts({ locale, roundId, row, statusLabels, unclearId }: Pick<Ins
     </div>
   )
   const holder = row.custodianName ?? <span className="text-muted-foreground">{t("noHolder")}</span>
-  const targetCell = target ? (
+  // A row still waiting on a decision or a check has no target yet: the decision decides it (look step, plan 3).
+  const targetCell = row.tab === "awaitingReview" || row.tab === "notScanned" ? (
+    <Nil />
+  ) : target ? (
     <StatusBadge label={statusLabels[target]} tone={getAssetStateTone(target)} />
   ) : (
     <span id={unclearId} className="text-warning text-pretty">{t("handoverUnclear")}</span>
