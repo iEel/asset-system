@@ -29,6 +29,7 @@ import {
   recordPrefix,
   sendBatch,
   sendBatchButton,
+  toast,
   visibleButton,
   writeRoundSelection,
   type DisposalAsset,
@@ -118,11 +119,15 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
       await measure.visit(`${inboxQueue}&item=${encodeURIComponent(`disposal:${requestId}`)}`, "IT head: a batch request in the approvals panel")
       const panel = page.locator(`[data-approval-disposal-panel="${requestId}"]`)
       await panel.locator("#approval-disposal-remark").fill(`${prefix} อนุมัติทั้งชุด`)
+      // The toast and the move to the next item race: on a slow server the toast can be gone before the URL changes,
+      // so both are awaited together (inspection-confirm plan 4, E2E-1109R/S).
       await measure.timed("IT head: approve one in the panel", async () => {
         await panel.getByRole("button", { name: "อนุมัติ", exact: true }).click()
-        await page.waitForURL((url) => url.searchParams.get("item") !== `disposal:${requestId}`)
+        await Promise.all([
+          expect(toast(page, /^อนุมัติคำขอ DP-\d{8}-\d{4} แล้ว$/)).toBeVisible(),
+          page.waitForURL((url) => url.searchParams.get("item") !== `disposal:${requestId}`),
+        ])
       })
-      await expectToast(page, /^อนุมัติคำขอ DP-\d{8}-\d{4} แล้ว$/)
     }
   } else {
     // The approvals page: the batch's two are tickable, their own request's tick is disabled with the reason.
