@@ -7168,7 +7168,7 @@
     "ldapSyncPreviewRequired": "Preview before syncing",
     "ldapSyncResultChanged": "The sync result changed from the preview. Preview again.",
     "inspectionConfirmChanged": "Some assets changed. Reload and try again.",
-    "inspectionConfirmDamagedOneAsset": "Mark one asset as damaged at a time."
+    "inspectionConfirmDamagedOneAsset": "Confirm one damaged asset at a time."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

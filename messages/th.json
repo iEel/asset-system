@@ -7168,7 +7168,7 @@
     "ldapSyncPreviewRequired": "ดูตัวอย่างก่อนซิงก์",
     "ldapSyncResultChanged": "ผลซิงก์เปลี่ยนไปจากตัวอย่าง กรุณาดูตัวอย่างอีกครั้ง",
     "inspectionConfirmChanged": "บางชิ้นเปลี่ยนไปแล้ว โหลดใหม่และลองอีกครั้ง",
-    "inspectionConfirmDamagedOneAsset": "บันทึกว่าเสียหายได้ครั้งละ 1 รายการ"
+    "inspectionConfirmDamagedOneAsset": "ยืนยันชิ้นที่เสียหายได้ครั้งละ 1 ชิ้น"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

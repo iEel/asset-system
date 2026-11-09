@@ -93,7 +93,7 @@ export type AssetMovementDocumentKind = "checkout" | "checkin" | "transfer" | "r
 
 export type AssetMovementDocument = { kind: AssetMovementDocumentKind; id: string; code: string }
 
-export type AssetMovementReferenceLookup = "checkout" | "checkin" | "transfer" | "repair" | "disposal" | "auditFinding" | "auditItem"
+export type AssetMovementReferenceLookup = "checkout" | "checkin" | "transfer" | "repair" | "disposal" | "auditFinding" | "auditItem" | "auditRound"
 
 export type AssetMovementReference = { referenceType: string | null; referenceId: string | null }
 
@@ -105,6 +105,8 @@ const referenceLookups: Record<string, AssetMovementReferenceLookup> = {
   disposal: "disposal",
   audit_finding: "auditFinding",
   audit_scan: "auditItem",
+  // ยืนยันผลตรวจ (inspection-confirm plan 2): the referenceId is the round itself.
+  audit_round: "auditRound",
 }
 
 /** Which record a movement's referenceId points at; null when the reference is not a document with its own page. */

@@ -147,6 +147,13 @@ test("a movement's document: the reference type picks the record, which links to
   assert.equal(assetMovementReferenceLookup("disposal"), "disposal")
   assert.equal(assetMovementReferenceLookup("audit_finding"), "auditFinding")
   assert.equal(assetMovementReferenceLookup("audit_scan"), "auditItem")
+  // ยืนยันผลตรวจ: the movement names the round itself (inspection-confirm plan 2 task 3).
+  assert.equal(assetMovementReferenceLookup("audit_round"), "auditRound")
+  assert.match(
+    readFileSync("src/lib/asset-movement-documents.ts", "utf8"),
+    /put\("auditRound", row\.id, \{ kind: "auditRound", id: row\.id, code: row\.auditNo \}\)/,
+    "an audit_round reference links to its round, named by its auditNo",
+  )
   for (const none of ["asset", "asset_component", "asset_batch_create", "asset_import", "bulk_move", "bulk_update", "asset_state_review", "", null]) {
     assert.equal(assetMovementReferenceLookup(none), null, String(none))
   }

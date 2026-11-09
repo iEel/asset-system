@@ -30,7 +30,7 @@ export async function resolveAssetMovementDocuments(references: readonly AssetMo
   const auditRoundSelect = { id: true, auditRound: { select: { id: true, auditNo: true } } } as const
 
   // Only the kinds present are read, all at once.
-  const [checkouts, checkins, transfers, repairs, disposals, findings, items] = await Promise.all([
+  const [checkouts, checkins, transfers, repairs, disposals, findings, items, rounds] = await Promise.all([
     has("checkout")
       ? prisma.assetCheckout.findMany({ where: { id: { in: idsOf("checkout") } }, select: { id: true, documentNo: true } })
       : [],
@@ -52,6 +52,9 @@ export async function resolveAssetMovementDocuments(references: readonly AssetMo
     has("auditItem")
       ? prisma.auditItem.findMany({ where: { id: { in: idsOf("auditItem") } }, select: auditRoundSelect })
       : [],
+    has("auditRound")
+      ? prisma.auditRound.findMany({ where: { id: { in: idsOf("auditRound") } }, select: { id: true, auditNo: true } })
+      : [],
   ])
 
   const put = (lookup: AssetMovementReferenceLookup, id: string, document: AssetMovementDocument | null) => {
@@ -66,9 +69,10 @@ export async function resolveAssetMovementDocuments(references: readonly AssetMo
   for (const row of transfers) put("transfer", row.id, { kind: "transfer", id: row.id, code: row.documentNo })
   for (const row of repairs) put("repair", row.id, { kind: "repair", id: row.id, code: row.repairNo })
   for (const row of disposals) put("disposal", row.id, { kind: "disposal", id: row.id, code: row.disposalNo })
-  // A finding or an audit item belongs to its round.
+  // A finding or an audit item belongs to its round; a confirmed audit result (audit_round) names the round itself.
   for (const row of findings) put("auditFinding", row.id, { kind: "auditRound", id: row.auditRound.id, code: row.auditRound.auditNo })
   for (const row of items) put("auditItem", row.id, { kind: "auditRound", id: row.auditRound.id, code: row.auditRound.auditNo })
+  for (const row of rounds) put("auditRound", row.id, { kind: "auditRound", id: row.id, code: row.auditNo })
 
   return documentOf
 }

@@ -99,6 +99,11 @@ test("the service writes in one serializable transaction, re-reads the rows and 
   assert.match(source, /prisma\.\$transaction\(/)
   assert.match(source, /isolationLevel: "Serializable"/)
   assert.match(source, /loadRoundInspectionRows\(tx,/)
+  // The round is read again inside the transaction, before the rows: a round cancelled meanwhile confirms nothing.
+  assert.match(
+    source,
+    /prisma\.\$transaction\(async \(tx\) => \{[\s\S]*?tx\.auditRound\.findFirst\([\s\S]*?\.status === "cancelled"\) throw new Error\("Audit round is cancelled"\)[\s\S]*?loadRoundInspectionRows\(tx,/,
+  )
   assert.match(source, /movementType: "status_correction"/)
   assert.match(source, /referenceType: "audit_round"/)
   assert.match(source, /action: "correct_status"/)

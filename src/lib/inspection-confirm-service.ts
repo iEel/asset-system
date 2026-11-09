@@ -90,6 +90,11 @@ export async function confirmInspectionResults(
   const statusIdByName = new Map(statuses.map((status) => [status.name, status.id]))
 
   const confirmed = await prisma.$transaction(async (tx) => {
+    // A round cancelled since the route read it confirms nothing.
+    const current = await tx.auditRound.findFirst({ where: { id: round.id, isActive: true }, select: { status: true } })
+    if (!current) throw new Error("Audit round not found")
+    if (current.status === "cancelled") throw new Error("Audit round is cancelled")
+
     const rows = await loadRoundInspectionRows(tx, round.id, assetIds)
     const blocked = findInspectionConfirmRefusals(rows, assetIds, outcome)
     if (blocked.length > 0) {
@@ -111,8 +116,8 @@ export async function confirmInspectionResults(
     }
 
     const rowsById = new Map(rows.map((row) => [row.assetId, row]))
-    const current = await tx.asset.findMany({ where: { id: { in: [...assetIds] } }, select: { id: true, statusId: true } })
-    const fromStatusById = new Map(current.map((asset) => [asset.id, asset.statusId]))
+    const currentAssets = await tx.asset.findMany({ where: { id: { in: [...assetIds] } }, select: { id: true, statusId: true } })
+    const fromStatusById = new Map(currentAssets.map((asset) => [asset.id, asset.statusId]))
 
     const writes: ConfirmedAsset[] = assetIds.map((assetId) => {
       const row = rowsById.get(assetId) as InspectionRow
