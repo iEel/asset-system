@@ -121,10 +121,12 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Inspection-confirm plan 4 Task 3 added 5: the not-found dialog's title, its submit and success line, the lost-disposal
   // block (all keyed on count) and the disposal line "ขอตัดจำหน่ายจากรอบนี้: n รายการ · อนุมัติแล้ว n" (keyed on requests).
   // Inspection-confirm plan 4 Task 4 added 1: the batch form's "เลือกทรัพย์สินที่ตั้งเป็นหาไม่พบจากรอบ … ไว้ให้ n ชิ้น" (count).
-  assert.equal(pluralKeys.size, 235,[...pluralKeys.keys()].join(", "))
+  // Inspection-confirm plan 4 Task 4b added 1: the closed round's "ขอตัดจำหน่ายจากรอบนี้ได้ n ชิ้น" (count).
+  assert.equal(pluralKeys.size, 236,[...pluralKeys.keys()].join(", "))
   for (const key of ["selectedCount", "dialogTitle", "submit", "successNotice", "missingDialogTitle", "missingSubmit", "missingSuccess", "lostBlock"]) assert.equal(pluralKeys.get(`inspectionConfirmPage.${key}`), "count", key)
   assert.equal(pluralKeys.get("inspectionConfirmPage.disposalLine"), "requests")
   assert.equal(pluralKeys.get("disposalPage.batchForm.fromRoundNotice"), "count")
+  assert.equal(pluralKeys.get("auditRound.closedDisposalLine"), "count")
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

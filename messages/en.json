@@ -3355,7 +3355,8 @@
     "nextStepViewConfirm": "View assets awaiting confirmation ({count})",
     "stepConfirmWaiting": "{count} awaiting confirmation",
     "stepConfirmDone": "All confirmed",
-    "listNextStepConfirm": "Confirm results ({count})"
+    "listNextStepConfirm": "Confirm results ({count})",
+    "closedDisposalLine": "{count, plural, one {# asset from this round can go to disposal} other {# assets from this round can go to disposal}}"
   },
   "auditScan": {
     "title": "Audit Scan",
@@ -7366,6 +7367,11 @@
     "lostBlock": "Set as not found from this round: {count, plural, one {# asset} other {# assets}}",
     "lostLink": "Request disposal as lost…",
     "disposalLine": "Disposal requests from this round: {requests, plural, one {# request} other {# requests}} · {approved, number} approved",
-    "disposalRoundLink": "Create a disposal round"
+    "disposalRoundLink": "Create a disposal round",
+    "damagedConfirmOnly": "Confirm only",
+    "lostAfterClose": "Request disposal as lost after the round is closed",
+    "afterCloseTitle": "Disposal after the round",
+    "damagedForDisposalTitle": "Damaged assets confirmed in this round",
+    "damagedDisposeLink": "Request disposal"
   }
 }

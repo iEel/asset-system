@@ -91,7 +91,7 @@ test("the next-step card: three Steps, each step's line under them, the main but
   assert.doesNotMatch(card, /truncate|whitespace-nowrap|w-30/, "nothing in the card is cut")
   assert.match(page, /\{ key: "opener", ok: !data\.steps\.close\.openedByViewer, label: data\.steps\.close\.openedByViewer \? t\("closeOwnRoundNotice"\) : t\("closeSeparateApprover"\) \}/)
   // A closed round: one met line, "รอบนี้ปิดแล้ว", and no opener's row or warning (P2-R8, final review M1).
-  assert.match(page, /const closeConditions: Array<\{ key: string; ok: boolean; label: string; href\?: string \}> = round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}, \.\.\.\(checklist\.unconfirmedAssets > 0 \? \[unconfirmedCondition\] : \[\]\)\] : \[\n\s+\{ key: "pendingItems"/)
+  assert.match(page, /const closeConditions: Array<\{ key: string; ok: boolean; label: string; href\?: string \}> = round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}, \.\.\.\(checklist\.unconfirmedAssets > 0 \? \[unconfirmedCondition\] : \[\]\), \.\.\.\(disposableCount > 0 \? \[[^\n]*\] : \[\]\)\] : \[\n\s+\{ key: "pendingItems"/)
   const close = read("src/components/audit/audit-round-close-button.tsx")
   assert.match(close, /export function AuditRoundCloseButton\(\{ roundId, disabled \}: \{ roundId: string; disabled: boolean \}\)/)
   assert.match(close, /return \(\s*<Button onClick=\{closeRound\} busy=\{saving\} disabled=\{disabled\}>\s*<Lock aria-hidden="true" \/>\s*\{t\("closeRound"\)\}\s*<\/Button>\s*\)/)
@@ -112,7 +112,7 @@ test("ยืนยันผลตรวจ: the fourth step, its main link to th
   const open = between(page, '{ key: "openActions"', '{ key: "opener"')
   assert.match(open, /\n\s+unconfirmedCondition,\n\s+$/)
   // Closed round: its one closed line, then the unconfirmed line only while assets still wait.
-  assert.match(page, /round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}, \.\.\.\(checklist\.unconfirmedAssets > 0 \? \[unconfirmedCondition\] : \[\]\)\] : \[/)
+  assert.match(page, /round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}, \.\.\.\(checklist\.unconfirmedAssets > 0 \? \[unconfirmedCondition\] : \[\]\), \.\.\.\(disposableCount > 0 \? \[[^\n]*\] : \[\]\)\] : \[/)
   const th = JSON.parse(read("messages/th.json")).auditRound
   const en = JSON.parse(read("messages/en.json")).auditRound
   assert.deepEqual([th.stepWalk, th.stepReview, th.stepConfirm, th.stepClose], ["เดินตรวจ", "หัวหน้า IT พิจารณา", "ยืนยันผลตรวจ", "ปิดรอบ"])
@@ -241,4 +241,17 @@ test("each of the four steps has its detail column under the rail, ยืนย�
   assert.notEqual(th.stepConfirmDone, th.closeNoUnconfirmed)
   const words = read("e2e/audit/round-page-words.ts")
   assert.match(words, new RegExp(`noUnconfirmed: "${th.closeNoUnconfirmed}"`))
+})
+
+// Inspection-confirm plan 4 task 4b: a closed round says how many of its assets can now go to disposal, linking to the
+// confirm page with the round's way back.
+test("a closed round's close card: ขอตัดจำหน่ายจากรอบนี้ได้ n ชิ้น, linking to the confirm page (inspection-confirm plan 4 task 4b)", () => {
+  const page = read(PAGE)
+  assert.match(page, /const canDispose = hasPermission\(user, "disposal", "create"\)/)
+  assert.match(page, /const disposableCount = canDispose \? data\.closedDisposalCount : 0/)
+  assert.match(page, /\.\.\.\(disposableCount > 0 \? \[\{ key: "disposal", ok: false, label: t\("closedDisposalLine", \{ count: disposableCount \}\), href: confirmHref \}\] : \[\]\)/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).auditRound
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).auditRound
+  assert.equal(th.closedDisposalLine, "ขอตัดจำหน่ายจากรอบนี้ได้ {count, number} ชิ้น")
+  assert.match(en.closedDisposalLine, /\{count, plural, /)
 })

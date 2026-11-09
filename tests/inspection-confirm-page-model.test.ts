@@ -7,6 +7,8 @@ import {
   damagedDisposalHref,
   damagedRepairHref,
   inspectionBlockedMessageKeys,
+  inspectionDamagedButtons,
+  roundAllowsDisposal,
   inspectionSelectionSummary,
   isInspectionRowSelectable,
   lostDisposalHref,
@@ -171,4 +173,21 @@ test("the damaged row's forms: the repair form and the disposal form from this r
   assert.equal(damagedRepairHref("th", "a1", back), `/th/maintenance/new?assetId=a1&returnTo=${encoded}`)
   assert.equal(damagedDisposalHref("th", "r1", "a1", back), `/th/disposal/new?assetId=a1&sourceType=audit_round&sourceId=r1&returnTo=${encoded}`)
   assert.doesNotMatch(damagedDisposalHref("th", "r1", "a1", back), /type=/)
+})
+
+// Plan 4 task 4b (user decision 2026-11-09 option A): disposal from a round waits for its close; disposal-readiness.ts
+// refuses an asset with an item in an open round.
+test("roundAllowsDisposal: only a closed round", () => {
+  assert.equal(roundAllowsDisposal("closed"), true)
+  for (const status of ["planned", "in_progress", "open", "cancelled", ""]) assert.equal(roundAllowsDisposal(status), false, status)
+})
+
+test("inspectionDamagedButtons: open round is repair + confirm only; closed round is repair + dispose; permissions hide theirs", () => {
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: false, canRepair: true, canDispose: true }), ["repair", "confirmOnly"])
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: false, canRepair: false, canDispose: true }), ["confirmOnly"])
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: true, canRepair: true, canDispose: true }), ["repair", "dispose"])
+  // Closed without disposal:create: confirm only stays, so the row can still be confirmed (plan 2 ruling).
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: true, canRepair: true, canDispose: false }), ["repair", "confirmOnly"])
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: true, canRepair: false, canDispose: false }), ["confirmOnly"])
+  assert.ok(!inspectionDamagedButtons({ roundClosed: false, canRepair: true, canDispose: true }).includes("dispose"))
 })

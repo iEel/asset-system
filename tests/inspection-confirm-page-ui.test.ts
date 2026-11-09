@@ -242,10 +242,12 @@ test("the damaged buttons open the dialog with outcome damaged for one asset; ro
   assert.match(workspace, /openDamaged\(event, row, damagedRepairHref\(/)
   assert.match(workspace, /openDamaged\(event, row, damagedDisposalHref\(/)
   assert.match(workspace, /outcome: "damaged", assetIds: \[row\.assetId\]/)
-  // The repair button needs maintenance:create, the disposal button disposal:create, both canConfirm.
-  assert.match(workspace, /const damagedActions = canConfirm && tab === "damaged" && \(canRepair \|\| canDispose\)/)
-  assert.match(workspace, /\{canRepair \? \(/)
-  assert.match(workspace, /\{canDispose \? \(/)
+  // The buttons come from inspectionDamagedButtons (task 4b): repair needs maintenance:create, dispose disposal:create and
+  // a closed round, confirm only needs nothing more; all need canConfirm.
+  assert.match(workspace, /const damagedActions = canConfirm && tab === "damaged"$/m)
+  assert.match(workspace, /const damagedButtons = inspectionDamagedButtons\(\{ roundClosed, canRepair, canDispose \}\)/)
+  assert.match(workspace, /\{damagedButtons\.includes\("repair"\) \? \(/)
+  assert.match(workspace, /\{damagedButtons\.includes\("dispose"\) \? \(/)
   // router.push appears once, inside handleConfirmed (the dialog's 200 branch).
   assert.equal(workspace.match(/router\.push\(/g)?.length, 1)
   const confirmed = workspace.slice(workspace.indexOf("function handleConfirmed("), workspace.indexOf("function handleChanged("))
@@ -264,7 +266,7 @@ test("a damaged row with no target shows its buttons disabled, described by its 
   assert.match(workspace, /function damagedActionsFor\(row: InspectionPageRow, view: "card" \| "table"\)/)
   assert.match(workspace, /const unclear = row\.targetStatusName === null/)
   assert.match(workspace, /const describedBy = unclear \? unclearIdFor\(view, row\.assetId\) : undefined/)
-  assert.equal(workspace.match(/disabled=\{unclear\} aria-describedby=\{describedBy\}/g)?.length, 2)
+  assert.equal(workspace.match(/disabled=\{unclear\} aria-describedby=\{describedBy\}/g)?.length, 3)
   assert.match(workspace, /actions=\{damagedActionsFor\(row, "card"\)\}/)
   assert.match(workspace, /actions=\{damagedActionsFor\(row, "table"\)\}/)
   // The row renders the handoverUnclear text with that id when it has no target.
@@ -285,15 +287,55 @@ test("the not-found bar opens the dialog with outcome missing; the dialog's defa
   assert.match(workspace, /t\("missingSuccess", \{ count: /)
 })
 
-test("the lost-disposal block shows under the not-found tab, also when empty, with disposal:create", () => {
+test("the lost-disposal block: a link once the round is closed, the after-close note while it is open (task 4b)", () => {
   const workspace = read(WORKSPACE)
-  assert.match(workspace, /const lostHref = canDispose \? lostDisposalHref\(locale, roundId, missingForDisposal, tabHref\("notFound"\)\) : null/)
-  assert.match(workspace, /tab === "notFound" && lostHref \?/)
+  assert.match(workspace, /const lostHref = canDispose && roundClosed \? lostDisposalHref\(locale, roundId, missingForDisposal, tabHref\("notFound"\)\) : null/)
   assert.match(workspace, /t\("lostBlock", \{ count: missingForDisposal\.length \}\)/)
   assert.match(workspace, /t\("lostLink"\)/)
-  // Shown when the whole confirm list is empty too (the not-found assets have left Under Inspection).
+  // Open round: the count and the note, no link (disposal-readiness refuses an asset of an open round).
+  const open = workspace.slice(workspace.indexOf("const lostOpenNote"), workspace.indexOf("const afterCloseSection"))
+  assert.match(open, /canDispose && !roundClosed && missingForDisposal\.length > 0/)
+  assert.match(open, /t\("lostAfterClose"\)/)
+  assert.doesNotMatch(open, /<Link/)
+  // The note under the not-found tab; the closed round's link sits in the after-close section above the tabs.
+  assert.match(workspace, /tab === "notFound" && lostOpenNote \?/)
+  // The empty page keeps both: the open note or the after-close section.
   const empty = workspace.slice(workspace.indexOf("if (total === 0)"), workspace.indexOf("const tabItems"))
-  assert.match(empty, /\{lostBlock\}/)
+  assert.match(empty, /\{afterCloseSection\}/)
+  assert.match(empty, /\{lostOpenNote\}/)
+})
+
+test("the damaged tab while the round is open: บันทึกซ่อม and ยืนยันผลอย่างเดียว, which confirms without going on (task 4b)", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /roundStatus: string/)
+  assert.match(workspace, /const roundClosed = roundAllowsDisposal\(roundStatus\)/)
+  assert.match(workspace, /\{damagedButtons\.includes\("confirmOnly"\) \? \(/)
+  assert.match(workspace, /openDamaged\(event, row, null\)/)
+  assert.match(workspace, /t\("damagedConfirmOnly"\)/)
+  // A null next settles on the tab with the success notice, as the ready tab does.
+  assert.match(workspace, /function openDamaged\(event: React\.MouseEvent<HTMLElement>, row: InspectionPageRow, next: string \| null\)/)
+  const confirmed = workspace.slice(workspace.indexOf("function handleConfirmed("), workspace.indexOf("function handleChanged("))
+  assert.match(confirmed, /if \(next\) \{/)
+  assert.match(confirmed, /void settle\(\{ kind: "success", confirmed/)
+  const page = read(PAGE)
+  assert.match(page, /roundStatus=\{round\.status\}/)
+})
+
+test("the after-close section: above the tabs, also with no rows left, with disposal:create, hidden when empty (task 4b)", () => {
+  const workspace = read(WORKSPACE)
+  const section = workspace.slice(workspace.indexOf("const afterCloseSection"), workspace.indexOf("// Nothing of this round is still under inspection"))
+  assert.match(section, /canDispose && roundClosed && \(lostHref !== null \|\| damagedForDisposal\.length > 0\)/)
+  assert.match(section, /t\("afterCloseTitle"\)/)
+  assert.match(section, /t\("damagedForDisposalTitle"\)/)
+  assert.match(section, /\{lostBlock\}/)
+  assert.match(section, /damagedForDisposal\.map\(/)
+  assert.match(section, /href=\{damagedDisposalHref\(locale, roundId, asset\.assetId, tabHref\("damaged"\)\)\}/)
+  assert.match(section, /t\("damagedDisposeLink"\)/)
+  // Above the tabs on the tabbed page.
+  const main = workspace.slice(workspace.indexOf("const tabItems"))
+  assert.ok(main.indexOf("{afterCloseSection}") !== -1 && main.indexOf("{afterCloseSection}") < main.indexOf("<TabNav"))
+  const page = read(PAGE)
+  assert.match(page, /damagedForDisposal=\{disposal\.damagedForDisposal\}/)
 })
 
 test("the disposal line under the header: requests and approved, the round link when approved > 0", () => {

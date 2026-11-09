@@ -2,6 +2,7 @@
 // checklist counts them, the confirm page lists them and the confirm API re-reads them inside its transaction, all
 // through the one where below. The db is passed in, so a transaction client works and node --test can import it.
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { getCheckoutConditionBlock } from "./asset-lifecycle-policy.ts"
 import { AUDIT_ID_CHUNK_SIZE, chunkAuditIds } from "./audit-round-counts-rules.ts"
 import { loadAuditRoundDisposalFindingIds } from "./disposal-query.ts"
 import {
@@ -12,6 +13,7 @@ import {
   type InspectionHandoverCounts,
   type InspectionTargetStatusName,
 } from "./inspection-confirm-rules.ts"
+import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 export type InspectionRow = {
   auditItemId: string
@@ -156,9 +158,42 @@ export async function countRoundUnconfirmedAssets(db: InspectionDb, auditRoundId
 export type RoundDisposalSummary = {
   /** The round's not-found assets now หาไม่พบ with no open request (pending or approved), by tag. */
   missingForDisposal: Array<{ assetId: string; assetTag: string }>
+  /**
+   * The round's assets confirmed damaged (plan 4 task 4b): a condition the checkout refuses, Ready or In Use, no open
+   * request and no open repair record, by tag. The confirm page offers them for disposal once the round is closed.
+   */
+  damagedForDisposal: Array<{ assetId: string; assetTag: string; assetName: string }>
   /** Active requests made from this round: from its confirm page (audit_round) or one of its findings (audit_finding). */
   requests: number
   approved: number
+}
+
+/**
+ * Plan 4 task 4b: the round's items whose asset could go to disposal after a damaged confirm: active, Ready or In Use, no
+ * open disposal request and no open repair record (openRepairRecordWhere, as the disposal readiness counts it). The
+ * condition is checked on what this returns (toDamagedForDisposal), through getCheckoutConditionBlock.
+ */
+export function roundDamagedForDisposalItemWhere(auditRoundId: string): Prisma.AuditItemWhereInput {
+  return {
+    auditRoundId,
+    asset: {
+      isActive: true,
+      status: { name: { in: ["Ready", "In Use"] } },
+      disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
+      maintenanceTickets: { none: openRepairRecordWhere },
+    },
+  }
+}
+
+/** The condition-blocked ones (เสียหาย, ใช้งานไม่ได้, ซาก), by tag. */
+export function toDamagedForDisposal(
+  items: ReadonlyArray<{ assetId: string; asset: { assetTag: string; name: string; condition: { name: string } | null } }>,
+): RoundDisposalSummary["damagedForDisposal"] {
+  return items
+    .filter((item) => getCheckoutConditionBlock(item.asset.condition?.name) !== null)
+    .map((item) => ({ assetId: item.assetId, assetTag: item.asset.assetTag, assetName: item.asset.name }))
+    // `<` / `>`, as loadRoundInspectionRows sorts.
+    .sort((left, right) => (left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0))
 }
 
 // ยืนยันผลตรวจ plan 4 task 3: the confirm page's lost-disposal block and its disposal line. The requests are the disposal
@@ -182,6 +217,12 @@ export async function loadRoundDisposalSummary(db: InspectionDb, auditRoundId: s
     // `<` / `>`, as loadRoundInspectionRows sorts.
     .sort((left, right) => (left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0))
 
+  const damagedItems = await db.auditItem.findMany({
+    where: roundDamagedForDisposalItemWhere(auditRoundId),
+    select: { assetId: true, asset: { select: { assetTag: true, name: true, condition: { select: { name: true } } } } },
+  })
+  const damagedForDisposal = toDamagedForDisposal(damagedItems)
+
   const findingIds = await loadAuditRoundDisposalFindingIds(db, auditRoundId)
   const sourceWheres: Prisma.DisposalRequestWhereInput[] = [
     { sourceType: "audit_round", sourceId: auditRoundId },
@@ -197,5 +238,5 @@ export async function loadRoundDisposalSummary(db: InspectionDb, auditRoundId: s
     requests += all
     approved += done
   }
-  return { missingForDisposal, requests, approved }
+  return { missingForDisposal, damagedForDisposal, requests, approved }
 }

@@ -116,6 +116,7 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
         locale={locale}
         roundId={round.id}
         auditNo={round.auditNo}
+        roundStatus={round.status}
         tab={tab}
         counts={counts}
         rows={tabRows}
@@ -123,6 +124,7 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
         canRepair={canRepair}
         canDispose={canDispose}
         missingForDisposal={disposal.missingForDisposal}
+        damagedForDisposal={disposal.damagedForDisposal}
         statusLabels={statusLabels}
         links={links}
         returnTo={rawReturnTo ? roundHref : null}

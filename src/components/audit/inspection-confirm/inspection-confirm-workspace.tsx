@@ -21,9 +21,11 @@ import {
   damagedDisposalHref,
   damagedRepairHref,
   inspectionBlockedMessageKeys,
+  inspectionDamagedButtons,
   inspectionSelectionSummary,
   isInspectionRowSelectable,
   lostDisposalHref,
+  roundAllowsDisposal,
   selectAllInspectionRows,
   type InspectionPageRow,
 } from "@/lib/inspection-confirm-page-model"
@@ -43,6 +45,8 @@ export type InspectionConfirmWorkspaceProps = {
   locale: string
   roundId: string
   auditNo: string
+  /** The round's status: disposal is offered only once it is closed (plan 4 task 4b, disposal-readiness.ts). */
+  roundStatus: string
   tab: InspectionConfirmTab
   counts: Record<InspectionConfirmTab, number>
   /** The rows of the current tab only. */
@@ -50,10 +54,12 @@ export type InspectionConfirmWorkspaceProps = {
   canConfirm: boolean
   /** maintenance:create: the damaged row's "ยืนยันแล้วบันทึกซ่อม" (plan 4 task 3). */
   canRepair: boolean
-  /** disposal:create: the damaged row's "ยืนยันแล้วขอตัดจำหน่าย" and the not-found tab's lost-disposal block. */
+  /** disposal:create: the damaged row's "ยืนยันแล้วขอตัดจำหน่าย", the lost-disposal block and the after-close section. */
   canDispose: boolean
   /** The round's หาไม่พบ assets with no open disposal request (loadRoundDisposalSummary), by tag. */
   missingForDisposal: Array<{ assetId: string; assetTag: string }>
+  /** The round's confirmed damaged assets that could go to disposal (loadRoundDisposalSummary), by tag. */
+  damagedForDisposal: Array<{ assetId: string; assetTag: string; assetName: string }>
   statusLabels: Record<InspectionTargetStatusName, string>
   links: { round: string; pendingFindings: string; pendingItems: string }
   /** The round page's way back when the page was opened with one: the tab links and the refresh after a confirm keep it. */
@@ -95,6 +101,7 @@ export function InspectionConfirmWorkspace({
   locale,
   roundId,
   auditNo,
+  roundStatus,
   tab,
   counts,
   rows,
@@ -102,6 +109,7 @@ export function InspectionConfirmWorkspace({
   canRepair,
   canDispose,
   missingForDisposal,
+  damagedForDisposal,
   statusLabels,
   links,
   returnTo = null,
@@ -131,7 +139,10 @@ export function InspectionConfirmWorkspace({
   }, [setResult, roundId, tab])
 
   const ticking = canConfirm && (tab === "ready" || tab === "notFound")
-  const damagedActions = canConfirm && tab === "damaged" && (canRepair || canDispose)
+  // Plan 4 task 4b: disposal waits for the round's close; until then a damaged row confirms only, or goes on to repair.
+  const roundClosed = roundAllowsDisposal(roundStatus)
+  const damagedButtons = inspectionDamagedButtons({ roundClosed, canRepair, canDispose })
+  const damagedActions = canConfirm && tab === "damaged"
   const selectableRows = useMemo(() => (ticking ? rows.filter(isInspectionRowSelectable) : []), [ticking, rows])
   // A tab change resets the selection; after a refresh only rows still selectable count.
   const tabIds = selection.tab === tab ? selection.ids : EMPTY_IDS
@@ -205,8 +216,9 @@ export function InspectionConfirmWorkspace({
     setDialog((current) => ({ open: true, key: current.key + 1, outcome, assetIds: null, summary: null, next: null }))
   }
 
-  // A damaged row's button: that one asset (the route takes exactly one), then next once the route answers 200.
-  function openDamaged(event: React.MouseEvent<HTMLElement>, row: InspectionPageRow, next: string) {
+  // A damaged row's button: that one asset (the route takes exactly one), then next once the route answers 200; a null
+  // next (ยืนยันผลอย่างเดียว) settles on the tab with the success notice, as the ready tab does.
+  function openDamaged(event: React.MouseEvent<HTMLElement>, row: InspectionPageRow, next: string | null) {
     openerRef.current = event.currentTarget
     setResult(null)
     const summary: Partial<Record<InspectionTargetStatusName, number>> = row.targetStatusName ? { [row.targetStatusName]: 1 } : {}
@@ -277,13 +289,48 @@ export function InspectionConfirmWorkspace({
     </div>
   )
 
-  // The lost-disposal block (plan 4 task 3): the round's หาไม่พบ assets with no open request, with disposal:create. Under
-  // the not-found tab, empty or not, and on the empty page too, since once set they have left Under Inspection.
-  const lostHref = canDispose ? lostDisposalHref(locale, roundId, missingForDisposal, tabHref("notFound")) : null
+  // The lost-disposal block (plan 4 task 3): the round's หาไม่พบ assets with no open request, with disposal:create. Once
+  // set they have left Under Inspection, so it shows on the empty page too. Task 4b: the link only once the round is
+  // closed (in the after-close section); while it is open, the count and the note under the not-found tab, no link.
+  const lostHref = canDispose && roundClosed ? lostDisposalHref(locale, roundId, missingForDisposal, tabHref("notFound")) : null
   const lostBlock = lostHref ? (
     <Notice tone="neutral" action={<Link href={lostHref} className={bannerLinkClasses}>{t("lostLink")}</Link>}>
       {t("lostBlock", { count: missingForDisposal.length })}
     </Notice>
+  ) : null
+  const lostOpenNote = canDispose && !roundClosed && missingForDisposal.length > 0 ? (
+    <Notice tone="neutral">
+      <p>{t("lostBlock", { count: missingForDisposal.length })}</p>
+      <p className="text-muted-foreground">{t("lostAfterClose")}</p>
+    </Notice>
+  ) : null
+
+  // The after-close section (task 4b): on a closed round with disposal:create, above the tabs and on the empty page, the
+  // lost block and the damaged assets confirmed in this round, each with the single disposal form; hidden when both are
+  // empty.
+  const afterCloseSection = canDispose && roundClosed && (lostHref !== null || damagedForDisposal.length > 0) ? (
+    <ContentPanel title={t("afterCloseTitle")}>
+      <div className="space-y-4">
+        {lostBlock}
+        {damagedForDisposal.length > 0 ? (
+          <div className="min-w-0 space-y-2">
+            <h3 className="text-sm font-medium text-foreground">{t("damagedForDisposalTitle")}</h3>
+            <ul className="divide-y divide-border">
+              {damagedForDisposal.map((asset) => (
+                <li key={asset.assetId} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
+                  <span className="min-w-0">
+                    <span className="tag font-medium">{asset.assetTag}</span> <span className="text-foreground">{asset.assetName}</span>
+                  </span>
+                  <Link href={damagedDisposalHref(locale, roundId, asset.assetId, tabHref("damaged"))} className={bannerLinkClasses}>
+                    {t("damagedDisposeLink")}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </ContentPanel>
   ) : null
 
   // Nothing of this round is still under inspection: no tabs, just the way back.
@@ -291,7 +338,8 @@ export function InspectionConfirmWorkspace({
     return (
       <div className="space-y-4">
         {liveRegion}
-        {lostBlock}
+        {afterCloseSection}
+        {lostOpenNote}
         <ContentPanel>
           <ActionEmptyState
             icon={<ClipboardCheck className="h-6 w-6" />}
@@ -363,9 +411,9 @@ export function InspectionConfirmWorkspace({
     </Button>
   )
 
-  // The damaged row's two ways on, each confirming the one asset first; a missing permission hides its button. A row
-  // with no target (handover unclear) has both disabled, described by its handoverUnclear text in this render (plan 4
-  // task 4): the route would refuse it.
+  // The damaged row's buttons (inspectionDamagedButtons), each confirming the one asset first: บันทึกซ่อม, and
+  // ขอตัดจำหน่าย once the round is closed, else ยืนยันผลอย่างเดียว (task 4b). A row with no target (handover unclear) has
+  // them disabled, described by its handoverUnclear text in this render (plan 4 task 4): the route would refuse it.
   function damagedActionsFor(row: InspectionPageRow, view: "card" | "table") {
     if (!damagedActions) return undefined
     const back = tabHref("damaged")
@@ -373,14 +421,19 @@ export function InspectionConfirmWorkspace({
     const describedBy = unclear ? unclearIdFor(view, row.assetId) : undefined
     return (
       <div className="flex min-w-0 flex-wrap gap-2">
-        {canRepair ? (
+        {damagedButtons.includes("repair") ? (
           <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
             {t("damagedRepair")}
           </Button>
         ) : null}
-        {canDispose ? (
+        {damagedButtons.includes("dispose") ? (
           <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedDisposalHref(locale, roundId, row.assetId, back))}>
             {t("damagedDispose")}
+          </Button>
+        ) : null}
+        {damagedButtons.includes("confirmOnly") ? (
+          <Button variant="outline" size="md" disabled={unclear} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, null)}>
+            {t("damagedConfirmOnly")}
           </Button>
         ) : null}
       </div>
@@ -390,6 +443,7 @@ export function InspectionConfirmWorkspace({
   return (
     <div className="space-y-4">
       {liveRegion}
+      {afterCloseSection}
       <section className="space-y-4">
         <TabNav aria-label={t("title")} items={tabItems} current={tab} />
 
@@ -453,7 +507,7 @@ export function InspectionConfirmWorkspace({
             </DataTable>
           </ContentPanel>
 
-          {tab === "notFound" && lostHref ? <div className="mt-4">{lostBlock}</div> : null}
+          {tab === "notFound" && lostOpenNote ? <div className="mt-4">{lostOpenNote}</div> : null}
 
           {count > 0 ? (
             <>

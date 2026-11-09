@@ -104,6 +104,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const canScan = hasPermission(user, "audit", "edit")
   // ยืนยันผลตรวจ is the confirm API's permission (inspection-confirm spec §5): asset:edit.
   const canConfirm = hasPermission(user, "asset", "edit")
+  // Disposal from a round waits for its close (inspection-confirm plan 4 task 4b): a closed round's card says how many
+  // of its assets can now go, for a viewer with disposal:create (the confirm page's after-close section needs it too).
+  const canDispose = hasPermission(user, "disposal", "create")
   // Every link of the page's list (cards, chips, bars, paging, exports): one builder, the list's way back and page size
   // kept (group 2 plan 2). The cards are round-wide, so their links start from roundWideFilters (spec §5).
   const roundWideFilters = parseAuditRoundListFilters({})
@@ -152,8 +155,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const checklist = data.steps.close.checklist
   // Assets of the round still Under Inspection (inspection-confirm spec §3): the close waits for them; a closed round
   // shows the line too while any remain, so they can still be released.
+  const disposableCount = canDispose ? data.closedDisposalCount : 0
   const unconfirmedCondition = { key: "unconfirmed", ok: checklist.unconfirmedAssets === 0, label: checklist.unconfirmedAssets === 0 ? t("closeNoUnconfirmed") : t("closeUnconfirmedCount", { count: formatCount(checklist.unconfirmedAssets) }), href: confirmHref }
-  const closeConditions: Array<{ key: string; ok: boolean; label: string; href?: string }> = round.status === "closed" ? [{ key: "closed", ok: true, label: t("stepsClosedTitle") }, ...(checklist.unconfirmedAssets > 0 ? [unconfirmedCondition] : [])] : [
+  const closeConditions: Array<{ key: string; ok: boolean; label: string; href?: string }> = round.status === "closed" ? [{ key: "closed", ok: true, label: t("stepsClosedTitle") }, ...(checklist.unconfirmedAssets > 0 ? [unconfirmedCondition] : []), ...(disposableCount > 0 ? [{ key: "disposal", ok: false, label: t("closedDisposalLine", { count: disposableCount }), href: confirmHref }] : [])] : [
     { key: "pendingItems", ok: checklist.pendingItems === 0, label: checklist.pendingItems === 0 ? t("closeNoPendingItems") : t("closePendingItemsCount", { count: formatCount(checklist.pendingItems) }), href: pendingHref },
     { key: "pendingFindings", ok: checklist.pendingFindings === 0, label: checklist.pendingFindings === 0 ? t("closeNoPendingFindings") : t("closePendingFindingsCount", { count: formatCount(checklist.pendingFindings) }), href: pendingReviewFindingsHref },
     { key: "openActions", ok: checklist.openActions === 0, label: checklist.openActions === 0 ? t("closeNoOpenActions") : t("openActionsCount", { count: formatCount(checklist.openActions) }), href: openActionFindingsHref },

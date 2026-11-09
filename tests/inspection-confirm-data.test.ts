@@ -170,3 +170,43 @@ test("the PATCH close and the round page still read one checklist function", () 
   assert.match(read("src/app/api/audit-rounds/[id]/route.ts"), /getAuditRoundCloseChecklist\(/)
   assert.match(read("src/lib/audit-round-page-data.ts"), /getAuditRoundCloseChecklist\(roundId\)/)
 })
+
+// Plan 4 task 4b: the after-close section's damaged list. Assets with an item in the round, Ready or In Use, with no
+// active pending/approved disposal request and no open repair record (repair-record-policy's openRepairRecordWhere);
+// the condition block (getCheckoutConditionBlock) is applied to what the read returns.
+test("roundDamagedForDisposalItemWhere: round items of active Ready/In Use assets with no open disposal and no open repair", async () => {
+  const { roundDamagedForDisposalItemWhere } = await import("../src/lib/inspection-confirm-data.ts")
+  const { openRepairRecordWhere } = await import("../src/lib/repair-record-policy.ts")
+  assert.deepEqual(roundDamagedForDisposalItemWhere("r1"), {
+    auditRoundId: "r1",
+    asset: {
+      isActive: true,
+      status: { name: { in: ["Ready", "In Use"] } },
+      disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
+      maintenanceTickets: { none: openRepairRecordWhere },
+    },
+  })
+})
+
+test("toDamagedForDisposal keeps the condition-blocked assets (เสียหาย, ใช้งานไม่ได้, ซาก), by tag", async () => {
+  const { toDamagedForDisposal } = await import("../src/lib/inspection-confirm-data.ts")
+  const entry = (tag: string, condition: string | null) => ({ assetId: `a-${tag}`, asset: { assetTag: tag, name: `Asset ${tag}`, condition: condition ? { name: condition } : null } })
+  assert.deepEqual(
+    toDamagedForDisposal([entry("T3", "Damaged"), entry("T1", "Salvage"), entry("T2", "Good"), entry("T4", null), entry("T0", "Non-functional"), entry("T5", "Not assessed")]),
+    [
+      { assetId: "a-T0", assetTag: "T0", assetName: "Asset T0" },
+      { assetId: "a-T1", assetTag: "T1", assetName: "Asset T1" },
+      { assetId: "a-T3", assetTag: "T3", assetName: "Asset T3" },
+    ],
+  )
+})
+
+test("loadRoundDisposalSummary reads the damaged list through that where and returns damagedForDisposal", () => {
+  const data = read("src/lib/inspection-confirm-data.ts")
+  const body = data.slice(data.indexOf("export async function loadRoundDisposalSummary("))
+  assert.match(body, /where: roundDamagedForDisposalItemWhere\(auditRoundId\)/)
+  assert.match(body, /toDamagedForDisposal\(/)
+  assert.match(body, /return \{ missingForDisposal, damagedForDisposal, requests, approved \}/)
+  assert.match(data, /import \{ openRepairRecordWhere \} from "\.\/repair-record-policy\.ts"/)
+  assert.match(data, /import \{ getCheckoutConditionBlock \} from "\.\/asset-lifecycle-policy\.ts"/)
+})

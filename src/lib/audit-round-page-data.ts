@@ -27,6 +27,7 @@ import {
 } from "@/lib/audit-round-result-filters"
 import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { isSameAuditActor } from "@/lib/audit-segregation"
+import { loadRoundDisposalSummary } from "@/lib/inspection-confirm-data"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 
 // The round page's data (group 2 spec §5, §8): one server load, so every number and the rows it opens come from one
@@ -193,6 +194,11 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
   const walk = { checked: resultCard.all - resultCard.pending, total: resultCard.all, left: resultCard.pending }
   const fieldCounts = Object.fromEntries(auditFindingFields.map((field, index) => [field, fieldItemCounts[index]])) as Record<AuditFindingField, number>
   const openedByViewer = isSameAuditActor(user.id, round.createdBy)
+  // A closed round's assets that can now go to disposal (inspection-confirm plan 4 task 4b): its หาไม่พบ and its
+  // confirmed damaged assets with no open request, read only once the round is closed. The page shows the count to
+  // disposal:create.
+  const closedDisposal = round.status === "closed" ? await loadRoundDisposalSummary(prisma, roundId) : null
+  const closedDisposalCount = closedDisposal ? closedDisposal.missingForDisposal.length + closedDisposal.damagedForDisposal.length : 0
 
   return {
     round: { ...round, createdByLabel: userLabel(round.createdBy), cancelledByLabel: userLabel(round.cancelledBy) },
@@ -202,6 +208,7 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
     fieldBars: { counts: fieldCounts, distinctItems: fieldItems, multipleFields: hasMultipleAuditFieldFindings(fieldCounts, fieldItems) },
     componentsMissing,
     componentsMissingInFilters,
+    closedDisposalCount,
     steps: {
       walk,
       review: { pendingFindings: checklist.pendingFindings, decidedFindings: reviewDecidedFindings },

@@ -125,3 +125,25 @@ export function lostDisposalHref(locale: string, roundId: string, missing: reado
   }
   return `/${locale}/disposal/batch/new?type=lost&fromAuditRound=${round}&returnTo=${back}`
 }
+
+// Plan 4 task 4b (user decision 2026-11-09 option A): disposal-readiness.ts refuses a disposal request for an asset with
+// an item in an open round, so the confirm page offers disposal only once the round is closed. Repair and the status
+// confirmation work while it is open.
+
+/** Disposal from this round's page: only a closed round. */
+export function roundAllowsDisposal(roundStatus: string): boolean {
+  return roundStatus === "closed"
+}
+
+export type InspectionDamagedButton = "repair" | "confirmOnly" | "dispose"
+
+/**
+ * The damaged row's buttons, in order: บันทึกซ่อม with maintenance:create; ขอตัดจำหน่าย on a closed round with
+ * disposal:create; otherwise ยืนยันผลอย่างเดียว, so the row can always be confirmed.
+ */
+export function inspectionDamagedButtons(input: { roundClosed: boolean; canRepair: boolean; canDispose: boolean }): InspectionDamagedButton[] {
+  const buttons: InspectionDamagedButton[] = []
+  if (input.canRepair) buttons.push("repair")
+  buttons.push(input.roundClosed && input.canDispose ? "dispose" : "confirmOnly")
+  return buttons
+}

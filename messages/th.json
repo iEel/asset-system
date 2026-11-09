@@ -3355,7 +3355,8 @@
     "nextStepViewConfirm": "ดูชิ้นที่รอยืนยันผล ({count})",
     "stepConfirmWaiting": "รอยืนยัน {count} ชิ้น",
     "stepConfirmDone": "ยืนยันครบแล้ว",
-    "listNextStepConfirm": "ยืนยันผลตรวจ ({count})"
+    "listNextStepConfirm": "ยืนยันผลตรวจ ({count})",
+    "closedDisposalLine": "ขอตัดจำหน่ายจากรอบนี้ได้ {count, number} ชิ้น"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",
@@ -7366,6 +7367,11 @@
     "lostBlock": "ชิ้นที่ตั้งเป็นหาไม่พบจากรอบนี้: {count, number} ชิ้น",
     "lostLink": "ขอตัดจำหน่ายแบบสูญหาย…",
     "disposalLine": "ขอตัดจำหน่ายจากรอบนี้: {requests, number} รายการ · อนุมัติแล้ว {approved, number}",
-    "disposalRoundLink": "ไปสร้างรอบตัดจำหน่าย"
+    "disposalRoundLink": "ไปสร้างรอบตัดจำหน่าย",
+    "damagedConfirmOnly": "ยืนยันผลอย่างเดียว",
+    "lostAfterClose": "ขอตัดจำหน่ายแบบสูญหายได้หลังปิดรอบตรวจนับ",
+    "afterCloseTitle": "ตัดจำหน่ายหลังปิดรอบ",
+    "damagedForDisposalTitle": "ชิ้นสภาพเสียหายที่ยืนยันจากรอบนี้",
+    "damagedDisposeLink": "ขอตัดจำหน่าย"
   }
 }

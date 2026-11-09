@@ -379,3 +379,24 @@ test("the close API and the round page read one checklist; the page reads its da
   assert.match(page, /const staleCategory = Boolean\(filters\.categoryId && filters\.categoryId !== "other" && !filterCategory\)/)
   assert.match(page, /redirect\(buildAuditRoundPageHref\(locale, round\.id, filters, \{ companyId: filterCompany \? filters\.companyId : null, branchId: filterBranch \? filters\.branchId : null, categoryId: staleCategory \? null : filters\.categoryId, pageSize, returnTo: returnToHref \}\)\)/)
 })
+
+// Inspection-confirm plan 4 task 4b: a closed round counts its assets that can now go to disposal (the confirm page's
+// after-close section: หาไม่พบ and confirmed damaged with no open request); an open round reads none.
+test("closedDisposalCount: a closed round's หาไม่พบ and damaged assets for disposal; an open round reads nothing (task 4b)", async () => {
+  const notFoundRead = (args: Args) => (args.where as { auditResult?: string }).auditResult === "not_found" && (args.where as { asset?: { status?: unknown } }).asset?.status !== undefined
+  const damagedRead = (args: Args) => isDeepStrictEqual((args.where as { asset?: { status?: unknown } }).asset?.status, { name: { in: ["Ready", "In Use"] } })
+  assert.equal((await loadPage())?.closedDisposalCount, 0)
+  assert.ok(!callsTo("auditItem.findMany").some(damagedRead))
+  state.respond = (call, args) => {
+    if (call === "auditRound.findFirst") return { ...round, status: "closed" }
+    if (call === "auditItem.findMany" && notFoundRead(args)) return [{ assetId: "m1", asset: { assetTag: "M1" } }]
+    if (call === "auditItem.findMany" && damagedRead(args)) {
+      return [
+        { assetId: "d1", asset: { assetTag: "D1", name: "D1", condition: { name: "Damaged" } } },
+        { assetId: "d2", asset: { assetTag: "D2", name: "D2", condition: { name: "Good" } } },
+      ]
+    }
+    return undefined
+  }
+  assert.equal((await loadPage())?.closedDisposalCount, 2)
+})
