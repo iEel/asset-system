@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useRef, useState, type RefObject } from "react"
+import { useEffect, useId, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
@@ -22,6 +22,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { RowActions, type RowActionGroup } from "@/components/ui/row-actions"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { useApiError } from "@/components/ui/use-api-error"
+import { componentFocusAfterRemoval } from "@/lib/asset-component-links"
 import type { ConsumableStockState } from "@/lib/consumable-rules"
 import type { ConsumableUsageRow } from "@/lib/consumable-service"
 import { formatCount } from "@/lib/display-format"
@@ -40,6 +41,34 @@ const stateBadges: Record<ConsumableStockState, { key: "state_ok" | "state_low" 
 }
 
 type Translate = ReturnType<typeof useTranslations<"consumablesPage">>
+
+// The visible copy of a row's control: the table from md, the cards below it (both carry data-consumable-row).
+function visibleInRow(root: HTMLElement | null, rowId: string, selector: string): HTMLElement | null {
+  if (!root) return null
+  for (const row of root.querySelectorAll<HTMLElement>(`[data-consumable-row="${CSS.escape(rowId)}"]`)) {
+    const target = row.querySelector<HTMLElement>(selector)
+    if (target && target.getClientRects().length > 0) return target
+  }
+  return null
+}
+
+// The last fallback: the page's h1, made focusable from script only.
+function pageHeading(root: HTMLElement | null): HTMLElement | null {
+  const heading = root?.querySelector<HTMLElement>("h1") ?? null
+  if (heading) heading.tabIndex = -1
+  return heading
+}
+
+// Focus fell to <body> because the refresh removed or disabled the control that opened the last action.
+function openerLost(opener: HTMLElement | null): boolean {
+  if (!opener) return false
+  const activeElement = document.activeElement
+  if (activeElement !== null && activeElement !== document.body) return false
+  return !opener.isConnected || (opener instanceof HTMLButtonElement && opener.disabled)
+}
+
+const ROW_NAME = "[data-consumable-name]"
+const ROW_MENU = "[data-consumable-actions] [aria-haspopup]"
 
 export function ConsumablesWorkspace({
   locale,
@@ -68,12 +97,64 @@ export function ConsumablesWorkspace({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [opening, setOpening] = useState(0)
   const closeDialog = () => setDialogOpen(false)
+  // Focus after a refresh (as asset-component-manager.tsx's focusAfterRemovalRef): the page root for the lookups, the
+  // add-a-kind button (+ เพิ่มชนิดของ or the empty state's), the row the last action came from, the ids before the
+  // refresh, and the pending removal of a deactivated kind.
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const createButtonRef = useRef<HTMLButtonElement | null>(null)
+  const openerRowRef = useRef<string | null>(null)
+  const knownIdsRef = useRef<string[]>(rows.map((row) => row.id))
+  const focusAfterRemovalRef = useRef<{ removedId: string; order: string[] } | null>(null)
+  // ปิดใช้งาน in flight, per kind: no second confirm or PATCH, and the row's ⋯ is busy until the refresh drops the row.
+  const deactivatingRef = useRef<Set<string>>(new Set())
+  const [deactivatingIds, setDeactivatingIds] = useState<ReadonlySet<string>>(() => new Set())
+  const setDeactivating = (id: string, on: boolean) => {
+    if (on) deactivatingRef.current.add(id)
+    else deactivatingRef.current.delete(id)
+    setDeactivatingIds(new Set(deactivatingRef.current))
+  }
+
+  useEffect(() => {
+    const previousIds = knownIdsRef.current
+    const currentIds = rows.map((row) => row.id)
+    knownIdsRef.current = currentIds
+    const current = new Set(currentIds)
+    // A deactivated kind stays locked until the refresh drops its row.
+    if ([...deactivatingRef.current].some((id) => !current.has(id))) {
+      for (const id of [...deactivatingRef.current]) if (!current.has(id)) deactivatingRef.current.delete(id)
+      setDeactivatingIds(new Set(deactivatingRef.current))
+    }
+    const root = rootRef.current
+    const pending = focusAfterRemovalRef.current
+    if (pending) {
+      if (current.has(pending.removedId)) return
+      focusAfterRemovalRef.current = null
+      // The next row's name, else the previous one's, else + เพิ่มชนิดของ (the empty state's once the list is empty), else the h1.
+      const order = pending.order.filter((id) => id === pending.removedId || current.has(id))
+      const targetId = componentFocusAfterRemoval(order, pending.removedId)
+      const target = (targetId ? visibleInRow(root, targetId, ROW_NAME) : null) ?? createButtonRef.current ?? pageHeading(root)
+      target?.focus()
+      return
+    }
+    if (!openerLost(openerRef.current)) return
+    // เบิก of a row's last unit becomes a disabled button: the row's ⋯. The empty state's เพิ่มชนิดของ leaves with the
+    // first kind: that kind's name, else + เพิ่มชนิดของ.
+    const added = currentIds.filter((id) => !previousIds.includes(id))
+    const rowId = openerRowRef.current
+    const target =
+      (rowId && current.has(rowId) ? visibleInRow(root, rowId, ROW_MENU) : null) ??
+      (added.length === 1 ? visibleInRow(root, added[0], ROW_NAME) : null) ??
+      createButtonRef.current ??
+      pageHeading(root)
+    target?.focus()
+  }, [rows])
 
   function onAction(kind: ConsumableAction, item: ConsumableUsageRow | null) {
     if (kind === "deactivate") {
       if (item) void deactivate(item)
       return
     }
+    openerRowRef.current = item?.id ?? null
     setOpening((count) => count + 1)
     setActive({ kind, item })
     setDialogOpen(true)
@@ -81,6 +162,7 @@ export function ConsumablesWorkspace({
 
   // ปิดใช้งาน: the shared ConfirmDialog, then PATCH { isActive: false }; on hand and the history stay.
   async function deactivate(item: ConsumableUsageRow) {
+    if (deactivatingRef.current.has(item.id)) return
     const confirmed = await confirm({
       title: t("deactivateTitle", { name: item.name }),
       description: item.onHand > 0 ? t("deactivateBody", { onHand: item.onHand, unit: item.unit }) : t("deactivateBodyEmpty"),
@@ -88,7 +170,8 @@ export function ConsumablesWorkspace({
       tone: "destructive",
       returnFocusRef: openerRef,
     })
-    if (!confirmed) return
+    if (!confirmed || deactivatingRef.current.has(item.id)) return
+    setDeactivating(item.id, true)
     try {
       const response = await fetch(`/api/consumables/${item.id}`, {
         method: "PATCH",
@@ -97,9 +180,11 @@ export function ConsumablesWorkspace({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? t("errorFallback"))
+      focusAfterRemovalRef.current = { removedId: item.id, order: rows.map((row) => row.id) }
       toast.success(t("deactivateToast", { name: item.name }))
       router.refresh()
     } catch (error) {
+      setDeactivating(item.id, false)
       apiError.toast(error)
     }
   }
@@ -132,6 +217,7 @@ export function ConsumablesWorkspace({
       row={row}
       canCreate={canCreate}
       groups={rowGroups(row)}
+      deactivating={deactivatingIds.has(row.id)}
       menuLabel={tCommon("moreActionsFor", { code: row.name })}
       openerRef={openerRef}
       onAction={onAction}
@@ -140,7 +226,7 @@ export function ConsumablesWorkspace({
   )
 
   return (
-    <div className={cn("space-y-6", canCreate && actionBarPagePadding.single)}>
+    <div ref={rootRef} className={cn("space-y-6", canCreate && actionBarPagePadding.single)}>
       <PageHeader
         title={t("title")}
         meta={<span>{t("cabinet")}</span>}
@@ -170,7 +256,7 @@ export function ConsumablesWorkspace({
             title={t("emptyTitle")}
             description={t("emptyBody")}
             action={canEdit ? (
-              <Button variant="default" size="md" onClick={(event) => { openerRef.current = event.currentTarget; onAction("create", null) }}>
+              <Button ref={createButtonRef} variant="default" size="md" onClick={(event) => { openerRef.current = event.currentTarget; onAction("create", null) }}>
                 {t("emptyAction")}
               </Button>
             ) : undefined}
@@ -191,9 +277,9 @@ export function ConsumablesWorkspace({
             </DataTableHeader>
             <DataTableBody>
               {rows.map((row) => (
-                <tr key={row.id} className={dataTableRowClasses}>
+                <tr key={row.id} data-consumable-row={row.id} className={dataTableRowClasses}>
                   <DataTableCell className="min-w-48">
-                    <Link href={detailHref(row.id)} className={cn(linkVariants({ size: "inherit" }), "font-semibold")}>
+                    <Link data-consumable-name href={detailHref(row.id)} className={cn(linkVariants({ size: "inherit" }), "font-semibold")}>
                       {row.name}
                     </Link>
                   </DataTableCell>
@@ -212,9 +298,9 @@ export function ConsumablesWorkspace({
           {/* Phone: one card per kind with the table's facts; เบิก and ⋯ sit on the card. */}
           <div data-consumables-cards className="grid gap-3 p-3 md:hidden">
             {rows.map((row) => (
-              <article key={row.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+              <article key={row.id} data-consumable-row={row.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <Link href={detailHref(row.id)} className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 items-center break-words text-base font-semibold")}>
+                  <Link data-consumable-name href={detailHref(row.id)} className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 items-center break-words text-base font-semibold")}>
                     {row.name}
                   </Link>
                   <StatusBadge className="mt-3" label={t(stateBadges[row.state].key)} tone={stateBadges[row.state].tone} />
@@ -234,7 +320,7 @@ export function ConsumablesWorkspace({
 
           {canEdit ? (
             <div className="border-t border-border-soft px-4 py-3 md:px-5">
-              <Button variant="ghost" size="sm" className="text-primary" onClick={(event) => { openerRef.current = event.currentTarget; onAction("create", null) }}>
+              <Button ref={createButtonRef} variant="ghost" size="sm" className="text-primary" onClick={(event) => { openerRef.current = event.currentTarget; onAction("create", null) }}>
                 {t("addKind")}
               </Button>
             </div>
@@ -295,6 +381,7 @@ function KindActions({
   row,
   canCreate,
   groups,
+  deactivating,
   menuLabel,
   openerRef,
   onAction,
@@ -303,6 +390,8 @@ function KindActions({
   row: ConsumableUsageRow
   canCreate: boolean
   groups: RowActionGroup[]
+  // ปิดใช้งาน of this kind is in flight: the ⋯ is busy.
+  deactivating: boolean
   menuLabel: string
   openerRef: RefObject<HTMLElement | null>
   onAction: (kind: ConsumableAction, item: ConsumableUsageRow | null) => void
@@ -312,7 +401,7 @@ function KindActions({
   const out = row.onHand === 0
 
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div data-consumable-actions className="flex items-center justify-end gap-1">
       {canCreate ? (
         out ? (
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -336,7 +425,7 @@ function KindActions({
           </Button>
         )
       ) : null}
-      <RowActions code={row.name} menuLabel={menuLabel} groups={groups} openerRef={openerRef} />
+      <RowActions code={row.name} menuLabel={menuLabel} groups={groups} openerRef={openerRef} busy={deactivating} />
     </div>
   )
 }

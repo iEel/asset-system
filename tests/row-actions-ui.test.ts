@@ -15,8 +15,10 @@ test("RowActions is a client component with one data-only API: no children, no o
   assert.ok(props, "export type RowActionsProps not found")
   assert.deepEqual(
     props.split("\n").map((line) => line.trim().split(":")[0]),
-    ["code", "name?", "menuLabel", "next?", "nextWidth?", "groups", "deleteAction?", "openerRef?", "menu?", "triggerVariant?", "className?"],
+    ["code", "name?", "menuLabel", "next?", "nextWidth?", "groups", "deleteAction?", "openerRef?", "menu?", "triggerVariant?", "busy?", "className?"],
   )
+  // busy (consumables plan 2 final review): the ⋯ Button's busy state while the caller saves for this row.
+  assert.match(props, /busy\?: boolean/)
   assert.match(props, /nextWidth\?: "fixed" \| "auto"/)
   assert.match(props, /triggerVariant\?: "ghost" \| "outline"/)
   assert.match(props, /next\?: RowNextAction \| null/)
@@ -67,7 +69,7 @@ test("nextWidth defaults to the fixed 120px slot; \"auto\" swaps only w-30 for w
 
 test("⋯ is an icon-sm button (ghost, or outline in an ActionBar), a menu from md and a bottom sheet below, and leaves its place empty when there is nothing to show", () => {
   const source = rowActions()
-  assert.match(source, /<Button ref=\{triggerRef\} variant=\{triggerVariant\} size="icon-sm" aria-label=\{menuLabel\} title=\{menuLabel\}>\s*<MoreHorizontal aria-hidden="true" \/>\s*<\/Button>/)
+  assert.match(source, /<Button ref=\{triggerRef\} variant=\{triggerVariant\} size="icon-sm" aria-label=\{menuLabel\} title=\{menuLabel\} busy=\{busy\}>\s*<MoreHorizontal aria-hidden="true" \/>\s*<\/Button>/)
   assert.match(source, /\n  menu = "auto",\n  triggerVariant = "ghost",\n/, "ghost unless the caller asks")
   assert.equal(source.match(/ref=\{triggerRef\}/g)?.length, 1)
   assert.match(source, /<DropdownMenuTrigger asChild>\{trigger\}<\/DropdownMenuTrigger>/)

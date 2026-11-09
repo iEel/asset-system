@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { ConsumableAdjustDialog } from "@/components/consumables/consumable-adjust-dialog"
 import { ConsumableIssueDialog } from "@/components/consumables/consumable-issue-dialog"
@@ -39,6 +39,7 @@ export function ConsumableHistoryHeader({
 }) {
   const t = useTranslations("consumablesPage")
   const openerRef = useRef<HTMLElement | null>(null)
+  const receiveRef = useRef<HTMLButtonElement | null>(null)
   const reasonId = useId()
   const [active, setActive] = useState<HeaderAction | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -50,6 +51,16 @@ export function ConsumableHistoryHeader({
   const out = item.onHand === 0
   const listHref = `/${locale}/consumables`
   const dialogItems = [item]
+
+  // Issuing the last unit disables เบิก after the refresh and the browser drops its focus: รับเข้า takes it (as the list's
+  // focus after removal), only while focus is lost on <body>.
+  useEffect(() => {
+    const opener = openerRef.current
+    if (!out || !(opener instanceof HTMLButtonElement) || !opener.disabled) return
+    const activeElement = document.activeElement
+    if (activeElement !== null && activeElement !== document.body && activeElement !== opener) return
+    receiveRef.current?.focus()
+  }, [out])
 
   function onOpen(kind: HeaderAction, opener: HTMLElement) {
     openerRef.current = opener
@@ -89,7 +100,7 @@ export function ConsumableHistoryHeader({
               ) : null}
               {showCreate ? (
                 <>
-                  <Button variant="outline" size="md" onClick={(event) => onOpen("receive", event.currentTarget)}>
+                  <Button ref={receiveRef} variant="outline" size="md" onClick={(event) => onOpen("receive", event.currentTarget)}>
                     {t("receive")}
                   </Button>
                   <span className="inline-flex items-center gap-1.5 whitespace-nowrap">

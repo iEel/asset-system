@@ -7504,12 +7504,13 @@
     "col_type": "Movement",
     "col_quantity": "Quantity",
     "col_after": "On hand after",
-    "col_detail": "Asset",
+    "col_detail": "Asset / reason / received",
     "col_note": "Note",
     "col_by": "By",
     "type_receive": "Receive",
     "type_issue": "Issue",
     "type_adjust": "Adjust",
-    "receivedOn": "Received {date}"
+    "receivedOn": "Received {date}",
+    "detail_asset": "Asset"
   }
 }

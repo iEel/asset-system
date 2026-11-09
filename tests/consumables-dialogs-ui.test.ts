@@ -87,6 +87,20 @@ test("issue: kinds read \"name (คงเหลือ n)\" and an out-of-stock k
   assert.match(source, /t\("afterIssue", \{ left: /)
 })
 
+test("issue: no client-side short block; เหลือหลังเบิก only for 1 ≤ quantity ≤ on hand, shortWithCount above it as a hint (plan 2 final review)", () => {
+  const source = read(issuePath)
+  // The snapshot never refuses: no setShort from the kind, and a valid form always reaches fetch.
+  assert.doesNotMatch(source, /setShort\(\{ onHand: selected\.onHand/)
+  assert.doesNotMatch(source, /quantityNumber > selected\.onHand/)
+  assert.doesNotMatch(source, /Math\.max\(selected\.onHand - quantityNumber, 0\)/)
+  assert.match(source, /const errors = validate\(\{ itemId, quantity, assetId, note \}\)\n\s*fieldErrors\.setErrors\(errors\)\n\s*if \(focusFirstError\(\)\) return/)
+  assert.match(
+    source,
+    /const quantityHint = !showPreview \|\| short\n\s*\? undefined\n\s*: quantityNumber <= selected\.onHand\n\s*\? t\("afterIssue", \{ left: selected\.onHand - quantityNumber \}\)\n\s*: t\("shortWithCount", \{ onHand: selected\.onHand, unit: selected\.unit \}\)/,
+  )
+  assert.match(source, /hint=\{quantityHint\}/)
+})
+
 // ---------------------------------------------------------------- responses
 
 test("issue: a 409 CONSUMABLE_SHORT reads onHand and unit into shortWithCount, then refreshes", () => {

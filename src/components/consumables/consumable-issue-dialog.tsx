@@ -47,8 +47,9 @@ function validate(values: { itemId: string; quantity: string; assetId: string; n
 
 // ของใช้สิ้นเปลือง plan 2 task 3: เบิกไปใช้. ชนิด (out-of-stock kinds disabled with ของหมด), จำนวน, ไปลงเครื่อง (the asset
 // picker's consumable mode) and หมายเหตุ, with the preview "เหลือหลังเบิก". initialItemId preselects a row's kind;
-// lockedAsset (plan 3, from a machine's page) replaces the picker with a read-only line. A 409 CONSUMABLE_SHORT shows the
-// count left under จำนวน and reads the page again. The owner mounts it with a new key per opening.
+// lockedAsset (plan 3, from a machine's page) replaces the picker with a read-only line. Only the server decides a shortage:
+// the list's on-hand is a snapshot, so more than it is a hint (shortWithCount), never a block; a 409 CONSUMABLE_SHORT
+// shows the current count left under จำนวน and reads the page again. The owner mounts it with a new key per opening.
 export function ConsumableIssueDialog({
   open,
   items,
@@ -71,7 +72,7 @@ export function ConsumableIssueDialog({
   const [quantity, setQuantity] = useState("1")
   const [asset, setAsset] = useState<AssetOperationSearchRow | null>(null)
   const [note, setNote] = useState("")
-  // The count the server (or the kind's on-hand) says is left, shown under จำนวน as shortWithCount.
+  // The count the server's 409 CONSUMABLE_SHORT says is left, shown under จำนวน as shortWithCount.
   const [short, setShort] = useState<{ onHand: number; unit: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -84,6 +85,12 @@ export function ConsumableIssueDialog({
   const quantityNumber = Number(quantity)
   const showPreview = selected !== null && quantity.trim() !== "" && Number.isInteger(quantityNumber) && quantityNumber >= 1
   const quantityError = short ? t("shortWithCount", { onHand: short.onHand, unit: short.unit }) : fieldErrors.message("quantity")
+  // เหลือหลังเบิก only for 1 ≤ quantity ≤ on hand; above it, the snapshot's count as a hint. Hidden while the 409 line shows.
+  const quantityHint = !showPreview || short
+    ? undefined
+    : quantityNumber <= selected.onHand
+      ? t("afterIssue", { left: selected.onHand - quantityNumber })
+      : t("shortWithCount", { onHand: selected.onHand, unit: selected.unit })
 
   const options = items.map((item) => ({
     id: item.id,
@@ -98,11 +105,6 @@ export function ConsumableIssueDialog({
     setError(null)
     setShort(null)
     const errors = validate({ itemId, quantity, assetId, note })
-    // More than the kind has on hand: say how many are left before asking the server.
-    if (!errors.quantity && selected && quantityNumber > selected.onHand) {
-      setShort({ onHand: selected.onHand, unit: selected.unit })
-      errors.quantity = "consumableShort"
-    }
     fieldErrors.setErrors(errors)
     if (focusFirstError()) return
     submittingRef.current = true
@@ -164,7 +166,7 @@ export function ConsumableIssueDialog({
               label={t("field_quantity")}
               required
               error={quantityError}
-              hint={showPreview ? t("afterIssue", { left: Math.max(selected.onHand - quantityNumber, 0) }) : undefined}
+              hint={quantityHint}
             >
               <Input
                 id={FIELD_IDS.quantity}

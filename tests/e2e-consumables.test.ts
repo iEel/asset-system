@@ -71,9 +71,11 @@ test("the story: add a kind with min 2, receive 3, issue 2 through the picker, s
     `await pickAsset(page, ISSUE_ASSET, asset.assetTag, asset.assetTag)`,
     `expectKind(page, e2eDevice, kindName, 1, W.state_low)`,
     "fillTemplate(W.lowItem, { name: kindName, onHand: 1 })",
-    // เบิก 2 more → the short line under จำนวน, and nothing sent.
+    // เบิก 2 more → the snapshot's count as a hint, then the server's 409 line under จำนวน (plan 2 final review: no client block).
+    `await expect(page.locator("#consumable-issue-quantity-hint")).toHaveText(fillTemplate(W.shortWithCount, { onHand: 1, unit: UNIT }))`,
+    `expect((await shortAnswer).status(), "the server refuses the short issue").toBe(409)`,
     `await expect(page.locator("#consumable-issue-quantity-error")).toHaveText(fillTemplate(W.shortWithCount, { onHand: 1, unit: UNIT }))`,
-    `expect(sentIssues, "the short issue is refused in the dialog").toBe(0)`,
+    `expect(sentIssues, "the short issue is asked of the server once").toBe(1)`,
     // ปรับยอด to 4 with a reason → คงเหลือ 4.
     `await page.locator("#consumable-adjust-counted").fill("4")`,
     `expectKind(page, e2eDevice, kindName, 4, W.state_ok)`,

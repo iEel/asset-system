@@ -355,7 +355,8 @@ test("source: every write runs in the Serializable options and calls logAudit af
 
 const routes: Array<[string, string, string, string]> = [
   ["src/app/api/consumables/route.ts", "GET", "consumable", "view"],
-  ["src/app/api/consumables/route.ts", "POST", "consumable", "create"],
+  // Adding a kind is catalog management: consumable:edit, as the + เพิ่มชนิดของ button (plan 2 final review ruling).
+  ["src/app/api/consumables/route.ts", "POST", "consumable", "edit"],
   ["src/app/api/consumables/[id]/route.ts", "GET", "consumable", "view"],
   ["src/app/api/consumables/[id]/route.ts", "PATCH", "consumable", "edit"],
   ["src/app/api/consumables/receive/route.ts", "POST", "consumable", "create"],

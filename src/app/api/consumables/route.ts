@@ -5,7 +5,8 @@ import { createConsumableItem, listConsumableItems } from "@/lib/consumable-serv
 import { consumableItemSchema } from "@/lib/validations/consumables"
 
 // ของใช้สิ้นเปลือง (consumables plan 1 task 3): the kinds. GET ?includeInactive=1 lists the inactive kinds too; each item
-// carries stockState (ok | low | out). POST { name, unit?, minQuantity? } creates a kind with onHand 0.
+// carries stockState (ok | low | out). POST { name, unit?, minQuantity? } creates a kind with onHand 0; adding a kind is
+// catalog management, so it needs consumable:edit (as + เพิ่มชนิดของ), not create (plan 2 final review ruling).
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "consumable", "create")
+    requirePermission(user, "consumable", "edit")
 
     const input = consumableItemSchema.parse(await request.json())
     const item = await createConsumableItem(input, user.id)

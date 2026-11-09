@@ -143,3 +143,52 @@ test("words: consumablesPage list keys in both catalogs", () => {
   }
   assert.match(en.lowBanner, /\{count, plural, one \{[^}]*\} other \{[^}]*\}\}/)
 })
+
+// ---------------------------------------------------------------- plan 2 final review: focus after removal, deactivate lock
+
+test("focus after ปิดใช้งาน: the next row's name, else the previous one's, else + เพิ่มชนิดของ, else the h1 (as asset-component-manager.tsx)", () => {
+  const ws = read(workspacePath)
+  assert.match(ws, /import \{ componentFocusAfterRemoval \} from "@\/lib\/asset-component-links"/)
+  assert.match(ws, /const focusAfterRemovalRef = useRef<\{ removedId: string; order: string\[\] \} \| null>\(null\)/)
+  // Recorded after the PATCH succeeds, before the refresh.
+  assert.match(ws, /focusAfterRemovalRef\.current = \{ removedId: item\.id, order: rows\.map\(\(row\) => row\.id\) \}\n\s*toast\.success\(t\("deactivateToast"/)
+  assert.match(ws, /const targetId = componentFocusAfterRemoval\(order, pending\.removedId\)\n\s*const target = \(targetId \? visibleInRow\(root, targetId, ROW_NAME\) : null\) \?\? createButtonRef\.current \?\? pageHeading\(root\)/)
+  assert.match(ws, /const ROW_NAME = "\[data-consumable-name\]"/)
+  assert.match(ws, /const ROW_MENU = "\[data-consumable-actions\] \[aria-haspopup\]"/)
+  // Both copies of a row (table and card) carry the row id and the name marker; both add-a-kind buttons hold the ref.
+  assert.equal(ws.match(/data-consumable-row=\{row\.id\}/g)?.length, 2)
+  assert.equal(ws.match(/<Link data-consumable-name href=\{detailHref\(row\.id\)\}/g)?.length, 2)
+  assert.equal(ws.match(/<Button ref=\{createButtonRef\}/g)?.length, 2)
+  assert.match(ws, /<div ref=\{rootRef\} className=/)
+  assert.match(ws, /<div data-consumable-actions className=/)
+  assert.match(ws, /if \(heading\) heading\.tabIndex = -1/)
+  assert.match(ws, /target && target\.getClientRects\(\)\.length > 0/)
+})
+
+test("focus when the opener goes: เบิก of the last unit → that row's ⋯; the empty state's เพิ่มชนิดของ → the new kind's name, else + เพิ่มชนิดของ", () => {
+  const ws = read(workspacePath)
+  // Only when focus fell to <body> and the opener is gone or disabled.
+  assert.match(ws, /if \(activeElement !== null && activeElement !== document\.body\) return false\n\s*return !opener\.isConnected \|\| \(opener instanceof HTMLButtonElement && opener\.disabled\)/)
+  assert.match(ws, /if \(!openerLost\(openerRef\.current\)\) return/)
+  assert.match(ws, /openerRowRef\.current = item\?\.id \?\? null/)
+  assert.match(
+    ws,
+    /\(rowId && current\.has\(rowId\) \? visibleInRow\(root, rowId, ROW_MENU\) : null\) \?\?\n\s*\(added\.length === 1 \? visibleInRow\(root, added\[0\], ROW_NAME\) : null\) \?\?\n\s*createButtonRef\.current \?\?\n\s*pageHeading\(root\)/,
+  )
+  assert.match(ws, /\}, \[rows\]\)/)
+})
+
+test("ปิดใช้งาน lock: no second confirm or PATCH for a kind in flight, and its ⋯ is busy until the refresh drops the row", () => {
+  const ws = read(workspacePath)
+  assert.match(ws, /async function deactivate\(item: ConsumableUsageRow\) \{\n\s*if \(deactivatingRef\.current\.has\(item\.id\)\) return\n\s*const confirmed = await confirm\(/)
+  assert.match(ws, /if \(!confirmed \|\| deactivatingRef\.current\.has\(item\.id\)\) return\n\s*setDeactivating\(item\.id, true\)\n\s*try \{/)
+  // A refusal unlocks; a success stays locked until the row leaves.
+  assert.match(ws, /\} catch \(error\) \{\n\s*setDeactivating\(item\.id, false\)\n\s*apiError\.toast\(error\)/)
+  assert.match(ws, /for \(const id of \[\.\.\.deactivatingRef\.current\]\) if \(!current\.has\(id\)\) deactivatingRef\.current\.delete\(id\)/)
+  assert.match(ws, /deactivating=\{deactivatingIds\.has\(row\.id\)\}/)
+  assert.match(ws, /<RowActions code=\{row\.name\} menuLabel=\{menuLabel\} groups=\{groups\} openerRef=\{openerRef\} busy=\{deactivating\} \/>/)
+  // RowActions hands busy to the ⋯ Button: aria-busy and aria-disabled, focus kept, clicks ignored (button.tsx).
+  const rowActions = read("src/components/ui/row-actions.tsx")
+  assert.match(rowActions, /busy\?: boolean/)
+  assert.match(rowActions, /aria-label=\{menuLabel\} title=\{menuLabel\} busy=\{busy\}>/)
+})

@@ -43,7 +43,8 @@ export default async function ConsumableHistoryPage({ params, searchParams }: Co
 
   const typeLabel = (row: ConsumableHistoryRow) => t(`type_${row.type}`)
   const when = (row: ConsumableHistoryRow) => `${formatAssetDetailDate(row.performedAt, locale)} ${formatHistoryTime(row.performedAt)}`
-  // เครื่อง: the asset for an issue, the reason for an adjust, the received date for a receipt.
+  // The detail column (col_detail "เครื่อง / เหตุผล / วันที่รับ"): the asset for an issue, the reason for an adjust, the
+  // received date for a receipt.
   const detail = (row: ConsumableHistoryRow) =>
     row.type === "issue" && row.asset ? (
       <Link href={`/${locale}/assets/${row.asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center gap-1.5 md:min-h-0")}>
@@ -55,6 +56,13 @@ export default async function ConsumableHistoryPage({ params, searchParams }: Co
     ) : row.type === "receive" && row.receivedDate ? (
       t("receivedOn", { date: formatAssetDetailDate(row.receivedDate, locale) })
     ) : null
+  // Phone cards name each row's detail by its type: เครื่อง, เหตุผล or วันที่รับเข้า (with the bare date under that label).
+  const detailItem = (row: ConsumableHistoryRow) =>
+    row.type === "issue"
+      ? { key: "detail", label: t("detail_asset"), value: detail(row) }
+      : row.type === "adjust"
+        ? { key: "detail", label: t("field_reason"), value: detail(row) }
+        : { key: "detail", label: t("field_receivedDate"), value: row.receivedDate ? formatAssetDetailDate(row.receivedDate, locale) : null }
   const signed = (row: ConsumableHistoryRow) => (
     <span className={cn("num font-medium", row.quantityChange > 0 ? "text-success" : "text-foreground")}>
       {formatConsumableQuantityChange(row.quantityChange)}
@@ -111,7 +119,7 @@ export default async function ConsumableHistoryPage({ params, searchParams }: Co
                   className="mt-2"
                   items={[
                     { key: "after", label: t("col_after"), value: <span className="num">{formatCount(row.onHandAfter)}</span> },
-                    { key: "detail", label: t("col_detail"), value: detail(row) },
+                    detailItem(row),
                     { key: "note", label: t("col_note"), value: row.note },
                     { key: "by", label: t("col_by"), value: row.actor },
                   ]}

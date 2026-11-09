@@ -82,7 +82,8 @@ export function parseAssetOperationSearch(params: URLSearchParams): AssetOperati
     q,
     id,
     assignCustodian: params.get("assignCustodian") === "1",
-    ...(id && params.get("detail") === "1" ? { detail: true as const } : {}),
+    // mode=consumable (the เบิกไปใช้ picker, opened by consumable:create) never carries the chosen-asset detail.
+    ...(id && mode !== "consumable" && params.get("detail") === "1" ? { detail: true as const } : {}),
   }
 }
 

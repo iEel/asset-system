@@ -114,6 +114,20 @@ test("header: เบิก, รับเข้า (create) and ปรับย�
   assert.match(header, /disabled=\{out\}[\s\S]{0,80}aria-describedby=\{out \? reasonId : undefined\}/)
 })
 
+test("phone cards label the detail by type: เครื่อง, เหตุผล, วันที่รับเข้า (plan 2 final review)", () => {
+  const page = read(pagePath)
+  assert.match(page, /row\.type === "issue"\n\s*\? \{ key: "detail", label: t\("detail_asset"\), value: detail\(row\) \}/)
+  assert.match(page, /row\.type === "adjust"\n\s*\? \{ key: "detail", label: t\("field_reason"\), value: detail\(row\) \}/)
+  assert.match(page, /: \{ key: "detail", label: t\("field_receivedDate"\), value: row\.receivedDate \? formatAssetDetailDate\(row\.receivedDate, locale\) : null \}/)
+  assert.match(page, /\n\s*detailItem\(row\),\n/)
+  assert.doesNotMatch(page, /label: t\("col_detail"\)/)
+  // The desktop column header names all three.
+  assert.match(page, /<DataTableHead>\{t\("col_detail"\)\}<\/DataTableHead>/)
+  const en = messages("en").consumablesPage
+  assert.equal(en.col_detail, "Asset / reason / received")
+  assert.equal(en.detail_asset, "Asset")
+})
+
 test("words: the history page's messages in both languages", () => {
   const th = messages("th").consumablesPage
   const en = messages("en").consumablesPage
@@ -125,7 +139,8 @@ test("words: the history page's messages in both languages", () => {
     col_type: "รายการ",
     col_quantity: "จำนวน",
     col_after: "คงเหลือหลัง",
-    col_detail: "เครื่อง",
+    col_detail: "เครื่อง / เหตุผล / วันที่รับ",
+    detail_asset: "เครื่อง",
     col_note: "หมายเหตุ",
     col_by: "โดย",
     type_receive: "รับเข้า",
@@ -137,4 +152,12 @@ test("words: the history page's messages in both languages", () => {
   for (const [key, value] of Object.entries(expected)) assert.equal(th[key], value, key)
   for (const key of [...Object.keys(expected), "backToList", "receivedOn", "historyCaption"]) assert.ok(en[key], `en ${key}`)
   assert.ok(th.backToList && th.receivedOn && th.historyCaption)
+})
+
+test("header: issuing the last unit disables เบิก; focus lost on <body> goes to รับเข้า (plan 2 final review)", () => {
+  const header = read(headerPath)
+  assert.match(header, /const receiveRef = useRef<HTMLButtonElement \| null>\(null\)/)
+  assert.match(header, /if \(!out \|\| !\(opener instanceof HTMLButtonElement\) \|\| !opener\.disabled\) return/)
+  assert.match(header, /if \(activeElement !== null && activeElement !== document\.body && activeElement !== opener\) return\n\s*receiveRef\.current\?\.focus\(\)\n\s*\}, \[out\]\)/)
+  assert.match(header, /<Button ref=\{receiveRef\} variant="outline" size="md" onClick=\{\(event\) => onOpen\("receive", event\.currentTarget\)\}>/)
 })

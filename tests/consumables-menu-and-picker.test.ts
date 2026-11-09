@@ -59,6 +59,15 @@ test("picker: consumable is a mode, parsed from the URL", () => {
   assert.deepEqual(parsed, { mode: "consumable", q: "0228", id: null, assignCustodian: false })
 })
 
+test("picker: mode=consumable drops detail=1 (the chosen-asset detail stays behind asset:edit); other modes keep it", () => {
+  assert.deepEqual(
+    parseAssetOperationSearch(new URLSearchParams("mode=consumable&id=asset-1&detail=1")),
+    { mode: "consumable", q: "", id: "asset-1", assignCustodian: false },
+  )
+  assert.equal((parseAssetOperationSearch(new URLSearchParams("mode=checkout&id=asset-1&detail=1")) as { detail?: true }).detail, true)
+  assert.match(read("src/lib/asset-operation-search-rules.ts"), /id && mode !== "consumable" && params\.get\("detail"\) === "1"/)
+})
+
 test("picker verdicts: Ready, In Use, Checked Out and Under Maintenance pass; the blocked statuses and an inactive asset block", () => {
   for (const statusName of ["Ready", "In Use", "Checked Out", "Under Maintenance"]) {
     assert.deepEqual(getConsumableVerdict({ statusName, isActive: true }), yes, statusName)
@@ -149,6 +158,15 @@ test("search route: mode=consumable checks consumable:create only", async () => 
   state.checks = []
   assert.equal((await get("?mode=consumable&q=0228")).status, 403, "asset:edit alone does not open the consumable picker")
   assert.deepEqual(state.checks, ["consumable:create"])
+})
+
+test("search route: mode=consumable by id with detail=1 answers without the chosen-asset detail", async () => {
+  state.permissions = ["consumable:create"]
+  const response = await get("?mode=consumable&id=asset-1&detail=1")
+  assert.equal(response.status, 200)
+  const { data } = await response.json() as { data: { rows: Array<Record<string, unknown>> } }
+  assert.ok(data.rows.length > 0)
+  for (const row of data.rows) assert.equal("detail" in row, false)
 })
 
 test("search route: the other modes keep asset:edit, and consumable:create does not open them", async () => {

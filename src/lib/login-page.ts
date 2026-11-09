@@ -47,6 +47,7 @@ const destinationRoutes: readonly { segments: readonly string[]; exact?: boolean
   { segments: ["maintenance"], key: "nav.maintenance" },
   { segments: ["disposal"], key: "nav.disposal" },
   { segments: ["reports"], key: "nav.reports" },
+  { segments: ["consumables"], key: "nav.consumables" },
   { segments: ["audit"], key: "nav.audit" },
   { segments: ["notifications"], key: "notifications.title" },
   { segments: ["admin"], key: "nav.administration" },

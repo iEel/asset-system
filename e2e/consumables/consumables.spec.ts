@@ -6,8 +6,8 @@
 //   and GET /api/consumables answers 403.
 // - The story (desktop-light and phone-light): a run kind "<run> <project> เมาส์ทดสอบ" with ขั้นต่ำ 2 (the project's
 //   code keeps the two projects' kinds apart: the name is unique); รับเข้า 3 → คงเหลือ 3 พอใช้; เบิก 2 to a run asset
-//   through the picker (mode consumable) → คงเหลือ 1 ต้องซื้อเพิ่ม and the banner names the kind; เบิก 2 more → "ของในตู้ไม่พอ
-//   เหลือ 1 ชิ้น" under จำนวน and nothing sent; ปรับยอด to 4 with a reason → คงเหลือ 4; the history lists รับเข้า +3, เบิก −2
+//   through the picker (mode consumable) → คงเหลือ 1 ต้องซื้อเพิ่ม and the banner names the kind; เบิก 2 more → the hint "ของในตู้ไม่พอ
+//   เหลือ 1 ชิ้น" under จำนวน, then the server's 409 says it under จำนวน (one request, nothing saved); ปรับยอด to 4 with a reason → คงเหลือ 4; the history lists รับเข้า +3, เบิก −2
 //   with the asset's link and ปรับยอด +3 with the reason; ปิดใช้งาน names "ยังเหลือ 4 ชิ้น", the kind leaves the list, and
 //   its history still opens, read-only.
 // Writes: the run's asset (the asset API, as the transaction specs make theirs) and the run kind's own movements and
@@ -186,7 +186,7 @@ test.describe("the cabinet as the seed admin: a run kind from add to deactivate"
     await expect(lowBanner).toContainText(W.state_low)
     await recordSettled(page, measure, "consumables list, low after issue")
 
-    // เบิก 2 more: the dialog refuses it under จำนวน with the count left, and sends nothing.
+    // เบิก 2 more: the list's count is only a hint under จำนวน; the server's 409 CONSUMABLE_SHORT refuses it with the count left.
     let sentIssues = 0
     const countIssue = (request: { method(): string; url(): string }) => {
       if (request.method() === "POST" && new URL(request.url()).pathname === "/api/consumables/issue") sentIssues += 1
@@ -195,13 +195,16 @@ test.describe("the cabinet as the seed admin: a run kind from add to deactivate"
     await issueButton(page, e2eDevice, kindName).click()
     await expect(issueDialog).toBeVisible()
     await page.locator("#consumable-issue-quantity").fill("2")
+    await expect(page.locator("#consumable-issue-quantity-hint")).toHaveText(fillTemplate(W.shortWithCount, { onHand: 1, unit: UNIT }))
     await pickAsset(page, ISSUE_ASSET, asset.assetTag, asset.assetTag)
+    const shortAnswer = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/consumables/issue")
     await issueDialog.getByRole("button", { name: W.issueSubmit, exact: true }).click()
+    expect((await shortAnswer).status(), "the server refuses the short issue").toBe(409)
     await expect(page.locator("#consumable-issue-quantity-error")).toHaveText(fillTemplate(W.shortWithCount, { onHand: 1, unit: UNIT }))
     await expect(page.locator("#consumable-issue-quantity")).toBeFocused()
     await recordSettled(page, measure, "consumables: issue, short")
     page.off("request", countIssue)
-    expect(sentIssues, "the short issue is refused in the dialog").toBe(0)
+    expect(sentIssues, "the short issue is asked of the server once").toBe(1)
     await issueDialog.getByRole("button", { name: W.cancel, exact: true }).click()
     await expect(issueDialog).toBeHidden()
 

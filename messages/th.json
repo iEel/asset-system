@@ -7504,12 +7504,13 @@
     "col_type": "รายการ",
     "col_quantity": "จำนวน",
     "col_after": "คงเหลือหลัง",
-    "col_detail": "เครื่อง",
+    "col_detail": "เครื่อง / เหตุผล / วันที่รับ",
     "col_note": "หมายเหตุ",
     "col_by": "โดย",
     "type_receive": "รับเข้า",
     "type_issue": "เบิก",
     "type_adjust": "ปรับยอด",
-    "receivedOn": "รับเมื่อ {date}"
+    "receivedOn": "รับเมื่อ {date}",
+    "detail_asset": "เครื่อง"
   }
 }

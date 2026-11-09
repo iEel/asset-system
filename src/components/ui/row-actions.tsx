@@ -51,6 +51,7 @@ export type RowActionsProps = {
   openerRef?: RefObject<HTMLElement | null>
   menu?: "auto" | "dropdown" | "sheet"
   triggerVariant?: "ghost" | "outline"
+  busy?: boolean
   className?: string
 }
 
@@ -82,6 +83,7 @@ export function RowActions({
   openerRef,
   menu = "auto",
   triggerVariant = "ghost",
+  busy = false,
   className,
 }: RowActionsProps) {
   const tCommon = useTranslations("common")
@@ -229,8 +231,10 @@ export function RowActions({
     )
   }
 
+  // busy: the caller is saving something for this row (ปิดใช้งาน on ของใช้สิ้นเปลือง). ⋯ is announced busy and
+  // unavailable, keeps focus and ignores clicks (button.tsx); the caller also refuses a second save.
   const trigger = (
-    <Button ref={triggerRef} variant={triggerVariant} size="icon-sm" aria-label={menuLabel} title={menuLabel}>
+    <Button ref={triggerRef} variant={triggerVariant} size="icon-sm" aria-label={menuLabel} title={menuLabel} busy={busy}>
       <MoreHorizontal aria-hidden="true" />
     </Button>
   )

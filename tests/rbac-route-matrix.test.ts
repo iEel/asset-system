@@ -54,6 +54,11 @@ test("bulk disposal execution is registered for disposal edit permission", () =>
   assert.deepEqual(entry?.checks, [{ module: "disposal", action: "edit" }])
 })
 
+test("the consumables list and add-a-kind route is registered for consumable view and edit (consumables plan 2)", () => {
+  const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/consumables/route.ts")
+  assert.deepEqual(entry?.checks, [{ module: "consumable", action: "view" }, { module: "consumable", action: "edit" }])
+})
+
 test("the disposal round is registered for disposal edit permission (group 6 plan 4)", () => {
   const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/disposal-rounds/route.ts")
   assert.deepEqual(entry?.checks, [{ module: "disposal", action: "edit" }])
