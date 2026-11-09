@@ -6,6 +6,10 @@
 
 ## 2026-11-09
 
+### ยืนยันผลตรวจ merge แล้ว
+
+- `feat/inspection-confirm` fast-forward เข้า master ที่ `0c915191` และ push ทั้ง origin และ company (2026-11-09 ผู้ใช้สั่ง) · unit test บน master 5,388/0 · ไม่มี migration · ยังไม่ deploy · หลัง deploy เจ้าหน้าที่ปลดทรัพย์สินที่ค้างอยู่ระหว่างตรวจสอบผ่านหน้ายืนยันผลตรวจ ไม่ต้องรัน SQL บน Production
+
 ### ยืนยันผลตรวจ แผน 5: แถบแจ้งบนหน้ารายละเอียดทรัพย์สิน หน้าต่างยืนยันขั้นตอนเดียว และแถบขั้นต่อไปในหน้ารายการไม่ตรงทะเบียน · ฟีเจอร์ครบ
 
 plan `docs/superpowers/plans/2026-11-09-inspection-confirm-5-detail-and-handoff.md` · branch `feat/inspection-confirm` · ยังไม่ merge · ไม่มี migration
