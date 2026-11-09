@@ -595,10 +595,10 @@ test.describe("IT staff are refused the review and the close", () => {
     const chain = readChain(testInfo.project.name)
     if (!chain.notFoundFindingId) throw new Error("the not-found save left no finding id")
     await measure.visit(`/th/audit/findings?status=pending&roundId=${chain.roundId}`, "findings of the round (IT staff)")
-    await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงทะเบียนจากการตรวจนับ" })).toBeVisible()
     // IT staff hold no audit approve, so the page offers them no review controls at all (decision DX3), nor the
     // segregation note that stands in for them for an approver who reported the finding.
-    await expect(page.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้").filter({ visible: true })).toHaveCount(0)
+    await expect(page.getByText("ไม่สามารถพิจารณารายการไม่ตรงทะเบียนที่คุณเป็นผู้รายงานเองได้").filter({ visible: true })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "ปฏิเสธ", exact: true })).toHaveCount(0)
     // Group 2 plan 4 (spec §10): no tick and no selection bar; the panel a row opens reads the finding, its machine
@@ -957,7 +957,7 @@ test.describe("The audit exports by permission", () => {
       // AU1 fixed (FX4): this test now keeps the exports hidden from a role without audit:export.
       const chain = readChain(testInfo.project.name)
       await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT staff)")
-      await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
+      await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงทะเบียนจากการตรวจนับ" })).toBeVisible()
       // The findings export sits in "ส่งออก ▾" (spec §10), which needs audit:export: no menu and no export link.
       await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)
       await expect(page.locator('main a[href^="/api/audit-findings/export"]')).toHaveCount(0)
@@ -977,7 +977,7 @@ test.describe("The audit exports by permission", () => {
       await page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true }).click()
       const items = page.getByRole("menuitem")
       await expect(items).toHaveCount(2)
-      // Task 3's two items, by their names: "ส่งออกรายการไม่ตรง …" (Excel) and "ส่งออก PDF …".
+      // Task 3's two items, by their names: "ส่งออกรายการไม่ตรงทะเบียน …" (Excel) and "ส่งออก PDF …".
       const excel = items.filter({ hasText: R.exportExcel })
       for (const [item, route] of [[excel, "export"], [items.filter({ hasText: R.exportPdf }), "export-pdf"]] as const) {
         await expect(item).toHaveAttribute("href", new RegExp(`^/api/audit-findings/${route}\\?`))

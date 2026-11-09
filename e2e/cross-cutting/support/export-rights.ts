@@ -22,7 +22,7 @@ export const EXPORTS: readonly ExportPlan[] = [
   { key: "overview", permission: "report:export", label: "ส่งออกรายงานภาพรวม", route: "/api/reports/assets-overview/export" },
   { key: "register", permission: "asset:view", label: "ส่งออกทะเบียนทรัพย์สิน", route: "/api/assets/export" },
   { key: "maintenance", permission: "maintenance:export", label: "ส่งออกใบซ่อม", route: "/api/maintenance-tickets/export" },
-  { key: "audit", permission: "audit:export", label: "ส่งออกรายการไม่ตรง", route: "/api/audit-findings/export" },
+  { key: "audit", permission: "audit:export", label: "ส่งออกรายการไม่ตรงทะเบียน", route: "/api/audit-findings/export" },
   { key: "disposal", permission: "disposal:export", label: "ส่งออกตัดจำหน่าย", route: "/api/disposal-requests/export" },
   { key: "role", permission: "role:export", label: "ส่งออกผลตรวจสิทธิ์ตามบทบาท", route: "/api/admin/roles/export" },
 ]

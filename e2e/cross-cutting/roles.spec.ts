@@ -130,7 +130,7 @@ test.describe("IT staff", () => {
   test("the findings page offers IT staff no review control without audit:approve (finding M4)", async ({ page, measure, e2eDevice }) => {
     await measure.visit("/th/audit/findings", "audit findings (IT staff)")
     // The queue's empty state (auditFinding.emptyTitle) shows when there is no pending finding to look at.
-    const empty = await page.getByRole("main").getByText("ไม่พบรายการไม่ตรงตามตัวกรอง", { exact: true }).filter({ visible: true }).count()
+    const empty = await page.getByRole("main").getByText("ไม่พบรายการไม่ตรงทะเบียนตามตัวกรอง", { exact: true }).filter({ visible: true }).count()
     test.skip(empty > 0, "no pending finding in the dev database to look at")
     for (const name of REVIEW_BUTTON_NAMES) await expect(page.getByRole("main").getByRole("button", { name, exact: true }).filter({ visible: true })).toHaveCount(0)
     // Group 2 plan 4 (spec §10): no tick, so no selection bar, and the panel a row opens offers none of them either,

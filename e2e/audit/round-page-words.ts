@@ -6,7 +6,7 @@ export const ROUND_PAGE_WORDS = {
   continueScan: "เดินตรวจต่อ ({count})",
   // Step 2 counts findings (P2-R26); without audit:approve its main link reads as a view, not a call to review.
   reviewWaiting: "รอ {count}",
-  viewPendingFindings: "ดูรายการไม่ตรงรอพิจารณา ({count})",
+  viewPendingFindings: "ดูรายการไม่ตรงทะเบียนรอพิจารณา ({count})",
   closeRound: "ปิดรอบตรวจ",
   openerCannotClose: "ผู้เปิดรอบปิดรอบเองไม่ได้ ให้หัวหน้าคนอื่นปิด",
   // The header's menus.
@@ -30,7 +30,7 @@ export const ROUND_PAGE_WORDS = {
   fieldDepartment: "แผนกไม่ตรง",
   fieldCustodian: "ผู้ถือครองไม่ตรง",
   fieldCondition: "สภาพไม่ตรง",
-  multipleFields: "บางรายการไม่ตรงมากกว่าหนึ่งเรื่อง",
+  multipleFields: "บางรายการไม่ตรงทะเบียนมากกว่าหนึ่งเรื่อง",
   componentsMissingLine: "เครื่องที่ส่วนควบไม่ครบ {count}",
   componentsMissingChip: "ส่วนควบไม่ครบ {count}",
   // A parent row's "ไม่พบ: <name> (<code>)": the prefix is the message, the name and the linked code follow it.

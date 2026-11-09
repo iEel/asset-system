@@ -17,7 +17,7 @@ export const ROLES_WORDS = {
   // The change summary, its lines, and the segregation warning's title and audit line.
   summaryTitle: "การเปลี่ยนแปลง {before, number} → {after, number}", summaryAdd: "เพิ่มสิทธิ์ {action} · {module}",
   sodTitle: "ทำรายการและอนุมัติได้ในบทบาทเดียว",
-  sodAudit: "ตรวจนับ เพิ่ม + อนุมัติ · ระบบกันไม่ให้ปิดรอบที่ตัวเองสร้าง และพิจารณารายการไม่ตรงที่ตัวเองรายงานเสมอ",
+  sodAudit: "ตรวจนับ เพิ่ม + อนุมัติ · ระบบกันไม่ให้ปิดรอบที่ตัวเองสร้าง และพิจารณารายการไม่ตรงทะเบียนที่ตัวเองรายงานเสมอ",
   // The note (footer from sm, and the add dialog's).
   noteOptional: "หมายเหตุ (ไม่บังคับ)",
   // People in the role and the add dialog.

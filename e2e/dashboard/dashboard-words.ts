@@ -21,7 +21,7 @@ export const WAITING_TITLES = {
   openRepairs: "ซ่อมยังไม่เสร็จ",
   stuckRepairs: "รอซ่อมแต่ยังไม่มีบันทึกซ่อม",
   duePm: "PM ครบกำหนดใน 7 วัน",
-  pendingAuditFindings: "รายการไม่ตรงรอพิจารณา",
+  pendingAuditFindings: "รายการไม่ตรงทะเบียนรอพิจารณา",
   openAuditActions: "แผนแก้ไขยังเปิด",
   auditActionsDueSoon: "แผนแก้ไขใกล้ครบกำหนด",
   pendingDisposals: "ตัดจำหน่ายรอพิจารณา",

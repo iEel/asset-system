@@ -3,8 +3,8 @@
 // test compares the texts with every placeholder alike.
 export const REVIEW_WORDS = {
   // The page.
-  title: "รายการไม่ตรงจากการตรวจนับ",
-  emptyTitle: "ไม่พบรายการไม่ตรงตามตัวกรอง",
+  title: "รายการไม่ตรงทะเบียนจากการตรวจนับ",
+  emptyTitle: "ไม่พบรายการไม่ตรงทะเบียนตามตัวกรอง",
   // The six tabs, in order, and their nav's name (P4-R1, P4-R3).
   tabsLabel: "ตัวกรองงาน",
   tabPending: "รอพิจารณา",
@@ -33,10 +33,10 @@ export const REVIEW_WORDS = {
   reject: "ปฏิเสธ",
   position: "{position} จาก {total}",
   approveAllFields: "อนุมัติทุกช่องของทรัพย์สินนี้",
-  ownFinding: "ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้",
+  ownFinding: "ไม่สามารถพิจารณารายการไม่ตรงทะเบียนที่คุณเป็นผู้รายงานเองได้",
   // The follow-up controls, which need audit:approve (finding M4).
   actionPlan: "แผนแก้ไข",
-  closeFinding: "ปิดรายการไม่ตรง",
+  closeFinding: "ปิดรายการไม่ตรงทะเบียน",
   // The ticks, the selection bar and its one dialog (spec §10, bugs 17-18, P4-R25).
   selectAll: "เลือกทุกรายการที่พิจารณาได้ในหน้านี้",
   selectedCount: "{count} รายการที่เลือก",
@@ -50,6 +50,6 @@ export const REVIEW_WORDS = {
   batchResultDismiss: "ปิดผลการพิจารณา",
   // "ส่งออก ▾" (spec §10) and its two items.
   exportMenu: "ส่งออก",
-  exportExcel: "ส่งออกรายการไม่ตรง",
+  exportExcel: "ส่งออกรายการไม่ตรงทะเบียน",
   exportPdf: "ส่งออก PDF",
 } as const
