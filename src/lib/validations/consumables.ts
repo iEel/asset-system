@@ -22,6 +22,13 @@ export const consumableItemSchema = z.object({
   minQuantity: z.number().int().min(0).max(CONSUMABLE_ADJUST_MAX).default(0),
 })
 
+/** PATCH edit: no defaults, all three required (the dialog always sends them), so a partial body never resets a field. */
+export const consumableItemUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  unit: z.string().trim().min(1).max(20),
+  minQuantity: z.number().int().min(0).max(CONSUMABLE_ADJUST_MAX),
+})
+
 export const consumableReceiveSchema = z.object({
   itemId: idSchema,
   quantity: issueQuantitySchema,

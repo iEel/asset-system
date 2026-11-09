@@ -1,6 +1,8 @@
 // ของใช้สิ้นเปลือง (consumables spec, plan 1 task 3): kinds, receive, issue, adjust and history. The routes under
 // src/app/api/consumables check the permission and map the errors (src/lib/consumable-route-errors.ts); this module writes each change
-// in one serializable transaction and audits it after the transaction, as inspection-confirm-service.ts does.
+// in one serializable transaction and audits it after the transaction, as inspection-confirm-service.ts does. Each write
+// runs again when SQL Server picks it as a deadlock victim (withDeadlockRetry, plan 1 final review): a retried issue then
+// succeeds or answers the shortage with the current count, and a retried create reaches the name check.
 import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { logAudit } from "@/lib/audit-log"
@@ -8,6 +10,7 @@ import { prisma } from "@/lib/db"
 import { consumableAdjustError, consumableIssueAssetError, consumableStockState } from "./consumable-rules.ts"
 import { FieldRefusalError } from "./field-errors.ts"
 import { isPrismaUniqueConstraintError } from "./prisma-unique-retry.ts"
+import { withDeadlockRetry } from "./transaction-retry.ts"
 import type {
   ConsumableAdjustInput,
   ConsumableIssueInput,
@@ -67,10 +70,6 @@ export function consumableNameTaken(activeItems: ReadonlyArray<{ id: string; nam
 function noteOrNull(note: string | undefined): string | null {
   const trimmed = note?.trim() ?? ""
   return trimmed === "" ? null : trimmed
-}
-
-export function isConsumableWriteConflict(error: unknown) {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2034")
 }
 
 type Tx = Prisma.TransactionClient
@@ -151,12 +150,12 @@ export async function createConsumableItem(input: ConsumableItemInput, userId: s
   const name = input.name.trim()
   let item
   try {
-    item = await prisma.$transaction(async (tx) => {
+    item = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
       await assertNameFree(tx, name)
       return tx.consumableItem.create({
         data: { name, unit: input.unit.trim(), minQuantity: input.minQuantity, createdBy: userId },
       })
-    }, consumableTransactionOptions)
+    }, consumableTransactionOptions))
   } catch (error) {
     // The filtered unique index on active names (two creates at once).
     if (isPrismaUniqueConstraintError(error)) throw nameExistsError()
@@ -170,7 +169,7 @@ export async function updateConsumableItem(id: string, input: ConsumableItemInpu
   const name = input.name.trim()
   let result
   try {
-    result = await prisma.$transaction(async (tx) => {
+    result = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
       const before = await activeItemOrThrow(tx, id)
       await assertNameFree(tx, name, id)
       const after = await tx.consumableItem.update({
@@ -178,7 +177,7 @@ export async function updateConsumableItem(id: string, input: ConsumableItemInpu
         data: { name, unit: input.unit.trim(), minQuantity: input.minQuantity, updatedBy: userId },
       })
       return { before, after }
-    }, consumableTransactionOptions)
+    }, consumableTransactionOptions))
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) throw nameExistsError()
     throw error
@@ -194,10 +193,10 @@ export async function updateConsumableItem(id: string, input: ConsumableItemInpu
 
 /** Sets isActive false only: onHand and the history stay (spec: a kind with stock may be deactivated). */
 export async function deactivateConsumableItem(id: string, userId: string) {
-  const item = await prisma.$transaction(async (tx) => {
+  const item = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
     await activeItemOrThrow(tx, id)
     return tx.consumableItem.update({ where: { id }, data: { isActive: false, updatedBy: userId } })
-  }, consumableTransactionOptions)
+  }, consumableTransactionOptions))
   await logAudit({ userId, module: "consumable", action: "deactivate", recordId: id, newValue: { isActive: false, onHand: item.onHand } })
   return item
 }
@@ -205,7 +204,7 @@ export async function deactivateConsumableItem(id: string, userId: string) {
 // ---------------------------------------------------------------- stock
 
 export async function receiveConsumable(input: ConsumableReceiveInput, userId: string) {
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
     await activeItemOrThrow(tx, input.itemId)
     const item = await tx.consumableItem.update({
       where: { id: input.itemId },
@@ -223,14 +222,15 @@ export async function receiveConsumable(input: ConsumableReceiveInput, userId: s
       },
     })
     return { item, movement }
-  }, consumableTransactionOptions)
+  }, consumableTransactionOptions))
   await logAudit({ userId, module: "consumable", action: "receive", recordId: input.itemId, newValue: { quantity: input.quantity, onHand: result.item.onHand, receivedDate: input.receivedDate } })
   return { onHand: result.item.onHand, movementId: result.movement.id }
 }
 
 export async function issueConsumable(input: ConsumableIssueInput, userId: string) {
-  const result = await prisma.$transaction(async (tx) => {
-    await activeItemOrThrow(tx, input.itemId)
+  const result = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
+    // The kind is not read before the decrement: a shared read then the update's exclusive lock deadlocks two issues of
+    // one kind (plan 1 final review). The asset is read first; a refusal there touches no stock.
     const asset = await tx.asset.findUnique({
       where: { id: input.assetId },
       select: { isActive: true, status: { select: { name: true } } },
@@ -239,7 +239,7 @@ export async function issueConsumable(input: ConsumableIssueInput, userId: strin
     if (assetError === "assetNotFound") throw new FieldRefusalError("Asset not found", { assetId: "assetNotFound" }, 404)
     if (assetError === "assetStatus") throw new FieldRefusalError("This asset cannot take consumables", { assetId: "consumableAssetStatus" })
 
-    // The conditional decrement: a count of 0 is a shortage (or the kind was deactivated meanwhile).
+    // The conditional decrement comes first; only a count of 0 reads the kind, to tell not-found, inactive and short apart.
     const updated = await tx.consumableItem.updateMany({
       where: { id: input.itemId, isActive: true, onHand: { gte: input.quantity } },
       data: { onHand: { decrement: input.quantity }, updatedBy: userId },
@@ -264,13 +264,13 @@ export async function issueConsumable(input: ConsumableIssueInput, userId: strin
       },
     })
     return { item, movement }
-  }, consumableTransactionOptions)
+  }, consumableTransactionOptions))
   await logAudit({ userId, module: "consumable", action: "issue", recordId: input.itemId, newValue: { quantity: input.quantity, assetId: input.assetId, onHand: result.item.onHand } })
   return { onHand: result.item.onHand, movementId: result.movement.id }
 }
 
 export async function adjustConsumable(input: ConsumableAdjustInput, userId: string) {
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
     const item = await activeItemOrThrow(tx, input.itemId)
     const refusal = consumableAdjustError(item.onHand, input.counted)
     if (refusal === "noChange") throw new FieldRefusalError("No change to the count", { counted: "consumableNoChange" })
@@ -290,7 +290,7 @@ export async function adjustConsumable(input: ConsumableAdjustInput, userId: str
       },
     })
     return { before: item.onHand, after, movement }
-  }, consumableTransactionOptions)
+  }, consumableTransactionOptions))
   await logAudit({ userId, module: "consumable", action: "adjust", recordId: input.itemId, oldValue: { onHand: result.before }, newValue: { onHand: result.after.onHand, reason: input.reason.trim() } })
   return { onHand: result.after.onHand, movementId: result.movement.id }
 }

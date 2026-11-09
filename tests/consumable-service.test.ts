@@ -32,11 +32,13 @@ type Asset = { id: string; isActive: boolean; status: { name: string } }
 
 const globals = globalThis as unknown as { __consumablePrisma: unknown; __consumableAudits: Array<Record<string, unknown>> }
 
-function fakeDb(seed: { items?: Item[]; assets?: Asset[] }) {
+function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number }) {
   const items = new Map((seed.items ?? []).map((item) => [item.id, { ...item }]))
   const assets = new Map((seed.assets ?? []).map((asset) => [asset.id, asset]))
   const movements: Movement[] = []
   const transactions: unknown[] = []
+  const calls: string[] = []
+  let deadlocks = seed.deadlocks ?? 0
   let nextId = 1
   const matches = (item: Item, where: Record<string, unknown>) => {
     if (where.id !== undefined && where.id !== item.id) return false
@@ -55,7 +57,10 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[] }) {
   }
   const client = {
     consumableItem: {
-      findUnique: async ({ where }: { where: { id: string } }) => (items.has(where.id) ? { ...items.get(where.id)! } : null),
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        calls.push("item.findUnique")
+        return items.has(where.id) ? { ...items.get(where.id)! } : null
+      },
       findMany: async ({ where = {} }: { where?: Record<string, unknown> } = {}) =>
         [...items.values()].filter((item) => {
           if (where.isActive !== undefined && item.isActive !== where.isActive) return false
@@ -74,6 +79,7 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[] }) {
         return { ...item }
       },
       updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        calls.push("item.updateMany")
         let count = 0
         for (const item of items.values()) if (matches(item, where)) { applyData(item, data); count += 1 }
         return { count }
@@ -94,12 +100,17 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[] }) {
     ...client,
     $transaction: async (run: (tx: typeof client) => Promise<unknown>, options: unknown) => {
       transactions.push(options)
+      // A deadlock victim: SQL Server rolled it back whole, so nothing ran (Prisma P2034).
+      if (deadlocks > 0) {
+        deadlocks -= 1
+        throw Object.assign(new Error("Transaction failed due to a write conflict or a deadlock"), { code: "P2034" })
+      }
       return run(client)
     },
   }
   globals.__consumablePrisma = prisma
   globals.__consumableAudits = []
-  return { items, movements, transactions, audits: () => globals.__consumableAudits }
+  return { items, movements, transactions, calls, audits: () => globals.__consumableAudits }
 }
 
 const service = await import(pathToFileURL("src/lib/consumable-service.ts").href) as typeof import("../src/lib/consumable-service.ts")
@@ -223,6 +234,89 @@ test("update renames with the name check excluding itself, and audits update", a
   const item = db.items.get("toner")!
   assert.deepEqual([item.name, item.unit, item.minQuantity, item.onHand, item.updatedBy], ["TONER 85A", "กล่อง", 4, 5, "u1"])
   assert.deepEqual(db.audits().map((audit) => [audit.module, audit.action]), [["consumable", "update"]])
+})
+
+test("issue: the conditional decrement runs before any read of the kind; the kind is read only on a count of 0", async () => {
+  const db = fakeDb({ items: [toner()], assets: [pc()] })
+  await service.issueConsumable({ itemId: "toner", quantity: 2, assetId: "pc1" }, "u1")
+  assert.deepEqual(db.calls, ["item.updateMany", "item.findUnique"], "the read after the decrement only takes onHandAfter")
+  const short = fakeDb({ items: [toner({ onHand: 1 })], assets: [pc()] })
+  await assert.rejects(service.issueConsumable({ itemId: "toner", quantity: 2, assetId: "pc1" }, "u1"), service.ConsumableShortError)
+  assert.deepEqual(short.calls, ["item.updateMany", "item.findUnique"])
+  fakeDb({ items: [], assets: [pc()] })
+  await assert.rejects(service.issueConsumable({ itemId: "nope", quantity: 1, assetId: "pc1" }, "u1"), service.ConsumableNotFoundError)
+})
+
+test("a deadlock victim runs again: issue succeeds on the retry or answers the shortage, and every write retries", async () => {
+  const db = fakeDb({ items: [toner()], assets: [pc()], deadlocks: 1 })
+  const result = await service.issueConsumable({ itemId: "toner", quantity: 2, assetId: "pc1" }, "u1")
+  assert.equal(db.transactions.length, 2)
+  assert.equal(result.onHand, 3)
+  assert.equal(db.movements.length, 1)
+  assert.equal(db.audits().length, 1)
+
+  const short = fakeDb({ items: [toner({ onHand: 1 })], assets: [pc()], deadlocks: 1 })
+  await assert.rejects(service.issueConsumable({ itemId: "toner", quantity: 2, assetId: "pc1" }, "u1"),
+    (error: unknown) => error instanceof service.ConsumableShortError && error.onHand === 1 && error.unit === "ตลับ")
+  assert.equal(short.transactions.length, 2)
+
+  const writes: Array<() => Promise<unknown>> = [
+    () => service.receiveConsumable({ itemId: "toner", quantity: 1, receivedDate: "2026-11-08" }, "u1"),
+    () => service.adjustConsumable({ itemId: "toner", counted: 9, reason: "นับจริง" }, "u1"),
+    () => service.createConsumableItem({ name: "Mouse", unit: "ชิ้น", minQuantity: 0 }, "u1"),
+    () => service.updateConsumableItem("toner", { name: "Toner", unit: "ตลับ", minQuantity: 1 }, "u1"),
+    () => service.deactivateConsumableItem("toner", "u1"),
+  ]
+  for (const write of writes) {
+    const retried = fakeDb({ items: [toner()], deadlocks: 1 })
+    await write()
+    assert.equal(retried.transactions.length, 2)
+  }
+  fakeDb({ items: [toner()], assets: [pc()], deadlocks: 3 })
+  await assert.rejects(service.issueConsumable({ itemId: "toner", quantity: 1, assetId: "pc1" }, "u1"),
+    (error: unknown) => (error as { code?: string }).code === "P2034", "three runs in all, then the deadlock goes to the route")
+})
+
+test("source: each write transaction is wrapped in withDeadlockRetry; the route mapping uses isDeadlockError", () => {
+  const source = read("src/lib/consumable-service.ts")
+  assert.match(source, /import \{ withDeadlockRetry \} from "\.\/transaction-retry\.ts"/)
+  const transactions = [...source.matchAll(/prisma\.\$transaction\(/g)].map((match) => match.index!)
+  assert.equal(transactions.length, 6)
+  const wrapper = "withDeadlockRetry(() => "
+  for (const at of transactions) assert.equal(source.slice(at - wrapper.length, at), wrapper)
+  assert.equal([...source.matchAll(/\}, consumableTransactionOptions\)\)/g)].length, 6)
+  assert.doesNotMatch(source, /P2034/)
+  const issue = source.slice(source.indexOf("export async function issueConsumable("), source.indexOf("export async function adjustConsumable("))
+  assert.ok(!issue.includes("activeItemOrThrow"), "issue does not read the kind before the decrement")
+  assert.ok(issue.indexOf("updateMany(") < issue.indexOf("consumableItem.findUnique("), "the decrement comes before any read of the kind")
+
+  const routeErrors = read("src/lib/consumable-route-errors.ts")
+  assert.match(routeErrors, /import \{ isDeadlockError \} from "@\/lib\/transaction-retry"/)
+  assert.match(routeErrors, /if \(isDeadlockError\(error\)\) \{\n\s+return NextResponse\.json\(\{ error: CONSUMABLE_CHANGED_MESSAGE, code: "CONSUMABLE_CHANGED" \}, \{ status: 409 \}\)/)
+  assert.doesNotMatch(routeErrors, /"P2034"/)
+})
+
+test("PATCH uses its own schema without defaults: { name } alone is refused with field errors, a full body writes exactly its fields", async () => {
+  const validations = await import(pathToFileURL("src/lib/validations/consumables.ts").href) as typeof import("../src/lib/validations/consumables.ts")
+  const partial = validations.consumableItemUpdateSchema.safeParse({ name: "หมึก HP 85A" })
+  assert.equal(partial.success, false)
+  assert.deepEqual(partial.error!.issues.map((issue) => issue.path.join(".")).sort(), ["minQuantity", "unit"])
+  const { validationFailedBody } = await import(pathToFileURL("src/lib/api-error-exposure.ts").href) as typeof import("../src/lib/api-error-exposure.ts")
+  const body = validationFailedBody(partial.error)
+  assert.equal(body?.code, "VALIDATION_FAILED")
+  assert.deepEqual(Object.keys(body!.fieldErrors).sort(), ["minQuantity", "unit"], "the 400 names the missing fields")
+  assert.deepEqual(validations.consumableItemUpdateSchema.parse({ name: " Toner ", unit: " ตลับ ", minQuantity: 3 }), { name: "Toner", unit: "ตลับ", minQuantity: 3 })
+  assert.deepEqual(validations.consumableItemSchema.parse({ name: "Mouse" }), { name: "Mouse", unit: "ชิ้น", minQuantity: 0 }, "POST create keeps the defaults")
+
+  const route = read("src/app/api/consumables/[id]/route.ts")
+  assert.match(route, /const input = consumableItemUpdateSchema\.parse\(body\)/)
+  assert.doesNotMatch(route, /consumableItemSchema\b/)
+  assert.match(read("src/app/api/consumables/route.ts"), /consumableItemSchema\.parse\(await request\.json\(\)\)/)
+
+  const db = fakeDb({ items: [toner({ unit: "กล่อง", minQuantity: 7 })] })
+  await service.updateConsumableItem("toner", validations.consumableItemUpdateSchema.parse({ name: "Toner 85A", unit: "ตลับ", minQuantity: 3 }), "u1")
+  const item = db.items.get("toner")!
+  assert.deepEqual([item.name, item.unit, item.minQuantity, item.onHand, item.isActive], ["Toner 85A", "ตลับ", 3, 5, true])
 })
 
 test("source: every write runs in the Serializable options and calls logAudit after its transaction", () => {

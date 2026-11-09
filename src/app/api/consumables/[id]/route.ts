@@ -3,7 +3,7 @@ import { z } from "zod"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { consumableErrorResponse } from "@/lib/consumable-route-errors"
 import { deactivateConsumableItem, getConsumableItem, updateConsumableItem } from "@/lib/consumable-service"
-import { consumableItemSchema } from "@/lib/validations/consumables"
+import { consumableItemUpdateSchema } from "@/lib/validations/consumables"
 
 type ConsumableItemContext = {
   params: Promise<{ id: string }>
@@ -25,7 +25,7 @@ export async function GET(_request: NextRequest, context: ConsumableItemContext)
   }
 }
 
-// PATCH { name, unit, minQuantity } edits the kind; PATCH { isActive: false } deactivates it.
+// PATCH { name, unit, minQuantity } edits the kind (all three required, no defaults); PATCH { isActive: false } deactivates it.
 export async function PATCH(request: NextRequest, context: ConsumableItemContext) {
   try {
     const user = await requireAuth()
@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest, context: ConsumableItemContext
       consumableDeactivateSchema.parse(body)
       return NextResponse.json(await deactivateConsumableItem(id, user.id))
     }
-    const input = consumableItemSchema.parse(body)
+    const input = consumableItemUpdateSchema.parse(body)
     return NextResponse.json(await updateConsumableItem(id, input, user.id))
   } catch (error) {
     return consumableErrorResponse(error)
