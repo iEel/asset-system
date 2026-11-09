@@ -91,3 +91,81 @@ test("the story: add a kind with min 2, receive 3, issue 2 through the picker, s
   assert.ok((spec.match(/await Promise\.all\(\[\n\s*expect\(toast\(page, /g) ?? []).length >= 5, "each save waits for its toast with the refresh")
   assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 8, "axe on every state")
 })
+
+// Plan 3 Task 4 (.superpowers/sdd/2026-11-10-consumables-3-asset-section-report): the machine's panel and the
+// เครื่องที่เปลี่ยนของบ่อย report, in e2e/consumables/consumables-asset.spec.ts.
+const ASSET_SPEC = "e2e/consumables/consumables-asset.spec.ts"
+
+test("the asset spec reads the panel's and the report's own words (consumables plan 3 task 4)", async () => {
+  const { CONSUMABLES_WORDS: W } = await import("../e2e/consumables/consumables-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const a = th.assetConsumables
+  assert.equal(W.assetTitle, a.title)
+  assert.equal(W.assetRecord, a.record)
+  assert.equal(W.assetEmpty, a.empty)
+  assert.equal(W.assetOften, a.often)
+  for (const key of ["itemOption", "tab_frequent", "col_count", "latest_value", "asset_chip", "issueTitle", "issueSubmit", "issueToast"] as const) {
+    assert.equal(W[key], th.consumablesPage[key], `consumablesPage.${key}`)
+  }
+  assert.equal(W.activeFilters, th.asset.activeFilters)
+  assert.equal(W.clearDrilldownFilter, th.asset.clearDrilldownFilter)
+  // The words the panel and the report use, from the components the spec reads.
+  const panel = read("src/components/assets/detail/asset-consumables-panel.tsx")
+  for (const key of ["title", "record", "empty", "often"]) assert.ok(panel.includes(`t("${key}"`), `the panel says assetConsumables.${key}`)
+  assert.ok(panel.includes(`data-slot="asset-consumables-often"`), "the often notice's hook")
+  const report = read("src/components/consumables/consumables-frequent-report.tsx")
+  for (const key of ["col_count", "latest_value", "tab_frequent"]) assert.ok(report.includes(`t("${key}"`), `the report says consumablesPage.${key}`)
+  assert.ok(report.includes(`label={tAsset("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")}`), "the machine chip's group and remove words")
+  const { fillTemplate } = await import("../e2e/shell/shell-words.ts")
+  assert.equal(fillTemplate(W.assetOften, { itemName: "สายชาร์จ", count: 2 }), "เครื่องนี้เปลี่ยนสายชาร์จ 2 ครั้งใน 90 วัน")
+  assert.equal(fillTemplate(W.itemOption, { name: "สายชาร์จ", onHand: 5 }), "สายชาร์จ (คงเหลือ 5)")
+})
+
+test("the asset spec runs as the seed admin, light only, with a run-marked kind and IT staff last (consumables plan 3 task 4)", () => {
+  const spec = read(ASSET_SPEC)
+  assert.ok(spec.includes(`import { expect, test } from "../support/fixtures.ts"`), "the suite's fixtures")
+  assert.ok(!spec.includes(`from "@playwright/test"`), "nothing from @playwright/test")
+  assert.ok(spec.includes("test.use({ storageState: fromRoot(ADMIN_STATE_FILE) })"), "the seed admin's saved session")
+  assert.ok(spec.includes(`test.skip(e2eTheme === "dark", LIGHT_ONLY)`), "desktop-light and phone-light")
+  assert.ok(spec.includes(`import { recordSettled } from "../audit/settle.ts"`), "axe once settled")
+  assert.ok(!spec.includes("measure.recordPage("), "axe through recordSettled")
+  assert.ok(!spec.split("\n").some((line) => line.trim() === "runPhoneOnWebKit()"), "the phone on Chromium")
+  assert.ok(spec.includes("const kindName = `${readRunState().runId} ${projectCode(testInfo.project.name)} สายชาร์จทดสอบ`"), "a run-marked kind per project")
+  // No DELETE, no DB; the issues go through the panel, never the API.
+  assert.doesNotMatch(spec, /method: "DELETE"|\.delete\(|signInOnce\(|\/api\/admin\/|prisma|sqlcmd/)
+  assert.doesNotMatch(spec, /request\.post\("\/api\/consumables\/(?:issue|adjust)/, "issues through the panel")
+  // IT staff come last: the session swap ends the admin's part.
+  const swap = spec.indexOf(`await actAs(page, "itStaff", e2eTheme)`)
+  assert.ok(swap > 0, "IT staff through actAs")
+  assert.ok(swap > spec.lastIndexOf("/th/consumables?view=frequent"), "after the report")
+})
+
+test("the asset story: empty panel, record twice with the machine locked, the often notice, the report by kind and by machine, no panel for IT staff (consumables plan 3 task 4)", () => {
+  const spec = read(ASSET_SPEC)
+  for (const step of [
+    // Setup: 5 received.
+    "data: { itemId: kindId, quantity: 5, receivedDate: bangkokDate() }",
+    // The empty panel.
+    "panel(page).getByText(W.assetEmpty, { exact: true })",
+    // The dialog from + บันทึกเปลี่ยนของ, the machine locked.
+    `panel(page).getByRole("button", { name: W.assetRecord, exact: true })`,
+    "toContainText(`${asset.assetTag} · ${asset.name}`)",
+    `issueDialog.locator("#consumable-issue-asset-search")).toHaveCount(0)`,
+    "await issueOne(5)",
+    "expect(panelRows(page, e2eDevice)).toHaveCount(1)",
+    "await issueOne(4)",
+    "expect(panelRows(page, e2eDevice)).toHaveCount(2)",
+    // The often notice.
+    "fillTemplate(W.assetOften, { itemName: kindName, count: 2 })",
+    // The report by kind and by machine.
+    "`/th/consumables?view=frequent&item=${encodeURIComponent(kindId)}`",
+    "`/th/consumables?view=frequent&asset=${encodeURIComponent(asset.id)}`",
+    "fillTemplate(W.asset_chip, { tag: asset.assetTag })",
+    "await expectReportRow(page, e2eDevice, asset.assetTag, 2, kindName)",
+    // IT staff: no panel.
+    `getByRole("heading", { level: 2, name: W.assetTitle, exact: true })).toHaveCount(0)`,
+  ]) assert.ok(spec.includes(step), step)
+  assert.equal((spec.match(/await expectReportRow\(page, e2eDevice, asset\.assetTag, 2, kindName\)/g) ?? []).length, 2, "both report filters")
+  assert.ok((spec.match(/await Promise\.all\(\[\n\s*expect\(toast\(page, /g) ?? []).length >= 2, "each issue waits for its toast with the refresh")
+  assert.ok((spec.match(/await recordSettled\(page, measure, /g) ?? []).length >= 7, "axe on every state")
+})

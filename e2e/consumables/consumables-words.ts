@@ -1,6 +1,7 @@
 // The words the ของใช้สิ้นเปลือง spec reads on screen (consumables plan 2 Task 5), as the app writes them in
-// messages/th.json under consumablesPage, nav.consumables and common (tests/e2e-consumables.test.ts checks every value
-// is one of th.json's and each key matches its message). Plain data, no imports, so the node test can load it.
+// messages/th.json under consumablesPage, nav.consumables and common, and (plan 3 Task 4) assetConsumables and the
+// asset register's chip words (tests/e2e-consumables.test.ts checks every value is one of th.json's and each key
+// matches its message). Plain data, no imports, so the node test can load it.
 export const CONSUMABLES_WORDS = {
   // The menu row and the shared words.
   navConsumables: "ของใช้สิ้นเปลือง", cancel: "ยกเลิก", moreActionsFor: "การดำเนินการของ {code}",
@@ -27,4 +28,13 @@ export const CONSUMABLES_WORDS = {
   detailMeta: "คงเหลือ {onHand, number} {unit} · ขั้นต่ำ {min, number}", inactiveBadge: "ปิดใช้งานแล้ว",
   receive: "รับเข้า", adjustShort: "ปรับยอด", editShort: "แก้",
   type_receive: "รับเข้า", type_issue: "เบิก", type_adjust: "ปรับยอด",
+  // Plan 3: the issue dialog's kind option (the panel opens it with no kind chosen).
+  itemOption: "{name} (คงเหลือ {onHand, number})",
+  // Plan 3: the machine's panel on its overview (assetConsumables.*).
+  assetTitle: "ของใช้สิ้นเปลือง", assetRecord: "+ บันทึกเปลี่ยนของ", assetEmpty: "ยังไม่มีการเปลี่ยนของให้เครื่องนี้",
+  assetOften: "เครื่องนี้เปลี่ยน{itemName} {count, number} ครั้งใน 90 วัน",
+  // Plan 3: the เครื่องที่เปลี่ยนของบ่อย report, its machine chip (asset.activeFilters / asset.clearDrilldownFilter name the
+  // chip group and its remove link).
+  tab_frequent: "เครื่องที่เปลี่ยนของบ่อย", col_count: "ครั้งที่เปลี่ยน", latest_value: "{date} · {item}", asset_chip: "เครื่อง {tag}",
+  activeFilters: "ตัวกรองที่ใช้อยู่", clearDrilldownFilter: "ล้างตัวกรองนี้",
 } as const
