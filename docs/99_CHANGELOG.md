@@ -6,6 +6,15 @@
 
 ## 2026-11-09
 
+### ของใช้สิ้นเปลือง แผน 1: ตารางข้อมูล migration สิทธิ์ และระบบหลังบ้าน
+
+spec `docs/superpowers/specs/2026-11-09-consumables-design.md` (ผู้ใช้อนุมัติ 2026-11-09) · plan `docs/superpowers/plans/2026-11-09-consumables-1-data-server.md` · branch `feat/consumables` · ยังไม่ merge
+
+- ตาราง `consumable_items` + `consumable_movements` · migration `2026-11-10-add-consumables.sql` (ชื่อชนิดไม่ซ้ำเฉพาะที่ใช้งาน · สิทธิ์ `consumable` ให้ `system_admin` เท่านั้น ผู้ใช้เลือกแบบ ก.) · รันบน dev แล้ว checksum `8e570369564a` · **Production ต้องรันวัน deploy ขั้นที่ 5 ขออนุมัติพร้อม SQL เต็ม** (`d78e04ed`)
+- กฎกลาง `consumable-rules.ts` + schema · service และ API `/api/consumables/**` (สร้าง/แก้/ปิดชนิด รับเข้า เบิก ปรับยอด ประวัติ) จำนวนเปลี่ยนพร้อมบันทึกการเคลื่อนไหวในธุรกรรมเดียว เบิกไม่ให้ติดลบ (`6cec0592` `40ce95af`)
+- รีวิวท้ายแผน 6 ข้อ เหลือ 5 แก้ใน `bf32b3f1`: ลองซ้ำเมื่อ deadlock และเบิกโดยลดจำนวนก่อน · แก้ชนิดต้องส่งครบทุกช่อง · หมายเหตุห้าม db push บน schema นี้
+- E2E `E2E-1109X` roles + cross-cutting 110 ผ่าน (ตก 1 รายงานสลับมุมมองช้าบน dev 20,000+ ชิ้น ขยายเวลารอ `E2E-1109Z` 23/0) · unit 5,416/0 · ยังไม่มีหน้าจอ (แผน 2)
+
 ### ยืนยันผลตรวจ merge แล้ว
 
 - `feat/inspection-confirm` fast-forward เข้า master ที่ `0c915191` และ push ทั้ง origin และ company (2026-11-09 ผู้ใช้สั่ง) · unit test บน master 5,388/0 · ไม่มี migration · ยังไม่ deploy · หลัง deploy เจ้าหน้าที่ปลดทรัพย์สินที่ค้างอยู่ระหว่างตรวจสอบผ่านหน้ายืนยันผลตรวจ ไม่ต้องรัน SQL บน Production
