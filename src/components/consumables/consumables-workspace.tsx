@@ -2,11 +2,18 @@
 
 import { useId, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
+import { toast } from "sonner"
+import { ConsumableAdjustDialog } from "@/components/consumables/consumable-adjust-dialog"
+import { ConsumableIssueDialog } from "@/components/consumables/consumable-issue-dialog"
+import { ConsumableKindDialog } from "@/components/consumables/consumable-kind-dialog"
+import { ConsumableReceiveDialog } from "@/components/consumables/consumable-receive-dialog"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, dataTableRowClasses } from "@/components/ui/data-table"
 import { KeyValueList } from "@/components/ui/key-value-list"
@@ -14,6 +21,7 @@ import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { RowActions, type RowActionGroup } from "@/components/ui/row-actions"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { useApiError } from "@/components/ui/use-api-error"
 import type { ConsumableStockState } from "@/lib/consumable-rules"
 import type { ConsumableUsageRow } from "@/lib/consumable-service"
 import { formatCount } from "@/lib/display-format"
@@ -21,7 +29,8 @@ import { cn } from "@/lib/utils"
 
 // The list page's client part (consumables plan 2 Task 2): header, low banner, table from md, cards below md, row menus
 // and the phone ActionBar. Every button that changes stock calls onAction(kind, item); Task 3 mounts its dialogs on it
-// and returns focus to openerRef. ดูประวัติ and the kind name open the kind's history page (Task 4).
+// (a new key per opening, so each starts fresh), deactivates through the shared ConfirmDialog, and returns focus to
+// openerRef. ดูประวัติ and the kind name open the kind's history page (Task 4).
 export type ConsumableAction = "issue" | "receive" | "adjust" | "edit" | "deactivate" | "create"
 
 const stateBadges: Record<ConsumableStockState, { key: "state_ok" | "state_low" | "state_out"; tone: StatusTone }> = {
@@ -49,12 +58,50 @@ export function ConsumablesWorkspace({
   const tCommon = useTranslations("common")
   // The control that opened the last dialog; Task 3's dialogs give focus back to it.
   const openerRef = useRef<HTMLElement | null>(null)
-  // The open action and its kind (null: from the header, the ActionBar or the empty state). Task 3 renders its dialogs
-  // from this state; until then nothing opens.
-  const [, setActive] = useState<{ kind: ConsumableAction; item: ConsumableUsageRow | null } | null>(null)
+  const router = useRouter()
+  const confirm = useConfirm()
+  const apiError = useApiError()
+  // The last action and its kind (item null: from the header, the ActionBar or the empty state). It stays while the
+  // dialog closes, so the closing dialog keeps its title; dialogOpen says whether it is open, and opening counts each
+  // opening, the dialogs' key.
+  const [active, setActive] = useState<{ kind: ConsumableAction; item: ConsumableUsageRow | null } | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [opening, setOpening] = useState(0)
+  const closeDialog = () => setDialogOpen(false)
 
   function onAction(kind: ConsumableAction, item: ConsumableUsageRow | null) {
+    if (kind === "deactivate") {
+      if (item) void deactivate(item)
+      return
+    }
+    setOpening((count) => count + 1)
     setActive({ kind, item })
+    setDialogOpen(true)
+  }
+
+  // ปิดใช้งาน: the shared ConfirmDialog, then PATCH { isActive: false }; on hand and the history stay.
+  async function deactivate(item: ConsumableUsageRow) {
+    const confirmed = await confirm({
+      title: t("deactivateTitle", { name: item.name }),
+      description: item.onHand > 0 ? t("deactivateBody", { onHand: item.onHand, unit: item.unit }) : t("deactivateBodyEmpty"),
+      confirmLabel: t("deactivateConfirm"),
+      tone: "destructive",
+      returnFocusRef: openerRef,
+    })
+    if (!confirmed) return
+    try {
+      const response = await fetch(`/api/consumables/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: false }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? t("errorFallback"))
+      toast.success(t("deactivateToast", { name: item.name }))
+      router.refresh()
+    } catch (error) {
+      apiError.toast(error)
+    }
   }
 
   const detailHref = (id: string) => `/${locale}/consumables/${id}`
@@ -204,6 +251,39 @@ export function ConsumablesWorkspace({
               {t("issue")}
             </Button>
           }
+        />
+      ) : null}
+
+      {canCreate ? (
+        <ConsumableIssueDialog
+          key={`issue-${opening}`}
+          open={dialogOpen && active?.kind === "issue"}
+          items={rows}
+          initialItemId={active?.item?.id}
+          returnFocusRef={openerRef}
+          onClose={closeDialog}
+        />
+      ) : null}
+      {canCreate ? (
+        <ConsumableReceiveDialog
+          key={`receive-${opening}`}
+          open={dialogOpen && active?.kind === "receive"}
+          items={rows}
+          initialItemId={active?.item?.id}
+          returnFocusRef={openerRef}
+          onClose={closeDialog}
+        />
+      ) : null}
+      {canEdit && active?.kind === "adjust" && active.item ? (
+        <ConsumableAdjustDialog key={`adjust-${opening}`} open={dialogOpen} item={active.item} returnFocusRef={openerRef} onClose={closeDialog} />
+      ) : null}
+      {canEdit ? (
+        <ConsumableKindDialog
+          key={`kind-${opening}`}
+          open={dialogOpen && (active?.kind === "create" || active?.kind === "edit")}
+          item={active?.kind === "edit" ? active.item : null}
+          returnFocusRef={openerRef}
+          onClose={closeDialog}
         />
       ) : null}
     </div>
