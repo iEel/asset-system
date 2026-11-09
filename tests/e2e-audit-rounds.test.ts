@@ -163,3 +163,74 @@ test("the rounds list spec's viewer reads the pending list and the round page wi
   // No visible scan link for the viewer: the rounds list, the pending list and the round page.
   assert.equal((spec.match(/await expect\(page\.locator\('main a\[href\*="\/scan"\]'\)\.filter\(\{ visible: true \}\)\)\.toHaveCount\(0\)/g) ?? []).length, 3)
 })
+
+test("the ยืนยันผลตรวจ spec reads the app's own words, key by key (inspection-confirm plan 3 task 4)", async () => {
+  const { INSPECTION_CONFIRM_WORDS: W } = await import("../e2e/audit/inspection-confirm-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const page = th.inspectionConfirmPage as Record<string, string>
+  const round = th.auditRound as Record<string, string>
+  const byKey: Record<keyof typeof W, string> = {
+    title: page.title,
+    backToRound: page.backToRound,
+    tabReady: page.tab_ready,
+    tabAwaitingReview: page.tab_awaitingReview,
+    tabDamaged: page.tab_damaged,
+    tabNotFound: page.tab_notFound,
+    tabNotScanned: page.tab_notScanned,
+    awaitingReviewBanner: page.awaitingReviewBanner,
+    noEditNotice: page.noEditNotice,
+    emptyTitle: page.emptyTitle,
+    emptyTabTitle: page.emptyTabTitle,
+    selectAll: page.selectAll,
+    selectedCount: page.selectedCount,
+    selectionSummary: page.selectionSummary,
+    confirmOpen: page.confirmOpen,
+    dialogTitle: page.dialogTitle,
+    dialogLineInUse: page.dialogLineInUse,
+    dialogLineReady: page.dialogLineReady,
+    submit: page.submit,
+    successNotice: page.successNotice,
+    nextStepTitle: round.nextStepTitle,
+    stepReview: round.stepReview,
+    stepConfirmWaiting: round.stepConfirmWaiting,
+    closeUnconfirmedCount: round.closeUnconfirmedCount,
+    closeRound: round.closeRound,
+    statusInUse: th.asset.quickFilterInUse,
+    statusReady: th.asset.quickFilterReady,
+  }
+  assert.deepEqual({ ...W }, byKey)
+  // The statuses are the seed's Thai names too.
+  const seed = read("prisma/seed.ts")
+  assert.ok(seed.includes(`{ name: "In Use", nameTh: "${W.statusInUse}"`) && seed.includes(`{ name: "Ready", nameTh: "${W.statusReady}"`))
+})
+
+test("the ยืนยันผลตรวจ spec opens its own round, sets the run's assets under inspection after the walk, and never closes or cancels (inspection-confirm plan 3 task 4)", () => {
+  const spec = read("e2e/audit/inspection-confirm.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  assert.ok(spec.includes(`test.skip(e2eTheme === "dark",`), "the light projects")
+  assert.ok(spec.includes(`const prefix = recordPrefix(testInfo, "INC")`), "run-marked records")
+  assert.ok(spec.includes("scopeLocationId: roomId,"), "its own round over its own room")
+  // The walk, the empty page, then the one write, then the people.
+  const order = [
+    "/api/audit-rounds/${round.id}/scan`",
+    "await pending.markNotFound(",
+    "W.emptyTitle",
+    "await markUnderInspection(runId, [assets.personal.id, assets.shared.id, assets.notFound.id])",
+    `await actAs(page, "itHead", e2eTheme)`,
+    `await actAs(page, "viewer", e2eTheme)`,
+    `await actAs(page, "itStaff", e2eTheme)`,
+    "/confirm-results`",
+  ]
+  const at = order.map((text) => spec.indexOf(text))
+  for (const [index, position] of at.entries()) assert.ok(position >= 0, order[index])
+  assert.deepEqual([...at].sort((a, b) => a - b), at, "in order")
+  assert.equal(spec.split("markUnderInspection(").length - 1, 1, "one write")
+  // The close is only tried by the route and refused; nothing cancels the round.
+  assert.ok(spec.includes('page.request.patch(`/api/audit-rounds/${round.id}`, { data: { action: "close" } })'))
+  assert.ok(spec.includes(`expect(close.status(), "the close is refused").toBe(400)`))
+  assert.ok(!spec.includes("cancelAsItHead") && !/action: "cancel"/.test(spec))
+  // The viewer has no tick; IT staff confirm the 2 ready from พร้อมยืนยัน.
+  assert.ok(spec.includes(`await expect(page.getByRole("main").getByText(W.noEditNotice, { exact: true })).toBeVisible()`))
+  assert.ok(spec.includes(`await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)`))
+  assert.ok(spec.includes(`expect(await answer.json()).toMatchObject({ confirmed: 2 })`))
+})

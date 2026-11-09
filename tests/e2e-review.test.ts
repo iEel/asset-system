@@ -214,3 +214,62 @@ test("IT staff register a software licence on the asset form, a wrong entry firs
   }
   assert.match(read("src/lib/asset-form-rules.ts"), /Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
 })
+
+test("only the ยืนยันผลตรวจ setup helper reaches the database, on the dev database and the run's own assets, and writes two fields (inspection-confirm plan 3 task 4, the user's option A of 2026-11-09)", async () => {
+  const HELPER = "e2e/audit/inspection-setup.ts"
+  // The suite's one exception to "no direct database access": no other file imports a Prisma client, the adapter, the
+  // app's db or db-config, or a SQL driver.
+  const sources = filesUnder("e2e").filter((file) => /\.(?:ts|mjs|js)$/.test(file))
+  const database = /from\s+["'](?:@prisma\/client|@prisma\/adapter-mssql|mssql|tedious|[^"']*src\/lib\/(?:db|db-config)(?:\.ts)?)["']|new PrismaClient\(|\$executeRaw|\$queryRaw/
+  assert.deepEqual(sources.filter((file) => database.test(read(file))), [HELPER])
+
+  const helper = read(HELPER)
+  assert.match(helper, /^import \{ PrismaClient \} from "@prisma\/client"$/m)
+  assert.match(helper, /^import \{ createMssqlAdapter \} from "\.\.\/\.\.\/src\/lib\/db-config\.ts"$/m)
+  assert.doesNotMatch(helper, /process\.env|readFileSync|console\./, "the env through readAppEnv only, nothing printed")
+  // The env is read, checked, then passed: the guard before the client, the client closed in finally.
+  const body = helper.slice(helper.indexOf("export async function markUnderInspection"))
+  const steps = [
+    `const env = readAppEnv(fromRoot("."))`,
+    "assertInspectionSetupTarget(env)",
+    "new PrismaClient({ adapter: createMssqlAdapter(env) })",
+    "assertRunAssets(runId, assetIds, assets)",
+    "db.asset.updateMany(",
+    "await db.$disconnect()",
+  ]
+  const at = steps.map((step) => body.indexOf(step))
+  for (const [index, position] of at.entries()) assert.ok(position >= 0, steps[index])
+  assert.deepEqual([...at].sort((a, b) => a - b), at, "in order")
+  assert.match(body, /\} finally \{\n\s*await db\.\$disconnect\(\)\n\s*\}/)
+  // One write, of two fields, on the run's own tags only; nothing else is written.
+  assert.equal(helper.match(/\.(?:update|updateMany|create|createMany|upsert|delete|deleteMany)\(/g)?.length, 1)
+  assert.match(body, /data: \{ statusId: status\.id, updatedBy: INSPECTION_SETUP_MARKER \}/)
+  assert.match(body, /where: \{ id: \{ in: assetIds \}, assetTag: \{ startsWith: `\$\{runId\}-` \} \}/)
+  // The app's adapter takes the env it is given, and reads process.env when given none.
+  assert.match(read("src/lib/db-config.ts"), /export function createMssqlAdapter\(source: EnvSource = process\.env\)/)
+
+  const { assertInspectionSetupTarget, assertRunAssets, INSPECTION_SETUP_MARKER } = await import("../e2e/audit/inspection-setup.ts")
+  assert.equal(INSPECTION_SETUP_MARKER, "e2e-setup")
+  const url = (name: string) => `sqlserver://host;database=${name};encrypt=true`
+  assert.doesNotThrow(() => assertInspectionSetupTarget({ DATABASE_URL: url("asset_management_dev"), DB_USER: "asset_dev" }))
+  for (const env of [
+    { DATABASE_URL: url("asset_management"), DB_USER: "asset_dev" },
+    { DATABASE_URL: url("asset_management_dev"), DB_USER: "someone_else" },
+    { DATABASE_URL: "", DB_USER: "asset_dev" },
+  ]) {
+    assert.throws(() => assertInspectionSetupTarget(env), (error: Error) => error.name === "E2eGuardError" && !error.message.includes(env.DB_USER))
+  }
+  assert.throws(() => assertInspectionSetupTarget({ DATABASE_URL: url("asset_management"), DB_USER: "asset_dev" }), /the database is asset_management;/)
+  const run = "E2E-1109A"
+  assert.doesNotThrow(() => assertRunAssets(run, ["a", "b"], [{ id: "a", assetTag: "E2E-1109A-DL-INC-A1" }, { id: "b", assetTag: "E2E-1109A-PL-INC-A2" }]))
+  assert.throws(() => assertRunAssets(run, ["a", "b"], [{ id: "a", assetTag: "E2E-1109A-DL-INC-A1" }]), /no asset b/)
+  assert.throws(() => assertRunAssets(run, ["a"], [{ id: "a", assetTag: "NB-0001" }]), /NB-0001 is not the run's/)
+  assert.throws(() => assertRunAssets(run, ["a"], [{ id: "a", assetTag: "E2E-1109B-DL-INC-A1" }]), /not the run's/)
+  assert.throws(() => assertRunAssets("", ["a"], [{ id: "a", assetTag: "-x" }]), /is not a run id/)
+
+  // The confirm the spec makes is not a hazard: the browser lets it through.
+  const { hazardOf, isHazardPath } = await import("../e2e/support/hazards.ts")
+  const confirm = "http://localhost:3100/api/audit-rounds/00000000-0000-0000-0000-000000000000/confirm-results"
+  assert.equal(hazardOf("POST", confirm), undefined)
+  assert.equal(isHazardPath(confirm), false)
+})
