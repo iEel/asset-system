@@ -94,6 +94,17 @@ test("findInspectionConfirmRefusals names each refused asset with its code", () 
   assert.deepEqual(findInspectionConfirmRefusals(rows, ["A", "B", "E"], "confirm").map((entry) => entry.code), ["awaitingReview", "notInRound"])
 })
 
+// Plan 5 final review (decision B): หาไม่พบ with any open handover is refused (handoverOpen), whatever its mode: the
+// checkout would stay open on a Missing asset. Confirm and damaged keep their own handover rules.
+test("findInspectionConfirmRefusals refuses missing for a not-found row with an open handover (handoverOpen)", () => {
+  for (const handovers of [{ permanent: 1, temporary: 0, unknown: 0 }, { permanent: 0, temporary: 1, unknown: 0 }, { permanent: 0, temporary: 0, unknown: 1 }]) {
+    const open = row("H", { tab: "notFound", auditResult: "not_found", handovers })
+    assert.deepEqual(findInspectionConfirmRefusals([open], ["H"], "missing"), [{ assetId: "H", assetTag: "TAG-H", code: "handoverOpen" }])
+  }
+  assert.deepEqual(findInspectionConfirmRefusals([row("H", { tab: "notFound", auditResult: "not_found" })], ["H"], "missing"), [])
+  assert.deepEqual(findInspectionConfirmRefusals([row("P", { tab: "ready", handovers: { permanent: 1, temporary: 0, unknown: 0 } })], ["P"], "confirm"), [])
+})
+
 test("the service writes in one serializable transaction, re-reads the rows and logs after it (source pins)", () => {
   const source = read("src/lib/inspection-confirm-service.ts")
   assert.match(source, /prisma\.\$transaction\(/)

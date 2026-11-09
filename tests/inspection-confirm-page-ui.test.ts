@@ -38,7 +38,9 @@ test("the header: the trail ตรวจนับ › รอบตรวจน�
   // An open round reads ขั้นที่ 3 จาก 4; a closed one ปิดรอบแล้ว (plan 4 look step).
   assert.match(page, /"eyebrowClosed" : "eyebrow", \{ auditNo: round\.auditNo \}\)/)
   assert.match(page, /t\("lead"\)/)
-  assert.match(page, /<PageBackLink href=\{links\.round\} label=\{t\("backToRound"\)\} \/>/)
+  // Plan 5 final review: the back link returns where the page was opened from (round, asset page or findings list).
+  assert.match(page, /<PageBackLink href=\{back\.href\} label=\{backLabel\} \/>/)
+  assert.match(page, /t\(back\.kind === "asset" \? "backToAsset" : back\.kind === "findings" \? "backToFindings" : "backToRound"\)/)
 })
 
 test("the round page's way back comes along: returnTo read as the pending page reads it, for the crumb, the back link, the empty state and the tabs (final review)", () => {
@@ -46,7 +48,8 @@ test("the round page's way back comes along: returnTo read as the pending page r
   assert.match(page, /searchParams: Promise<\{ tab\?: string \| string\[\]; returnTo\?: string \| string\[\] \}>/)
   assert.match(page, /const roundHref = normalizeAuditRoundDetailReturnTo\(locale, round\.id, rawReturnTo\)/)
   assert.match(page, /round: roundHref,/)
-  assert.match(page, /returnTo=\{rawReturnTo \? roundHref : null\}/)
+  assert.match(page, /const back = normalizeInspectionConfirmReturnTo\(locale, round\.id, rawReturnTo\)/)
+  assert.match(page, /returnTo=\{rawReturnTo \? back\.href : null\}/)
   // No pagination, on purpose (the ruling), said where the rows are read.
   assert.match(page, /No pagination[\s\S]{0,200}INSPECTION_CONFIRM_MAX_ASSETS \(500\)/)
   const workspace = read(WORKSPACE)
@@ -109,8 +112,10 @@ test("the row: tag links to the asset, result badge from auditRoundResultBadge, 
   assert.match(row, /auditRoundResultBadge\(row\.auditStatus, row\.auditResult\)/)
   assert.match(row, /tRound\(badge\.labelKey\)/)
   assert.match(row, /t\("noHolder"\)/)
-  // A not-found row becomes Missing (plan 2's data computes targetStatusName for "confirm" only).
-  assert.match(row, /return row\.tab === "notFound" \? "Missing" : row\.targetStatusName/)
+  // A not-found row becomes Missing (plan 2's data computes targetStatusName for "confirm" only), unless a handover is
+  // open (plan 5 final review): then the row shows blocked_handoverOpen under the id its disabled tick points at.
+  assert.match(row, /if \(row\.tab === "notFound"\) return isNotFoundRowHandoverBlocked\(row\) \? null : "Missing"/)
+  assert.match(row, /isNotFoundRowHandoverBlocked\(row\) \? \(\s*<span id=\{unclearId\} className="text-warning text-pretty">\{t\("blocked_handoverOpen"\)\}<\/span>/)
   assert.match(row, /statusLabels\[target\]/)
   assert.match(row, /className="text-warning[^"]*">\{t\("handoverUnclear"\)\}/)
   // The finding link keeps the round (final review): this round's pending list, its back link to the round.
@@ -246,7 +251,9 @@ test("the damaged buttons open the dialog with outcome damaged for one asset; ro
   // The buttons come from inspectionDamagedButtons (task 4b): repair needs maintenance:create, dispose disposal:create and
   // a closed round, confirm only needs nothing more; all need canConfirm.
   assert.match(workspace, /const damagedActions = canConfirm && tab === "damaged"$/m)
-  assert.match(workspace, /const damagedButtons = inspectionDamagedButtons\(\{ roundClosed, canRepair, canDispose \}\)/)
+  // Per row (plan 5 final review): a row on loan (target ถูกยืม) confirms only, with damagedLoanNote.
+  assert.match(workspace, /const damagedButtons = inspectionDamagedButtons\(\{ roundClosed, canRepair, canDispose, targetStatusName: row\.targetStatusName \}\)/)
+  assert.match(workspace, /\{onLoan \? <p id=\{loanNoteId\} className="[^"]*">\{t\("damagedLoanNote"\)\}<\/p> : null\}/)
   assert.match(workspace, /\{damagedButtons\.includes\("repair"\) \? \(/)
   assert.match(workspace, /\{damagedButtons\.includes\("dispose"\) \? \(/)
   // router.push appears once, inside handleConfirmed (the dialog's 200 branch).
@@ -266,7 +273,7 @@ test("a damaged row with no target shows its buttons disabled, described by its 
   const workspace = read(WORKSPACE)
   assert.match(workspace, /function damagedActionsFor\(row: InspectionPageRow, view: "card" \| "table"\)/)
   assert.match(workspace, /const unclear = row\.targetStatusName === null/)
-  assert.match(workspace, /const describedBy = unclear \? unclearIdFor\(view, row\.assetId\) : undefined/)
+  assert.match(workspace, /const describedBy = unclear \? unclearIdFor\(view, row\.assetId\) : onLoan \? loanNoteId : undefined/)
   assert.equal(workspace.match(/disabled=\{unclear\} aria-label=\{nameFor\(t\("damaged(?:Repair|Dispose|ConfirmOnly)"\)\)\} aria-describedby=\{describedBy\}/g)?.length, 3)
   // Plan 4 final review: each button's name carries the row's tag and name, as the ticks do.
   assert.match(workspace, /const nameFor = \(label: string\) => `\$\{label\} \$\{row\.assetTag\} \$\{row\.assetName\}`/)

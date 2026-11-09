@@ -7191,11 +7191,12 @@
     "inspectionConfirmDamagedOneAsset": "Confirm one damaged asset at a time.",
     "assetInspectionNotUnderInspection": "This asset is no longer under inspection. Reload the page.",
     "assetInspectionInRound": "Confirm the inspection in the audit round",
-    "assetInspectionHandoverUnclear": "The open handover or loan is unclear. Fix it on the data quality page first.",
+    "assetInspectionHandoverUnclear": "The open handover or loan is unclear. Use Correct Status on this page instead.",
     "assetInspectionHandoverStatus": "A handover or loan is still open. The status follows it.",
     "assetInspectionHandoverLocked": "A handover or loan is still open. The holder and location cannot change.",
     "assetInspectionHolderRequired": "In Use needs a holder",
-    "assetInspectionChanged": "This asset has changed. Reload the page and try again."
+    "assetInspectionChanged": "This asset has changed. Reload the page and try again.",
+    "statusCorrectionUseInspectionConfirm": "This asset is under inspection. Use Confirm result instead."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",
@@ -7333,7 +7334,7 @@
     "col_holder": "Holder",
     "col_target": "Will become",
     "noHolder": "None",
-    "handoverUnclear": "The handover is unclear; fix it in Data quality first",
+    "handoverUnclear": "The handover is unclear; use Correct Status on the asset page instead",
     "awaitingReviewBanner": "These wait for a discrepancy decision first",
     "awaitingReviewLink": "Go to the discrepancies",
     "openFinding": "Open the discrepancy",
@@ -7388,7 +7389,11 @@
     "damagedForDisposalTitle": "Damaged assets confirmed in this round",
     "damagedDisposeLink": "Request disposal",
     "damagedDialogTitle": "Confirm the result of {assetTag}",
-    "eyebrowClosed": "Round {auditNo} · closed"
+    "eyebrowClosed": "Round {auditNo} · closed",
+    "blocked_handoverOpen": "A handover or loan is open; use Correct Status on the asset page instead",
+    "damagedLoanNote": "A loan is open; check it in before recording a repair or requesting disposal",
+    "backToAsset": "Back to the asset",
+    "backToFindings": "Back to discrepancies"
   },
   "assetInspectionNotice": {
     "title": "This asset is still under inspection",
@@ -7400,12 +7405,13 @@
     "location": "Location",
     "reason": "Reason",
     "reasonPlaceholder": "e.g. checked, it is in this room",
-    "handoverLocked": "An open handover sets the holder and status",
-    "handoverUnclear": "The handover is unclear; fix it in Data quality first",
+    "handoverLocked": "An open handover sets the status, holder and location",
+    "handoverUnclear": "The handover is unclear; use Correct Status on this page instead",
     "inUseNeedsHolder": "In use needs a holder",
     "submit": "Confirm",
     "cancel": "Cancel",
     "success": "Result confirmed",
-    "errorFallback": "Could not confirm. Try again."
+    "errorFallback": "Could not confirm. Try again.",
+    "roundText": "Awaiting confirmation in round {auditNo}"
   }
 }

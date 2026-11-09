@@ -10,6 +10,7 @@ import { disposalReadinessAssetSelect, getDisposalReadinessBlockersForAsset } fr
 import {
   INSPECTION_STATUS_NAME,
   classifyInspectionItem,
+  inspectionHandoverOpen,
   inspectionTargetStatusName,
   type InspectionConfirmTab,
   type InspectionHandoverCounts,
@@ -143,6 +144,14 @@ export async function countRoundUnconfirmedAssets(db: InspectionDb, auditRoundId
   return db.auditItem.count({ where: roundInspectionItemWhere(auditRoundId) })
 }
 
+/**
+ * Plan 5 final review: the round's Under Inspection assets the confirm page can act on now, i.e. checked
+ * (auditStatus not pending). The findings hand-off banner counts these, not the not-scanned ones.
+ */
+export async function countRoundConfirmableAssets(db: InspectionDb, auditRoundId: string): Promise<number> {
+  return db.auditItem.count({ where: { ...roundInspectionItemWhere(auditRoundId), auditStatus: { not: "pending" } } })
+}
+
 // Open handovers, as asset-state-review-service.ts reads them: not returned and active, counted by handoverMode. An asset
 // with none is absent from the map. The round rows and the single-asset confirm (asset-confirm-inspection-service.ts)
 // both read them here.
@@ -238,6 +247,25 @@ export async function findAssetInspectionRound(db: InspectionDb, assetId: string
       conditionName: item.asset.condition?.name ?? null,
     }),
   })))
+}
+
+const NO_HANDOVERS: InspectionHandoverCounts = { permanent: 0, temporary: 0, unknown: 0 }
+
+/**
+ * Plan 5 final review (controller decision A): ยืนยันผลตรวจ is the one way to release an Under Inspection asset, except
+ * where its flows refuse the asset because of an open handover. The old Ready-only status correction stays as an escape
+ * hatch for those cases only:
+ * - the open handover is unclear (an unknown mode, or both modes open: inspectionTargetStatusName is null), wherever the
+ *   asset sits;
+ * - the asset's round row is on the not-found tab and it has any open handover (หาไม่พบ refuses it: handoverOpen).
+ * The caller has checked the asset is Under Inspection. The status-correction route and the asset detail page both ask.
+ */
+export async function inspectionCorrectionEscapeAllowed(db: InspectionDb, assetId: string): Promise<boolean> {
+  const handovers = (await loadOpenHandoverCounts(db, [assetId])).get(assetId) ?? NO_HANDOVERS
+  if (!inspectionHandoverOpen(handovers)) return false
+  if (inspectionTargetStatusName({ ownershipType: null, custodianId: null, handovers }, "confirm") === null) return true
+  const round = await findAssetInspectionRound(db, assetId)
+  return round?.tab === "notFound"
 }
 
 export type RoundDisposalSummary = {

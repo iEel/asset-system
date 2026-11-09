@@ -22,6 +22,11 @@ export type InspectionTargetStatusName = "In Use" | "Ready" | "Checked Out" | "M
 /** Open handovers (isReturned false, transactionStatus active), counted by handoverMode. */
 export type InspectionHandoverCounts = { permanent: number; temporary: number; unknown: number }
 
+/** Any open handover, whatever its mode. */
+export function inspectionHandoverOpen(handovers: InspectionHandoverCounts): boolean {
+  return handovers.permanent + handovers.temporary + handovers.unknown > 0
+}
+
 export type InspectionItemInput = {
   auditStatus: string
   auditResult: string | null

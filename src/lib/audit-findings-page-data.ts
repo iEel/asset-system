@@ -21,7 +21,7 @@ import {
 import { formatAuditUserLabel } from "@/lib/audit-round-page-rules"
 import { auditRoundCoverageWhere, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { isSameAuditActor } from "@/lib/audit-segregation"
-import { countRoundUnconfirmedAssets } from "@/lib/inspection-confirm-data"
+import { countRoundConfirmableAssets } from "@/lib/inspection-confirm-data"
 import { listPageWindow } from "@/lib/list-pagination"
 import type { WaitingWorkRules } from "@/lib/waiting-work-rules"
 
@@ -271,7 +271,9 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
     filters.roundId
       ? Promise.all([
           prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", roundId: filters.roundId, now, rules, typeSearchLabels }) }),
-          countRoundUnconfirmedAssets(prisma, filters.roundId),
+          // The round's own items not checked yet, as the close checklist counts them (getAuditRoundCloseChecklist).
+          prisma.auditItem.count({ where: { auditRoundId: filters.roundId, auditStatus: "pending" } }),
+          countRoundConfirmableAssets(prisma, filters.roundId),
         ])
       : Promise.resolve(null),
   ])
@@ -293,11 +295,12 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
   const evidenceByFindingId = groupEvidence(rowAttachments)
   const counts = Object.fromEntries(auditFindingCountedStatuses.map((status, index) => [status, statusCounts[index]])) as AuditFindingCounts
   const total = isAuditFindingWaitingStatus(filters.status) ? (waitingTotal ?? 0) : counts[filters.status]
-  // Every finding of the round decided and assets left to confirm: the page names ยืนยันผลตรวจ as the next step. A
-  // cancelled or inactive round has no confirm step.
+  // The walk done (no item pending), every finding of the round decided and checked assets left to confirm: the page
+  // names ยืนยันผลตรวจ as the next step, as the round page's steps reach it (plan 5 final review). The count is the
+  // assets the confirm page can act on. A cancelled or inactive round has no confirm step.
   const confirmHandoff =
-    filterRound && filterRound.isActive && filterRound.status !== "cancelled" && handoffCounts && handoffCounts[0] === 0 && handoffCounts[1] > 0
-      ? { roundId: filterRound.id, auditNo: filterRound.auditNo, count: handoffCounts[1] }
+    filterRound && filterRound.isActive && filterRound.status !== "cancelled" && handoffCounts && handoffCounts[0] === 0 && handoffCounts[1] === 0 && handoffCounts[2] > 0
+      ? { roundId: filterRound.id, auditNo: filterRound.auditNo, count: handoffCounts[2] }
       : null
 
   return {

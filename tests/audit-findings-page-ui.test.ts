@@ -181,16 +181,16 @@ test("the words of the findings page shell, in th and en (glossary: รายก
 
 test("the ยืนยันผลตรวจ hand-off (inspection-confirm plan 5 task 3): with a roundId, 0 pending findings in the round and assets left Under Inspection, an info Notice links the round's confirm page with returnTo this list", () => {
   const data = read("src/lib/audit-findings-page-data.ts")
-  assert.match(data, /^import \{ countRoundUnconfirmedAssets \} from "@\/lib\/inspection-confirm-data"$/m)
+  assert.match(data, /^import \{ countRoundConfirmableAssets \} from "@\/lib\/inspection-confirm-data"$/m)
   // The round's pending count is the pending tab's own where, within the round only: never a second definition, and a
   // search or a topic does not hide the round's other pending findings.
-  assert.match(data, /filters\.roundId\n\s+\? Promise\.all\(\[\n\s+prisma\.auditFinding\.count\(\{ where: buildAuditFindingWhere\(\{ status: "pending", roundId: filters\.roundId, now, rules, typeSearchLabels \}\) \}\),\n\s+countRoundUnconfirmedAssets\(prisma, filters\.roundId\),\n\s+\]\)\n\s+: Promise\.resolve\(null\),/)
-  assert.match(data, /const confirmHandoff =\n\s+filterRound && filterRound\.isActive && filterRound\.status !== "cancelled" && handoffCounts && handoffCounts\[0\] === 0 && handoffCounts\[1\] > 0\n\s+\? \{ roundId: filterRound\.id, auditNo: filterRound\.auditNo, count: handoffCounts\[1\] \}\n\s+: null/)
+  assert.match(data, /filters\.roundId\n\s+\? Promise\.all\(\[\n\s+prisma\.auditFinding\.count\(\{ where: buildAuditFindingWhere\(\{ status: "pending", roundId: filters\.roundId, now, rules, typeSearchLabels \}\) \}\),\n\s+\/\/ [^\n]+\n\s+prisma\.auditItem\.count\(\{ where: \{ auditRoundId: filters\.roundId, auditStatus: "pending" \} \}\),\n\s+countRoundConfirmableAssets\(prisma, filters\.roundId\),\n\s+\]\)\n\s+: Promise\.resolve\(null\),/)
+  assert.match(data, /const confirmHandoff =\n\s+filterRound && filterRound\.isActive && filterRound\.status !== "cancelled" && handoffCounts && handoffCounts\[0\] === 0 && handoffCounts\[1\] === 0 && handoffCounts\[2\] > 0\n\s+\? \{ roundId: filterRound\.id, auditNo: filterRound\.auditNo, count: handoffCounts\[2\] \}\n\s+: null/)
   assert.match(data, /^\s+confirmHandoff,$/m)
 
   const page = read(PAGE)
   assert.match(page, /const confirmHandoffHref = data\.confirmHandoff \? appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{data\.confirmHandoff\.roundId\}\/confirm`, auditFindingsReturnHref\) : null/)
-  assert.match(page, /\{data\.confirmHandoff && confirmHandoffHref \? \(\n\s+<Notice\n\s+tone="info"\n\s+data-audit-findings-confirm-handoff\n\s+action=\{\n\s+<Link href=\{confirmHandoffHref\} className=\{linkVariants\(\)\}>\n\s+\{t\("handoffConfirmLink"\)\}\n\s+<\/Link>\n\s+\}\n\s+>\n\s+\{t\("handoffConfirm", \{ auditNo: data\.confirmHandoff\.auditNo, count: data\.confirmHandoff\.count \}\)\}\n\s+<\/Notice>\n\s+\) : null\}/)
+  assert.match(page, /\{data\.confirmHandoff && confirmHandoffHref \? \(\n\s+<Notice\n\s+tone="info"\n\s+data-audit-findings-confirm-handoff\n\s+action=\{\n\s+<Link href=\{confirmHandoffHref\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>\n\s+\{t\("handoffConfirmLink"\)\}\n\s+<\/Link>\n\s+\}\n\s+>\n\s+\{t\("handoffConfirm", \{ auditNo: data\.confirmHandoff\.auditNo, count: data\.confirmHandoff\.count \}\)\}\n\s+<\/Notice>\n\s+\) : null\}/)
 
   const th = messages("th")
   const en = messages("en")

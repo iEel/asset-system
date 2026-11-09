@@ -8,10 +8,12 @@ type PendingSourceState = {
   statusName: string
   custodianId: string | null
   openRequest: boolean
+  /** The asset has an audit item in the source round. */
+  inRound: boolean
   calls: Array<{ call: string; args: Record<string, unknown> }>
 }
 
-const state: PendingSourceState = { statusName: "Pending Disposal", custodianId: "emp-7", openRequest: false, calls: [] }
+const state: PendingSourceState = { statusName: "Pending Disposal", custodianId: "emp-7", openRequest: false, inRound: false, calls: [] }
 Object.assign(globalThis, { __pendingSourceState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -50,6 +52,7 @@ const mockedModuleSources = new Map<string, string>([
             if (name === "employee" && method === "count") return args.where.id.in.length
             if (name === "disposalRequest" && method === "findFirst") return state().openRequest ? { disposalNo: "DP-20261001-0001" } : null
             if (name === "disposalRequest" && method === "count") return 0
+            if (name === "auditItem" && method === "findFirst") return state().inRound ? { id: "item-1" } : null
             if (name === "assetStatus" && method === "findFirst") return { id: "status:Pending Disposal" }
             if (name === "asset" && method === "updateMany") return { count: 1 }
             if (method === "create") return { id: name + "-new", ...(args?.data ?? {}) }
@@ -94,11 +97,12 @@ const route = await import(pathToFileURL("src/app/api/disposal-requests/route.ts
   POST(request: Request): Promise<Response>
 }
 
-function requestDisposal() {
+function requestDisposal(source: { sourceType?: string; sourceId?: string } = {}) {
   return route.POST(new Request("http://localhost/api/disposal-requests", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      ...source,
       assetId: "asset-1",
       disposalType: "dispose",
       reason: "ซ่อมไม่คุ้มค่า ประเมินแล้วควรจำหน่าย",
@@ -117,6 +121,7 @@ beforeEach(() => {
   state.statusName = "Pending Disposal"
   state.custodianId = "emp-7"
   state.openRequest = false
+  state.inRound = false
   state.calls = []
 })
 
@@ -150,4 +155,39 @@ test("requests from operational statuses still record the actual previous status
   await requestDisposal()
 
   assert.equal(createdRequest()?.previousAssetStatusId, "status:In Use")
+})
+
+// ยืนยันผลตรวจ plan 5 final review: a request from an audit round records the round only when that round counted the
+// asset (an item in it), as the batch route does; another asset picked on the same form gets no source.
+const ROUND_ID = "11111111-2222-4333-8444-555555555555"
+
+test("a request from an audit round keeps the round as its source when the asset has an item in it", async () => {
+  state.statusName = "In Use"
+  state.inRound = true
+
+  const response = await requestDisposal({ sourceType: "audit_round", sourceId: ROUND_ID })
+
+  assert.equal(response.status, 201)
+  assert.deepEqual([createdRequest()?.sourceType, createdRequest()?.sourceId], ["audit_round", ROUND_ID])
+  const lookup = state.calls.find(({ call }) => call === "auditItem.findFirst")
+  assert.deepEqual(lookup?.args.where, { auditRoundId: ROUND_ID, assetId: "asset-1" })
+})
+
+test("a request from an audit round for an asset the round did not count stores no source", async () => {
+  state.statusName = "In Use"
+
+  const response = await requestDisposal({ sourceType: "audit_round", sourceId: ROUND_ID })
+
+  assert.equal(response.status, 201)
+  assert.deepEqual([createdRequest()?.sourceType, createdRequest()?.sourceId], [null, null])
+})
+
+test("a malformed round id stores no source and reads no item", async () => {
+  state.statusName = "In Use"
+  state.inRound = true
+
+  await requestDisposal({ sourceType: "audit_round", sourceId: "not-a-uuid" })
+
+  assert.deepEqual([createdRequest()?.sourceType, createdRequest()?.sourceId], [null, null])
+  assert.equal(state.calls.some(({ call }) => call === "auditItem.findFirst"), false)
 })

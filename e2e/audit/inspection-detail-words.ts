@@ -16,6 +16,9 @@ export const INSPECTION_DETAIL_WORDS = {
   tabDamaged: "สภาพเสียหาย",
   tabNotFound: "ไม่พบ",
   tabNotScanned: "ยังไม่ได้ตรวจนับ",
+  // inspectionConfirmPage.*: the confirm page's back link when it was opened from an asset page or the findings list.
+  backToAsset: "กลับไปหน้ารายละเอียดทรัพย์สิน",
+  backToFindings: "กลับไปรายการไม่ตรงทะเบียน",
   // auditFinding.*: the findings page's hand-off to ยืนยันผลตรวจ.
   handoffConfirm: "พิจารณารายการของรอบ {auditNo} ครบแล้ว · ขั้นต่อไป: ยืนยันผลตรวจ {count, number} ชิ้น",
   handoffConfirmLink: "ไปยืนยันผลตรวจ",

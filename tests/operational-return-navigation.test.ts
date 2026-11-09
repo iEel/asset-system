@@ -2,7 +2,13 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-import { maintenanceListCrumbHref, normalizeDisposalBatchReturnTo, normalizeDisposalRequestReturnTo, normalizeMaintenanceReturnTo } from "../src/lib/operational-return-navigation.ts"
+import {
+  maintenanceListCrumbHref,
+  normalizeDisposalBatchReturnTo,
+  normalizeDisposalRequestReturnTo,
+  normalizeInspectionConfirmReturnTo,
+  normalizeMaintenanceReturnTo,
+} from "../src/lib/operational-return-navigation.ts"
 
 test("operational return navigation helper only accepts internal workflow targets", () => {
   const source = readFileSync("src/lib/operational-return-navigation.ts", "utf8")
@@ -243,5 +249,32 @@ test("normalizeMaintenanceReturnTo accepts one round's confirm page with its que
   assert.equal(normalizeMaintenanceReturnTo("th", `/th/audit/rounds/${roundId}/confirm`, "maintenance"), `/th/audit/rounds/${roundId}/confirm`)
   for (const crafted of ["/th/audit/rounds/x/confirm", `/en/audit/rounds/${roundId}/confirm`, `/th/audit/rounds/${roundId}`, `/th/audit/rounds/${roundId}/confirm/x`, `https://evil.example/th/audit/rounds/${roundId}/confirm`]) {
     assert.equal(normalizeMaintenanceReturnTo("th", crafted, "maintenance"), "/th/maintenance", crafted)
+  }
+})
+
+// ยืนยันผลตรวจ plan 5 final review: the confirm page's way back keeps the round page (with its query), one asset page
+// (the asset notice links here) and the findings list (the hand-off banner links here), each with its query; anything
+// else is the bare round page.
+test("normalizeInspectionConfirmReturnTo keeps the round page, an asset page and the findings list; anything else is the round", () => {
+  const round = "0f9e8d7c-6b5a-4f3e-9d2c-1b0a9f8e7d6c"
+  const asset = "11111111-2222-4333-8444-555555555555"
+  const bare = { href: `/th/audit/rounds/${round}`, kind: "round" }
+  assert.deepEqual(normalizeInspectionConfirmReturnTo("th", round, undefined), bare)
+  assert.deepEqual(normalizeInspectionConfirmReturnTo("th", round, `/th/audit/rounds/${round}?view=result`), { href: `/th/audit/rounds/${round}?view=result`, kind: "round" })
+  assert.deepEqual(normalizeInspectionConfirmReturnTo("th", round, `/th/assets/${asset}?view=history`), { href: `/th/assets/${asset}?view=history`, kind: "asset" })
+  assert.deepEqual(normalizeInspectionConfirmReturnTo("th", round, `/th/audit/findings?status=pending&roundId=${round}`), { href: `/th/audit/findings?status=pending&roundId=${round}`, kind: "findings" })
+  assert.deepEqual(normalizeInspectionConfirmReturnTo("th", round, [`/th/assets/${asset}`]), { href: `/th/assets/${asset}`, kind: "asset" })
+  for (const crafted of [
+    "/th/assets/new",
+    `/th/assets/${asset}/edit`,
+    `/en/assets/${asset}`,
+    "/en/audit/findings",
+    "/th/audit/findings/x",
+    `https://evil.example/th/assets/${asset}`,
+    "//evil.example/th/audit/findings",
+    `/th/assets/../admin`,
+    "/th/admin",
+  ]) {
+    assert.deepEqual(normalizeInspectionConfirmReturnTo("th", round, crafted), bare, crafted)
   }
 })

@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { linkVariants } from "@/components/ui/button-variants"
 import { auditRoundResultBadge } from "@/lib/audit-round-page-rules"
 import { getAssetStateTone } from "@/lib/design-system"
-import type { InspectionPageRow } from "@/lib/inspection-confirm-page-model"
+import { isNotFoundRowHandoverBlocked, type InspectionPageRow } from "@/lib/inspection-confirm-page-model"
 import type { InspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
 import { cn, formatDate } from "@/lib/utils"
 
@@ -23,15 +23,22 @@ export type InspectionRowProps = {
   statusLabels: Record<InspectionTargetStatusName, string>
   /** The tick (Task 3 wires the selection). Only rendered when canConfirm (the owner passes: ready tab and asset:edit). */
   tick?: React.ReactNode
-  /** The id of the handoverUnclear text, which a disabled tick points at with aria-describedby. */
+  /**
+   * The id of the row's blocked reason (handoverUnclear, or blocked_handoverOpen on a not-found row with a handover open),
+   * which a disabled tick points at with aria-describedby.
+   */
   unclearId?: string
   /** The damaged tab's buttons (plan 4 task 3): a last column on the table, a footer on the card. Undefined: no column. */
   actions?: React.ReactNode
 }
 
-/** The status a row would take: a not-found row becomes Missing (plan 2's data); otherwise the confirm target. */
+/**
+ * The status a row would take: a not-found row becomes Missing (plan 2's data), unless a handover is open (null, plan 5
+ * final review); otherwise the confirm target.
+ */
 function rowTarget(row: InspectionPageRow): InspectionTargetStatusName | null {
-  return row.tab === "notFound" ? "Missing" : row.targetStatusName
+  if (row.tab === "notFound") return isNotFoundRowHandoverBlocked(row) ? null : "Missing"
+  return row.targetStatusName
 }
 
 function useRowParts({ locale, roundId, row, statusLabels, unclearId }: Pick<InspectionRowProps, "locale" | "roundId" | "row" | "statusLabels" | "unclearId">) {
@@ -60,6 +67,8 @@ function useRowParts({ locale, roundId, row, statusLabels, unclearId }: Pick<Ins
     <Nil />
   ) : target ? (
     <StatusBadge label={statusLabels[target]} tone={getAssetStateTone(target)} />
+  ) : isNotFoundRowHandoverBlocked(row) ? (
+    <span id={unclearId} className="text-warning text-pretty">{t("blocked_handoverOpen")}</span>
   ) : (
     <span id={unclearId} className="text-warning text-pretty">{t("handoverUnclear")}</span>
   )

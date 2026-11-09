@@ -337,6 +337,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "This approval has no recorded approver, so segregation of duties cannot be verified before execution": "disposalApproverUnknown",
   "This asset is disposed or retired; a PM plan cannot be set up": "maintenancePlanAssetWrittenOff",
   "This asset status does not require controlled correction": "statusCorrectionNotNeeded",
+  "Confirm this asset under inspection through the inspection confirm": "statusCorrectionUseInspectionConfirm",
   "This parent asset already has a component in the same slot": "componentSlotTaken",
   "This record is already finished or cancelled": "maintenanceRecordFinished",
   "Too many component transaction snapshots": "tooManyComponentSnapshots",

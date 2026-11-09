@@ -48,8 +48,8 @@ import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-docum
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getMissingPhotoChecklistLabels } from "@/lib/asset-detail-format"
 import { formatOutstandingComponentLine, installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
-import { getAssetFormOptions } from "@/lib/asset-form-options"
-import { findAssetInspectionRound, loadOpenHandoverCounts } from "@/lib/inspection-confirm-data"
+import { getAssetCustodyOptions } from "@/lib/asset-form-options"
+import { findAssetInspectionRound, inspectionCorrectionEscapeAllowed, loadOpenHandoverCounts } from "@/lib/inspection-confirm-data"
 import { INSPECTION_STATUS_NAME, inspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import type { AssetConfirmInspectionDialogProps } from "@/components/assets/asset-confirm-inspection-dialog"
@@ -266,22 +266,29 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
   // ยืนยันผลตรวจ plan 5 task 2: an asset stuck Under Inspection. In a round, the notice links that round's confirm page on
   // the asset's tab; in none, a person with asset:edit confirms it here in one step (the dialog), and the old Ready-only
-  // correction is not offered for it.
+  // correction is not offered for it, except as the escape hatch where those flows refuse the asset because of a
+  // handover (final review decision A: inspectionCorrectionEscapeAllowed, which the status-correction route checks too).
   const isUnderInspection = asset.status.name === INSPECTION_STATUS_NAME
-  const inspectionRound = isUnderInspection ? await findAssetInspectionRound(prisma, asset.id) : null
+  const [inspectionRound, inspectionCorrectionEscape] = isUnderInspection
+    ? await Promise.all([
+        findAssetInspectionRound(prisma, asset.id),
+        canEditAsset ? inspectionCorrectionEscapeAllowed(prisma, asset.id) : Promise.resolve(false),
+      ])
+    : [null, false]
   let inspectionNotice: AssetInspectionNoticeProps | null = null
   if (isUnderInspection) {
     const tInspection = await getTranslations("assetInspectionNotice")
     let dialog: AssetConfirmInspectionDialogProps | null = null
     if (!inspectionRound && canEditAsset) {
-      // The holder and location lists the asset form uses (getAssetFormOptions), the Thai status names, the open handovers.
-      const [handoverCounts, statuses, formOptions] = await Promise.all([
+      // The holder and location lists the asset form uses (getAssetCustodyOptions: the same labels, without the form's
+      // other reads), the Thai status names, the open handovers.
+      const [handoverCounts, statuses, custodyOptions] = await Promise.all([
         loadOpenHandoverCounts(prisma, [asset.id]),
         prisma.assetStatus.findMany({
           where: { name: { in: ["Ready", "In Use", "Checked Out"] }, isActive: true },
           select: { name: true, nameTh: true },
         }),
-        getAssetFormOptions(),
+        getAssetCustodyOptions(),
       ])
       const handovers = handoverCounts.get(asset.id) ?? { permanent: 0, temporary: 0, unknown: 0 }
       const handoverOpen = handovers.permanent + handovers.temporary + handovers.unknown > 0
@@ -318,13 +325,15 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         lockedStatusLabel: handoverOpen && target ? statusLabel(target) : null,
         currentCustodian: asset.custodianId && asset.custodian ? { id: asset.custodianId, label: `${asset.custodian.code} - ${asset.custodian.fullNameTh}` } : null,
         currentLocation: { id: asset.currentLocation.id, label: `${asset.currentLocation.code} - ${asset.currentLocation.name}` },
-        employees: formOptions.employees.map((employee) => ({ id: employee.id, label: employee.label })),
-        locations: formOptions.locations.map((location) => ({ id: location.id, label: location.label })),
+        employees: custodyOptions.employees,
+        locations: custodyOptions.locations,
       }
     }
+    // The round's confirm page needs audit:view: without it the notice names the round as plain text, no link (final
+    // review decision D).
     inspectionNotice = {
       title: tInspection("title"),
-      round: inspectionRound
+      round: inspectionRound && canViewAudit
         ? {
             label: tInspection("roundLink", { auditNo: inspectionRound.auditNo }),
             href: appendOperationalReturnTo(
@@ -333,6 +342,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             ),
           }
         : null,
+      roundText: inspectionRound && !canViewAudit ? tInspection("roundText", { auditNo: inspectionRound.auditNo }) : null,
       dialog,
     }
   }
@@ -494,7 +504,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         }
       : undefined
   const statusCorrection =
-    canEditAsset && readyStatus && !isUnderInspection && canCorrectAssetStatus(asset.status)
+    canEditAsset && readyStatus && (!isUnderInspection || inspectionCorrectionEscape) && canCorrectAssetStatus(asset.status)
       ? {
           assetId: asset.id,
           readyStatusId: readyStatus.id,

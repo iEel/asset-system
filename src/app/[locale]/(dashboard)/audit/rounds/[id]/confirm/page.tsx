@@ -9,7 +9,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { InspectionConfirmWorkspace } from "@/components/audit/inspection-confirm/inspection-confirm-workspace"
-import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
+import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo, normalizeInspectionConfirmReturnTo } from "@/lib/operational-return-navigation"
 import { loadRoundDisposalSummary, loadRoundInspectionRows } from "@/lib/inspection-confirm-data"
 import { inspectionTabCounts, parseInspectionTab, toInspectionPageRow } from "@/lib/inspection-confirm-page-model"
 import type { InspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
@@ -41,6 +41,10 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
   // pending list's way back all use it.
   const rawReturnTo = Array.isArray(rawSearchParams.returnTo) ? rawSearchParams.returnTo[0] : rawSearchParams.returnTo
   const roundHref = normalizeAuditRoundDetailReturnTo(locale, round.id, rawReturnTo)
+  // Plan 5 final review: the page is also opened from an asset page (its notice) and from the findings list (the
+  // hand-off banner); the back link returns there. The round crumb, the empty state and the pending list stay on the round.
+  const back = normalizeInspectionConfirmReturnTo(locale, round.id, rawReturnTo)
+  const backLabel = t(back.kind === "asset" ? "backToAsset" : back.kind === "findings" ? "backToFindings" : "backToRound")
   const links = {
     round: roundHref,
     pendingFindings: `/${locale}/audit/findings?status=pending&roundId=${round.id}`,
@@ -64,7 +68,7 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
           <span>{t("lead")}</span>
         </>
       }
-      back={<PageBackLink href={links.round} label={t("backToRound")} />}
+      back={<PageBackLink href={back.href} label={backLabel} />}
     />
   )
 
@@ -130,7 +134,7 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
         damagedForDisposal={disposal.damagedForDisposal}
         statusLabels={statusLabels}
         links={links}
-        returnTo={rawReturnTo ? roundHref : null}
+        returnTo={rawReturnTo ? back.href : null}
       />
     </div>
   )

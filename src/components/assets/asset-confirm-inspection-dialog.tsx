@@ -99,6 +99,9 @@ export function AssetConfirmInspectionDialog({
 }: AssetConfirmInspectionDialogProps) {
   const router = useRouter()
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  // Where focus goes when the dialog closes: the trigger, or after a confirm the page heading. The refresh then drops the
+  // notice and its trigger (the asset is no longer Under Inspection), so focus must not wait on it (final review).
+  const returnFocusRef = useRef<HTMLElement | null>(null)
   const reasonRef = useRef<HTMLTextAreaElement | null>(null)
   const [open, setOpen] = useState(false)
   const initialValues = (): ConfirmValues => ({
@@ -125,6 +128,7 @@ export function AssetConfirmInspectionDialog({
   }
 
   function openDialog() {
+    returnFocusRef.current = triggerRef.current
     setValues(initialValues())
     setError(null)
     fieldErrors.setErrors({})
@@ -171,6 +175,12 @@ export function AssetConfirmInspectionDialog({
         setError(payload?.error ?? labels.errorFallback)
         return
       }
+      // The page's h1 stays through the refresh: focusable by script only (tabIndex -1), it takes focus on close.
+      const heading = document.querySelector<HTMLElement>("main h1") ?? document.querySelector<HTMLElement>("h1")
+      if (heading) {
+        heading.tabIndex = -1
+        returnFocusRef.current = heading
+      }
       setOpen(false)
       toast.success(labels.success)
       router.refresh()
@@ -191,7 +201,8 @@ export function AssetConfirmInspectionDialog({
         title={labels.title}
         busy={busy}
         initialFocusRef={reasonRef}
-        returnFocusRef={triggerRef}
+        returnFocusRef={returnFocusRef}
+        fallbackFocusRef={triggerRef}
         onClose={closeDialog}
       >
         <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
@@ -279,7 +290,7 @@ export function AssetConfirmInspectionDialog({
                 />
               </Field>
             )}
-            {error ? <p className="text-sm text-danger"><ApiErrorText error={error} /></p> : null}
+            {error ? <p role="alert" className="text-sm text-danger"><ApiErrorText error={error} /></p> : null}
           </AccessibleDialogBody>
           <AccessibleDialogFooter>
             <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>

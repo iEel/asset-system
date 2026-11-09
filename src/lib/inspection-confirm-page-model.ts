@@ -4,6 +4,7 @@ import type { InspectionRow } from "./inspection-confirm-data.ts"
 import {
   INSPECTION_CONFIRM_MAX_ASSETS,
   inspectionConfirmTabs,
+  inspectionHandoverOpen,
   type InspectionConfirmTab,
   type InspectionTargetStatusName,
 } from "./inspection-confirm-rules.ts"
@@ -22,6 +23,8 @@ export type InspectionPageRow = {
   custodianName: string | null
   tab: InspectionConfirmTab
   targetStatusName: InspectionTargetStatusName | null
+  /** Any open handover (plan 5 final review): a not-found row with one cannot be set หาไม่พบ (handoverOpen). */
+  handoverOpen: boolean
   firstPendingFindingId: string | null
 }
 
@@ -38,6 +41,7 @@ export function toInspectionPageRow(row: InspectionRow): InspectionPageRow {
     custodianName: row.custodianName,
     tab: row.tab,
     targetStatusName: row.targetStatusName,
+    handoverOpen: inspectionHandoverOpen(row.handovers),
     firstPendingFindingId: row.pendingFindingIds[0] ?? null,
   }
 }
@@ -55,12 +59,17 @@ export function parseInspectionTab(value: string | undefined, counts: Record<Ins
 }
 
 /**
- * Ready rows with a known target can be ticked (a null target is an unclear handover); every not-found row can, since its
- * target is Missing whatever the handover (plan 4 task 3).
+ * Ready rows with a known target can be ticked (a null target is an unclear handover). A not-found row can when no
+ * handover is open (plan 5 final review: หาไม่พบ refuses it, handoverOpen); its target is Missing.
  */
 export function isInspectionRowSelectable(row: InspectionPageRow): boolean {
-  if (row.tab === "notFound") return true
+  if (row.tab === "notFound") return !row.handoverOpen
   return row.tab === "ready" && row.targetStatusName !== null
+}
+
+/** A not-found row that cannot be set หาไม่พบ because a handover is open: the row shows blocked_handoverOpen instead. */
+export function isNotFoundRowHandoverBlocked(row: InspectionPageRow): boolean {
+  return row.tab === "notFound" && row.handoverOpen
 }
 
 /** The selectable rows of the list, in order, at most max; capped says more were left out. */
@@ -80,14 +89,14 @@ export function inspectionSelectionSummary(
   const summary: Partial<Record<InspectionTargetStatusName, number>> = {}
   for (const row of rows) {
     // A not-found row becomes Missing (its targetStatusName is the confirm target).
-    const target = row.tab === "notFound" ? "Missing" : row.targetStatusName
+    const target = row.tab === "notFound" ? (row.handoverOpen ? null : "Missing") : row.targetStatusName
     if (!selected.has(row.assetId) || target === null) continue
     summary[target] = (summary[target] ?? 0) + 1
   }
   return summary
 }
 
-export type InspectionBlockedCode = "notInRound" | "notUnderInspection" | "notScanned" | "awaitingReview" | "wrongTab" | "handoverUnclear"
+export type InspectionBlockedCode = "notInRound" | "notUnderInspection" | "notScanned" | "awaitingReview" | "wrongTab" | "handoverUnclear" | "handoverOpen"
 
 /** The route's 409 refusal codes → keys in the inspectionConfirmPage namespace. */
 export const inspectionBlockedMessageKeys: Readonly<Record<InspectionBlockedCode, string>> = Object.freeze({
@@ -97,6 +106,7 @@ export const inspectionBlockedMessageKeys: Readonly<Record<InspectionBlockedCode
   awaitingReview: "blocked_awaitingReview",
   wrongTab: "blocked_wrongTab",
   handoverUnclear: "blocked_handoverUnclear",
+  handoverOpen: "blocked_handoverOpen",
 })
 
 // Plan 4 task 3: where the confirm page goes on from the damaged and not-found tabs. returnTo is the confirm page on the
@@ -139,9 +149,17 @@ export type InspectionDamagedButton = "repair" | "confirmOnly" | "dispose"
 
 /**
  * The damaged row's buttons, in order: บันทึกซ่อม with maintenance:create; ขอตัดจำหน่าย on a closed round with
- * disposal:create; otherwise ยืนยันผลอย่างเดียว, so the row can always be confirmed.
+ * disposal:create; otherwise ยืนยันผลอย่างเดียว, so the row can always be confirmed. A row whose target is ถูกยืม (an open
+ * temporary loan) gets ยืนยันผลอย่างเดียว only (plan 5 final review): the repair form and the disposal request both refuse
+ * an asset on loan, so the row shows damagedLoanNote instead.
  */
-export function inspectionDamagedButtons(input: { roundClosed: boolean; canRepair: boolean; canDispose: boolean }): InspectionDamagedButton[] {
+export function inspectionDamagedButtons(input: {
+  roundClosed: boolean
+  canRepair: boolean
+  canDispose: boolean
+  targetStatusName?: InspectionTargetStatusName | null
+}): InspectionDamagedButton[] {
+  if (input.targetStatusName === "Checked Out") return ["confirmOnly"]
   const buttons: InspectionDamagedButton[] = []
   if (input.canRepair) buttons.push("repair")
   buttons.push(input.roundClosed && input.canDispose ? "dispose" : "confirmOnly")

@@ -11,6 +11,7 @@ import {
   roundAllowsDisposal,
   inspectionSelectionSummary,
   isInspectionRowSelectable,
+  isNotFoundRowHandoverBlocked,
   lostDisposalHref,
   inspectionTabCounts,
   parseInspectionTab,
@@ -32,6 +33,7 @@ function pageRow(overrides: Partial<InspectionPageRow> = {}): InspectionPageRow 
     custodianName: null,
     tab: "ready",
     targetStatusName: "Ready",
+    handoverOpen: false,
     firstPendingFindingId: null,
     ...overrides,
   }
@@ -82,7 +84,7 @@ test("the dialog summary counts by target status", () => {
 })
 
 test("every refusal code has a message key, and each key exists in both message files", () => {
-  const codes = ["notInRound", "notUnderInspection", "notScanned", "awaitingReview", "wrongTab", "handoverUnclear"]
+  const codes = ["notInRound", "notUnderInspection", "notScanned", "awaitingReview", "wrongTab", "handoverUnclear", "handoverOpen"]
   assert.deepEqual(Object.keys(inspectionBlockedMessageKeys).sort(), [...codes].sort())
   for (const locale of ["th", "en"]) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as Record<string, Record<string, unknown>>
@@ -127,6 +129,7 @@ test("the row is serialisable", () => {
     custodianName: "Somchai",
     tab: "awaitingReview",
     targetStatusName: "In Use",
+    handoverOpen: true,
     firstPendingFindingId: "f1",
   })
   assert.deepEqual(JSON.parse(JSON.stringify(page)), page)
@@ -136,10 +139,12 @@ test("the row is serialisable", () => {
   assert.equal(bare.firstPendingFindingId, null)
   assert.equal(bare.targetStatusName, null)
   assert.equal(bare.auditResult, null)
+  assert.equal(toInspectionPageRow({ ...row, handovers: { permanent: 0, temporary: 0, unknown: 0 } }).handoverOpen, false)
+  assert.equal(toInspectionPageRow({ ...row, handovers: { permanent: 0, temporary: 0, unknown: 1 } }).handoverOpen, true)
 })
 
-// Inspection-confirm plan 4 task 3: the not-found tab ticks every row (its target is Missing), and the links onward.
-test("a not-found row is always selectable and counts as Missing in the summary", () => {
+// Inspection-confirm plan 4 task 3: the not-found tab ticks its rows (their target is Missing), and the links onward.
+test("a not-found row with no open handover is selectable and counts as Missing in the summary", () => {
   const rows = [
     pageRow({ assetId: "a1", tab: "notFound", targetStatusName: null }),
     pageRow({ assetId: "a2", tab: "notFound", targetStatusName: "In Use" }),
@@ -150,6 +155,27 @@ test("a not-found row is always selectable and counts as Missing in the summary"
   assert.equal(isInspectionRowSelectable(rows[2]), false)
   assert.deepEqual(selectAllInspectionRows(rows), { ids: ["a1", "a2"], capped: false })
   assert.deepEqual(inspectionSelectionSummary(rows, new Set(["a1", "a2"])), { Missing: 2 })
+})
+
+// Plan 5 final review (decision B): หาไม่พบ refuses a row with any open handover, so its tick is disabled and select-all
+// skips it; the summary leaves it out.
+test("a not-found row with an open handover is not selectable, select-all skips it, the summary leaves it out", () => {
+  const rows = [
+    pageRow({ assetId: "a1", tab: "notFound", targetStatusName: "In Use", handoverOpen: true }),
+    pageRow({ assetId: "a2", tab: "notFound", targetStatusName: "Ready" }),
+    pageRow({ assetId: "a3", tab: "notFound", targetStatusName: null, handoverOpen: true }),
+  ]
+  assert.equal(isInspectionRowSelectable(rows[0]), false)
+  assert.equal(isInspectionRowSelectable(rows[1]), true)
+  assert.equal(isInspectionRowSelectable(rows[2]), false)
+  assert.equal(isNotFoundRowHandoverBlocked(rows[0]), true)
+  assert.equal(isNotFoundRowHandoverBlocked(rows[1]), false)
+  assert.equal(isNotFoundRowHandoverBlocked(pageRow({ tab: "ready", handoverOpen: true })), false)
+  assert.deepEqual(selectAllInspectionRows(rows), { ids: ["a2"], capped: false })
+  assert.deepEqual(inspectionSelectionSummary(rows, new Set(["a1", "a2", "a3"])), { Missing: 1 })
+  assert.equal(inspectionBlockedMessageKeys.handoverOpen, "blocked_handoverOpen")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).inspectionConfirmPage as Record<string, string>
+  assert.equal(th.blocked_handoverOpen, "มีใบส่งมอบหรือใบยืมเปิดอยู่ ใช้แก้ไขสถานะจากหน้ารายละเอียดทรัพย์สินแทน")
 })
 
 test("lostDisposalHref: none is null, one is the single form with type=lost, more is the batch form", () => {
@@ -190,4 +216,16 @@ test("inspectionDamagedButtons: open round is repair + confirm only; closed roun
   assert.deepEqual(inspectionDamagedButtons({ roundClosed: true, canRepair: true, canDispose: false }), ["repair", "confirmOnly"])
   assert.deepEqual(inspectionDamagedButtons({ roundClosed: true, canRepair: false, canDispose: false }), ["confirmOnly"])
   assert.ok(!inspectionDamagedButtons({ roundClosed: false, canRepair: true, canDispose: true }).includes("dispose"))
+})
+
+// Plan 5 final review (decision C): a damaged row on loan (target ถูกยืม) confirms only; the repair form and the
+// disposal request both refuse an asset on loan.
+test("inspectionDamagedButtons: a row whose target is Checked Out gets confirm only, whatever the round and permissions", () => {
+  for (const roundClosed of [false, true]) {
+    assert.deepEqual(inspectionDamagedButtons({ roundClosed, canRepair: true, canDispose: true, targetStatusName: "Checked Out" }), ["confirmOnly"])
+  }
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: true, canRepair: true, canDispose: true, targetStatusName: "In Use" }), ["repair", "dispose"])
+  assert.deepEqual(inspectionDamagedButtons({ roundClosed: false, canRepair: true, canDispose: true, targetStatusName: "Ready" }), ["repair", "confirmOnly"])
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).inspectionConfirmPage as Record<string, string>
+  assert.equal(th.damagedLoanNote, "มีใบยืมเปิดอยู่ ต้องรับคืนก่อนบันทึกซ่อมหรือขอตัดจำหน่าย")
 })

@@ -7,6 +7,30 @@ import {
   normalizeAssetStateName,
 } from "@/lib/asset-lifecycle-policy"
 
+// The holder and location labels the asset form shows ("code - name"), shared with the lighter read below.
+export function employeeOptionLabel(employee: { code: string; fullNameTh: string }) {
+  return `${employee.code} - ${employee.fullNameTh}`
+}
+
+export function locationOptionLabel(location: { code: string; name: string }) {
+  return `${location.code} - ${location.name}`
+}
+
+/**
+ * ยืนยันผลตรวจ plan 5 final review: only the asset form's holder and location lists (active employees and locations, by
+ * code, the same labels), for the asset page's one-step confirm dialog, without the form's other eleven reads.
+ */
+export async function getAssetCustodyOptions() {
+  const [employees, locations] = await Promise.all([
+    prisma.employee.findMany({ where: { isActive: true }, select: { id: true, code: true, fullNameTh: true }, orderBy: { code: "asc" } }),
+    prisma.location.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
+  ])
+  return {
+    employees: employees.map((employee) => ({ id: employee.id, label: employeeOptionLabel(employee) })),
+    locations: locations.map((location) => ({ id: location.id, label: locationOptionLabel(location) })),
+  }
+}
+
 export async function getAssetFormOptions(context?: { currentStatusId?: string | null; currentConditionId?: string | null }) {
   const [
     companies,
@@ -146,7 +170,7 @@ export async function getAssetFormOptions(context?: { currentStatusId?: string |
     })),
     employees: employees.map((employee) => ({
       id: employee.id,
-      label: `${employee.code} - ${employee.fullNameTh}`,
+      label: employeeOptionLabel(employee),
       companyId: employee.companyId,
       branchId: employee.branchId,
       branchCode: employee.branch.code,
@@ -157,7 +181,7 @@ export async function getAssetFormOptions(context?: { currentStatusId?: string |
     })),
     locations: locations.map((location) => ({
       id: location.id,
-      label: `${location.code} - ${location.name}`,
+      label: locationOptionLabel(location),
       branchId: location.branchId,
     })),
     categories: categories.map((category) => ({

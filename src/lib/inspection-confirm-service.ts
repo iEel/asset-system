@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db"
 import { loadRoundInspectionRows, type InspectionRow } from "./inspection-confirm-data.ts"
 import {
   INSPECTION_STATUS_NAME,
+  inspectionHandoverOpen,
   inspectionOutcomeTab,
   inspectionTargetStatusName,
   type InspectionConfirmOutcome,
@@ -25,7 +26,7 @@ export const inspectionConfirmTransactionOptions = {
 
 export const INSPECTION_CONFIRM_CHANGED_MESSAGE = "Some assets changed before the audit results were confirmed"
 
-export type InspectionConfirmBlockedCode = "notInRound" | "notUnderInspection" | "notScanned" | "awaitingReview" | "wrongTab" | "handoverUnclear"
+export type InspectionConfirmBlockedCode = "notInRound" | "notUnderInspection" | "notScanned" | "awaitingReview" | "wrongTab" | "handoverUnclear" | "handoverOpen"
 export type InspectionConfirmBlocked = { assetId: string; assetTag: string | null; code: InspectionConfirmBlockedCode }
 
 // One answer naming every refused asset: the bulk-move 409 shape { code, error, blocked: [{ assetId, assetTag, code }] }.
@@ -63,6 +64,9 @@ export function findInspectionConfirmRefusals(
     else if (row.tab === "awaitingReview") refuse("awaitingReview")
     else if (row.tab !== inspectionOutcomeTab[outcome]) refuse("wrongTab")
     else if (inspectionTargetStatusName(row, outcome) === null) refuse("handoverUnclear")
+    // Plan 5 final review: หาไม่พบ with a handover still open would leave the checkout open on a Missing asset (spec §4,
+    // open_checkout_status_mismatch) and block its lost disposal; the asset page's status correction handles it instead.
+    else if (outcome === "missing" && inspectionHandoverOpen(row.handovers)) refuse("handoverOpen")
   }
   return blocked
 }

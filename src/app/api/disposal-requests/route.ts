@@ -13,6 +13,8 @@ import {
   getDisposalReadinessBlockersForAsset,
 } from "@/lib/disposal-readiness"
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const disposalInclude = {
   asset: { select: { assetTag: true, name: true } },
   requestedBy: { select: { code: true, fullNameTh: true } },
@@ -84,6 +86,17 @@ export async function POST(request: NextRequest) {
       return disposalApiError("DISPOSAL_ASSET_BLOCKED", readinessBlockers.join(", "))
     }
 
+    // A request from an audit round records the round only when that round counted the asset (an item in it), as the
+    // batch route does (sourceOf); any other asset gets no source, so it never counts as the round's (plan 5 final review).
+    const source = input.sourceType === "audit_round"
+      ? input.sourceId && uuidPattern.test(input.sourceId) && await prisma.auditItem.findFirst({
+        where: { auditRoundId: input.sourceId, assetId: input.assetId },
+        select: { id: true },
+      })
+        ? { sourceType: "audit_round", sourceId: input.sourceId }
+        : { sourceType: null, sourceId: null }
+      : { sourceType: input.sourceType, sourceId: input.sourceId }
+
     const pendingDisposalStatus = await prisma.assetStatus.findFirst({
       where: { OR: [{ name: "Pending Disposal" }, { nameTh: "รอตัดจำหน่าย" }] },
       select: { id: true },
@@ -115,8 +128,8 @@ export async function POST(request: NextRequest) {
             approverId: input.approverId,
             saleValue: input.saleValue,
             salvageValue: input.salvageValue,
-            sourceType: input.sourceType,
-            sourceId: input.sourceId,
+            sourceType: source.sourceType,
+            sourceId: source.sourceId,
             createdBy: user.id,
             updatedBy: user.id,
           },
@@ -148,7 +161,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       module: "disposal",
       recordId: disposalRequest.id,
-      newValue: { ...input, disposalNo },
+      newValue: { ...input, ...source, disposalNo },
     })
 
     return NextResponse.json(disposalRequest, { status: 201 })

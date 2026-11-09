@@ -143,7 +143,6 @@ export function InspectionConfirmWorkspace({
   const ticking = canConfirm && (tab === "ready" || tab === "notFound")
   // Plan 4 task 4b: disposal waits for the round's close; until then a damaged row confirms only, or goes on to repair.
   const roundClosed = roundAllowsDisposal(roundStatus)
-  const damagedButtons = inspectionDamagedButtons({ roundClosed, canRepair, canDispose })
   const damagedActions = canConfirm && tab === "damaged"
   const selectableRows = useMemo(() => (ticking ? rows.filter(isInspectionRowSelectable) : []), [ticking, rows])
   // A tab change resets the selection; after a refresh only rows still selectable count.
@@ -366,7 +365,8 @@ export function InspectionConfirmWorkspace({
   const columnCount = 5 + (ticking ? 1 : 0) + (damagedActions ? 1 : 0)
 
   // A ready row's tick: live when it has a target, disabled and described by its handoverUnclear text when not. A
-  // not-found row's is always live (its target is Missing).
+  // not-found row's is live unless a handover is open, then disabled and described by its blocked_handoverOpen text
+  // (plan 5 final review); select-all skips it (isInspectionRowSelectable).
   function tickFor(row: InspectionPageRow, view: "card" | "table") {
     if (!ticking) return undefined
     const name = `${row.assetTag} ${row.assetName}`
@@ -422,10 +422,15 @@ export function InspectionConfirmWorkspace({
     if (!damagedActions) return undefined
     const back = tabHref("damaged")
     const unclear = row.targetStatusName === null
-    const describedBy = unclear ? unclearIdFor(view, row.assetId) : undefined
+    // Plan 5 final review: a row on loan (target ถูกยืม) confirms only, with the note why (inspectionDamagedButtons).
+    const damagedButtons = inspectionDamagedButtons({ roundClosed, canRepair, canDispose, targetStatusName: row.targetStatusName })
+    const onLoan = row.targetStatusName === "Checked Out"
+    const loanNoteId = `inspection-loan-${view}-${row.assetId}`
+    const describedBy = unclear ? unclearIdFor(view, row.assetId) : onLoan ? loanNoteId : undefined
     const nameFor = (label: string) => `${label} ${row.assetTag} ${row.assetName}`
     return (
       <div className="flex min-w-0 flex-wrap gap-2">
+        {onLoan ? <p id={loanNoteId} className="w-full text-meta text-pretty text-muted-foreground">{t("damagedLoanNote")}</p> : null}
         {damagedButtons.includes("repair") ? (
           <Button variant="outline" size="md" disabled={unclear} aria-label={nameFor(t("damagedRepair"))} aria-describedby={describedBy} onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
             {t("damagedRepair")}

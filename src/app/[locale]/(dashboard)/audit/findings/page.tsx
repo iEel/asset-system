@@ -279,7 +279,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
               tone="info"
               data-audit-findings-confirm-handoff
               action={
-                <Link href={confirmHandoffHref} className={linkVariants()}>
+                <Link href={confirmHandoffHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
                   {t("handoffConfirmLink")}
                 </Link>
               }

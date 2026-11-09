@@ -4,10 +4,11 @@
 // the other in no round. Then the suite's one direct write (e2e/audit/inspection-setup.ts, the user's option A of
 // 2026-11-09) sets both to "Under Inspection" in the dev database: no app path makes that status.
 // - The asset in the round: its page shows the notice with "ยืนยันผลตรวจในรอบ <auditNo>", which opens the round's confirm
-//   page on พร้อมยืนยัน; the old "แก้ไขสถานะ" is not offered. (The confirm page's back link is not asserted: it returns
-//   to the round today, and the plan's fix wave changes that.)
+//   page on พร้อมยืนยัน, whose back link returns to the asset page; the old "แก้ไขสถานะ" is not offered (no handover, so
+//   no escape hatch).
 // - The findings list of that round: no finding waits and one asset is unconfirmed, so the hand-off banner names
-//   ยืนยันผลตรวจ with its link to the confirm page; the unfiltered list shows no banner.
+//   ยืนยันผลตรวจ with its link to the confirm page, whose back link returns to the list; the unfiltered list shows no
+//   banner.
 // - The asset in no round: the notice's button opens the one-step dialog. ใช้งานอยู่ without a holder is refused under
 //   ผู้ถือครอง; with the run's employee, a third room of the run and a reason it is confirmed (a toast, then the refreshed
 //   page has no notice), and the page reads ใช้งานอยู่, the holder and the room; the history has the status, holder and
@@ -33,6 +34,13 @@ asUser("itStaff")
 
 // The page type of the suite's steps (a spec imports nothing from @playwright/test).
 type Page = Parameters<typeof rounds.tab>[0]
+
+// The confirm page's back link (plan 5 final review): it names where the page was opened from and leads back to that
+// path (with whatever query that page carried).
+async function expectConfirmBackLink(page: Page, label: string, path: string) {
+  const back = page.getByRole("main").getByRole("link", { name: label, exact: true }).filter({ visible: true }).last()
+  await expect(back).toHaveAttribute("href", new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[?#]|$)`))
+}
 
 // The notice on the asset's overview (src/components/assets/detail/asset-inspection-notice.tsx).
 function inspectionNotice(page: Page) {
@@ -150,6 +158,7 @@ test("ยืนยันผลตรวจ from the asset page: the notice links
   await rounds.expectTabs(page, W.tabReady, { [W.tabReady]: 1, [W.tabAwaitingReview]: 0, [W.tabDamaged]: 0, [W.tabNotFound]: 0, [W.tabNotScanned]: 0 })
   await expect(confirmRows(page, e2eDevice, prefix)).toHaveCount(1)
   await expect(confirmRows(page, e2eDevice, assets.inRound.tag)).toHaveCount(1)
+  await expectConfirmBackLink(page, W.backToAsset, inRoundPath)
   await recordSettled(page, measure, "confirm page from the asset's notice (IT staff)")
 
   // The findings list of the round: no finding at all (so none waits) and one asset unconfirmed, so the page names
@@ -164,6 +173,7 @@ test("ยืนยันผลตรวจ from the asset page: the notice links
   await handoffLink.click()
   await page.waitForURL((url) => url.pathname === confirmPath && url.searchParams.has("returnTo"))
   await expect(confirmRows(page, e2eDevice, assets.inRound.tag)).toHaveCount(1)
+  await expectConfirmBackLink(page, W.backToFindings, "/th/audit/findings")
   // Without a round chosen the list has no hand-off.
   await measure.visit("/th/audit/findings", "findings, no round chosen (IT staff)")
   await expect(page.locator("[data-audit-findings-confirm-handoff]")).toHaveCount(0)

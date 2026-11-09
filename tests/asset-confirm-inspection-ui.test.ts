@@ -13,8 +13,16 @@ const OVERVIEW = "src/components/assets/detail/asset-overview.tsx"
 test("the page hides the Ready-only correction for Under Inspection and reads the asset's round (plan 5 task 2)", () => {
   const source = read(PAGE)
   assert.match(source, /const isUnderInspection = asset\.status\.name === INSPECTION_STATUS_NAME/)
-  assert.match(source, /const statusCorrection =\s*canEditAsset && readyStatus && !isUnderInspection && canCorrectAssetStatus\(asset\.status\)/)
+  // Final review decision A: the old entry only as the escape hatch the status-correction route also allows.
+  assert.match(source, /const statusCorrection =\s*canEditAsset && readyStatus && \(!isUnderInspection \|\| inspectionCorrectionEscape\) && canCorrectAssetStatus\(asset\.status\)/)
+  assert.match(source, /canEditAsset \? inspectionCorrectionEscapeAllowed\(prisma, asset\.id\) : Promise\.resolve\(false\)/)
   assert.match(source, /findAssetInspectionRound\(prisma, asset\.id\)/)
+  // Final review decision D: the round link only with audit:view; without it the round number as plain text.
+  assert.match(source, /round: inspectionRound && canViewAudit\s*\?/)
+  assert.match(source, /roundText: inspectionRound && !canViewAudit \? tInspection\("roundText", \{ auditNo: inspectionRound\.auditNo \}\) : null/)
+  // Final review H: only the holder and location lists, not the whole asset form's options.
+  assert.match(source, /getAssetCustodyOptions\(\)/)
+  assert.doesNotMatch(source, /getAssetFormOptions/)
   assert.match(source, /loadOpenHandoverCounts\(prisma, \[asset\.id\]\)/)
   // The link: the round's confirm page on the asset's tab, with this page as the way back.
   assert.match(source, /appendOperationalReturnTo\(\s*`\/\$\{locale\}\/audit\/rounds\/\$\{inspectionRound\.roundId\}\/confirm\?tab=\$\{inspectionRound\.tab\}`,\s*currentAssetDetailHref,?\s*\)/)
@@ -32,6 +40,7 @@ test("the overview places the notice first, where its notices sit (plan 5 task 2
   assert.match(notice, /<Notice\b[^>]*tone="warning"/)
   assert.match(notice, /<Link href=\{round\.href\}/)
   assert.match(notice, /<AssetConfirmInspectionDialog \{\.\.\.dialog\} \/>/)
+  assert.match(notice, /\{roundText \?\? undefined\}/)
 })
 
 test("the dialog posts to the asset's confirm route, locks the holder and location under an open handover and checks In Use client-side (plan 5 task 2)", () => {
@@ -57,6 +66,11 @@ test("the dialog posts to the asset's confirm route, locks the holder and locati
   assert.match(source, /toast\.success\(labels\.success\)/)
   assert.match(source, /<SearchableSelect\b/)
   assert.match(source, /<NativeSelect\b/)
+  // Final review F: the form-level error is announced, and focus after a confirm goes to the page heading (the refresh
+  // removes the notice and its trigger).
+  assert.match(source, /<p role="alert" className="text-sm text-danger"><ApiErrorText error=\{error\} \/><\/p>/)
+  assert.match(source, /heading\.tabIndex = -1\s*returnFocusRef\.current = heading/)
+  assert.match(source, /returnFocusRef=\{returnFocusRef\}/)
 })
 
 test("the notice's messages, Thai and English (plan 5 task 2)", () => {
@@ -66,12 +80,15 @@ test("the notice's messages, Thai and English (plan 5 task 2)", () => {
   assert.equal(th.roundLink, "ยืนยันผลตรวจในรอบ {auditNo}")
   assert.equal(th.button, "ยืนยันผลตรวจ")
   assert.equal(th.dialogTitle, "ยืนยันผลตรวจ {assetTag}")
-  assert.equal(th.handoverLocked, "มีใบส่งมอบหรือใบยืมเปิดอยู่ ผู้ถือครองและสถานะเป็นไปตามใบนั้น")
-  assert.equal(th.handoverUnclear, "ใบส่งมอบหรือใบยืมไม่ชัด ต้องแก้ในหน้าคุณภาพข้อมูลก่อน")
+  assert.equal(th.handoverLocked, "มีใบส่งมอบหรือใบยืมเปิดอยู่ สถานะ ผู้ถือครอง และที่ตั้งเป็นไปตามใบนั้น")
+  assert.equal(en.handoverLocked, "An open handover sets the status, holder and location")
+  // The unclear handover's way out is this page's status correction (final review decision A).
+  assert.equal(th.handoverUnclear, "ใบส่งมอบหรือใบยืมไม่ชัด ใช้แก้ไขสถานะของหน้านี้แทน")
+  assert.equal(th.roundText, "รอยืนยันผลตรวจในรอบ {auditNo}")
   assert.equal(th.inUseNeedsHolder, "ใช้งานอยู่ต้องมีผู้ถือครอง")
   assert.equal(en.title, "This asset is still under inspection")
   assert.equal(en.roundLink, "Confirm in round {auditNo}")
   assert.equal(en.errorFallback, "Could not confirm. Try again.")
   assert.deepEqual(Object.keys(th).sort(), Object.keys(en).sort())
-  assert.equal(Object.keys(th).length, 16)
+  assert.equal(Object.keys(th).length, 17)
 })

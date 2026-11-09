@@ -286,12 +286,15 @@ test("รอบ: lists every active round that is not cancelled; a chosen round 
 test("the ยืนยันผลตรวจ hand-off (inspection-confirm plan 5 task 3): a round with no pending finding and assets left Under Inspection names the next step; the round's pending count is the pending tab's where within the round alone", async () => {
   const { roundInspectionItemWhere } = await import(pathToFileURL("src/lib/inspection-confirm-data.ts").href) as typeof import("../src/lib/inspection-confirm-data.ts")
   const roundPendingWhere = whereFor({ roundId: "round-1" }, "pending")
-  const setup = ({ pending, unconfirmed, round }: { pending: number; unconfirmed: number; round?: Record<string, unknown> | null }) => {
+  const pendingItemsWhere = { auditRoundId: "round-1", auditStatus: "pending" }
+  const confirmableWhere = { ...roundInspectionItemWhere("round-1"), auditStatus: { not: "pending" } }
+  const setup = ({ pending, unconfirmed, pendingItems = 0, round }: { pending: number; unconfirmed: number; pendingItems?: number; round?: Record<string, unknown> | null }) => {
     state.calls = []
     state.respond = (call, args) => {
       if (call === "auditRound.findUnique") return round === undefined ? { id: "round-1", auditNo: "AUD-2026-0007", name: "ตรวจนับห้อง IT", status: "open", isActive: true } : round
       if (call === "auditFinding.count" && isDeepStrictEqual(args.where, roundPendingWhere)) return pending
-      if (call === "auditItem.count") return unconfirmed
+      if (call === "auditItem.count" && isDeepStrictEqual(args.where, pendingItemsWhere)) return pendingItems
+      if (call === "auditItem.count" && isDeepStrictEqual(args.where, confirmableWhere)) return unconfirmed
       return undefined
     }
   }
@@ -301,7 +304,12 @@ test("the ยืนยันผลตรวจ hand-off (inspection-confirm plan
   const ready = await load({ roundId: "round-1", search: "GRL", findingType: "wrong_location" })
   assert.deepEqual(ready.confirmHandoff, { roundId: "round-1", auditNo: "AUD-2026-0007", count: 3 })
   assert.ok(callsTo("auditFinding.count").some((args) => isDeepStrictEqual(args.where, roundPendingWhere)), "the pending tab's builder, within the round alone")
-  assert.deepEqual(callsTo("auditItem.count"), [{ where: roundInspectionItemWhere("round-1") }], "countRoundUnconfirmedAssets")
+  assert.deepEqual(callsTo("auditItem.count"), [{ where: pendingItemsWhere }, { where: confirmableWhere }], "the round's pending items, then countRoundConfirmableAssets")
+
+  // Plan 5 final review: the walk still in progress (an item not scanned yet) shows no banner, even with no finding to
+  // decide; the count is the checked assets only (countRoundConfirmableAssets leaves the not-scanned ones out).
+  setup({ pending: 0, unconfirmed: 3, pendingItems: 1 })
+  assert.equal((await load({ roundId: "round-1" })).confirmHandoff, null, "the walk is still in progress")
 
   setup({ pending: 2, unconfirmed: 3 })
   assert.equal((await load({ roundId: "round-1" })).confirmHandoff, null, "findings still to decide")

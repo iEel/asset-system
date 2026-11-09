@@ -67,7 +67,7 @@ test("findings page: the list frame on the panel classes, the phone card one lin
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
   assert.match(source, /<StatusBadge className="shrink-0" label=\{resolutionStateLabels\[resolutionState\]\} tone=\{RESOLUTION_STATE_TONES\[resolutionState\]\} \/>/)
   // The evidence links moved to the shared AuditFindingEvidenceList (group 6 plan 2 Task 4).
-  assert.equal(source.match(/className=\{cn\(linkVariants\(/g)?.length, 1, "the table row's open link")
+  assert.equal(source.match(/className=\{cn\(linkVariants\(/g)?.length, 2, "the table row's open link and the hand-off banner's link (44px below md)")
   assert.equal(read("src/components/audit/audit-finding-evidence-list.tsx").match(/className=\{cn\(linkVariants\(/g)?.length, 1, "the evidence links")
   assert.match(source, /<DataTable framed=\{false\} layout="fixed" minWidth=\{[^}]+\} /)
   assert.match(source, /<Chip data-audit-finding-subject>\{topic\}<\/Chip>/, "เรื่อง names the field: a Chip, not a status (DESIGN.md Chip, P4-R2)")

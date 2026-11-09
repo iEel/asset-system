@@ -111,6 +111,30 @@ export function normalizeMaintenanceReturnTo(locale: string, value: ReturnToPara
   }
 }
 
+export type InspectionConfirmReturn = { href: string; kind: "round" | "asset" | "findings" }
+
+// The ยืนยันผลตรวจ page's way back (plan 5 final review): the round page (with its query and hash, as
+// normalizeAuditRoundDetailReturnTo keeps it), one asset page (`/<locale>/assets/<uuid>`, with its query: the asset
+// notice links here) or the findings list (with its query: the hand-off banner links here). Anything else, another site,
+// another locale or a deeper path, is the bare round page.
+export function normalizeInspectionConfirmReturnTo(locale: string, roundId: string, value: ReturnToParam): InspectionConfirmReturn {
+  const round: InspectionConfirmReturn = { href: normalizeAuditRoundDetailReturnTo(locale, roundId, value), kind: "round" }
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return round
+
+  try {
+    const url = new URL(raw, "http://asset.local")
+    if (url.origin !== "http://asset.local") return round
+    const assets = `/${locale}/assets/`
+    const assetId = url.pathname.startsWith(assets) ? url.pathname.slice(assets.length) : ""
+    if (uuidPattern.test(assetId)) return { href: `${url.pathname}${url.search}`, kind: "asset" }
+    if (url.pathname === operationalReturnPaths["audit-findings"](locale)) return { href: `${url.pathname}${url.search}`, kind: "findings" }
+    return round
+  } catch {
+    return round
+  }
+}
+
 // `/<locale>/audit/rounds/<uuid>/confirm`, one round's ยืนยันผลตรวจ page, and nothing deeper.
 function isAuditRoundConfirmPath(locale: string, pathname: string): boolean {
   const rounds = `/${locale}/audit/rounds/`

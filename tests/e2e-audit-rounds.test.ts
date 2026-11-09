@@ -350,6 +350,8 @@ test("the detail-page ยืนยันผลตรวจ spec reads the app's 
     tabDamaged: page.tab_damaged,
     tabNotFound: page.tab_notFound,
     tabNotScanned: page.tab_notScanned,
+    backToAsset: page.backToAsset,
+    backToFindings: page.backToFindings,
     handoffConfirm: th.auditFinding.handoffConfirm,
     handoffConfirmLink: th.auditFinding.handoffConfirmLink,
     statusCorrection: th.asset.statusCorrectionButton,
@@ -374,8 +376,10 @@ test("the detail-page ยืนยันผลตรวจ spec walks one asset 
     "await markUnderInspection(runId, [assets.inRound.id, assets.noRound.id])",
     "fillTemplate(W.roundLink, { auditNo: round.auditNo })",
     "await expectNoStatusCorrection(page, e2eDevice)",
+    "W.backToAsset",
     "W.handoffConfirm",
     "W.handoffConfirmLink",
+    "W.backToFindings",
     "W.inUseNeedsHolder",
     "/confirm-inspection`",
     "W.success",
@@ -388,9 +392,11 @@ test("the detail-page ยืนยันผลตรวจ spec walks one asset 
     from = at + 1
   }
   assert.equal(spec.split("markUnderInspection(").length - 1, 1, "one write")
-  // The toast and the refreshed page are waited for together; the confirm page's back link is not asserted (the fix
-  // wave changes its target).
+  // The toast and the refreshed page are waited for together. The confirm page's back link returns where it was opened
+  // from (plan 5 final review): the asset page, then the findings list; never the round's own back label here.
   assert.match(spec, /await Promise\.all\(\[\n\s*expect\(page\.getByText\(W\.success, \{ exact: true \}\)\)\.toBeVisible\(\),/)
-  assert.ok(!spec.includes("backToRound"), "no back-link target")
+  assert.ok(spec.includes("await expectConfirmBackLink(page, W.backToAsset, inRoundPath)"), "back to the asset page")
+  assert.ok(spec.includes(`await expectConfirmBackLink(page, W.backToFindings, "/th/audit/findings")`), "back to the findings list")
+  assert.ok(!spec.includes("backToRound"), "no round back label")
   assert.ok(!spec.includes("cancelAsItHead") && !/action: "(?:cancel|close)"/.test(spec), "the round stays open")
 })
