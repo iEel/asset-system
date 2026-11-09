@@ -6226,7 +6226,8 @@
       "setting": "System Settings",
       "import": "Import",
       "export": "Export",
-      "log": "System Log"
+      "log": "System Log",
+      "consumable": "Consumables"
     },
     "tabRoles": "Roles",
     "tabMatrix": "Permissions by module",

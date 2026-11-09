@@ -110,7 +110,7 @@ async function main() {
   // ============================================================
   const modules = [
     "dashboard", "asset", "checkout", "checkin", "transfer",
-    "audit", "maintenance", "disposal", "report",
+    "audit", "maintenance", "disposal", "report", "consumable",
     "company", "branch", "department", "employee", "location",
     "category", "brand", "supplier", "status", "condition",
     "user", "role", "setting", "import", "export", "log",

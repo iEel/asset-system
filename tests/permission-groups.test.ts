@@ -11,9 +11,9 @@ function rolePageModules() {
   return Array.from(block[1].matchAll(/"([a-zA-Z]+)"/g), (match) => match[1])
 }
 
-test("the five groups cover the 25 modules once", () => {
+test("the five groups cover the 26 modules once", () => {
   const pageModules = rolePageModules()
-  assert.equal(pageModules.length, 25)
+  assert.equal(pageModules.length, 26)
 
   const grouped = PERMISSION_GROUPS.flatMap((group) => group.modules)
   assert.equal(new Set(grouped).size, grouped.length, "a module appears in two groups")
