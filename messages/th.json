@@ -7511,7 +7511,22 @@
     "type_issue": "เบิก",
     "type_adjust": "ปรับยอด",
     "receivedOn": "รับเมื่อ {date}",
-    "detail_asset": "เครื่อง"
+    "detail_asset": "เครื่อง",
+    "tab_list": "รายการ",
+    "tab_frequent": "เครื่องที่เปลี่ยนของบ่อย",
+    "filter_days": "ช่วง",
+    "days_option": "{days, number} วัน",
+    "filter_item": "ชนิด",
+    "item_all": "ทุกชนิด",
+    "item_inactive": "{name} (ปิดใช้งาน)",
+    "asset_chip": "เครื่อง {tag}",
+    "col_asset": "เครื่อง",
+    "col_holder": "ผู้ถือครอง",
+    "col_count": "ครั้งที่เปลี่ยน",
+    "col_latest": "ล่าสุด",
+    "latest_value": "{date} · {item}",
+    "report_more": "แสดง 100 เครื่องแรก",
+    "report_empty": "ไม่มีการเปลี่ยนของในช่วงนี้"
   },
   "assetConsumables": {
     "title": "ของใช้สิ้นเปลือง",

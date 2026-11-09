@@ -7511,7 +7511,22 @@
     "type_issue": "Issue",
     "type_adjust": "Adjust",
     "receivedOn": "Received {date}",
-    "detail_asset": "Asset"
+    "detail_asset": "Asset",
+    "tab_list": "List",
+    "tab_frequent": "Frequently replaced",
+    "filter_days": "Period",
+    "days_option": "{days, plural, one {# day} other {# days}}",
+    "filter_item": "Kind",
+    "item_all": "All kinds",
+    "item_inactive": "{name} (inactive)",
+    "asset_chip": "Machine {tag}",
+    "col_asset": "Machine",
+    "col_holder": "Holder",
+    "col_count": "Replacements",
+    "col_latest": "Latest",
+    "latest_value": "{date} · {item}",
+    "report_more": "Showing the first 100 machines",
+    "report_empty": "No replacements in this period"
   },
   "assetConsumables": {
     "title": "Consumables",

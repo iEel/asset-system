@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useRef, useState, type RefObject } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
@@ -75,6 +75,7 @@ export function ConsumablesWorkspace({
   rows,
   canCreate,
   canEdit,
+  tabs,
 }: {
   locale: string
   rows: ConsumableUsageRow[]
@@ -82,6 +83,8 @@ export function ConsumablesWorkspace({
   canCreate: boolean
   // consumable:edit: ปรับยอด, เพิ่มชนิดของ, แก้ชื่อหรือขั้นต่ำ and ปิดใช้งาน.
   canEdit: boolean
+  // The page's รายการ / เครื่องที่เปลี่ยนของบ่อย TabNav (plan 3 Task 3), under the header.
+  tabs?: ReactNode
 }) {
   const t = useTranslations("consumablesPage")
   const tCommon = useTranslations("common")
@@ -243,6 +246,8 @@ export function ConsumablesWorkspace({
           ) : null
         }
       />
+
+      {tabs}
 
       {lowRows.length > 0 ? (
         <Notice tone="warning" role="status">
