@@ -40,9 +40,21 @@ test("the header: the trail ตรวจนับ › รอบตรวจน�
   assert.match(page, /<PageBackLink href=\{links\.round\} label=\{t\("backToRound"\)\} \/>/)
 })
 
+test("the round page's way back comes along: returnTo read as the pending page reads it, for the crumb, the back link, the empty state and the tabs (final review)", () => {
+  const page = read(PAGE)
+  assert.match(page, /searchParams: Promise<\{ tab\?: string \| string\[\]; returnTo\?: string \| string\[\] \}>/)
+  assert.match(page, /const roundHref = normalizeAuditRoundDetailReturnTo\(locale, round\.id, rawReturnTo\)/)
+  assert.match(page, /round: roundHref,/)
+  assert.match(page, /returnTo=\{rawReturnTo \? roundHref : null\}/)
+  // No pagination, on purpose (the ruling), said where the rows are read.
+  assert.match(page, /No pagination[\s\S]{0,200}INSPECTION_CONFIRM_MAX_ASSETS \(500\)/)
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /if \(returnTo\) params\.set\("returnTo", returnTo\)/)
+  assert.match(workspace, /href: tabHref\(key\)/)
+})
+
 test("the links: the round, its pending findings and the round page's pending list", () => {
   const page = read(PAGE)
-  assert.match(page, /round: `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}`/)
   assert.match(page, /pendingFindings: `\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{round\.id\}`/)
   assert.match(page, /pendingItems: appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/pending`, roundHref\)/)
   assert.match(page, /prisma\.assetStatus\.findMany\(/)
@@ -64,15 +76,21 @@ test("the tabs: five, each with its count, linking with ?tab=", () => {
   const workspace = read(WORKSPACE)
   assert.match(workspace, /inspectionConfirmTabs\.map\(/)
   assert.match(workspace, /count: formatCount\(counts\[key\]\)/)
-  assert.match(workspace, /\?tab=\$\{key\}/)
+  assert.match(workspace, /const params = new URLSearchParams\(\{ tab: key \}\)/)
+  assert.match(workspace, /return `\$\{confirmPath\}\?\$\{params\.toString\(\)\}`/)
 })
 
-test("the tick column only when canConfirm; noEditNotice otherwise", () => {
+test("the tick column only where ticking is possible (ready tab and asset:edit); noEditNotice without asset:edit (final review)", () => {
   const workspace = read(WORKSPACE)
   const row = read(ROW)
   assert.match(workspace, /\{!canConfirm \? <Notice tone="info"[^>]*>\{t\("noEditNotice"\)\}<\/Notice> : null\}/)
-  assert.match(workspace, /\{canConfirm \? <DataTableHead/)
+  assert.match(workspace, /const ticking = canConfirm && tab === "ready"/)
+  assert.match(workspace, /\{ticking \? <DataTableHead/)
+  assert.match(workspace, /const columnCount = ticking \? 6 : 5/)
+  assert.equal(workspace.match(/canConfirm=\{ticking\}/g)?.length, 2, "the card and the table row")
   assert.match(row, /\{canConfirm \? <DataTableCell/)
+  // A ready tab with nothing to tick names the column neutrally.
+  assert.match(workspace, /\) : \(\n\s+t\("selectColumn"\)\n\s+\)/)
 })
 
 test("tab banners: awaiting review links to pending findings, not scanned to the pending list, damaged and not found carry laterTabNote", () => {
@@ -95,7 +113,9 @@ test("the row: tag links to the asset, result badge from auditRoundResultBadge, 
   assert.match(row, /return row\.tab === "notFound" \? "Missing" : row\.targetStatusName/)
   assert.match(row, /statusLabels\[target\]/)
   assert.match(row, /className="text-warning[^"]*">\{t\("handoverUnclear"\)\}/)
-  assert.match(row, /\/audit\/findings\?finding=\$\{row\.firstPendingFindingId\}/)
+  // The finding link keeps the round (final review): this round's pending list, its back link to the round.
+  assert.match(row, /`\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{roundId\}&finding=\$\{row\.firstPendingFindingId\}`/)
+  assert.equal(read(WORKSPACE).match(/roundId=\{roundId\} row=\{row\}/g)?.length, 2)
   assert.match(row, /t\("openFinding"\)/)
 })
 
@@ -117,17 +137,46 @@ test("the dialog posts { assetIds, reason, outcome: \"confirm\" } to the round's
   assert.match(dialog, /JSON\.stringify\(\{ assetIds, reason, outcome: "confirm" \}\)/)
 })
 
-test("a 409 reads blocked and maps its codes through inspectionBlockedMessageKeys; refresh after 200 and 409", () => {
+test("a 409 reads blocked and maps its codes through inspectionBlockedMessageKeys; after 200 and 409 the owner settles", () => {
   const dialog = read(DIALOG)
   const workspace = read(WORKSPACE)
   const conflict = dialog.slice(dialog.indexOf("response.status === 409"))
   assert.ok(dialog.includes("response.status === 409"))
   assert.match(conflict.slice(0, 400), /payload\?\.blocked/)
   assert.match(workspace, /inspectionBlockedMessageKeys\[/)
-  const ok = dialog.slice(dialog.indexOf("if (response.ok)"))
   assert.ok(dialog.includes("if (response.ok)"))
-  assert.match(ok.slice(0, 300), /router\.refresh\(\)/)
-  assert.match(conflict.slice(0, 600), /router\.refresh\(\)/)
+  // The dialog no longer refreshes: the workspace replaces the URL with the same tab.
+  assert.doesNotMatch(dialog, /router\.|useRouter/)
+  assert.match(workspace, /void settle\(\{ kind: "success", confirmed \}\)/)
+  assert.match(workspace, /void settle\(\{ kind: "changed", blocked \}\)/)
+})
+
+test("after a confirm the page stays on its tab, the answer shows once the dialog has closed, and takes focus (final review)", () => {
+  const workspace = read(WORKSPACE)
+  const settle = workspace.slice(workspace.indexOf("async function settle("), workspace.indexOf("function handleConfirmed("))
+  assert.ok(workspace.includes("async function settle("))
+  const steps = ["const closed = waitForDialogToClose()", "closeDialog()", "router.replace(tabHref(tab), { scroll: false })", "await closed", "setResult({ ...answer, roundId, tab, focused: false }"]
+  const at = steps.map((step) => settle.indexOf(step))
+  for (const [index, position] of at.entries()) assert.ok(position >= 0, steps[index])
+  assert.deepEqual([...at].sort((a, b) => a - b), at, "in order")
+  assert.doesNotMatch(workspace, /router\.refresh\(\)/)
+  // The answer outlives the replace's remount: it is the layout's state, for this round and tab.
+  assert.match(workspace, /const \{ result, setResult \} = useInspectionConfirmResult\(\)/)
+  assert.match(workspace, /const shownResult = result\?\.roundId === roundId && result\.tab === tab \? result : null/)
+  assert.match(read("src/app/[locale]/(dashboard)/audit/rounds/[id]/confirm/layout.tsx"), /<InspectionConfirmResultProvider>\{children\}<\/InspectionConfirmResultProvider>/)
+  // The region: always mounted, focusable, the dialog's fallback, focused once the answer shows.
+  assert.match(workspace, /ref=\{resultRegionRef\}\n\s+role="status"\n\s+aria-live="polite"\n\s+tabIndex=\{-1\}/)
+  assert.match(workspace, /fallbackFocusRef=\{resultRegionRef\}/)
+  assert.match(workspace, /resultRegionRef\.current\?\.focus\(\)/)
+  const dialog = read(DIALOG)
+  assert.match(dialog, /fallbackFocusRef=\{fallbackFocusRef\}/)
+})
+
+test("the dialog's server error is announced; the cap notice sits in an always-mounted status region (final review)", () => {
+  const dialog = read(DIALOG)
+  assert.match(dialog, /\{error \? <p role="alert" className="mt-2 text-sm text-danger">/)
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /<div role="status" aria-live="polite" className="min-w-0">\n\s+\{capped \? <Notice tone="info">\{t\("cappedNotice"/)
 })
 
 test("the dialog: AccessibleDialog with busy, the reason prefilled with reasonDefault and auditNo, 3–500 after trim", () => {

@@ -218,10 +218,11 @@ test("IT staff register a software licence on the asset form, a wrong entry firs
 test("only the ยืนยันผลตรวจ setup helper reaches the database, on the dev database and the run's own assets, and writes two fields (inspection-confirm plan 3 task 4, the user's option A of 2026-11-09)", async () => {
   const HELPER = "e2e/audit/inspection-setup.ts"
   // The suite's one exception to "no direct database access": no other file imports a Prisma client, the adapter, the
-  // app's db or db-config, or a SQL driver.
+  // app's db or db-config, or a SQL driver, directly, by alias, by require or import(), or through a src file one level
+  // down (e2eDatabaseReach below, and its self-test).
   const sources = filesUnder("e2e").filter((file) => /\.(?:ts|mjs|js)$/.test(file))
-  const database = /from\s+["'](?:@prisma\/client|@prisma\/adapter-mssql|mssql|tedious|[^"']*src\/lib\/(?:db|db-config)(?:\.ts)?)["']|new PrismaClient\(|\$executeRaw|\$queryRaw/
-  assert.deepEqual(sources.filter((file) => database.test(read(file))), [HELPER])
+  const readSource = (file: string) => (existsSync(file) ? read(file) : null)
+  assert.deepEqual(sources.filter((file) => e2eDatabaseReach(file, read(file), readSource).length > 0), [HELPER])
 
   const helper = read(HELPER)
   assert.match(helper, /^import \{ PrismaClient \} from "@prisma\/client"$/m)
@@ -272,4 +273,91 @@ test("only the ยืนยันผลตรวจ setup helper reaches the dat
   const confirm = "http://localhost:3100/api/audit-rounds/00000000-0000-0000-0000-000000000000/confirm-results"
   assert.equal(hazardOf("POST", confirm), undefined)
   assert.equal(isHazardPath(confirm), false)
+})
+
+// The E2E database guard (inspection-confirm plan 3 final review): the reasons an e2e file reaches the database. Direct:
+// a static import or export of a Prisma client, the adapter, a SQL driver, or any specifier ending in lib/db or
+// lib/db-config (the `@/` alias included); a require() or import() of a client or driver; new PrismaClient or raw SQL.
+// One level down: an e2e import (relative or `@/`) that resolves into src/, where that file imports @/lib/db, ./db,
+// ../db or @prisma/client as a value (type-only imports are fine). readSource returns null for a missing file.
+const DRIVERS = String.raw`@prisma\/client|@prisma\/adapter-mssql|mssql|tedious`
+const directDatabase = [
+  new RegExp(String.raw`(?:from|import)\s+["'](?:${DRIVERS}|[^"']*lib\/(?:db|db-config)(?:\.[cm]?[jt]s)?)["']`),
+  new RegExp(String.raw`(?:\brequire|\bimport)\s*\(\s*["'](?:${DRIVERS}|[^"']*lib\/(?:db|db-config)(?:\.[cm]?[jt]s)?)["']`),
+  /new PrismaClient\(|\$executeRaw|\$queryRaw/,
+]
+const srcDatabaseSpecifier = /^(?:@prisma\/client|@\/lib\/db|\.\/db|\.\.\/db)(?:\.[cm]?[jt]s)?$/
+
+/** Each import of the source: its specifier and whether it is type-only (`import type`, or every name marked type). */
+function importsOf(source: string): { specifier: string; typeOnly: boolean }[] {
+  const found: { specifier: string; typeOnly: boolean }[] = []
+  for (const match of source.matchAll(/\b(import|export)\s+(type\s+)?([^"';]*?)\s*from\s*["']([^"']+)["']/g)) {
+    const names = match[3].trim()
+    const braced = /^\{([^}]*)\}$/.exec(names)
+    const allTyped = braced !== null && braced[1].split(",").map((name) => name.trim()).filter(Boolean).every((name) => name.startsWith("type "))
+    found.push({ specifier: match[4], typeOnly: Boolean(match[2]) || allTyped })
+  }
+  for (const match of source.matchAll(/\bimport\s+["']([^"']+)["']/g)) found.push({ specifier: match[1], typeOnly: false })
+  for (const match of source.matchAll(/(?:\brequire|\bimport)\s*\(\s*["']([^"']+)["']/g)) found.push({ specifier: match[1], typeOnly: false })
+  return found
+}
+
+/** The src file an e2e specifier names, if any: relative or `@/`, tried as written, then with .ts, .tsx, /index.ts. */
+function resolveIntoSrc(fromFile: string, specifier: string, readSource: (file: string) => string | null): string | null {
+  let base: string
+  if (specifier.startsWith("@/")) base = path.posix.join("src", specifier.slice(2))
+  else if (specifier.startsWith(".")) base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), specifier))
+  else return null
+  if (!base.startsWith("src/")) return null
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`]) {
+    if (/\.[cm]?[jt]sx?$/.test(candidate) && readSource(candidate) !== null) return candidate
+  }
+  return null
+}
+
+function e2eDatabaseReach(file: string, source: string, readSource: (file: string) => string | null): string[] {
+  const reasons = directDatabase.filter((pattern) => pattern.test(source)).map((pattern) => `${file}: ${pattern.source.slice(0, 40)}`)
+  for (const { specifier } of importsOf(source)) {
+    const target = resolveIntoSrc(file, specifier, readSource)
+    if (!target) continue
+    const valueImports = importsOf(readSource(target) ?? "").filter((entry) => !entry.typeOnly && srcDatabaseSpecifier.test(entry.specifier))
+    for (const entry of valueImports) reasons.push(`${file} → ${target} imports ${entry.specifier}`)
+  }
+  return reasons
+}
+
+test("the E2E database guard catches aliases, require and import(), and a src file one level down; type-only imports pass (inspection-confirm plan 3 final review)", () => {
+  const stand = new Map<string, string>([
+    ["src/lib/db.ts", `export const prisma = {}`],
+    ["src/lib/db-backed.ts", `import { prisma } from "@/lib/db"\nexport const x = prisma`],
+    ["src/lib/relative-db.ts", `import { prisma } from "./db"\nexport const x = prisma`],
+    ["src/lib/sub/up-db.ts", `import { prisma } from "../db"\nexport const x = prisma`],
+    ["src/lib/prisma-backed.ts", `import { Prisma } from "@prisma/client"\nexport const y = Prisma`],
+    ["src/lib/typed.ts", `import type { PrismaClient } from "@prisma/client"\nimport { type Prisma } from "@prisma/client"\nexport type Z = PrismaClient | Prisma.Sql`],
+    ["src/lib/pure.ts", `export const pure = 1`],
+  ])
+  const readStand = (file: string) => stand.get(file) ?? null
+  const caught = (source: string, file = "e2e/audit/x.spec.ts") => e2eDatabaseReach(file, source, readStand).length > 0
+  for (const source of [
+    `import { prisma } from "@/lib/db"`,
+    `import { prisma } from "../../src/lib/db.ts"`,
+    `import { createMssqlAdapter } from "@/lib/db-config"`,
+    `import { PrismaClient } from "@prisma/client"`,
+    `const { PrismaClient } = require("@prisma/client")`,
+    `const sql = await import("mssql")`,
+    `const t = require('tedious')`,
+    `const a = await import("@prisma/adapter-mssql")`,
+    `export { prisma } from "@/lib/db"`,
+    `import { x } from "@/lib/db-backed"`,
+    `import { x } from "../../src/lib/relative-db.ts"`,
+    `import { x } from "../../src/lib/sub/up-db"`,
+    `import { y } from "@/lib/prisma-backed"`,
+    `const m = await import("../../src/lib/db-backed.ts")`,
+    `await db.$executeRaw\`x\``,
+  ]) {
+    assert.ok(caught(source), source)
+  }
+  for (const source of [`import { pure } from "@/lib/pure"`, `import type { Z } from "../../src/lib/typed.ts"`, `import { z } from "@/lib/typed"`, `import { test } from "@playwright/test"`]) {
+    assert.ok(!caught(source), source)
+  }
 })

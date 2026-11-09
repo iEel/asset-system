@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useRef, useState, type RefObject } from "react"
 import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter, accessibleDialogFormClasses } from "@/components/ui/accessible-dialog"
@@ -41,8 +40,9 @@ const DIALOG_LINES: ReadonlyArray<{ status: InspectionTargetStatusName; key: "di
 ]
 
 // ยืนยันผลตรวจ (inspection-confirm plan 3 task 3): the confirm dialog of the ticked assets. Its owner mounts it with a new
-// key per opening, so the reason starts from reasonDefault each time. A 200 and a 409 both close it and refresh the page;
-// a refused reason shows under the field; anything else stays in the dialog as the error line.
+// key per opening, so the reason starts from reasonDefault each time. A 200 and a 409 go to the owner, which closes it,
+// reads the page again on the same tab and shows the answer once it has closed; a refused reason shows under the field;
+// anything else stays in the dialog as the error line, announced (role="alert").
 export function InspectionConfirmDialog({
   open,
   roundId,
@@ -50,6 +50,7 @@ export function InspectionConfirmDialog({
   assetIds,
   summary,
   returnFocusRef,
+  fallbackFocusRef,
   onClose,
   onConfirmed,
   onChanged,
@@ -60,12 +61,13 @@ export function InspectionConfirmDialog({
   assetIds: readonly string[]
   summary: Partial<Record<InspectionTargetStatusName, number>>
   returnFocusRef?: RefObject<HTMLElement | null>
+  /** Where focus goes when the opener is gone with the selection bar (the owner's result region). */
+  fallbackFocusRef?: RefObject<HTMLElement | null>
   onClose: () => void
   onConfirmed: (confirmed: number) => void
   onChanged: (blocked: InspectionBlockedEntry[]) => void
 }) {
   const t = useTranslations("inspectionConfirmPage")
-  const router = useRouter()
   const reasonRef = useRef<HTMLTextAreaElement | null>(null)
   const [reason, setReason] = useState(() => t("reasonDefault", { auditNo }))
   const [error, setError] = useState<string | null>(null)
@@ -93,12 +95,10 @@ export function InspectionConfirmDialog({
       const payload = await response.json().catch(() => null)
       if (response.ok) {
         onConfirmed(typeof payload?.confirmed === "number" ? payload.confirmed : assetIds.length)
-        router.refresh()
         return
       }
       if (response.status === 409 && Array.isArray(payload?.blocked)) {
         onChanged(payload.blocked as InspectionBlockedEntry[])
-        router.refresh()
         return
       }
       // A refusal of the reason shows under it; any other keeps the error line, as the status correction does.
@@ -119,6 +119,7 @@ export function InspectionConfirmDialog({
       busy={isSubmitting}
       initialFocusRef={reasonRef}
       returnFocusRef={returnFocusRef}
+      fallbackFocusRef={fallbackFocusRef}
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
@@ -144,7 +145,7 @@ export function InspectionConfirmDialog({
             />
           </Field>
           <p className="mt-2 text-meta text-muted-foreground">{t("historyNote")}</p>
-          {error ? <p className="mt-2 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
+          {error ? <p role="alert" className="mt-2 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
         </AccessibleDialogBody>
         <AccessibleDialogFooter>
           <AccessibleDialogCancel>{t("cancel")}</AccessibleDialogCancel>

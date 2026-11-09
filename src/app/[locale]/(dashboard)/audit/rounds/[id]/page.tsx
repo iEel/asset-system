@@ -127,8 +127,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
-  // ยืนยันผลตรวจ (inspection-confirm plan 3 builds the page): the step's main link and the close line's link.
-  const confirmHref = `/${locale}/audit/rounds/${round.id}/confirm`
+  // ยืนยันผลตรวจ (inspection-confirm plan 3 builds the page): the step's main link, its column and the close line's link,
+  // carrying the round's own way back, as the pending list and scan links do.
+  const confirmHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/confirm`, roundDetailReturnHref)
   const stepsState = buildAuditRoundPageSteps({ status: round.status, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, unconfirmedAssets: data.steps.close.checklist.unconfirmedAssets })
   const mainAction = buildAuditRoundPageMainAction({ steps: stepsState, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, unconfirmedAssets: data.steps.close.checklist.unconfirmedAssets, canClose: data.steps.close.canClose, openedByViewer: data.steps.close.openedByViewer, canScan, canApprove, canConfirm })
   const stepLabels: Record<AuditRoundPageStepKey, string> = { walk: t("stepWalk"), review: t("stepReview"), confirm: t("stepConfirm"), close: t("stepClose") }

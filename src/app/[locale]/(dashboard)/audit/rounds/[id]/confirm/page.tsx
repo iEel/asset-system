@@ -7,7 +7,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { InspectionConfirmWorkspace } from "@/components/audit/inspection-confirm/inspection-confirm-workspace"
-import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 import { loadRoundInspectionRows } from "@/lib/inspection-confirm-data"
 import { inspectionTabCounts, parseInspectionTab, toInspectionPageRow } from "@/lib/inspection-confirm-page-model"
 import type { InspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
@@ -16,7 +16,7 @@ const inspectionTargetStatusNames: readonly InspectionTargetStatusName[] = ["In 
 
 type InspectionConfirmPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ tab?: string | string[] }>
+  searchParams: Promise<{ tab?: string | string[]; returnTo?: string | string[] }>
 }
 
 // ยืนยันผลตรวจ, the round's confirm page (inspection-confirm plan 3): the round's assets still under inspection, in five
@@ -31,10 +31,13 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
   const round = await prisma.auditRound.findUnique({ where: { id }, select: { id: true, auditNo: true, status: true, isActive: true } })
   if (!round || !round.isActive) notFound()
 
-  // The round page's own links: its pending list comes back to the round (the round page's pendingHref construction).
-  const roundHref = `/${locale}/audit/rounds/${round.id}`
+  // The round page's way back comes along (its confirmHref carries roundDetailReturnHref), read as the pending page reads
+  // its own: only the round page, with its query, else the bare round. The crumb, the back link, the empty state and the
+  // pending list's way back all use it.
+  const rawReturnTo = Array.isArray(rawSearchParams.returnTo) ? rawSearchParams.returnTo[0] : rawSearchParams.returnTo
+  const roundHref = normalizeAuditRoundDetailReturnTo(locale, round.id, rawReturnTo)
   const links = {
-    round: `/${locale}/audit/rounds/${round.id}`,
+    round: roundHref,
     pendingFindings: `/${locale}/audit/findings?status=pending&roundId=${round.id}`,
     pendingItems: appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundHref),
   }
@@ -72,6 +75,8 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
     )
   }
 
+  // No pagination (final review ruling): a round holds at most a few hundred assets, and select-all takes at most
+  // INSPECTION_CONFIRM_MAX_ASSETS (500) of the tab and says so when it caps, so the whole tab is one list.
   const rows = (await loadRoundInspectionRows(prisma, round.id)).map(toInspectionPageRow)
   const counts = inspectionTabCounts(rows)
   const tabParam = Array.isArray(rawSearchParams.tab) ? rawSearchParams.tab[0] : rawSearchParams.tab
@@ -97,6 +102,7 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
         canConfirm={canConfirm}
         statusLabels={statusLabels}
         links={links}
+        returnTo={rawReturnTo ? roundHref : null}
       />
     </div>
   )

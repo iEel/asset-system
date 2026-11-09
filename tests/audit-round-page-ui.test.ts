@@ -101,7 +101,7 @@ test("the next-step card: three Steps, each step's line under them, the main but
 test("ยืนยันผลตรวจ: the fourth step, its main link to the confirm page, and the unconfirmed close line on open and closed rounds (inspection-confirm plan 2 task 4, spec §3)", () => {
   const page = read(PAGE)
   assert.match(page, /const canConfirm = hasPermission\(user, "asset", "edit"\)/)
-  assert.match(page, /const confirmHref = `\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/confirm`/)
+  assert.match(page, /const confirmHref = appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/confirm`, roundDetailReturnHref\)/)
   assert.match(page, /const stepLabels: Record<AuditRoundPageStepKey, string> = \{ walk: t\("stepWalk"\), review: t\("stepReview"\), confirm: t\("stepConfirm"\), close: t\("stepClose"\) \}/)
   // asset:edit acts (primary); anyone else gets a neutral link to the same page.
   assert.match(page, /mainAction\?\.kind === "confirm"\n\s+\? \{ href: confirmHref, label: mainAction\.act \? t\("nextStepConfirm", \{ count: formatCount\(mainAction\.count\) \}\) : t\("nextStepViewConfirm", \{ count: formatCount\(mainAction\.count\) \}\), icon: <ClipboardCheck className="h-4 w-4" \/>, primary: mainAction\.act \}/)

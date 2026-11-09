@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { CheckCheck, ClipboardCheck } from "lucide-react"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
@@ -14,6 +15,7 @@ import { checkboxVariants } from "@/components/ui/field-variants"
 import { Notice } from "@/components/ui/notice"
 import { TabNav } from "@/components/ui/tab-nav"
 import { formatCount } from "@/lib/display-format"
+import { waitForDialogToClose } from "@/lib/field-focus"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import {
   inspectionBlockedMessageKeys,
@@ -30,6 +32,7 @@ import {
 } from "@/lib/inspection-confirm-rules"
 import { cn } from "@/lib/utils"
 import { InspectionConfirmDialog, type InspectionBlockedEntry } from "./inspection-confirm-dialog"
+import { useInspectionConfirmResult, type InspectionConfirmResult } from "./inspection-confirm-result"
 import { InspectionRowCard, InspectionTableRow } from "./inspection-row"
 
 export type InspectionConfirmWorkspaceProps = {
@@ -43,6 +46,8 @@ export type InspectionConfirmWorkspaceProps = {
   canConfirm: boolean
   statusLabels: Record<InspectionTargetStatusName, string>
   links: { round: string; pendingFindings: string; pendingItems: string }
+  /** The round page's way back when the page was opened with one: the tab links and the refresh after a confirm keep it. */
+  returnTo?: string | null
 }
 
 const bannerLinkClasses = cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")
@@ -50,8 +55,8 @@ const tickLabelClasses = "flex min-h-11 w-11 cursor-pointer items-center justify
 
 /** The ticks belong to the tab they were made on: another tab reads an empty selection (ids only come from ready). */
 type Selection = { tab: InspectionConfirmTab; ids: ReadonlySet<string>; capped: boolean }
-/** The last answer, for the tab it ran on: a 200's count, or a 409's blocked entries. */
-type ConfirmResult = { tab: InspectionConfirmTab } & ({ kind: "success"; confirmed: number } | { kind: "changed"; blocked: InspectionBlockedEntry[] })
+/** A 200's count or a 409's blocked entries, before the round, the tab and focused are added. */
+type ConfirmAnswer = { kind: "success"; confirmed: number } | { kind: "changed"; blocked: InspectionBlockedEntry[] }
 
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
@@ -61,24 +66,31 @@ function unclearIdFor(view: "card" | "table", assetId: string) {
 }
 
 // ยืนยันผลตรวจ (inspection-confirm plan 3): the five tabs and the list; on the ready tab, with asset:edit, the ticks, the
-// selection bars and the confirm dialog (task 3).
-export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, counts, rows, canConfirm, statusLabels, links }: InspectionConfirmWorkspaceProps) {
+// selection bars and the confirm dialog (task 3). No pagination: the page passes the whole tab (see the page's note).
+export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, counts, rows, canConfirm, statusLabels, links, returnTo = null }: InspectionConfirmWorkspaceProps) {
   const t = useTranslations("inspectionConfirmPage")
   const tCommon = useTranslations("common")
+  const router = useRouter()
   const total = inspectionConfirmTabs.reduce((sum, key) => sum + counts[key], 0)
 
   const [selection, setSelection] = useState<Selection>({ tab, ids: EMPTY_IDS, capped: false })
-  const [result, setResult] = useState<ConfirmResult | null>(null)
+  // The last answer is kept above the page (confirm/layout.tsx), so the refresh's remount does not drop it.
+  const { result, setResult } = useInspectionConfirmResult()
   const [dialog, setDialog] = useState<{ open: boolean; key: number }>({ open: false, key: 0 })
   const openerRef = useRef<HTMLElement | null>(null)
   const selectAllTickRef = useRef<HTMLInputElement | null>(null)
+  // The result region: always mounted, so it is the dialog's fallback when the bar that opened it is gone, and focus
+  // moves to it once the answer shows (it scrolls into view and is read).
+  const resultRegionRef = useRef<HTMLDivElement | null>(null)
 
-  // Another tab resets the selection and the last answer (React's adjust-state-on-prop-change pattern, no effect), so
-  // coming back to the ready tab starts empty.
+  // Another tab resets the selection (React's adjust-state-on-prop-change pattern, no effect), so coming back to the
+  // ready tab starts empty. The last answer is the layout's state, so the effect below drops it.
   if (selection.tab !== tab) {
     setSelection({ tab, ids: EMPTY_IDS, capped: false })
-    if (result) setResult(null)
   }
+  useEffect(() => {
+    setResult((current) => (current && (current.roundId !== roundId || current.tab !== tab) ? null : current))
+  }, [setResult, roundId, tab])
 
   const ticking = canConfirm && tab === "ready"
   const selectableRows = useMemo(() => (ticking ? rows.filter(isInspectionRowSelectable) : []), [ticking, rows])
@@ -91,11 +103,28 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
   const count = selectedIds.length
   const tickLimit = Math.min(selectableRows.length, INSPECTION_CONFIRM_MAX_ASSETS)
   const headerState = count === 0 ? "none" : count >= tickLimit ? "all" : "some"
-  const shownResult = result?.tab === tab ? result : null
+  const shownResult = result?.roundId === roundId && result.tab === tab ? result : null
 
   useEffect(() => {
     if (selectAllTickRef.current) selectAllTickRef.current.indeterminate = headerState === "some"
   }, [headerState])
+
+  // The answer takes focus once, when it first shows; a later mount (the refresh's remount) takes it again only when
+  // focus fell to the body.
+  useEffect(() => {
+    if (!shownResult) return
+    if (shownResult.focused && document.activeElement !== document.body) return
+    resultRegionRef.current?.focus()
+    if (!shownResult.focused) setResult((current) => (current && !current.focused ? { ...current, focused: true } : current))
+  }, [shownResult, setResult])
+
+  const confirmPath = `/${locale}/audit/rounds/${roundId}/confirm`
+  // A tab's URL: ?tab= always, and the round page's way back when the page has one.
+  function tabHref(key: InspectionConfirmTab) {
+    const params = new URLSearchParams({ tab: key })
+    if (returnTo) params.set("returnTo", returnTo)
+    return `${confirmPath}?${params.toString()}`
+  }
 
   function selectAll() {
     const next = selectAllInspectionRows(selectableRows)
@@ -140,23 +169,39 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     setDialog((current) => ({ ...current, open: false }))
   }
 
-  function handleConfirmed(confirmed: number) {
+  // After a 200 or a 409: close the dialog, read the page again on the same tab (an emptied tab stays shown, not the
+  // next one parseInspectionTab would pick), and show the answer only once the dialog has fully closed. Until then the
+  // app root is aria-hidden under the modal, and a live region filled there is never read (bulk-move-form.tsx's pattern).
+  async function settle(answer: ConfirmAnswer) {
+    const closed = waitForDialogToClose()
     closeDialog()
+    router.replace(tabHref(tab), { scroll: false })
+    await closed
+    setResult({ ...answer, roundId, tab, focused: false } as InspectionConfirmResult)
+  }
+
+  function handleConfirmed(confirmed: number) {
     clear()
-    setResult({ tab, kind: "success", confirmed })
+    void settle({ kind: "success", confirmed })
   }
 
   // A 409: keep only the ticks the route did not name, and list what changed.
   function handleChanged(blocked: InspectionBlockedEntry[]) {
-    closeDialog()
     const blockedIds = new Set(blocked.map((entry) => entry.assetId))
     setSelection({ tab, ids: new Set(selectedIds.filter((id) => !blockedIds.has(id))), capped: false })
-    setResult({ tab, kind: "changed", blocked })
+    void settle({ kind: "changed", blocked })
   }
 
   // The polite live region stays mounted in both shapes below, so the success line is read even when it empties the round.
+  // It takes focus once the answer shows (tabIndex -1, as bulk-move-form.tsx's result).
   const liveRegion = (
-    <div role="status" aria-live="polite" className={cn(!shownResult && "sr-only")}>
+    <div
+      ref={resultRegionRef}
+      role="status"
+      aria-live="polite"
+      tabIndex={-1}
+      className={cn("rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", !shownResult && "sr-only")}
+    >
       {shownResult?.kind === "success" ? <Notice tone="success">{t("successNotice", { count: shownResult.confirmed })}</Notice> : null}
       {shownResult?.kind === "changed" ? (
         <Notice tone="warning" title={t("changedNotice")}>
@@ -191,14 +236,14 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     )
   }
 
-  const confirmPath = `/${locale}/audit/rounds/${roundId}/confirm`
   const tabItems = inspectionConfirmTabs.map((key) => ({
     key,
     label: t(`tab_${key}`),
     count: formatCount(counts[key]),
-    href: `${confirmPath}?tab=${key}`,
+    href: tabHref(key),
   }))
-  const columnCount = canConfirm ? 6 : 5
+  // The tick column only where ticking is possible (the ready tab, with asset:edit).
+  const columnCount = ticking ? 6 : 5
 
   // A ready row's tick: live when it has a target, disabled and described by its handoverUnclear text when not.
   function tickFor(row: InspectionPageRow, view: "card" | "table") {
@@ -218,7 +263,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     )
   }
 
-  // The header tick of the ready tab; elsewhere the column keeps its hidden name.
+  // The header tick of the ready tab; a ready tab with nothing to tick keeps the column's hidden name.
   const headerTickShown = ticking && selectableRows.length > 0
   const selectAllHeader = headerTickShown ? (
     <label className={tickLabelClasses}>
@@ -232,7 +277,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
       />
     </label>
   ) : (
-    t("selectAll")
+    t("selectColumn")
   )
   const summaryText = t("selectionSummary", { inUse: summary["In Use"] ?? 0, ready: summary.Ready ?? 0, checkedOut: summary["Checked Out"] ?? 0 })
   const confirmButton = (
@@ -268,7 +313,10 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
             <Button variant="outline" size="md" onClick={selectAll}>
               {t("selectAll")}
             </Button>
-            {capped ? <Notice tone="info">{t("cappedNotice", { max: INSPECTION_CONFIRM_MAX_ASSETS })}</Notice> : null}
+            {/* Always mounted while ticking, so a refused tick or a capped select-all is announced. */}
+            <div role="status" aria-live="polite" className="min-w-0">
+              {capped ? <Notice tone="info">{t("cappedNotice", { max: INSPECTION_CONFIRM_MAX_ASSETS })}</Notice> : null}
+            </div>
           </div>
         ) : null}
 
@@ -279,14 +327,14 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                 <ActionEmptyState title={t("emptyTabTitle")} />
               ) : (
                 rows.map((row) => (
-                  <InspectionRowCard key={row.assetId} locale={locale} row={row} canConfirm={canConfirm} statusLabels={statusLabels} tick={tickFor(row, "card")} unclearId={unclearIdFor("card", row.assetId)} />
+                  <InspectionRowCard key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "card")} unclearId={unclearIdFor("card", row.assetId)} />
                 ))
               )}
             </div>
             <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t(`tab_${tab}`)} scrollHint={tCommon("tableScrollHint")}>
               <DataTableHeader>
                 <tr>
-                  {canConfirm ? <DataTableHead className="w-10" hideLabel={!headerTickShown}>{selectAllHeader}</DataTableHead> : null}
+                  {ticking ? <DataTableHead className="w-10" hideLabel={!headerTickShown}>{selectAllHeader}</DataTableHead> : null}
                   <DataTableHead>{t("col_asset")}</DataTableHead>
                   <DataTableHead>{t("col_result")}</DataTableHead>
                   <DataTableHead>{t("col_location")}</DataTableHead>
@@ -299,7 +347,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                   <TableEmptyRow colSpan={columnCount} emptyState={{ title: t("emptyTabTitle") }} />
                 ) : (
                   rows.map((row) => (
-                    <InspectionTableRow key={row.assetId} locale={locale} row={row} canConfirm={canConfirm} statusLabels={statusLabels} tick={tickFor(row, "table")} unclearId={unclearIdFor("table", row.assetId)} />
+                    <InspectionTableRow key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "table")} unclearId={unclearIdFor("table", row.assetId)} />
                   ))
                 )}
               </DataTableBody>
@@ -349,6 +397,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
           assetIds={selectedIds}
           summary={summary}
           returnFocusRef={openerRef}
+          fallbackFocusRef={resultRegionRef}
           onClose={closeDialog}
           onConfirmed={handleConfirmed}
           onChanged={handleChanged}

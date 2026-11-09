@@ -7349,6 +7349,7 @@
     "blocked_awaitingReview": "Waiting for a discrepancy decision",
     "blocked_wrongTab": "The audit result changed",
     "blocked_handoverUnclear": "The handover is unclear",
-    "errorFallback": "Could not confirm. Try again."
+    "errorFallback": "Could not confirm. Try again.",
+    "selectColumn": "Select"
   }
 }

@@ -7304,7 +7304,7 @@
     "crumbRounds": "รอบตรวจนับ",
     "backToRound": "กลับไปรอบตรวจนับ",
     "tab_ready": "พร้อมยืนยัน",
-    "tab_awaitingReview": "รออนุมัติ",
+    "tab_awaitingReview": "รอพิจารณา",
     "tab_damaged": "สภาพเสียหาย",
     "tab_notFound": "ไม่พบ",
     "tab_notScanned": "ยังไม่ได้ตรวจนับ",
@@ -7315,8 +7315,8 @@
     "col_target": "จะตั้งสถานะเป็น",
     "noHolder": "ไม่มี",
     "handoverUnclear": "ใบส่งมอบหรือใบยืมไม่ชัด ต้องแก้ในหน้าคุณภาพข้อมูลก่อน",
-    "awaitingReviewBanner": "ชิ้นเหล่านี้รออนุมัติรายการไม่ตรงทะเบียนก่อน",
-    "awaitingReviewLink": "ไปอนุมัติรายการไม่ตรงทะเบียน",
+    "awaitingReviewBanner": "ชิ้นเหล่านี้รอพิจารณารายการไม่ตรงทะเบียนก่อน",
+    "awaitingReviewLink": "ไปพิจารณารายการไม่ตรงทะเบียน",
     "openFinding": "เปิดรายการไม่ตรงทะเบียน",
     "notScannedBanner": "ชิ้นเหล่านี้ยังไม่ได้ตรวจนับในรอบนี้",
     "notScannedLink": "ไปรายการที่ยังไม่ได้ตรวจ",
@@ -7346,9 +7346,10 @@
     "blocked_notInRound": "ไม่อยู่ในรอบนี้",
     "blocked_notUnderInspection": "ไม่ได้อยู่ระหว่างตรวจสอบแล้ว",
     "blocked_notScanned": "ยังไม่ได้ตรวจนับ",
-    "blocked_awaitingReview": "รออนุมัติรายการไม่ตรงทะเบียน",
+    "blocked_awaitingReview": "รอพิจารณารายการไม่ตรงทะเบียน",
     "blocked_wrongTab": "ผลตรวจเปลี่ยนไปแล้ว",
     "blocked_handoverUnclear": "ใบส่งมอบหรือใบยืมไม่ชัด",
-    "errorFallback": "ยืนยันไม่สำเร็จ ลองอีกครั้ง"
+    "errorFallback": "ยืนยันไม่สำเร็จ ลองอีกครั้ง",
+    "selectColumn": "เลือก"
   }
 }

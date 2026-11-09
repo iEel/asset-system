@@ -8,7 +8,7 @@
 //   buildAuditRoundPageSteps orders review before ยืนยันผลตรวจ), the ยืนยันผลตรวจ column waits on 3, the close line reads
 //   "ยังมี 3 ชิ้นค้างสถานะอยู่ระหว่างตรวจสอบ", the card offers no close, and the close route refuses with 3 unconfirmed.
 // - The viewer (no asset:edit) reads the rows and the notice, with no tick.
-// - IT staff (asset:edit) read 2 in พร้อมยืนยัน and the third in รออนุมัติ, select all, read the dialog's lines (ใช้งานอยู่ 1,
+// - IT staff (asset:edit) read 2 in พร้อมยืนยัน and the third in รอพิจารณา, select all, read the dialog's lines (ใช้งานอยู่ 1,
 //   พร้อมใช้งาน 1) and confirm; the notice says so; each asset's page shows its new status and its history links the
 //   round.
 // No cleanup: the records are run-marked, and the round is the test's own (it stays open with its finding).
@@ -157,7 +157,7 @@ test("ยืนยันผลตรวจ: the close waits on 3 under inspectio
   await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)
   await expect(page.getByRole("main").getByRole("button", { name: W.selectAll, exact: true })).toHaveCount(0)
 
-  // IT staff (asset:edit): 2 ready, the third waits in รออนุมัติ with its banner.
+  // IT staff (asset:edit): 2 ready, the third waits in รอพิจารณา with its banner.
   await actAs(page, "itStaff", e2eTheme)
   await measure.visit(confirmPath, "confirm page (IT staff)")
   await expectConfirmTabs(page, W.tabReady, { ready: 2, awaitingReview: 1 })

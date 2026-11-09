@@ -16,10 +16,12 @@ import { cn, formatDate } from "@/lib/utils"
 
 export type InspectionRowProps = {
   locale: string
+  /** The round: a finding link keeps it, so the findings list is this round's and its back link returns here. */
+  roundId: string
   row: InspectionPageRow
   canConfirm: boolean
   statusLabels: Record<InspectionTargetStatusName, string>
-  /** The tick (Task 3 wires the selection). Only rendered when canConfirm. */
+  /** The tick (Task 3 wires the selection). Only rendered when canConfirm (the owner passes: ready tab and asset:edit). */
   tick?: React.ReactNode
   /** The id of the handoverUnclear text, which a disabled tick points at with aria-describedby. */
   unclearId?: string
@@ -30,13 +32,13 @@ function rowTarget(row: InspectionPageRow): InspectionTargetStatusName | null {
   return row.tab === "notFound" ? "Missing" : row.targetStatusName
 }
 
-function useRowParts({ locale, row, statusLabels, unclearId }: Pick<InspectionRowProps, "locale" | "row" | "statusLabels" | "unclearId">) {
+function useRowParts({ locale, roundId, row, statusLabels, unclearId }: Pick<InspectionRowProps, "locale" | "roundId" | "row" | "statusLabels" | "unclearId">) {
   const t = useTranslations("inspectionConfirmPage")
   const tRound = useTranslations("auditRound")
   const badge = auditRoundResultBadge(row.auditStatus, row.auditResult)
   const target = rowTarget(row)
   const assetHref = `/${locale}/assets/${row.assetId}`
-  const findingHref = row.tab === "awaitingReview" && row.firstPendingFindingId ? `/${locale}/audit/findings?finding=${row.firstPendingFindingId}` : null
+  const findingHref = row.tab === "awaitingReview" && row.firstPendingFindingId ? `/${locale}/audit/findings?status=pending&roundId=${roundId}&finding=${row.firstPendingFindingId}` : null
 
   const result = (
     <div className="space-y-1">
@@ -66,8 +68,8 @@ function useRowParts({ locale, row, statusLabels, unclearId }: Pick<InspectionRo
 }
 
 /** The desktop row: tick (Task 3) · ครุภัณฑ์ · ผลตรวจนับ · ที่ตั้ง · ผู้ถือครอง · จะตั้งสถานะเป็น. */
-export function InspectionTableRow({ locale, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
-  const { assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, row, statusLabels, unclearId })
+export function InspectionTableRow({ locale, roundId, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
+  const { assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, roundId, row, statusLabels, unclearId })
   return (
     <DataTableRow>
       {canConfirm ? <DataTableCell className="w-10">{tick}</DataTableCell> : null}
@@ -87,8 +89,8 @@ export function InspectionTableRow({ locale, row, canConfirm, statusLabels, tick
 }
 
 /** The phone card: the same data, the same tick when the viewer can confirm. */
-export function InspectionRowCard({ locale, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
-  const { t, assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, row, statusLabels, unclearId })
+export function InspectionRowCard({ locale, roundId, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
+  const { t, assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, roundId, row, statusLabels, unclearId })
   return (
     <article className="min-w-0 rounded-md border border-border bg-background p-3">
       <div className="flex min-w-0 items-start gap-2">
