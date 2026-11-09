@@ -6,8 +6,9 @@ import test from "node:test"
 // inspection-confirm plan 1: the finding is called "รายการไม่ตรงทะเบียน" everywhere. This guard refuses the bare word
 // in source, unit tests and E2E files so a new string cannot bring the old term back.
 const root = process.cwd()
-const roots = ["src", "e2e", "tests"]
-const extensions = [".ts", ".tsx", ".mjs"]
+// public (the offline page, the service worker) and prisma (seeded labels) hold Thai text people see too (final review).
+const roots = ["src", "e2e", "tests", "public", "prisma"]
+const extensions = [".ts", ".tsx", ".mjs", ".js", ".cjs", ".html", ".json"]
 const skippedDirs = new Set(["node_modules", join("e2e", ".state")])
 const skippedFiles = new Set([
   join("tests", "finding-rename-guard.test.ts"),

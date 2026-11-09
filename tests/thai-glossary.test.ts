@@ -49,7 +49,7 @@ const rules: Rule[] = [
   { term: "ตัดจำหน่ายจริง", pattern: /ตัดจำหน่ายจริง/, use: "บันทึกตัดจำหน่าย" },
   // Inspection-confirm plan 1: the finding word reads รายการไม่ตรงทะเบียน; the short form and a doubled ทะเบียน are refused.
   { term: "รายการไม่ตรง (ไม่มี ทะเบียน)", pattern: /รายการไม่ตรง(?!ทะเบียน)/, use: "รายการไม่ตรงทะเบียน" },
-  { term: "ทะเบียนซ้ำ", pattern: /ทะเบียนทะเบียน/, use: "รายการไม่ตรงทะเบียน" },
+  { term: "ทะเบียนซ้ำ", pattern: /ทะเบียนทะเบียน|รายการไม่ตรงทะเบียน.*ทะเบียน(?!ทรัพย์สิน)/, use: "รายการไม่ตรงทะเบียน" },
 ]
 
 // Removed before matching: product names and allowed compounds.
@@ -188,6 +188,10 @@ test("the finding word reads รายการไม่ตรงทะเบี
   assert.deepEqual(brokenRules("ดูรายการไม่ตรง"), ["รายการไม่ตรง (ไม่มี ทะเบียน)"])
   assert.deepEqual(brokenRules("ดูรายการไม่ตรงทะเบียน"), [])
   assert.deepEqual(brokenRules("ที่ตั้งไม่ตรง"), [])
+  // The user asked (2026-11-09) that the approved-no-change toast not repeat ทะเบียน; ทะเบียนทรัพย์สิน stays legal.
+  assert.deepEqual(brokenRules("อนุมัติรายการไม่ตรงทะเบียนสำเร็จ ทะเบียนไม่เปลี่ยน"), ["ทะเบียนซ้ำ"])
+  assert.deepEqual(brokenRules("รายการไม่ตรงทะเบียนในทะเบียนทรัพย์สิน"), [])
+  assert.equal((th.auditFinding as Record<string, unknown>).approvedSuccessNoRegisterChange, "อนุมัติรายการไม่ตรงทะเบียนสำเร็จ ข้อมูลทรัพย์สินไม่เปลี่ยน")
   assert.equal((th.nav as Record<string, unknown>).auditFinding, "รายการไม่ตรงทะเบียน")
   assert.equal((th.auditFinding as Record<string, unknown>).title, "รายการไม่ตรงทะเบียนจากการตรวจนับ")
   assert.equal((th.systemLogPage as Record<string, unknown>).field_findingType, "ประเภทรายการไม่ตรงทะเบียน")
