@@ -138,8 +138,8 @@ test("ยืนยันผลตรวจ: the close waits on 3 under inspectio
   await measure.visit(roundPath, "round page, 3 under inspection (IT head)")
   const card = roundPage.nextStepCard(page)
   await expect(card.getByRole("heading", { level: 2, name: fillTemplate(W.nextStepTitle, { step: W.stepReview }) })).toBeVisible()
-  await expect(card.getByRole("link", { name: fillTemplate(W.stepConfirmWaiting, { count: 3 }), exact: true })).toHaveAttribute("href", new RegExp(`^${confirmPath}$`))
-  await expect(card.getByRole("link", { name: fillTemplate(W.closeUnconfirmedCount, { count: 3 }), exact: true })).toHaveAttribute("href", new RegExp(`^${confirmPath}$`))
+  await expect(card.getByRole("link", { name: fillTemplate(W.stepConfirmWaiting, { count: 3 }), exact: true })).toHaveAttribute("href", new RegExp(`^${confirmPath}(?:[?]returnTo=[^#]*)?$`))
+  await expect(card.getByRole("link", { name: fillTemplate(W.closeUnconfirmedCount, { count: 3 }), exact: true })).toHaveAttribute("href", new RegExp(`^${confirmPath}(?:[?]returnTo=[^#]*)?$`))
   await expect(card.getByRole("button", { name: W.closeRound })).toHaveCount(0)
   // The close route refuses (the IT head did not open the round): the checklist names the 3 still under inspection.
   const close = await page.request.patch(`/api/audit-rounds/${round.id}`, { data: { action: "close" } })
