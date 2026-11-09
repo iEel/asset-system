@@ -201,6 +201,7 @@ test.describe("the cabinet as the seed admin: a run kind from add to deactivate"
     await page.locator("#consumable-issue-quantity").fill("2")
     await expect(page.locator("#consumable-issue-quantity-hint")).toHaveText(fillTemplate(W.shortWithCount, { onHand: 1, unit: UNIT }))
     await pickAsset(page, ISSUE_ASSET, asset.assetTag, asset.assetTag)
+    measure.expectRefusal({ method: "POST", url: /\/api\/consumables\/issue$/, status: 409, reason: "the short issue: 2 asked with 1 on hand, the server's CONSUMABLE_SHORT (consumables plan 2)" })
     const shortAnswer = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/consumables/issue")
     await issueDialog.getByRole("button", { name: W.issueSubmit, exact: true }).click()
     expect((await shortAnswer).status(), "the server refuses the short issue").toBe(409)
