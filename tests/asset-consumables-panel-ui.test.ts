@@ -9,19 +9,34 @@ const pagePath = "src/app/[locale]/(dashboard)/assets/[id]/page.tsx"
 const read = (path: string) => (existsSync(path) ? readFileSync(path, "utf8").replace(/\r\n/g, "\n") : "")
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as Record<string, Record<string, string>>
 
-test("the page reads the issues only with consumable:view, and the kinds only when it can create for an eligible asset", () => {
+test("the page reads the issues only with consumable:view, and the kinds only when it can view and create for an eligible asset", () => {
   const page = read(pagePath)
   assert.match(page, /const canViewConsumables = hasPermission\(user, "consumable", "view"\)/)
   assert.match(page, /const canCreateConsumables = hasPermission\(user, "consumable", "create"\)/)
   assert.equal(page.match(/getAssetConsumableIssues\(/g)?.length, 1, "one call")
-  assert.match(page, /canViewConsumables && assetDetailView === "overview"\s*\?\s*await withPerformanceTiming\("asset-detail\.consumables", \(\) => getAssetConsumableIssues\(prisma, asset\.id, 10\)/)
+  assert.match(page, /canViewConsumables && assetDetailView === "overview"\s*\?\s*withPerformanceTiming\("asset-detail\.consumables", \(\) => getAssetConsumableIssues\(prisma, asset\.id, 10\)/)
   assert.match(page, /const consumablesEligible = consumableIssueAssetError\(\{ isActive: asset\.isActive, statusName: asset\.status\.name \}\) === null/)
   assert.match(page, /const canRecordConsumables = canCreateConsumables && consumablesEligible/)
   const kindsRead = page.indexOf("prisma.consumableItem.findMany(")
   assert.ok(kindsRead > 0, "the kinds are read")
-  assert.match(page.slice(kindsRead - 200, kindsRead), /canRecordConsumables && consumableIssues\s*\?\s*await\s*$/, "only when it can record and the panel shows")
+  // Plan 3 final review: the kinds no longer wait on the issues; the same gates the panel needs decide them.
+  assert.match(page.slice(kindsRead - 200, kindsRead), /canRecordConsumables && canViewConsumables && assetDetailView === "overview"\s*\?\s*$/, "only when it can record and view, on the overview")
+  assert.ok(!/canRecordConsumables && consumableIssues/.test(page), "the kinds do not wait on the issues")
   assert.match(page, /select: \{ id: true, name: true, unit: true, onHand: true \}/)
   assert.match(page, /consumables=\{consumablesPanel\}/)
+})
+
+test("the page runs the consumables reads inside the overview's frame Promise.all (plan 3 final review)", () => {
+  const page = read(pagePath)
+  const batch = page.match(/const \[frame, neighbours, recentHistory, consumableIssues, consumableKinds\] = await withPerformanceTiming\(\s*"asset-detail\.frame-data",\s*\(\) => Promise\.all\(\[([\s\S]*?)\n    \]\),\s*\{ route: "\/assets\/\[id\]", locale \},\s*\)/)
+  assert.ok(batch, "one Promise.all holds the frame, the neighbours, the recent events and both consumables reads")
+  const body = batch[1]
+  assert.ok(body.includes("getAssetDetailFrame(asset.id)"), "the frame")
+  assert.ok(body.indexOf("getLatestAssetHistory(") < body.indexOf("getAssetConsumableIssues("), "the issues after the recent events")
+  assert.ok(body.indexOf("getAssetConsumableIssues(") < body.indexOf("prisma.consumableItem.findMany("), "the kinds last")
+  assert.equal((body.match(/: Promise\.resolve\(null\)/g) ?? []).length, 3, "neighbours, recent events and issues fall back to null")
+  assert.match(body, /: Promise\.resolve\(\[\]\)/, "the kinds fall back to none")
+  assert.ok(page.indexOf("const canRecordConsumables") < page.indexOf("const [frame, neighbours"), "the gates are known before the batch")
 })
 
 test("the overview places the panel after the recent events, 8 columns wide, only when given", () => {
@@ -31,15 +46,19 @@ test("the overview places the panel after the recent events, 8 columns wide, onl
   assert.ok(overview.indexOf("<AssetConsumablesPanel") > overview.indexOf('t("recentTitle")'), "after the recent panel")
 })
 
-test("the panel: hidden when empty without create, the record button and the all link follow their flags", () => {
+test("the panel: hidden when empty without create, the record button and the report link follow their flags", () => {
   const panel = read(panelPath)
   assert.ok(panel, "the panel exists")
   assert.match(panel, /^"use client"/)
   assert.match(panel, /if \(issues\.length === 0 && !canRecord\) return null/)
   assert.match(panel, /canRecord \? \(\s*<Button\b/)
-  assert.match(panel, /total > ASSET_CONSUMABLES_LIMIT \? \(\s*<Link href=\{`\/\$\{locale\}\/consumables\?view=frequent&asset=\$\{encodeURIComponent\(assetId\)\}`\}/)
   assert.match(panel, /export const ASSET_CONSUMABLES_LIMIT = 10/)
-  assert.match(panel, /t\("all", \{ count: total \}\)/)
+  // Plan 3 final review: the link opens the report over its widest window (365 days) whenever the machine has an issue,
+  // and promises no count; past the 10th a muted line says the panel shows the latest 10 of total.
+  assert.match(panel, /canRecord \|\| total > 0 \?/)
+  assert.match(panel, /total > 0 \? \(\s*<Link href=\{`\/\$\{locale\}\/consumables\?view=frequent&days=365&asset=\$\{encodeURIComponent\(assetId\)\}`\} className=\{standaloneLink\}>\s*\{t\("report"\)\}\s*<\/Link>/)
+  assert.ok(!panel.includes('t("all"'), "the old all link is gone")
+  assert.match(panel, /\{total > ASSET_CONSUMABLES_LIMIT \? \(\s*<p data-slot="asset-consumables-shown" className="[^"]*text-muted-foreground[^"]*">\{t\("shown", \{ total \}\)\}<\/p>/)
   assert.match(panel, /<ContentPanel divided flush title=\{t\("title"\)\}/)
 })
 
@@ -72,11 +91,12 @@ test("messages: assetConsumables.* in Thai as the brief gives them, English plur
   const en = messages("en").assetConsumables
   assert.ok(th && en, "the namespace exists")
   assert.deepEqual(
-    { title: th.title, record: th.record, all: th.all, often: th.often, col_date: th.col_date, col_item: th.col_item, col_qty: th.col_qty, col_by: th.col_by, empty: th.empty },
+    { title: th.title, record: th.record, report: th.report, shown: th.shown, often: th.often, col_date: th.col_date, col_item: th.col_item, col_qty: th.col_qty, col_by: th.col_by, empty: th.empty },
     {
       title: "ของใช้สิ้นเปลือง",
       record: "+ บันทึกเปลี่ยนของ",
-      all: "ดูทั้งหมด {count, number} รายการ",
+      report: "ดูในรายงาน",
+      shown: "แสดง 10 จาก {total, number} รายการล่าสุด",
       often: "เครื่องนี้เปลี่ยน{itemName} {count, number} ครั้งใน 90 วัน",
       col_date: "วันที่",
       col_item: "ชนิด",
@@ -85,7 +105,10 @@ test("messages: assetConsumables.* in Thai as the brief gives them, English plur
       empty: "ยังไม่มีการเปลี่ยนของให้เครื่องนี้",
     },
   )
-  assert.match(en.all, /\{count, plural, /)
+  assert.equal(en.report, "Open in the report")
+  assert.match(en.shown, /\{total, plural, /)
+  assert.equal(th.all, undefined, "the old all key is retired")
+  assert.equal(en.all, undefined, "the old all key is retired")
   assert.match(en.often, /\{count, plural, /)
   for (const key of Object.keys(th)) assert.ok(en[key], `en has ${key}`)
 })

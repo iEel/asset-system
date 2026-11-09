@@ -176,31 +176,32 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
   if (!asset) notFound()
 
+  // ของใช้สิ้นเปลือง plan 3: the overview's panel, only with consumable:view; the dialog's kinds only for someone who may
+  // record (consumable:create) on an asset that can take consumables, and only where the panel can show (view, overview).
+  const consumablesEligible = consumableIssueAssetError({ isActive: asset.isActive, statusName: asset.status.name }) === null
+  const canRecordConsumables = canCreateConsumables && consumablesEligible
   // The frame: the open records the action rule and the strip need, the neighbours in the register's list and, on the
-  // overview only, the latest three events (spec §5 Performance, §7; R50).
-  const [frame, neighbours, recentHistory] = await withPerformanceTiming(
+  // overview only, the latest three events (spec §5 Performance, §7; R50) and the consumables reads (plan 3 final review:
+  // in the same batch, not after it).
+  const [frame, neighbours, recentHistory, consumableIssues, consumableKinds] = await withPerformanceTiming(
     "asset-detail.frame-data",
     () => Promise.all([
       getAssetDetailFrame(asset.id),
       registerParams ? getAssetNeighbours(registerParams, asset.id) : Promise.resolve(null),
       assetDetailView === "overview" ? getLatestAssetHistory(asset.id, locale, 3) : Promise.resolve(null),
+      canViewConsumables && assetDetailView === "overview"
+        ? withPerformanceTiming("asset-detail.consumables", () => getAssetConsumableIssues(prisma, asset.id, 10), { route: "/assets/[id]", locale })
+        : Promise.resolve(null),
+      canRecordConsumables && canViewConsumables && assetDetailView === "overview"
+        ? prisma.consumableItem.findMany({
+            where: { isActive: true },
+            orderBy: [{ name: "asc" }],
+            select: { id: true, name: true, unit: true, onHand: true },
+          })
+        : Promise.resolve([]),
     ]),
     { route: "/assets/[id]", locale },
   )
-  // ของใช้สิ้นเปลือง plan 3: the overview's panel, only with consumable:view; the dialog's kinds only for someone who may
-  // record (consumable:create) on an asset that can take consumables, and only when the panel shows.
-  const consumablesEligible = consumableIssueAssetError({ isActive: asset.isActive, statusName: asset.status.name }) === null
-  const canRecordConsumables = canCreateConsumables && consumablesEligible
-  const consumableIssues = canViewConsumables && assetDetailView === "overview"
-    ? await withPerformanceTiming("asset-detail.consumables", () => getAssetConsumableIssues(prisma, asset.id, 10), { route: "/assets/[id]", locale })
-    : null
-  const consumableKinds = canRecordConsumables && consumableIssues
-    ? await prisma.consumableItem.findMany({
-        where: { isActive: true },
-        orderBy: [{ name: "asc" }],
-        select: { id: true, name: true, unit: true, onHand: true },
-      })
-    : []
   // The history tab's own loader (R24): every event, newest first, at most 500, only on its tab.
   const history = assetDetailView === "history"
     ? await withPerformanceTiming("asset-detail.history-tab", () => getAssetHistory(asset.id, locale), { route: "/assets/[id]", locale })

@@ -103,6 +103,19 @@ test("issue: no client-side short block; เหลือหลังเบิก
 
 // ---------------------------------------------------------------- responses
 
+test("issue: with the machine locked, a server refusal of assetId is the dialog's alert line and refreshes (plan 3 final review)", () => {
+  const source = read(issuePath)
+  assert.match(source, /import \{ readFieldErrors \} from "@\/lib\/field-error-client"/)
+  assert.match(source, /const validationMessage = useValidationMessage\(\)/)
+  // Read before applyServer, so the refusal never waits for a field the locked line does not have.
+  const check = source.indexOf("const assetRefused = lockedAsset ? readFieldErrors(payload)?.assetId : undefined")
+  assert.ok(check > 0, "the locked dialog reads the assetId refusal (status 400 or 404 both name it)")
+  assert.ok(check < source.indexOf("fieldErrors.applyServer(payload)"), "before the field errors")
+  assert.match(source.slice(check), /if \(assetRefused\) \{\n\s*setAssetRefusal\(assetRefused\)\n\s*router\.refresh\(\)\n\s*return\n\s*\}/)
+  assert.match(source, /setError\(null\)\n\s*setAssetRefusal\(null\)/, "a new submit clears it")
+  assert.match(source, /\{assetRefusal \|\| error \? \(\s*<p role="alert" className="mt-3 text-sm text-danger">\s*\{assetRefusal \? validationMessage\(assetRefusal\) : <ApiErrorText error=\{error\} \/>\}\s*<\/p>\s*\) : null\}/)
+})
+
 test("issue: a 409 CONSUMABLE_SHORT reads onHand and unit into shortWithCount, then refreshes", () => {
   const source = read(issuePath)
   assert.match(source, /response\.status === 409 && payload\?\.code === "CONSUMABLE_SHORT"/)

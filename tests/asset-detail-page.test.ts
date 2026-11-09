@@ -13,7 +13,7 @@ test("the page composes the parts and reads the frame in one round of parallel q
   assert.match(source, /const \{ view: assetDetailView, historyType \} = resolveAssetDetailView\(rawSearchParams\.view\)/)
   // Task 7 counts the tabs in the first round (detailCounts); the QR setting read is gone.
   assert.match(source, /const \[rawAsset, readyStatus, detailCounts\] = await withPerformanceTiming\(\s*"asset-detail\.initial-data",/)
-  assert.match(source, /"asset-detail\.frame-data",\s*\(\) => Promise\.all\(\[\s*getAssetDetailFrame\(asset\.id\),\s*registerParams \? getAssetNeighbours\(registerParams, asset\.id\) : Promise\.resolve\(null\),\s*assetDetailView === "overview" \? getLatestAssetHistory\(asset\.id, locale, 3\) : Promise\.resolve\(null\),\s*\]\)/)
+  assert.match(source, /"asset-detail\.frame-data",\s*\(\) => Promise\.all\(\[\s*getAssetDetailFrame\(asset\.id\),\s*registerParams \? getAssetNeighbours\(registerParams, asset\.id\) : Promise\.resolve\(null\),\s*assetDetailView === "overview" \? getLatestAssetHistory\(asset\.id, locale, 3\) : Promise\.resolve\(null\),\s*canViewConsumables && assetDetailView === "overview"/, "consumables plan 3 final review: the consumables reads join this round (pinned in tests/asset-consumables-panel-ui.test.ts)")
   assert.equal(source.match(/getAssetDetailCounts\(/g)?.length, 1, "the tab counts are read once, in Task 7's round")
   for (const name of ["AssetDetailHeader", "AssetDetailActions", "AssetDetailFactStrip", "AssetOverview"]) assert.match(source, new RegExp(`<${name}\\b`), name)
   assert.match(source, /className=\{assetDetailView === "overview" \? undefined : "max-md:hidden"\}/, "the strip on every desktop tab, on the phone's overview only (§7.4, R19)")

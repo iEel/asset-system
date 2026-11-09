@@ -13,9 +13,10 @@ import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
-import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
 import { CONSUMABLE_ISSUE_MAX } from "@/lib/consumable-rules"
+import { readFieldErrors } from "@/lib/field-error-client"
 import { maxLength, range, required, wholeNumber } from "@/lib/validation-rules"
 
 /** A kind as the dialogs read it: ConsumableUsageRow and the history page's item both fit. */
@@ -75,9 +76,12 @@ export function ConsumableIssueDialog({
   // The count the server's 409 CONSUMABLE_SHORT says is left, shown under จำนวน as shortWithCount.
   const [short, setShort] = useState<{ onHand: number; unit: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // With the machine locked there is no picker to show its refusal under: the code of the server's assetId refusal.
+  const [assetRefusal, setAssetRefusal] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const submittingRef = useRef(false)
   const fieldErrors = useFieldErrors<IssueField>({ params: FIELD_PARAMS })
+  const validationMessage = useValidationMessage()
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
   const selected = items.find((item) => item.id === itemId) ?? null
@@ -103,6 +107,7 @@ export function ConsumableIssueDialog({
     event.preventDefault()
     if (submittingRef.current) return
     setError(null)
+    setAssetRefusal(null)
     setShort(null)
     const errors = validate({ itemId, quantity, assetId, note })
     fieldErrors.setErrors(errors)
@@ -127,6 +132,14 @@ export function ConsumableIssueDialog({
         setShort({ onHand: Number(payload.onHand), unit: String(payload.unit) })
         fieldErrors.setErrors({ quantity: "consumableShort" })
         focusFirstError()
+        router.refresh()
+        return
+      }
+      // Locked to a machine whose status changed (or that is gone, 404) since the page loaded: the refusal is the dialog's
+      // alert line, and the page reads again so the record button follows (plan 3 final review).
+      const assetRefused = lockedAsset ? readFieldErrors(payload)?.assetId : undefined
+      if (assetRefused) {
+        setAssetRefusal(assetRefused)
         router.refresh()
         return
       }
@@ -216,7 +229,11 @@ export function ConsumableIssueDialog({
               />
             </Field>
           </div>
-          {error ? <p role="alert" className="mt-3 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
+          {assetRefusal || error ? (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              {assetRefusal ? validationMessage(assetRefusal) : <ApiErrorText error={error} />}
+            </p>
+          ) : null}
         </AccessibleDialogBody>
         <AccessibleDialogFooter>
           <AccessibleDialogCancel>{tCommon("cancel")}</AccessibleDialogCancel>

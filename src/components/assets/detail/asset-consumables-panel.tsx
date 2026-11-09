@@ -53,11 +53,12 @@ export function AssetConsumablesPanel({ locale, assetId, issues, total, often, c
   return (
     <>
       <ContentPanel divided flush title={t("title")} actions={
-          canRecord || total > ASSET_CONSUMABLES_LIMIT ? (
+          canRecord || total > 0 ? (
             <>
-              {total > ASSET_CONSUMABLES_LIMIT ? (
-                <Link href={`/${locale}/consumables?view=frequent&asset=${encodeURIComponent(assetId)}`} className={standaloneLink}>
-                  {t("all", { count: total })}
+              {/* Plan 3 final review: the report over its widest window (365 days), with no count it could disagree with. */}
+              {total > 0 ? (
+                <Link href={`/${locale}/consumables?view=frequent&days=365&asset=${encodeURIComponent(assetId)}`} className={standaloneLink}>
+                  {t("report")}
                 </Link>
               ) : null}
               {canRecord ? (
@@ -130,6 +131,9 @@ export function AssetConsumablesPanel({ locale, assetId, issues, total, often, c
                 </li>
               ))}
             </ContentPanelRows>
+            {total > ASSET_CONSUMABLES_LIMIT ? (
+              <p data-slot="asset-consumables-shown" className="px-4 py-3 text-meta text-muted-foreground md:px-5">{t("shown", { total })}</p>
+            ) : null}
           </>
         )}
       </ContentPanel>
