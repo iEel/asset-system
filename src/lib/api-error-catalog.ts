@@ -197,6 +197,9 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Integration scopes JSON must be a string": "integrationScopesInvalid",
   "Integration scopes must be an array": "integrationScopesInvalid",
   "Integration scopes must contain only non-blank strings": "integrationScopesInvalid",
+  // ยืนยันผลตรวจ (inspection-confirm plan 2): the confirm-results form refusals.
+  "INSPECTION_CONFIRM_DAMAGED_ONE_ASSET": "inspectionConfirmDamagedOneAsset",
+  "INSPECTION_CONFIRM_DUPLICATE_ASSET": "batchCheckinDuplicateAsset",
   "INTEGRATION_ASSET_NOT_FOUND": "assetNotFound",
   "INTEGRATION_ERROR": "integrationError",
   "INTEGRATION_FORBIDDEN": "forbidden",
@@ -301,6 +304,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Scheduler schedule must be a supported five-field cron expression": "schedulerCronInvalid",
   "Select who is recording this repair": "maintenanceReporterRequired",
   "Serial Number already exists": "serialNumberExists",
+  "Some assets changed before the audit results were confirmed": "inspectionConfirmChanged",
   "Some assets cannot be updated in bulk. Use the transfer, return, or disposal workflow for them.": "someAssetsNeedWorkflow",
   "Some assets were not found": "someAssetsNotFound",
   "Source path must stay inside the upload directory": "storagePathOutsideUploads",

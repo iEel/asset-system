@@ -50,6 +50,7 @@ const WRITERS = [
   "src/lib/checkin-write.ts",
   "src/lib/disposal-approval-service.ts",
   "src/lib/disposal-execution-service.ts",
+  "src/lib/inspection-confirm-service.ts",
   "src/lib/legacy-checkout-write.ts",
   "src/lib/repair-record-service.ts",
 ]

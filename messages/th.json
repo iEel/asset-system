@@ -7166,7 +7166,9 @@
     "grantPermissionForbidden": "ให้สิทธิ์ที่คุณไม่มีไม่ได้",
     "ldapPasswordRequired": "เปลี่ยนที่อยู่หรือบัญชี LDAP แล้ว ต้องใส่รหัสผ่านใหม่",
     "ldapSyncPreviewRequired": "ดูตัวอย่างก่อนซิงก์",
-    "ldapSyncResultChanged": "ผลซิงก์เปลี่ยนไปจากตัวอย่าง กรุณาดูตัวอย่างอีกครั้ง"
+    "ldapSyncResultChanged": "ผลซิงก์เปลี่ยนไปจากตัวอย่าง กรุณาดูตัวอย่างอีกครั้ง",
+    "inspectionConfirmChanged": "บางชิ้นเปลี่ยนไปแล้ว โหลดใหม่และลองอีกครั้ง",
+    "inspectionConfirmDamagedOneAsset": "บันทึกว่าเสียหายได้ครั้งละ 1 รายการ"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",
