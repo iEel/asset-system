@@ -116,7 +116,10 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // footer's "เปลี่ยน {n} ค่า ยังไม่บันทึก", "บันทึก {n} ค่า", the discard confirm's title (all keyed on count) and the
   // approval summary "ผู้อนุมัติ {n} · SLA {n} วัน · …" (keyed on approvers; days is a plural too).
   // Group 12 plan 5 Task 4 added 1: the LDAP apply confirm's "ซิงก์และปิดบัญชี {n} รายการ" (keyed on count).
-  assert.equal(pluralKeys.size, 225,[...pluralKeys.keys()].join(", "))
+  // Inspection-confirm plan 3 Task 1 added 4: the confirm page's "เลือก n ชิ้น", the dialog title, its submit button and
+  // the success line (all keyed on count).
+  assert.equal(pluralKeys.size, 229,[...pluralKeys.keys()].join(", "))
+  for (const key of ["selectedCount", "dialogTitle", "submit", "successNotice"]) assert.equal(pluralKeys.get(`inspectionConfirmPage.${key}`), "count", key)
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)
