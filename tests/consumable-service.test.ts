@@ -32,10 +32,11 @@ type Asset = { id: string; isActive: boolean; status: { name: string } }
 
 const globals = globalThis as unknown as { __consumablePrisma: unknown; __consumableAudits: Array<Record<string, unknown>> }
 
-function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number }) {
+function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number; movements?: Movement[] }) {
   const items = new Map((seed.items ?? []).map((item) => [item.id, { ...item }]))
   const assets = new Map((seed.assets ?? []).map((asset) => [asset.id, asset]))
-  const movements: Movement[] = []
+  const movements: Movement[] = [...(seed.movements ?? [])]
+  const groupBys: unknown[] = []
   const transactions: unknown[] = []
   const calls: string[] = []
   let deadlocks = seed.deadlocks ?? 0
@@ -61,13 +62,17 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number }) 
         calls.push("item.findUnique")
         return items.has(where.id) ? { ...items.get(where.id)! } : null
       },
-      findMany: async ({ where = {} }: { where?: Record<string, unknown> } = {}) =>
-        [...items.values()].filter((item) => {
+      findMany: async ({ where = {}, orderBy }: { where?: Record<string, unknown>; orderBy?: unknown } = {}) => {
+        const found = [...items.values()].filter((item) => {
           if (where.isActive !== undefined && item.isActive !== where.isActive) return false
           const id = where.id as { not?: string } | undefined
           if (id?.not !== undefined && item.id === id.not) return false
           return true
-        }).map((item) => ({ ...item })),
+        }).map((item) => ({ ...item }))
+        // Only the name order is read (listConsumablesWithUsage).
+        if (JSON.stringify(orderBy)?.includes('"name":"asc"')) found.sort((a, b) => a.name.localeCompare(b.name))
+        return found
+      },
       create: async ({ data }: { data: Partial<Item> }) => {
         const item: Item = { id: `item-${nextId++}`, unit: "ชิ้น", minQuantity: 0, onHand: 0, isActive: true, updatedBy: null, createdBy: "", name: "", ...data } as Item
         items.set(item.id, item)
@@ -91,6 +96,19 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number }) 
         movements.push(movement)
         return movement
       },
+      // by itemId, filtered by type and performedAt >= gte, summing quantityChange.
+      groupBy: async (args: { by: string[]; where: { type?: string; performedAt?: { gte?: Date } }; _sum: Record<string, boolean> }) => {
+        groupBys.push(args)
+        const sums = new Map<string, number>()
+        for (const movement of movements) {
+          if (args.where.type !== undefined && movement.type !== args.where.type) continue
+          const gte = args.where.performedAt?.gte
+          if (gte && (movement.performedAt as Date).getTime() < gte.getTime()) continue
+          const itemId = movement.itemId as string
+          sums.set(itemId, (sums.get(itemId) ?? 0) + (movement.quantityChange as number))
+        }
+        return [...sums].map(([itemId, quantityChange]) => ({ itemId, _sum: { quantityChange } }))
+      },
     },
     asset: {
       findUnique: async ({ where }: { where: { id: string } }) => assets.get(where.id) ?? null,
@@ -110,7 +128,7 @@ function fakeDb(seed: { items?: Item[]; assets?: Asset[]; deadlocks?: number }) 
   }
   globals.__consumablePrisma = prisma
   globals.__consumableAudits = []
-  return { items, movements, transactions, calls, audits: () => globals.__consumableAudits }
+  return { prisma, items, movements, transactions, calls, groupBys, audits: () => globals.__consumableAudits }
 }
 
 const service = await import(pathToFileURL("src/lib/consumable-service.ts").href) as typeof import("../src/lib/consumable-service.ts")
@@ -389,4 +407,38 @@ test("the new refusals read Thai through the catalog", () => {
     assert.ok(catalog.includes(`"${english}": "${key}"`), english)
     assert.equal(th[key], thai, key)
   }
+})
+
+test("listConsumablesWithUsage: active kinds by name with state, and issued90 sums only issue movements inside 90 days, in one groupBy", async () => {
+  const day = 86_400_000
+  const now = Date.now()
+  const at = (daysAgo: number) => new Date(now - daysAgo * day)
+  const db = fakeDb({
+    items: [
+      toner(),
+      toner({ id: "cable", name: "Cable HDMI", unit: "เส้น", minQuantity: 0, onHand: 0 }),
+      toner({ id: "mouse", name: "Mouse", unit: "ชิ้น", minQuantity: 3, onHand: 3 }),
+      toner({ id: "old", name: "Aaa old", isActive: false }),
+    ],
+    movements: [
+      { itemId: "toner", type: "issue", quantityChange: -2, performedAt: at(1) },
+      { itemId: "toner", type: "issue", quantityChange: -3, performedAt: at(89) },
+      { itemId: "toner", type: "issue", quantityChange: -7, performedAt: at(91) },
+      { itemId: "toner", type: "receive", quantityChange: 10, performedAt: at(1) },
+      { itemId: "toner", type: "adjust", quantityChange: -4, performedAt: at(1) },
+      { itemId: "mouse", type: "adjust", quantityChange: -1, performedAt: at(2) },
+    ],
+  })
+  const rows = await service.listConsumablesWithUsage(db.prisma as never)
+  assert.deepEqual(rows, [
+    { id: "cable", name: "Cable HDMI", unit: "เส้น", minQuantity: 0, onHand: 0, state: "out", issued90: 0 },
+    { id: "mouse", name: "Mouse", unit: "ชิ้น", minQuantity: 3, onHand: 3, state: "low", issued90: 0 },
+    { id: "toner", name: "Toner 85A", unit: "ตลับ", minQuantity: 2, onHand: 5, state: "ok", issued90: 5 },
+  ])
+  assert.equal(db.groupBys.length, 1, "one groupBy, not a query per kind")
+  const args = db.groupBys[0] as { by: string[]; where: { type: string; performedAt: { gte: Date } }; _sum: Record<string, boolean> }
+  assert.deepEqual([args.by, args.where.type, args._sum], [["itemId"], "issue", { quantityChange: true }])
+  const since = now - 90 * day
+  assert.ok(Math.abs(args.where.performedAt.gte.getTime() - since) < 60_000, "the window is CONSUMABLE_OFTEN_DAYS days")
+  assert.match(read("src/lib/consumable-service.ts"), /CONSUMABLE_OFTEN_DAYS/)
 })

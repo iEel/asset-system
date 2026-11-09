@@ -4,6 +4,7 @@ import {
   assetOperationModes,
   getBulkMoveVerdict,
   getCheckoutVerdict,
+  getConsumableVerdict,
   getTransferVerdict,
   type AssetOperationFacts,
   type AssetOperationMode,
@@ -466,6 +467,9 @@ export function getAssetOperationSearchVerdict(
       return pick(getTransferVerdict(facts, { assignCustodian: input.assignCustodian }))
     case "bulkMove":
       return pick(getBulkMoveVerdict(facts))
+    case "consumable":
+      // The search reads active assets only (isActive: true in every where).
+      return pick(getConsumableVerdict({ statusName: facts.statusName, isActive: true }))
   }
 }
 

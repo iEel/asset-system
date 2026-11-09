@@ -23,8 +23,8 @@ const handovers = [null, handover(null), handover("temporary_loan"), handover("p
 const conditionNames = [null, "Not Assessed", "Good", "Damaged", "Non-functional", "Salvage"]
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
 
-test("the modes are the four pages' pickers; the ทรัพย์สินอื่น destination is gone (group 3 spec §7.3)", () => {
-  assert.deepEqual([...assetOperationModes], ["checkout", "checkin", "transfer", "bulkMove"])
+test("the modes are the four pages' pickers and the เบิกไปใช้ picker (consumables plan 2); the ทรัพย์สินอื่น destination is gone (group 3 spec §7.3)", () => {
+  assert.deepEqual([...assetOperationModes], ["checkout", "checkin", "transfer", "bulkMove", "consumable"])
   assert.doesNotMatch(readFileSync("src/lib/asset-operation-eligibility.ts", "utf8"), /getCheckoutParentVerdict|checkoutParent|transactionReasonSameAsset/)
 })
 

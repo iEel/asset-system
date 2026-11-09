@@ -318,7 +318,8 @@
     "moreLanguage": "Language",
     "moreTheme": "Theme",
     "themeLight": "Light",
-    "themeDark": "Dark"
+    "themeDark": "Dark",
+    "consumables": "Consumables"
   },
   "myAssets": {
     "title": "My Assets",
@@ -7423,5 +7424,8 @@
     "success": "Result confirmed",
     "errorFallback": "Could not confirm. Try again.",
     "roundText": "Awaiting confirmation in round {auditNo}"
+  },
+  "consumablesPage": {
+    "pickerBlocked": "This asset cannot take consumables"
   }
 }

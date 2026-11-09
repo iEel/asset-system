@@ -318,7 +318,8 @@
     "moreLanguage": "ภาษา",
     "moreTheme": "ธีม",
     "themeLight": "สว่าง",
-    "themeDark": "มืด"
+    "themeDark": "มืด",
+    "consumables": "ของใช้สิ้นเปลือง"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",
@@ -7423,5 +7424,8 @@
     "success": "ยืนยันผลตรวจแล้ว",
     "errorFallback": "ยืนยันไม่สำเร็จ ลองอีกครั้ง",
     "roundText": "รอยืนยันผลตรวจในรอบ {auditNo}"
+  },
+  "consumablesPage": {
+    "pickerBlocked": "เครื่องนี้อยู่ในสถานะที่เบิกของให้ไม่ได้"
   }
 }

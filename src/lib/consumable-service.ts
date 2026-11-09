@@ -7,7 +7,13 @@ import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { logAudit } from "@/lib/audit-log"
 import { prisma } from "@/lib/db"
-import { consumableAdjustError, consumableIssueAssetError, consumableStockState } from "./consumable-rules.ts"
+import {
+  CONSUMABLE_OFTEN_DAYS,
+  consumableAdjustError,
+  consumableIssueAssetError,
+  consumableStockState,
+  type ConsumableStockState,
+} from "./consumable-rules.ts"
 import { FieldRefusalError } from "./field-errors.ts"
 import { isPrismaUniqueConstraintError } from "./prisma-unique-retry.ts"
 import { withDeadlockRetry } from "./transaction-retry.ts"
@@ -97,6 +103,47 @@ export async function listConsumableItems(options: { includeInactive?: boolean }
     orderBy: [{ name: "asc" }],
   })
   return items.map((item) => ({ ...item, stockState: consumableStockState(item) }))
+}
+
+/** The list page's read (consumables plan 2): the client the caller passes, prisma or a test stand-in. */
+export type ConsumableUsageDb = Pick<typeof prisma, "consumableItem" | "consumableMovement">
+
+export type ConsumableUsageRow = {
+  id: string
+  name: string
+  unit: string
+  minQuantity: number
+  onHand: number
+  state: ConsumableStockState
+  /** Units issued in the last CONSUMABLE_OFTEN_DAYS days: the sum of -quantityChange over the kind's issue movements. */
+  issued90: number
+}
+
+/** Active kinds by name, each with its stock state and its 90-day issued total, from one groupBy over the issues. */
+export async function listConsumablesWithUsage(db: ConsumableUsageDb): Promise<ConsumableUsageRow[]> {
+  const since = new Date(Date.now() - CONSUMABLE_OFTEN_DAYS * 86_400_000)
+  const [items, issued] = await Promise.all([
+    db.consumableItem.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }],
+      select: { id: true, name: true, unit: true, minQuantity: true, onHand: true },
+    }),
+    db.consumableMovement.groupBy({
+      by: ["itemId"],
+      where: { type: "issue", performedAt: { gte: since } },
+      _sum: { quantityChange: true },
+    }),
+  ])
+  const issuedByItem = new Map(issued.map((group) => [group.itemId, -(group._sum.quantityChange ?? 0)]))
+  return items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    unit: item.unit,
+    minQuantity: item.minQuantity,
+    onHand: item.onHand,
+    state: consumableStockState(item),
+    issued90: issuedByItem.get(item.id) ?? 0,
+  }))
 }
 
 const movementInclude = {

@@ -47,7 +47,7 @@ test("the asset register is the first row of the assets section, one click from 
   assert.equal(menu.match(/labelKey: "assetRegister"/g)?.length, 1)
 })
 
-test("the assets section holds the register, the management and transaction groups, then audit, maintenance and disposal (B1)", () => {
+test("the assets section holds the register, ของใช้สิ้นเปลือง (consumables plan 2), the management and transaction groups, then audit, maintenance and disposal (B1)", () => {
   const first = rows.findIndex((row) => row.key === "sectionAssets")
   const next = rows.findIndex((row) => row.key === "sectionSystem")
   assert.ok(first !== -1 && next > first, "sectionAssets comes before sectionSystem")
@@ -55,6 +55,7 @@ test("the assets section holds the register, the management and transaction grou
     rows.slice(first + 1, next).map((row) => `${row.level}:${row.key}`),
     [
       "0:assetRegister",
+      "0:consumables",
       "0:assetManagement",
       "1:addAsset",
       "1:scanSearchAsset",
@@ -83,8 +84,8 @@ test("the menu is at most two levels deep, so groups lost their depth prop", () 
 
 test("every row and group has its own icon, because the collapsed rail shows icons only (I27)", () => {
   const items = rows.filter((row) => !isSection(row))
-  assert.equal(items.length, 39, "34 rows and 5 groups")
-  assert.equal(menu.match(/\bicon:/g)?.length, 39, "every icon is written as icon: <Name size={N} />")
+  assert.equal(items.length, 40, "35 rows and 5 groups")
+  assert.equal(menu.match(/\bicon:/g)?.length, 40, "every icon is written as icon: <Name size={N} />")
   assert.deepEqual(items.filter((row) => row.icon === null).map((row) => row.key), [])
   const names = items.map((row) => row.icon)
   assert.deepEqual(names.filter((name, index) => names.indexOf(name) !== index), [], "an icon used twice")
