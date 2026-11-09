@@ -7199,7 +7199,14 @@
     "assetInspectionChanged": "ทรัพย์สินนี้เปลี่ยนไปแล้ว โหลดหน้าใหม่และลองอีกครั้ง",
     "statusCorrectionUseInspectionConfirm": "ครุภัณฑ์ที่อยู่ระหว่างตรวจสอบ ใช้ยืนยันผลตรวจแทน",
     "consumableReceivedDateInvalid": "วันที่รับเข้าไม่ถูกต้อง",
-    "consumableReceivedDateInFuture": "วันที่รับเข้าต้องไม่หลังวันนี้"
+    "consumableReceivedDateInFuture": "วันที่รับเข้าต้องไม่หลังวันนี้",
+    "consumableShort": "ของในตู้ไม่พอ",
+    "consumableNoChange": "จำนวนเท่าเดิม ไม่มีการเปลี่ยนแปลง",
+    "consumableAssetStatus": "เครื่องนี้อยู่ในสถานะที่เบิกของให้ไม่ได้",
+    "consumableNameExists": "มีชนิดนี้อยู่แล้ว",
+    "consumableInactive": "ชนิดนี้ปิดใช้งานแล้ว",
+    "consumableNotFound": "ไม่พบชนิดของใช้นี้",
+    "consumableChanged": "จำนวนของมีการเปลี่ยนแปลงระหว่างบันทึก โหลดใหม่แล้วลองอีกครั้ง"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

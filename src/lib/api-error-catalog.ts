@@ -212,6 +212,15 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   // ของใช้สิ้นเปลือง (consumables plan 1): the receive form's date refusals (validations/consumables.ts).
   "CONSUMABLE_RECEIVED_DATE_INVALID": "consumableReceivedDateInvalid",
   "CONSUMABLE_RECEIVED_DATE_IN_FUTURE": "consumableReceivedDateInFuture",
+  // ของใช้สิ้นเปลือง (consumables plan 1 task 3): the service refusals (consumable-service.ts). The short 409 carries onHand
+  // and unit, which the catalog cannot interpolate: the UI (plan 2) adds the count.
+  "Not enough in stock": "consumableShort",
+  "No change to the count": "consumableNoChange",
+  "This asset cannot take consumables": "consumableAssetStatus",
+  "Consumable name already exists": "consumableNameExists",
+  "Consumable kind is inactive": "consumableInactive",
+  "Consumable kind not found": "consumableNotFound",
+  "Consumable stock changed while saving. Reload and try again.": "consumableChanged",
   "INTEGRATION_ASSET_NOT_FOUND": "assetNotFound",
   "INTEGRATION_ERROR": "integrationError",
   "INTEGRATION_FORBIDDEN": "forbidden",
