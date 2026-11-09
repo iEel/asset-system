@@ -167,25 +167,29 @@ export function DisposalRequestForm({
   const currentCard = card?.id === values.assetId ? card : null
   const typeQuery = values.disposalType === "lost" ? "&type=lost" : ""
 
-  // The chosen asset's card, read once per asset. A change aborts the read in flight, and an answer for another asset
-  // is ignored, so a slow answer never shows the wrong asset.
+  // The chosen asset's card, read once per asset and method kind (lost or not). A newer read makes the one in flight
+  // stale: its answer is ignored, so a slow answer never shows the wrong asset or the wrong method's readiness. The read
+  // is left to finish rather than aborted: switching the method into and out of สูญหาย fast would otherwise cancel GETs
+  // the page itself started (inspection-confirm plan 4, E2E-1109Q).
   useEffect(() => {
     const assetId = values.assetId
     if (!assetId || (card?.id === assetId && cardTypeQuery === typeQuery)) return
-    const controller = new AbortController()
-    fetch(`/api/disposal-assets?id=${encodeURIComponent(assetId)}${typeQuery}`, { signal: controller.signal })
+    let stale = false
+    fetch(`/api/disposal-assets?id=${encodeURIComponent(assetId)}${typeQuery}`)
       .then((response) => (response.ok ? (response.json() as Promise<{ data?: DisposalAssetReadRow[] }>) : null))
       .then((payload) => {
-        if (controller.signal.aborted) return
+        if (stale) return
         const row = payload?.data?.find((candidate) => candidate.id === assetId)
         if (!row?.card) return setCardFailedFor(assetId)
         setCard({ id: row.id, ...row.card, eligible: row.eligible, blockers: row.blockers, outstandingComponentTags: row.outstandingComponentTags ?? [] })
         setCardTypeQuery(typeQuery)
       })
       .catch(() => {
-        if (!controller.signal.aborted) setCardFailedFor(assetId)
+        if (!stale) setCardFailedFor(assetId)
       })
-    return () => controller.abort()
+    return () => {
+      stale = true
+    }
   }, [card?.id, cardTypeQuery, typeQuery, values.assetId, cardAttempt])
 
   useEffect(() => {

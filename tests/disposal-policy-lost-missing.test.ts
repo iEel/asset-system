@@ -75,3 +75,11 @@ test("the request form reads its asset card with the method's ?type= and reads i
   assert.match(requestForm, /fetch\(`\/api\/disposal-assets\?id=\$\{encodeURIComponent\(assetId\)\}\$\{typeQuery\}`/)
   assert.match(requestForm, /if \(!assetId \|\| \(card\?\.id === assetId && cardTypeQuery === typeQuery\)\) return/)
 })
+
+test("the request form's card read is never aborted: a newer read makes the old one stale (inspection-confirm plan 4, E2E-1109Q)", () => {
+  const form = readFileSync("src/components/disposal/disposal-request-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  const block = form.slice(form.indexOf("fetch(`/api/disposal-assets?id="), form.indexOf("}, [card?.id, cardTypeQuery, typeQuery, values.assetId, cardAttempt])"))
+  assert.doesNotMatch(block, /AbortController|\.abort\(\)|signal:/)
+  assert.match(form, /let stale = false\n\s*fetch\(`\/api\/disposal-assets\?id=/)
+  assert.match(block, /if \(stale\) return/)
+})
