@@ -7197,7 +7197,9 @@
     "assetInspectionHandoverLocked": "A handover or loan is still open. The holder and location cannot change.",
     "assetInspectionHolderRequired": "In Use needs a holder",
     "assetInspectionChanged": "This asset has changed. Reload the page and try again.",
-    "statusCorrectionUseInspectionConfirm": "This asset is under inspection. Use Confirm result instead."
+    "statusCorrectionUseInspectionConfirm": "This asset is under inspection. Use Confirm result instead.",
+    "consumableReceivedDateInvalid": "Enter a valid received date",
+    "consumableReceivedDateInFuture": "The received date cannot be after today"
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

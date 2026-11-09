@@ -209,6 +209,9 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   // ยืนยันผลตรวจ (inspection-confirm plan 2): the confirm-results form refusals.
   "INSPECTION_CONFIRM_DAMAGED_ONE_ASSET": "inspectionConfirmDamagedOneAsset",
   "INSPECTION_CONFIRM_DUPLICATE_ASSET": "batchCheckinDuplicateAsset",
+  // ของใช้สิ้นเปลือง (consumables plan 1): the receive form's date refusals (validations/consumables.ts).
+  "CONSUMABLE_RECEIVED_DATE_INVALID": "consumableReceivedDateInvalid",
+  "CONSUMABLE_RECEIVED_DATE_IN_FUTURE": "consumableReceivedDateInFuture",
   "INTEGRATION_ASSET_NOT_FOUND": "assetNotFound",
   "INTEGRATION_ERROR": "integrationError",
   "INTEGRATION_FORBIDDEN": "forbidden",

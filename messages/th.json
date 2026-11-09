@@ -7197,7 +7197,9 @@
     "assetInspectionHandoverLocked": "ใบส่งมอบหรือใบยืมยังเปิดอยู่ เปลี่ยนผู้ถือครองหรือที่ตั้งไม่ได้",
     "assetInspectionHolderRequired": "สถานะใช้งานอยู่ต้องมีผู้ถือครอง",
     "assetInspectionChanged": "ทรัพย์สินนี้เปลี่ยนไปแล้ว โหลดหน้าใหม่และลองอีกครั้ง",
-    "statusCorrectionUseInspectionConfirm": "ครุภัณฑ์ที่อยู่ระหว่างตรวจสอบ ใช้ยืนยันผลตรวจแทน"
+    "statusCorrectionUseInspectionConfirm": "ครุภัณฑ์ที่อยู่ระหว่างตรวจสอบ ใช้ยืนยันผลตรวจแทน",
+    "consumableReceivedDateInvalid": "วันที่รับเข้าไม่ถูกต้อง",
+    "consumableReceivedDateInFuture": "วันที่รับเข้าต้องไม่หลังวันนี้"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",
