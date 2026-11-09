@@ -3650,7 +3650,7 @@
     "positionOf": "{index} จาก {total}",
     "otherPendingFields": "เรื่องอื่นของทรัพย์สินนี้ที่รอพิจารณา",
     "approveAllFields": "อนุมัติทุกช่องของทรัพย์สินนี้",
-    "approvedSuccessNoRegisterChange": "อนุมัติรายการไม่ตรงทะเบียนสำเร็จ ทะเบียนไม่เปลี่ยน",
+    "approvedSuccessNoRegisterChange": "อนุมัติรายการไม่ตรงทะเบียนสำเร็จ ข้อมูลทรัพย์สินไม่เปลี่ยน",
     "reviewResultSummary": "สำเร็จ {succeeded} · ไม่สำเร็จ {failed}",
     "reviewFailureLine": "{type} · {reason}",
     "reviewFailure_assetChanged": "ข้อมูลทรัพย์สินเปลี่ยนหลังรายงาน ให้พิจารณารายการนี้ในแผงพิจารณา",
