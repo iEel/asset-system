@@ -70,8 +70,8 @@ test("ส่งออก ▾ holds Excel ผลตรวจ, PDF ผลตรว
 test("the next-step card: three Steps, each step's line under them, the main button that follows the step, and ปิดรอบตรวจ in the card at step 3 (group 2 spec §8, §13 bug 2, P2-R7, P2-R8)", () => {
   const page = read(PAGE)
   assert.match(page, /const canScan = hasPermission\(user, "audit", "edit"\)/)
-  assert.match(page, /const stepsState = buildAuditRoundPageSteps\(\{ status: round\.status, pendingItems: data\.steps\.close\.checklist\.pendingItems, pendingFindings: data\.steps\.close\.checklist\.pendingFindings \}\)/)
-  assert.match(page, /const mainAction = buildAuditRoundPageMainAction\(\{ steps: stepsState, pendingItems: data\.steps\.close\.checklist\.pendingItems, pendingFindings: data\.steps\.close\.checklist\.pendingFindings, canClose: data\.steps\.close\.canClose, openedByViewer: data\.steps\.close\.openedByViewer, canScan, canApprove \}\)/)
+  assert.match(page, /const stepsState = buildAuditRoundPageSteps\(\{ status: round\.status, pendingItems: data\.steps\.close\.checklist\.pendingItems, pendingFindings: data\.steps\.close\.checklist\.pendingFindings, unconfirmedAssets: data\.steps\.close\.checklist\.unconfirmedAssets \}\)/)
+  assert.match(page, /const mainAction = buildAuditRoundPageMainAction\(\{ steps: stepsState, pendingItems: data\.steps\.close\.checklist\.pendingItems, pendingFindings: data\.steps\.close\.checklist\.pendingFindings, unconfirmedAssets: data\.steps\.close\.checklist\.unconfirmedAssets, canClose: data\.steps\.close\.canClose, openedByViewer: data\.steps\.close\.openedByViewer, canScan, canApprove, canConfirm \}\)/)
   // The walk opens the scan page only for audit:edit; anyone else gets the pending list (spec §5, P2-R7).
   assert.match(page, /href: mainAction\.target === "scan" \? scanHref : pendingHref/)
   assert.equal(page.match(/\bscanHref\b/g)?.length, 2, "defined once, used once, behind canScan")

@@ -267,16 +267,18 @@ test("ไม่ตรงเรื่องอะไร and เครื่อง
 })
 
 test("step 3 reads the close API's own checklist; the opener is told and never offered the close (spec §8, R2)", async () => {
-  const ready = { checklist: { pendingItems: 0, pendingFindings: 0, openActions: 0, canClose: true }, openedByViewer: false, canClose: true }
+  const ready = { checklist: { pendingItems: 0, pendingFindings: 0, openActions: 0, unconfirmedAssets: 0, canClose: true }, openedByViewer: false, canClose: true }
   assert.deepEqual((await loadPage())?.steps.close, ready)
   assert.ok(hasWhere("auditItem.count", { auditRoundId: "round-1", auditStatus: "pending" }))
   assert.ok(hasWhere("auditFinding.count", { auditRoundId: "round-1", reviewStatus: "pending" }))
   assert.ok(hasWhere("auditFinding.count", { auditRoundId: "round-1", actionStatus: { in: ["planned", "in_progress", "done"] } }))
+  // ยืนยันผลตรวจ (inspection-confirm spec §3): no asset of the round left "Under Inspection".
+  assert.ok(hasWhere("auditItem.count", { auditRoundId: "round-1", asset: { isActive: true, status: { name: "Under Inspection" } } }))
   assert.deepEqual((await loadPage({}, { userId: "user-opener" }))?.steps.close, { ...ready, openedByViewer: true, canClose: false })
   state.respond = (call) => (call === "auditRound.findFirst" ? { ...round, status: "closed" } : undefined)
   assert.equal((await loadPage())?.steps.close.canClose, false)
   state.respond = (call, args) => (call === "auditFinding.count" && isDeepStrictEqual(args.where, { auditRoundId: "round-1", reviewStatus: "pending" }) ? 2 : undefined)
-  assert.deepEqual(await getAuditRoundCloseChecklist("round-1"), { pendingItems: 0, pendingFindings: 2, openActions: 0, canClose: false })
+  assert.deepEqual(await getAuditRoundCloseChecklist("round-1"), { pendingItems: 0, pendingFindings: 2, openActions: 0, unconfirmedAssets: 0, canClose: false })
 })
 
 test("รูปหลักฐาน reads the photos of the checked items in chunks of 2,000 and counts the own ones (bug 10, R17)", async () => {

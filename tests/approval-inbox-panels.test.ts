@@ -267,7 +267,7 @@ test("loadAuditRoundClosePanel: nothing pending is ready; the opener's name, els
   const panel = await loadAuditRoundClosePanel(fakeDb, "rnd-1")
   assert.ok(panel)
   assert.equal(panel.ready, true)
-  assert.deepEqual(panel.checklist, { pendingItems: 0, pendingFindings: 0, openActions: 0, canClose: true })
+  assert.deepEqual(panel.checklist, { pendingItems: 0, pendingFindings: 0, openActions: 0, unconfirmedAssets: 0, canClose: true })
   assert.equal(panel.createdByName, "Narin A.")
   assert.equal(panel.auditNo, "AUD-2026-0009")
   assert.equal(panel.operational, true)

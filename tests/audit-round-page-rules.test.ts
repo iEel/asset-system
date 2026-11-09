@@ -11,6 +11,7 @@ import {
   auditRoundItemReviewState,
   auditRoundResultBadge,
   auditRoundReviewStateTone,
+  auditRoundPageStepKeys,
   auditRoundPersonDecidedFindingWhere,
   auditRoundTopCategoryIds,
   auditSystemFindingDecisionActions,
@@ -156,33 +157,40 @@ test("the round page's rules are pure and client-safe", () => {
   assert.doesNotMatch(source, /prisma\./)
 })
 
-// Group 2 plan 2 Task 4 (spec §8, P2-R8): the round page's three steps, the button that follows them, and the export
-// links that carry the list's filters.
-test("three steps: the walk until nothing is pending, then the decisions, then the close; all complete once closed; none for a cancelled round (spec §8, P2-R8)", () => {
-  assert.equal(buildAuditRoundPageSteps({ status: "cancelled", pendingItems: 3, pendingFindings: 1 }), null)
-  assert.deepEqual(buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0 }), { states: ["complete", "complete", "complete"], current: null })
-  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5 }), { states: ["current", "upcoming", "upcoming"], current: "walk" })
-  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5 }), { states: ["complete", "current", "upcoming"], current: "review" })
+// Group 2 plan 2 Task 4 (spec §8, P2-R8), ยืนยันผลตรวจ plan 2 Task 2: the round page's four steps, the button that
+// follows them, and the export links that carry the list's filters.
+test("four steps: the walk until nothing is pending, then the decisions, then ยืนยันผลตรวจ, then the close; all complete once closed; none for a cancelled round (spec §8, P2-R8)", () => {
+  assert.deepEqual([...auditRoundPageStepKeys], ["walk", "review", "confirm", "close"])
+  assert.equal(buildAuditRoundPageSteps({ status: "cancelled", pendingItems: 3, pendingFindings: 1, unconfirmedAssets: 2 }), null)
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 }), { states: ["complete", "complete", "complete", "complete"], current: null })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5, unconfirmedAssets: 3 }), { states: ["current", "upcoming", "upcoming", "upcoming"], current: "walk" })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5, unconfirmedAssets: 3 }), { states: ["complete", "current", "upcoming", "upcoming"], current: "review" })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 3 }), { states: ["complete", "complete", "current", "upcoming"], current: "confirm" })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 }), { states: ["complete", "complete", "complete", "current"], current: "close" })
   // A leftover draft reads as open (spec §14).
-  assert.deepEqual(buildAuditRoundPageSteps({ status: "draft", pendingItems: 0, pendingFindings: 0 }), { states: ["complete", "complete", "current"], current: "close" })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "draft", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 }), { states: ["complete", "complete", "complete", "current"], current: "close" })
 })
 
-test("the main button follows the step: the scan for audit:edit or the pending list, then the decisions, then ปิดรอบตรวจ for audit:approve, disabled while a plan is open or for the opener (spec §8, §5, P2-R7)", () => {
-  const base = { pendingItems: 12, pendingFindings: 5, canClose: false, openedByViewer: false, canScan: true, canApprove: true }
-  const walk = buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5 })
+test("the main button follows the step: the scan for audit:edit or the pending list, then the decisions, then ยืนยันผลตรวจ for asset:edit, then ปิดรอบตรวจ for audit:approve, disabled while a plan is open or for the opener (spec §8, §5, P2-R7)", () => {
+  const base = { pendingItems: 12, pendingFindings: 5, unconfirmedAssets: 3, canClose: false, openedByViewer: false, canScan: true, canApprove: true, canConfirm: true }
+  const walk = buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5, unconfirmedAssets: 3 })
   assert.deepEqual(buildAuditRoundPageMainAction({ ...base, steps: walk }), { kind: "walk", count: 12, target: "scan" })
   assert.deepEqual(buildAuditRoundPageMainAction({ ...base, steps: walk, canScan: false }), { kind: "walk", count: 12, target: "pending" })
-  const review = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5 })
+  const review = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5, unconfirmedAssets: 3 })
   assert.deepEqual(buildAuditRoundPageMainAction({ ...base, pendingItems: 0, steps: review }), { kind: "review", count: 5, decide: true })
   // Without audit:approve no call to review (final review M2): a neutral link to the same findings.
   assert.deepEqual(buildAuditRoundPageMainAction({ ...base, pendingItems: 0, steps: review, canApprove: false }), { kind: "review", count: 5, decide: false })
-  const close = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0 })
-  const atClose = { ...base, pendingItems: 0, pendingFindings: 0, steps: close }
+  const confirm = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 3 })
+  const atConfirm = { ...base, pendingItems: 0, pendingFindings: 0, steps: confirm }
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...atConfirm, canConfirm: true }), { kind: "confirm", count: 3, act: true })
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...atConfirm, canConfirm: false }), { kind: "confirm", count: 3, act: false })
+  const close = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 })
+  const atClose = { ...base, pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0, steps: close }
   assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: true }), { kind: "close", disabled: false })
   assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: false }), { kind: "close", disabled: true }, "an open action plan")
   assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: true, openedByViewer: true }), { kind: "close", disabled: true }, "the opener")
   assert.equal(buildAuditRoundPageMainAction({ ...atClose, canClose: true, canApprove: false }), null)
-  assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0 }) }), null)
+  assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 }) }), null)
   assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: null }), null)
 })
 

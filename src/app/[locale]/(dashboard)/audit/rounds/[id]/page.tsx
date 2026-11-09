@@ -102,6 +102,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   // Who may do what here (group 2 spec §5, P2-R7): audit:edit scans and corrects, audit:approve cancels and closes,
   // audit:export exports. Nobody is offered a control the API would refuse.
   const canScan = hasPermission(user, "audit", "edit")
+  // ยืนยันผลตรวจ is the confirm API's permission (inspection-confirm spec §5): asset:edit.
+  const canConfirm = hasPermission(user, "asset", "edit")
   // Every link of the page's list (cards, chips, bars, paging, exports): one builder, the list's way back and page size
   // kept (group 2 plan 2). The cards are round-wide, so their links start from roundWideFilters (spec §5).
   const roundWideFilters = parseAuditRoundListFilters({})
@@ -125,9 +127,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
-  const stepsState = buildAuditRoundPageSteps({ status: round.status, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings })
-  const mainAction = buildAuditRoundPageMainAction({ steps: stepsState, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, canClose: data.steps.close.canClose, openedByViewer: data.steps.close.openedByViewer, canScan, canApprove })
-  const stepLabels: Record<AuditRoundPageStepKey, string> = { walk: t("stepWalk"), review: t("stepReview"), close: t("stepClose") }
+  const stepsState = buildAuditRoundPageSteps({ status: round.status, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, unconfirmedAssets: data.steps.close.checklist.unconfirmedAssets })
+  const mainAction = buildAuditRoundPageMainAction({ steps: stepsState, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, unconfirmedAssets: data.steps.close.checklist.unconfirmedAssets, canClose: data.steps.close.canClose, openedByViewer: data.steps.close.openedByViewer, canScan, canApprove, canConfirm })
+  const stepLabels: Record<AuditRoundPageStepKey, string> = { walk: t("stepWalk"), review: t("stepReview"), confirm: t("stepConfirm"), close: t("stepClose") }
   const stepItems = stepsState ? auditRoundPageStepKeys.map((key, index) => ({ id: key, label: stepLabels[key], state: stepsState.states[index] })) : []
   // The main step as a link (the close is a button, in the card only): the card's head and the phone bar's primary.
   // Without audit:approve, step 2 is a neutral link to the same findings, never a call to review (final review M2).
