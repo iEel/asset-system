@@ -1,6 +1,8 @@
 // ของใช้สิ้นเปลือง (consumables spec): stock state, adjust and issue-target checks, and the "changed often" signal.
 // Pure and client-safe: no Prisma import, so node --test and the consumables pages import it.
 
+import { formatCount } from "./display-format.ts"
+
 export const CONSUMABLE_ISSUE_MAX = 9999
 export const CONSUMABLE_ADJUST_MAX = 99999
 export const CONSUMABLE_OFTEN_DAYS = 90
@@ -65,4 +67,17 @@ export function consumableOftenChanged(
   return [...counts]
     .filter(([, count]) => count >= CONSUMABLE_OFTEN_COUNT)
     .map(([itemId, count]) => ({ itemId, count }))
+}
+
+/** The history's จำนวน: "+3" for a receipt or a higher count, "−2" (U+2212) for an issue or a lower count, grouped. */
+export function formatConsumableQuantityChange(change: number): string {
+  return change > 0 ? `+${formatCount(change)}` : `−${formatCount(Math.abs(change))}`
+}
+
+/** The history's ?page=: a whole number from 1 (the first of repeated values); anything else is page 1. */
+export function parseConsumableHistoryPage(raw: string | string[] | undefined): number {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (!value || !/^\d{1,6}$/.test(value)) return 1
+  const page = Number(value)
+  return page >= 1 ? page : 1
 }

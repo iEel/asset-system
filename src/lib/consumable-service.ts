@@ -14,6 +14,7 @@ import {
   consumableStockState,
   type ConsumableStockState,
 } from "./consumable-rules.ts"
+import { assetHistoryActorLabel } from "./asset-history-rules.ts"
 import { FieldRefusalError } from "./field-errors.ts"
 import { isPrismaUniqueConstraintError } from "./prisma-unique-retry.ts"
 import { withDeadlockRetry } from "./transaction-retry.ts"
@@ -190,6 +191,82 @@ export async function listConsumableMovements(query: ConsumableMovementsQuery) {
   ])
   return { movements, total, page: query.page, pageSize: CONSUMABLE_MOVEMENTS_PAGE_SIZE }
 }
+
+/** The kind history page's read (consumables plan 2 task 4): the client the caller passes, prisma or a test stand-in. */
+export type ConsumableHistoryDb = Pick<typeof prisma, "consumableItem" | "consumableMovement" | "user">
+
+export type ConsumableHistoryRow = {
+  id: string
+  type: "receive" | "issue" | "adjust"
+  quantityChange: number
+  onHandAfter: number
+  performedAt: Date
+  receivedDate: Date | null
+  reason: string | null
+  note: string | null
+  asset: { id: string; assetTag: string; name: string } | null
+  /** performedBy as asset history shows it (assetHistoryActorLabel); the id when the user is gone. */
+  actor: string
+}
+
+/**
+ * One kind, active or not (its history stays readable), and one page of its movements, newest first,
+ * CONSUMABLE_MOVEMENTS_PAGE_SIZE a page; a page past the end shows the last page. null when the kind does not exist.
+ */
+export async function getConsumableHistory(db: ConsumableHistoryDb, id: string, requestedPage: number) {
+  const item = await db.consumableItem.findUnique({
+    where: { id },
+    select: { id: true, name: true, unit: true, minQuantity: true, onHand: true, isActive: true },
+  })
+  if (!item) return null
+  const where = { itemId: id }
+  const total = await db.consumableMovement.count({ where })
+  const totalPages = Math.max(1, Math.ceil(total / CONSUMABLE_MOVEMENTS_PAGE_SIZE))
+  const page = Math.min(Math.max(1, requestedPage), totalPages)
+  const movements = total === 0
+    ? []
+    : await db.consumableMovement.findMany({
+        where,
+        orderBy: [{ performedAt: "desc" }, { id: "desc" }],
+        skip: (page - 1) * CONSUMABLE_MOVEMENTS_PAGE_SIZE,
+        take: CONSUMABLE_MOVEMENTS_PAGE_SIZE,
+        select: {
+          id: true, type: true, quantityChange: true, onHandAfter: true, performedAt: true, receivedDate: true,
+          reason: true, note: true, performedBy: true,
+          asset: { select: { id: true, assetTag: true, name: true } },
+        },
+      })
+  const userIds = [...new Set(movements.map((movement) => movement.performedBy))]
+  const users = userIds.length > 0
+    ? await db.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, username: true, displayName: true, email: true, employee: { select: { code: true, fullNameTh: true } } },
+      })
+    : []
+  const actors = new Map(users.map((user) => [user.id, assetHistoryActorLabel(user)]))
+  const rows: ConsumableHistoryRow[] = movements.map((movement) => ({
+    id: movement.id,
+    type: movement.type as ConsumableHistoryRow["type"],
+    quantityChange: movement.quantityChange,
+    onHandAfter: movement.onHandAfter,
+    performedAt: movement.performedAt,
+    receivedDate: movement.receivedDate,
+    reason: movement.reason,
+    note: movement.note,
+    asset: movement.asset,
+    actor: actors.get(movement.performedBy) ?? movement.performedBy,
+  }))
+  return {
+    item: { ...item, stockState: consumableStockState(item) },
+    rows,
+    total,
+    page,
+    pageSize: CONSUMABLE_MOVEMENTS_PAGE_SIZE,
+    totalPages,
+  }
+}
+
+export type ConsumableHistory = NonNullable<Awaited<ReturnType<typeof getConsumableHistory>>>
 
 // ---------------------------------------------------------------- kinds
 

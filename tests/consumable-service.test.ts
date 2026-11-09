@@ -442,3 +442,73 @@ test("listConsumablesWithUsage: active kinds by name with state, and issued90 su
   assert.ok(Math.abs(args.where.performedAt.gte.getTime() - since) < 60_000, "the window is CONSUMABLE_OFTEN_DAYS days")
   assert.match(read("src/lib/consumable-service.ts"), /CONSUMABLE_OFTEN_DAYS/)
 })
+
+test("getConsumableHistory: the kind (inactive too), 50 movements a page newest first, the page clamped, performedBy as a name", async () => {
+  const at = (minute: number) => new Date(Date.UTC(2026, 10, 1, 0, minute))
+  const movements = Array.from({ length: 53 }, (_, index) => ({
+    id: `m${String(index).padStart(2, "0")}`,
+    itemId: "toner",
+    type: index === 0 ? "receive" : index === 1 ? "adjust" : "issue",
+    quantityChange: index === 0 ? 10 : -1,
+    onHandAfter: 5,
+    assetId: index > 1 ? "pc1" : null,
+    asset: index > 1 ? { id: "pc1", assetTag: "IT-001", name: "PC" } : null,
+    receivedDate: index === 0 ? at(0) : null,
+    reason: index === 1 ? "นับใหม่" : null,
+    note: null,
+    performedBy: index % 2 === 0 ? "u1" : "u-gone",
+    performedAt: at(index),
+  }))
+  const calls: Array<{ op: string; args: Record<string, unknown> }> = []
+  const db = {
+    consumableItem: {
+      findUnique: async (args: { where: { id: string } }) => {
+        calls.push({ op: "item", args })
+        return args.where.id === "toner" ? { id: "toner", name: "Toner 85A", unit: "ตลับ", minQuantity: 2, onHand: 1, isActive: false } : null
+      },
+    },
+    consumableMovement: {
+      count: async (args: Record<string, unknown>) => {
+        calls.push({ op: "count", args })
+        return movements.length
+      },
+      findMany: async (args: { skip: number; take: number }) => {
+        calls.push({ op: "movements", args })
+        const sorted = [...movements].sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
+        return sorted.slice(args.skip, args.skip + args.take)
+      },
+    },
+    user: {
+      findMany: async (args: { where: { id: { in: string[] } } }) => {
+        calls.push({ op: "users", args })
+        return [{ id: "u1", username: "somchai", displayName: "Somchai", email: null, employee: { code: "E01", fullNameTh: "สมชาย ใจดี" } }]
+          .filter((user) => args.where.id.in.includes(user.id))
+      },
+    },
+  }
+
+  assert.equal(await service.getConsumableHistory(db as never, "nope", 1), null)
+
+  const first = await service.getConsumableHistory(db as never, "toner", 1)
+  assert.ok(first)
+  assert.deepEqual(first.item, { id: "toner", name: "Toner 85A", unit: "ตลับ", minQuantity: 2, onHand: 1, isActive: false, stockState: "low" })
+  assert.deepEqual([first.total, first.page, first.pageSize, first.totalPages, first.rows.length], [53, 1, 50, 2, 50])
+  assert.equal(first.rows[0].id, "m52", "newest first")
+  assert.equal(first.rows[0].actor, "E01 - สมชาย ใจดี")
+  assert.equal(first.rows[1].actor, "u-gone", "a user no longer there shows the id, as asset history does")
+  const moveArgs = calls.find((call) => call.op === "movements")!.args as { where: unknown; orderBy: unknown; skip: number; take: number }
+  assert.deepEqual([moveArgs.where, moveArgs.orderBy, moveArgs.skip, moveArgs.take], [{ itemId: "toner" }, [{ performedAt: "desc" }, { id: "desc" }], 0, 50])
+  const userCalls = calls.filter((call) => call.op === "users")
+  assert.equal(userCalls.length, 1, "one user read per page")
+  assert.deepEqual([...(userCalls[0].args as { where: { id: { in: string[] } } }).where.id.in].sort(), ["u-gone", "u1"])
+
+  const last = await service.getConsumableHistory(db as never, "toner", 9)
+  assert.ok(last)
+  assert.equal(last.page, 2, "a page past the end shows the last page")
+  assert.deepEqual(last.rows.map((row) => row.id), ["m02", "m01", "m00"])
+  assert.deepEqual(last.rows[1], {
+    id: "m01", type: "adjust", quantityChange: -1, onHandAfter: 5, performedAt: at(1), receivedDate: null,
+    reason: "นับใหม่", note: null, asset: null, actor: "u-gone",
+  })
+  assert.deepEqual(last.rows[0].asset, { id: "pc1", assetTag: "IT-001", name: "PC" })
+})

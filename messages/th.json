@@ -7492,6 +7492,24 @@
     "deactivateConfirm": "ปิดใช้งาน",
     "deactivateToast": "ปิดใช้งาน {name} แล้ว",
     "shortWithCount": "ของในตู้ไม่พอ เหลือ {onHand, number} {unit}",
-    "errorFallback": "บันทึกไม่สำเร็จ ลองอีกครั้ง"
+    "errorFallback": "บันทึกไม่สำเร็จ ลองอีกครั้ง",
+    "detailMeta": "คงเหลือ {onHand, number} {unit} · ขั้นต่ำ {min, number}",
+    "inactiveBadge": "ปิดใช้งานแล้ว",
+    "backToList": "กลับไปรายการ",
+    "adjustShort": "ปรับยอด",
+    "editShort": "แก้",
+    "historyCaption": "ประวัติการเคลื่อนไหวของ {name}",
+    "noMovements": "ยังไม่มีการเคลื่อนไหว",
+    "col_date": "วันที่",
+    "col_type": "รายการ",
+    "col_quantity": "จำนวน",
+    "col_after": "คงเหลือหลัง",
+    "col_detail": "เครื่อง",
+    "col_note": "หมายเหตุ",
+    "col_by": "โดย",
+    "type_receive": "รับเข้า",
+    "type_issue": "เบิก",
+    "type_adjust": "ปรับยอด",
+    "receivedOn": "รับเมื่อ {date}"
   }
 }

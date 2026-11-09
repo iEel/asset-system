@@ -47,7 +47,9 @@ test("every record page ends its breadcrumb trail on a code; the create and list
   // Request batches Task 4: the batch list takes the rounds list's trail. Group 12 plan 2 Task 4: the approval history
   // takes "งานรออนุมัติ › ประวัติการตัดสินใจ" (board AD-ApprovalHistory). Inspection-confirm plan 3 Task 2: the round's
   // ยืนยันผลตรวจ page, "ตรวจนับ › รอบตรวจนับ › AUD-… › ยืนยันผลตรวจ", a code mid-trail and the page title last.
-  assert.equal(sites.length, 21, "Breadcrumbs call sites")
+  // ของใช้สิ้นเปลือง plan 2 Task 4: the kind history page, "ของใช้สิ้นเปลือง › {name}"; a kind has no code, so it ends on
+  // the name (pinned below).
+  assert.equal(sites.length, 22, "Breadcrumbs call sites")
   // Group 5 plan 4 Task 4: the PM edit page is a form whose trail ends on "แก้ไขแผน PM" (spec §10); its planNo is in the meta.
   assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 10, "call sites that mark a code")
 
@@ -73,6 +75,10 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     assert.ok(site, `no Breadcrumbs in ${file}`)
     assert.doesNotMatch(site.element, /code:/, `${file} ends on a page title, not a code`)
   }
+  const consumable = sites.find((candidate) => candidate.path === "src/components/consumables/consumable-history-header.tsx")
+  assert.ok(consumable, "no Breadcrumbs in the consumable history header")
+  assert.match(consumable.element, /\{ label: item\.name \}\]\}$/)
+  assert.doesNotMatch(consumable.element, /code:/, "a consumable kind has no code; its trail ends on its name")
   const roundForm = sites.find((candidate) => candidate.path === "src/components/audit/audit-round-form.tsx")
   assert.ok(roundForm, "no Breadcrumbs in the audit round form")
   assert.doesNotMatch(roundForm.element, /code:/, "the create round trail ends on a page title, not a code (group 2 spec §7)")
