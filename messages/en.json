@@ -7387,5 +7387,23 @@
     "damagedDisposeLink": "Request disposal",
     "damagedDialogTitle": "Confirm the result of {assetTag}",
     "eyebrowClosed": "Round {auditNo} · closed"
+  },
+  "assetInspectionNotice": {
+    "title": "This asset is still under inspection",
+    "roundLink": "Confirm in round {auditNo}",
+    "button": "Confirm result",
+    "dialogTitle": "Confirm {assetTag}",
+    "status": "Status",
+    "holder": "Holder",
+    "location": "Location",
+    "reason": "Reason",
+    "reasonPlaceholder": "e.g. checked, it is in this room",
+    "handoverLocked": "An open handover sets the holder and status",
+    "handoverUnclear": "The handover is unclear; fix it in Data quality first",
+    "inUseNeedsHolder": "In use needs a holder",
+    "submit": "Confirm",
+    "cancel": "Cancel",
+    "success": "Result confirmed",
+    "errorFallback": "Could not confirm. Try again."
   }
 }

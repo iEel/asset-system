@@ -48,6 +48,12 @@ import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-docum
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getMissingPhotoChecklistLabels } from "@/lib/asset-detail-format"
 import { formatOutstandingComponentLine, installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
+import { getAssetFormOptions } from "@/lib/asset-form-options"
+import { findAssetInspectionRound, loadOpenHandoverCounts } from "@/lib/inspection-confirm-data"
+import { INSPECTION_STATUS_NAME, inspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import type { AssetConfirmInspectionDialogProps } from "@/components/assets/asset-confirm-inspection-dialog"
+import type { AssetInspectionNoticeProps } from "@/components/assets/detail/asset-inspection-notice"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -258,6 +264,79 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
   const currentAssetDetailHref = buildAssetDetailViewHref(locale, asset.id, assetDetailView, returnToHref)
 
+  // ยืนยันผลตรวจ plan 5 task 2: an asset stuck Under Inspection. In a round, the notice links that round's confirm page on
+  // the asset's tab; in none, a person with asset:edit confirms it here in one step (the dialog), and the old Ready-only
+  // correction is not offered for it.
+  const isUnderInspection = asset.status.name === INSPECTION_STATUS_NAME
+  const inspectionRound = isUnderInspection ? await findAssetInspectionRound(prisma, asset.id) : null
+  let inspectionNotice: AssetInspectionNoticeProps | null = null
+  if (isUnderInspection) {
+    const tInspection = await getTranslations("assetInspectionNotice")
+    let dialog: AssetConfirmInspectionDialogProps | null = null
+    if (!inspectionRound && canEditAsset) {
+      // The holder and location lists the asset form uses (getAssetFormOptions), the Thai status names, the open handovers.
+      const [handoverCounts, statuses, formOptions] = await Promise.all([
+        loadOpenHandoverCounts(prisma, [asset.id]),
+        prisma.assetStatus.findMany({
+          where: { name: { in: ["Ready", "In Use", "Checked Out"] }, isActive: true },
+          select: { name: true, nameTh: true },
+        }),
+        getAssetFormOptions(),
+      ])
+      const handovers = handoverCounts.get(asset.id) ?? { permanent: 0, temporary: 0, unknown: 0 }
+      const handoverOpen = handovers.permanent + handovers.temporary + handovers.unknown > 0
+      const target = inspectionTargetStatusName({ ownershipType: asset.ownershipType, custodianId: asset.custodianId, handovers }, "confirm")
+      const statusLabel = (name: string) => statuses.find((status) => status.name === name)?.nameTh ?? name
+      dialog = {
+        assetId: asset.id,
+        labels: {
+          button: tInspection("button"),
+          title: tInspection("dialogTitle", { assetTag: asset.assetTag }),
+          status: tInspection("status"),
+          holder: tInspection("holder"),
+          holderPlaceholder: t("selectCustodian"),
+          location: tInspection("location"),
+          locationPlaceholder: t("selectLocation"),
+          searchPlaceholder: tCommon("searchSelectPlaceholder"),
+          searchEmpty: tCommon("searchSelectNoResults"),
+          reason: tInspection("reason"),
+          reasonPlaceholder: tInspection("reasonPlaceholder"),
+          handoverLocked: tInspection("handoverLocked"),
+          handoverUnclear: tInspection("handoverUnclear"),
+          inUseNeedsHolder: tInspection("inUseNeedsHolder"),
+          submit: tInspection("submit"),
+          cancel: tInspection("cancel"),
+          success: tInspection("success"),
+          errorFallback: tInspection("errorFallback"),
+        },
+        statusOptions: [
+          { value: "Ready", label: statusLabel("Ready") },
+          { value: "In Use", label: statusLabel("In Use") },
+        ],
+        defaultStatusName: !handoverOpen && target === "In Use" ? "In Use" : "Ready",
+        handover: !handoverOpen ? "none" : target === null ? "unclear" : "clear",
+        lockedStatusLabel: handoverOpen && target ? statusLabel(target) : null,
+        currentCustodian: asset.custodianId && asset.custodian ? { id: asset.custodianId, label: `${asset.custodian.code} - ${asset.custodian.fullNameTh}` } : null,
+        currentLocation: { id: asset.currentLocation.id, label: `${asset.currentLocation.code} - ${asset.currentLocation.name}` },
+        employees: formOptions.employees.map((employee) => ({ id: employee.id, label: employee.label })),
+        locations: formOptions.locations.map((location) => ({ id: location.id, label: location.label })),
+      }
+    }
+    inspectionNotice = {
+      title: tInspection("title"),
+      round: inspectionRound
+        ? {
+            label: tInspection("roundLink", { auditNo: inspectionRound.auditNo }),
+            href: appendOperationalReturnTo(
+              `/${locale}/audit/rounds/${inspectionRound.roundId}/confirm?tab=${inspectionRound.tab}`,
+              currentAssetDetailHref,
+            ),
+          }
+        : null,
+      dialog,
+    }
+  }
+
   const assetStatusHelp = {
     title: t("statusHelpTitle"),
     description: t("statusHelpDescription"),
@@ -415,7 +494,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         }
       : undefined
   const statusCorrection =
-    canEditAsset && readyStatus && canCorrectAssetStatus(asset.status)
+    canEditAsset && readyStatus && !isUnderInspection && canCorrectAssetStatus(asset.status)
       ? {
           assetId: asset.id,
           readyStatusId: readyStatus.id,
@@ -624,6 +703,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             label: tAll(gap.labelKey, gap.count === undefined ? undefined : { count: formatCount(gap.count) }),
             href: dataGapHref(gap),
           }))}
+          inspection={inspectionNotice}
         />
       ) : null}
 

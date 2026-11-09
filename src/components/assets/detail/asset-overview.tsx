@@ -2,6 +2,7 @@ import { Fragment } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { AssetPhotoFrame } from "@/components/assets/asset-photo-frame"
+import { AssetInspectionNotice, type AssetInspectionNoticeProps } from "@/components/assets/detail/asset-inspection-notice"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
@@ -68,6 +69,7 @@ export function AssetOverview({
   documentAccess,
   components,
   dataGaps,
+  inspection = null,
 }: {
   locale: string
   canEdit: boolean
@@ -85,6 +87,8 @@ export function AssetOverview({
     allHref: string
   }
   dataGaps: { key: string; label: string; href: string }[]
+  /** ยืนยันผลตรวจ plan 5: an asset stuck Under Inspection, first among the notices. */
+  inspection?: AssetInspectionNoticeProps | null
 }) {
   const t = useTranslations("assetDetail")
   const tAsset = useTranslations("asset")
@@ -207,6 +211,7 @@ export function AssetOverview({
 
   return (
     <div className="space-y-4">
+      {inspection ? <AssetInspectionNotice {...inspection} /> : null}
       {dataGaps.length > 0 ? (
         <Notice tone="neutral" data-slot="asset-data-gaps">
           {tAsset("dataGapsTitle", { count: formatCount(dataGaps.length) })}{" "}

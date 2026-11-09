@@ -7387,5 +7387,23 @@
     "damagedDisposeLink": "ขอตัดจำหน่าย",
     "damagedDialogTitle": "ยืนยันผลตรวจ {assetTag}",
     "eyebrowClosed": "รอบ {auditNo} · ปิดรอบแล้ว"
+  },
+  "assetInspectionNotice": {
+    "title": "ครุภัณฑ์นี้ค้างสถานะอยู่ระหว่างตรวจสอบ",
+    "roundLink": "ยืนยันผลตรวจในรอบ {auditNo}",
+    "button": "ยืนยันผลตรวจ",
+    "dialogTitle": "ยืนยันผลตรวจ {assetTag}",
+    "status": "สถานะ",
+    "holder": "ผู้ถือครอง",
+    "location": "ที่ตั้ง",
+    "reason": "เหตุผล",
+    "reasonPlaceholder": "เช่น ตรวจสอบแล้ว ของอยู่ที่ห้องนี้",
+    "handoverLocked": "มีใบส่งมอบหรือใบยืมเปิดอยู่ ผู้ถือครองและสถานะเป็นไปตามใบนั้น",
+    "handoverUnclear": "ใบส่งมอบหรือใบยืมไม่ชัด ต้องแก้ในหน้าคุณภาพข้อมูลก่อน",
+    "inUseNeedsHolder": "ใช้งานอยู่ต้องมีผู้ถือครอง",
+    "submit": "ยืนยันผลตรวจ",
+    "cancel": "ยกเลิก",
+    "success": "ยืนยันผลตรวจแล้ว",
+    "errorFallback": "ยืนยันไม่สำเร็จ ลองอีกครั้ง"
   }
 }

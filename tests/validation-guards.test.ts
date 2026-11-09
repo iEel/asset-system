@@ -22,6 +22,8 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}assets/asset-register-table.tsx`]: 1,
   [`${C}assets/asset-component-manager.tsx`]: 2,
   [`${C}assets/asset-status-correction-dialog.tsx`]: 1,
+  // Inspection-confirm plan 5 Task 2: the asset page's one-step ยืนยันผลตรวจ dialog.
+  [`${C}assets/asset-confirm-inspection-dialog.tsx`]: 1,
   [`${C}assets/asset-import-preview-panel.tsx`]: 1,
   [`${C}assets/asset-label-print.tsx`]: 1,
   [`${C}assets/asset-register-saved-views.tsx`]: 1,
@@ -108,6 +110,7 @@ const V_FORMS: readonly string[] = [
   `${C}assets/asset-register-table.tsx`,
   `${C}assets/asset-component-manager.tsx`,
   `${C}assets/asset-status-correction-dialog.tsx`,
+  `${C}assets/asset-confirm-inspection-dialog.tsx`,
   `${C}assets/asset-import-preview-panel.tsx`,
   `${C}assets/asset-label-print.tsx`,
   `${C}assets/asset-register-saved-views.tsx`,
@@ -181,7 +184,8 @@ test("the V readers skip comments and see a catch block, a .catch() handler and 
 // Group 6 plan 4 (P4-R1) retired the two execution dialogs' forms: 52 became 50.
 // Group 7 plan 4 Task 4 added รับคืนหลายรายการ: 51 became 52.
 // Inspection-confirm plan 3 Task 3 added the ยืนยันผลตรวจ dialog: 52 became 53.
-test("V1 the scope list names every form a person submits, 53 in all (spec §5)", () => {
+// Inspection-confirm plan 5 Task 2 added the asset page's ยืนยันผลตรวจ dialog: 53 became 54.
+test("V1 the scope list names every form a person submits, 54 in all (spec §5)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
   for (const path of [...Object.keys(V_SCOPE), ...Object.keys(NOT_IN_SCOPE), ...V_FORMS, ...Object.keys(SELECT_STAR_ONLY)]) if (!exists(path)) problems.push(`${path} not found`)
@@ -197,7 +201,7 @@ test("V1 the scope list names every form a person submits, 53 in all (spec §5)"
     else if (forms > V_SCOPE[file.path]) problems.push(`${file.path}: ${forms} <form>, V_SCOPE counts ${V_SCOPE[file.path]}`)
   }
   assert.deepEqual(problems, [])
-  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 53)
+  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 54)
 })
 
 // Group 4 plan 6 Task 5: the labels page's note and print actions are no form. Print opens the print route, whose one
