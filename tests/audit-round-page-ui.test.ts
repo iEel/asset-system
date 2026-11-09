@@ -221,3 +221,11 @@ test("every list link comes from the one builder: paging, page size and the past
   assert.match(page, /const \{ page, pageSize, \.\.\.filters \} = parseAuditRoundResultListParams\(rawSearchParams\)/)
   assert.doesNotMatch(page, /buildAuditRoundResultListHref|resultListState\b|\bitemFilters\b/)
 })
+
+test("each of the four steps has its detail column under the rail, ยืนยันผลตรวจ's linked while assets remain (inspection-confirm plan 2)", () => {
+  const page = read(PAGE)
+  assert.match(page, /<div className="mt-4 grid gap-4 text-sm md:grid-cols-4">/)
+  assert.doesNotMatch(page, /text-sm md:grid-cols-3">/)
+  assert.match(page, /md:sr-only">\{stepLabels\.confirm\}<\/h3>/)
+  assert.match(page, /checklist\.unconfirmedAssets > 0 \? \(\n\s*<Link href=\{confirmHref\}/)
+})

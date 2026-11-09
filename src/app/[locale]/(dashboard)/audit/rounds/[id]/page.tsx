@@ -384,7 +384,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <Steps label={t("stepsLabel")} steps={stepItems} />
           {/* Steps holds one short label per step (P2-R8): each step's line sits under the rail, its heading for the
               phone, where the rail's labels are screen-reader only. */}
-          <div className="mt-4 grid gap-4 text-sm md:grid-cols-3">
+          <div className="mt-4 grid gap-4 text-sm md:grid-cols-4">
             <div className="min-w-0 space-y-1">
               <h3 className="text-meta font-medium text-muted-foreground md:sr-only">{stepLabels.walk}</h3>
               <p className="text-foreground">
@@ -408,6 +408,17 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 )}
                 {" · "}
                 <span className="num">{t("stepReviewDecided", { count: formatCount(data.steps.review.decidedFindings) })}</span>
+              </p>
+            </div>
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-meta font-medium text-muted-foreground md:sr-only">{stepLabels.confirm}</h3>
+              <p className="text-foreground">
+                {/* ยืนยันผลตรวจ (inspection-confirm spec §3): the round's assets still Under Inspection, linked while any remain. */}
+                {checklist.unconfirmedAssets > 0 ? (
+                  <Link href={confirmHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{t("closeUnconfirmedCount", { count: formatCount(checklist.unconfirmedAssets) })}</Link>
+                ) : (
+                  <span className="text-muted-foreground">{t("closeNoUnconfirmed")}</span>
+                )}
               </p>
             </div>
             <div className="min-w-0 space-y-1">
