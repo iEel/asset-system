@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Fragment, type ReactNode } from "react"
 import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, ChevronDown, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
+import { AlertTriangle, ChevronDown, ClipboardCheck, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
@@ -308,6 +308,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         return t("nextStepReview", { count })
       case "actions":
         return t("nextStepActions", { count })
+      case "confirm":
+        return t("listNextStepConfirm", { count })
       case "close":
         return t("closeRound")
       case "outOfScope":
@@ -334,7 +336,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       progress: buildAuditRoundProgress(insight),
       nextStep: {
         main: step.main ? { label: stepLabel(step.main), href: step.main.href } : null,
-        second: step.second ? (step.second.key === "review" ? t("blockedPendingReview", { count: formatCount(step.second.count) }) : t("openActionsCount", { count: formatCount(step.second.count) })) : null,
+        second: step.second ? (step.second.key === "review" ? t("blockedPendingReview", { count: formatCount(step.second.count) }) : step.second.key === "confirm" ? t("stepConfirmWaiting", { count: formatCount(step.second.count) }) : t("openActionsCount", { count: formatCount(step.second.count) })) : null,
         outOfScope: step.outOfScope ? { label: stepLabel(step.outOfScope), href: step.outOfScope.href } : null,
       },
       more,
@@ -773,6 +775,7 @@ const roundStepIcons: Record<AuditRoundStepKey, ReactNode> = {
   pendingList: <ListChecks aria-hidden="true" />,
   review: <AlertTriangle aria-hidden="true" />,
   actions: <AlertTriangle aria-hidden="true" />,
+  confirm: <ClipboardCheck aria-hidden="true" />,
   close: <Eye aria-hidden="true" />,
   outOfScope: <ScanLine aria-hidden="true" />,
 }

@@ -228,4 +228,17 @@ test("each of the four steps has its detail column under the rail, ยืนย�
   assert.doesNotMatch(page, /text-sm md:grid-cols-3">/)
   assert.match(page, /md:sr-only">\{stepLabels\.confirm\}<\/h3>/)
   assert.match(page, /checklist\.unconfirmedAssets > 0 \? \(\n\s*<Link href=\{confirmHref\}/)
+  // Its own short words, as the walk ("เหลือ n") and review ("รอ n") columns differ from their close lines, so the
+  // card never shows the close line's text twice (plan 2 final review: the E2E's W.noUnconfirmed matches one element).
+  const column = between(page, 'md:sr-only">{stepLabels.confirm}</h3>', 'md:sr-only">{stepLabels.close}</h3>')
+  assert.match(column, /<Link href=\{confirmHref\}[^>]*>\{t\("stepConfirmWaiting", \{ count: formatCount\(checklist\.unconfirmedAssets\) \}\)\}<\/Link>/)
+  assert.match(column, /<span className="text-muted-foreground">\{t\("stepConfirmDone"\)\}<\/span>/)
+  assert.doesNotMatch(column, /closeNoUnconfirmed|closeUnconfirmedCount/)
+  const th = JSON.parse(read("messages/th.json")).auditRound
+  const en = JSON.parse(read("messages/en.json")).auditRound
+  assert.deepEqual([th.stepReviewWaiting, th.stepConfirmWaiting, th.stepConfirmDone], ["รอ {count}", "รอยืนยัน {count} ชิ้น", "ยืนยันครบแล้ว"])
+  assert.deepEqual([en.stepConfirmWaiting, en.stepConfirmDone], ["{count} awaiting confirmation", "All confirmed"])
+  assert.notEqual(th.stepConfirmDone, th.closeNoUnconfirmed)
+  const words = read("e2e/audit/round-page-words.ts")
+  assert.match(words, new RegExp(`noUnconfirmed: "${th.closeNoUnconfirmed}"`))
 })

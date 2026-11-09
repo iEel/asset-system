@@ -24,12 +24,25 @@ test("a round's rows are its items whose asset is active and Under Inspection (i
 
 type Call = { call: string; args: { where?: unknown; select?: unknown; orderBy?: unknown } }
 
-function fakeDb(items: unknown[], checkouts: Array<{ assetId: string; handoverMode: string | null }>, count = 0) {
+type FakeItem = { id: string; assetId: string; findings?: Array<{ id: string; findingType: string; reviewStatus: string }> }
+
+// The findings are served by their own auditFinding.findMany (round + asset ids), from each fixture item's `findings`;
+// the item rows the fake returns carry none, as the loader no longer selects them.
+function fakeDb(items: FakeItem[], checkouts: Array<{ assetId: string; handoverMode: string | null }>, count = 0) {
   const calls: Call[] = []
+  const findings = items.flatMap((entry) => (entry.findings ?? []).map((finding) => ({ ...finding, auditItemId: entry.id, assetId: entry.assetId, auditRoundId: "r1" })))
   const db = {
     auditItem: {
-      findMany: async (args: Call["args"]) => (calls.push({ call: "auditItem.findMany", args }), items),
+      findMany: async (args: Call["args"]) => (calls.push({ call: "auditItem.findMany", args }), items.map(({ findings: _findings, ...rest }) => rest)),
       count: async (args: Call["args"]) => (calls.push({ call: "auditItem.count", args }), count),
+    },
+    auditFinding: {
+      findMany: async (args: Call["args"] & { where: { auditRoundId: string; assetId: { in: string[] } } }) => {
+        calls.push({ call: "auditFinding.findMany", args })
+        return findings
+          .filter((finding) => finding.auditRoundId === args.where.auditRoundId && args.where.assetId.in.includes(finding.assetId))
+          .map(({ auditRoundId: _round, assetId: _asset, ...rest }) => rest)
+      },
     },
     assetCheckout: {
       findMany: async (args: Call["args"] & { where: { assetId: { in: string[] } } }) => {
@@ -81,11 +94,33 @@ test("loadRoundInspectionRows reads the items once, their open handovers, and fi
   const t3 = rows.find((row) => row.assetTag === "T3")
   assert.deepEqual(t3?.handovers, { permanent: 0, temporary: 1, unknown: 0 })
   assert.equal(t3?.targetStatusName, "Checked Out")
+  // Findings by round and asset ids, never a nested read by auditItemId (no index; final review I-1b).
+  const findingCall = calls.find((entry) => entry.call === "auditFinding.findMany")
+  assert.deepEqual(findingCall?.args.where, { auditRoundId: "r1", assetId: { in: items.map((entry) => entry.assetId) } })
+  assert.deepEqual(findingCall?.args.select, { id: true, auditItemId: true, findingType: true, reviewStatus: true })
+  assert.equal(JSON.stringify(calls[0].args.select).includes("findings"), false)
   assert.equal(t3?.custodianName, "สมชาย")
   assert.equal(t3?.locationName, "ห้อง 1")
   assert.deepEqual(rows.find((row) => row.assetTag === "T2")?.pendingFindingIds, ["f-1"])
   assert.equal(rows.find((row) => row.assetTag === "T1")?.targetStatusName, "Ready")
   assert.equal(rows.find((row) => row.assetTag === "T6")?.targetStatusName, null, "both modes open: handoverUnclear")
+})
+
+test("loadRoundInspectionRows reads findings by round and asset, chunked, not through the item's findings relation (plan 2 final review, mirrors audit-item-review-state.ts I-1b)", async () => {
+  const source = read("src/lib/inspection-confirm-data.ts")
+  const fn = source.slice(source.indexOf("export async function loadRoundInspectionRows("), source.indexOf("export async function countUnconfirmedAssetsByRound("))
+  assert.doesNotMatch(fn, /\bfindings: \{ select/)
+  assert.doesNotMatch(fn, /\bfindings:/)
+  assert.match(fn, /db\.auditFinding\.findMany\(\{\n\s+where: \{ auditRoundId, assetId: \{ in: chunk \} \},\n\s+select: \{ id: true, auditItemId: true, findingType: true, reviewStatus: true \},/)
+  assert.match(fn, /IX_audit_findings_assetId/)
+  // 2,001 assets: two finding reads, 2,000 then 1, as the handover reads.
+  const many = Array.from({ length: 2001 }, (_, index) => item(`M${String(index).padStart(4, "0")}`, index === 2000 ? { findings: [{ id: "f-last", findingType: "location_mismatch", reviewStatus: "pending" }] } : {}))
+  const { db, calls } = fakeDb(many, [])
+  const rows = await loadRoundInspectionRows(db, "r1")
+  const reads = calls.filter((entry) => entry.call === "auditFinding.findMany").map((entry) => (entry.args.where as { assetId: { in: string[] } }).assetId.in.length)
+  assert.deepEqual(reads, [2000, 1])
+  assert.deepEqual(rows.find((row) => row.assetTag === "M2000")?.pendingFindingIds, ["f-last"])
+  assert.equal(rows.find((row) => row.assetTag === "M2000")?.tab, "awaitingReview")
 })
 
 test("loadRoundInspectionRows reads no handovers for an empty round; countRoundUnconfirmedAssets counts the same where", async () => {

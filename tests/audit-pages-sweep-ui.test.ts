@@ -93,7 +93,9 @@ test("audit rounds list: the coverage a folded `<details>` on the panel classes 
   assert.match(source, /<dl className="mt-2 grid grid-cols-3 gap-x-3">/)
   assert.match(source, /formatScope\(round, t\("all"\), scopeLabels\)/)
   assert.match(source, /<span className="tag">\{/)
-  assert.doesNotMatch(source, /function (?:AuditStatusBadge|MobileAuditField)\b|"All assets"|rounded-full|rounded-lg|\b(?:bg|border)-(?:success|warning|danger|info)-(?:soft|border)\b|\btext-info\b|hover:underline|hover:text-primary|text-2xl font-bold|\btext-xs\b|CheckCircle2|ClipboardCheck/)
+  assert.doesNotMatch(source, /function (?:AuditStatusBadge|MobileAuditField)\b|"All assets"|rounded-full|rounded-lg|\b(?:bg|border)-(?:success|warning|danger|info)-(?:soft|border)\b|\btext-info\b|hover:underline|hover:text-primary|text-2xl font-bold|\btext-xs\b|CheckCircle2|<ClipboardCheck className=/)
+  // ClipboardCheck is the ยืนยันผลตรวจ step's row-action icon (aria-hidden, as the round page's), never the old stat card's icon.
+  assert.match(source, /confirm: <ClipboardCheck aria-hidden="true" \/>,/)
 })
 
 test("audit round page: ContentPanels, the cancelled state as an info Notice with its facts in a KeyValueList, the result list head without a frame, the list frame on the panel classes, Chips and info Notices instead of the info tint (spec 2D §3.4, D7, D9, M22, M29; group 2 spec §8: the next-step card, the result card and ไม่ตรงเรื่องอะไร)", () => {

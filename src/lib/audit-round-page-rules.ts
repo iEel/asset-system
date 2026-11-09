@@ -184,11 +184,18 @@ export type AuditRoundPageSteps = { states: StepState[]; current: AuditRoundPage
 // The walk until nothing is pending, then the decisions, then ยืนยันผลตรวจ while assets of the round are still "Under
 // Inspection", then the close: the close API's own first conditions (audit-round-close.ts getAuditRoundCloseChecklist),
 // so the last step is reached exactly when only the plans and the opener rule can block it.
-// A closed round has every step complete; a cancelled round has no card (its cancel box instead, P2-R8). A leftover
+// A closed round has every step complete, ยืนยันผลตรวจ aside while assets still wait; a cancelled round has no card (its cancel box instead, P2-R8). A leftover
 // draft reads as open (spec §14).
 export function buildAuditRoundPageSteps({ status, pendingItems, pendingFindings, unconfirmedAssets }: { status: string; pendingItems: number; pendingFindings: number; unconfirmedAssets: number }): AuditRoundPageSteps | null {
   if (status === "cancelled") return null
-  if (status === "closed") return { states: getLinearStepStates(auditRoundPageStepKeys.length, auditRoundPageStepKeys.length - 1, "complete"), current: null }
+  if (status === "closed") {
+    const states = getLinearStepStates(auditRoundPageStepKeys.length, auditRoundPageStepKeys.length - 1, "complete")
+    // A round closed with assets still "Under Inspection" (closed before ยืนยันผลตรวจ existed): the rail keeps that step
+    // current, as the card's line says they still wait; the card itself stays "รอบนี้ปิดแล้ว" (current null, plan 2
+    // final review).
+    if (unconfirmedAssets > 0) states[auditRoundPageStepKeys.indexOf("confirm")] = "current"
+    return { states, current: null }
+  }
   const index = pendingItems > 0 ? 0 : pendingFindings > 0 ? 1 : unconfirmedAssets > 0 ? 2 : 3
   return { states: getLinearStepStates(auditRoundPageStepKeys.length, index), current: auditRoundPageStepKeys[index] }
 }

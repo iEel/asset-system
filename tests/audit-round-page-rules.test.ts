@@ -163,6 +163,9 @@ test("four steps: the walk until nothing is pending, then the decisions, then �
   assert.deepEqual([...auditRoundPageStepKeys], ["walk", "review", "confirm", "close"])
   assert.equal(buildAuditRoundPageSteps({ status: "cancelled", pendingItems: 3, pendingFindings: 1, unconfirmedAssets: 2 }), null)
   assert.deepEqual(buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 }), { states: ["complete", "complete", "complete", "complete"], current: null })
+  // A round closed with assets still Under Inspection: ยืนยันผลตรวจ stays current on the rail, the card still reads
+  // "รอบนี้ปิดแล้ว" with no main action (plan 2 final review).
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 4 }), { states: ["complete", "complete", "current", "complete"], current: null })
   assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5, unconfirmedAssets: 3 }), { states: ["current", "upcoming", "upcoming", "upcoming"], current: "walk" })
   assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5, unconfirmedAssets: 3 }), { states: ["complete", "current", "upcoming", "upcoming"], current: "review" })
   assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 3 }), { states: ["complete", "complete", "current", "upcoming"], current: "confirm" })
@@ -191,6 +194,7 @@ test("the main button follows the step: the scan for audit:edit or the pending l
   assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: true, openedByViewer: true }), { kind: "close", disabled: true }, "the opener")
   assert.equal(buildAuditRoundPageMainAction({ ...atClose, canClose: true, canApprove: false }), null)
   assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 0 }) }), null)
+  assert.equal(buildAuditRoundPageMainAction({ ...atClose, unconfirmedAssets: 4, steps: buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0, unconfirmedAssets: 4 }) }), null)
   assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: null }), null)
 })
 

@@ -140,7 +140,7 @@ test("a round is ready to close only on the close API's three conditions: no pen
   const insights = buildAuditRoundInsights(rounds, counts, work)
   assert.deepEqual(rounds.filter((round) => insights.get(round.id)?.readyToClose).map((round) => round.id), ["ready", "draft", "empty"])
   // The out-of-scope count is the items' (P2-R4), as the round page's list it opens.
-  assert.deepEqual(insights.get("pending"), { operational: true, total: 2, pending: 1, checked: 1, pendingReview: 0, openActions: 0, outOfScope: 9, readyToClose: false })
+  assert.deepEqual(insights.get("pending"), { operational: true, total: 2, pending: 1, checked: 1, pendingReview: 0, openActions: 0, outOfScope: 9, unconfirmedAssets: 0, readyToClose: false })
   assert.equal(insights.get("done")?.openActions, 1)
   assert.equal(insights.get("closed")?.operational, false)
   assert.equal(isAuditRoundAwaitingDecision(insights.get("review")!), true, "fully scanned, decisions pending: the badge reads รอพิจารณา")
@@ -162,7 +162,9 @@ test("a round with assets still Under Inspection is not ready to close: the clos
   assert.equal(insights.get("stuck")?.readyToClose, false)
   assert.equal(insights.get("clear")?.readyToClose, true)
   assert.equal(insights.get("both")?.readyToClose, false)
-  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8").replace(/\r\n/g, "\n")
+  // The insight carries the count, for the list's ยืนยันผลตรวจ step (plan 2 final review).
+  assert.deepEqual(["stuck", "clear", "both"].map((id) => insights.get(id)?.unconfirmedAssets), [2, 0, 1])
+  const page =readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(page, /countUnconfirmedAssetsByRound\(prisma, roundIds\)/)
   assert.match(page, /\n    unconfirmedByRoundId,\n  \)/)
 })
@@ -248,6 +250,39 @@ test("after the walk the next step is the decision, then the action plans, then 
   assert.deepEqual(buildAuditRoundNextStep({ ...base, insight: ready }).main, { key: "close", count: null, href: `/th/audit/rounds/r1?${back}` })
   assert.equal(buildAuditRoundNextStep({ ...base, canClose: false, insight: ready }).main, null, "only audit:approve closes a round")
   assert.deepEqual(buildAuditRoundNextStep({ ...base, insight: { ...scanned, operational: false, outOfScope: 2 } }), { main: null, second: null, outOfScope: null, more: [] })
+})
+
+test("ยืนยันผลตรวจ is a step of its own after the action plans and before the close: a round waiting only on it never reads — (inspection-confirm plan 2 final review)", () => {
+  const base = { locale: "th", roundId: "r1", canScan: true, canClose: true, returnTo: "/th/audit/rounds" }
+  const back = "returnTo=%2Fth%2Faudit%2Frounds"
+  const confirmHref = `/th/audit/rounds/r1/confirm?${back}`
+  const onlyConfirm = { ...emptyAuditRoundListInsight, operational: true, total: 10, checked: 10, unconfirmedAssets: 12 }
+  for (const canClose of [true, false]) {
+    for (const canScan of [true, false]) {
+      const step = buildAuditRoundNextStep({ ...base, canClose, canScan, insight: onlyConfirm })
+      assert.deepEqual(step.main, { key: "confirm", count: 12, href: confirmHref })
+      assert.equal(step.second, null)
+      assert.deepEqual(step.more, [])
+    }
+  }
+  // After the action plans: the second task, and its link in ⋯.
+  const withActions = buildAuditRoundNextStep({ ...base, insight: { ...onlyConfirm, openActions: 2 } })
+  assert.equal(withActions.main?.key, "actions")
+  assert.deepEqual(withActions.second, { key: "confirm", count: 12 })
+  assert.deepEqual(withActions.more.map((link) => [link.key, link.count, link.href]), [["confirm", 12, confirmHref]])
+  const all = buildAuditRoundNextStep({ ...base, insight: { ...onlyConfirm, pending: 1, pendingReview: 3, openActions: 2 } })
+  assert.deepEqual([all.main?.key, ...all.more.map((link) => link.key)], ["walk", "pendingList", "review", "actions", "confirm"])
+  assert.equal(emptyAuditRoundListInsight.unconfirmedAssets, 0)
+
+  // The list page labels it and gives it an icon like its neighbours.
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(page, /case "confirm":\n\s+return t\("listNextStepConfirm", \{ count \}\)/)
+  assert.match(page, /confirm: <ClipboardCheck aria-hidden="true" \/>,/)
+  assert.match(page, /step\.second\.key === "confirm" \? t\("stepConfirmWaiting", \{ count: formatCount\(step\.second\.count\) \}\)/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).auditRound
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).auditRound
+  assert.deepEqual([th.nextStepReview, th.nextStepActions, th.listNextStepConfirm], ["พิจารณา ({count})", "แผนแก้ไขค้าง ({count})", "ยืนยันผลตรวจ ({count})"])
+  assert.equal(en.listNextStepConfirm, "Confirm results ({count})")
 })
 
 test("the list offers ปิดรอบตรวจ only with audit:approve and not to the round's creator, as the close API refuses them (group 2 final review M5)", () => {

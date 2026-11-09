@@ -136,6 +136,8 @@ export type AuditRoundListInsight = {
   pendingReview: number
   openActions: number
   outOfScope: number
+  /** The round's assets still "Under Inspection" (ยืนยันผลตรวจ spec §3): the list's confirm step. */
+  unconfirmedAssets: number
   readyToClose: boolean
 }
 
@@ -147,6 +149,7 @@ export const emptyAuditRoundListInsight: Readonly<AuditRoundListInsight> = Objec
   pendingReview: 0,
   openActions: 0,
   outOfScope: 0,
+  unconfirmedAssets: 0,
   readyToClose: false,
 })
 
@@ -169,6 +172,7 @@ export function buildAuditRoundInsights(
       openActions: work.openActions,
       // From the out-of-scope items, as the round page's list it opens (P2-R4).
       outOfScope: counts.outOfScope,
+      unconfirmedAssets: work.unconfirmedAssets,
       // The close API's checklist (`src/lib/audit-round-close.ts` `getAuditRoundCloseChecklist`, R2), no asset left
       // "Under Inspection" included (ยืนยันผลตรวจ spec §3); the opener rule is the round page's (plan 2).
       readyToClose: operational && counts.pending === 0 && work.pendingReview === 0 && work.openActions === 0 && work.unconfirmedAssets === 0,
@@ -224,11 +228,11 @@ export function buildAuditRoundDueLine(status: string, endDate: Date, today: Dat
   return diff >= 0 ? { kind: "left", days: diff + 1 } : { kind: "overdue", days: -diff }
 }
 
-export type AuditRoundStepKey = "walk" | "pendingList" | "review" | "actions" | "close" | "outOfScope"
+export type AuditRoundStepKey = "walk" | "pendingList" | "review" | "actions" | "confirm" | "close" | "outOfScope"
 export type AuditRoundStepLink = { key: AuditRoundStepKey; count: number | null; href: string }
 export type AuditRoundNextStep = {
   main: AuditRoundStepLink | null
-  second: { key: "review" | "actions"; count: number } | null
+  second: { key: "review" | "actions" | "confirm"; count: number } | null
   outOfScope: AuditRoundStepLink | null
   more: AuditRoundStepLink[]
 }
@@ -245,17 +249,19 @@ export function buildAuditRoundNextStep({ locale, roundId, insight, canScan, can
   const round = `/${locale}/audit/rounds/${roundId}`
   const pendingList: AuditRoundStepLink = { key: "pendingList", count: insight.pending, href: back(`${round}/pending`) }
   // The work in its order: the walk (the scan page needs audit:edit; anyone else gets the pending list), the
-  // decisions, then the action plans (spec §6, R3). Each count is the rows its link opens.
+  // decisions, the action plans (spec §6, R3), then ยืนยันผลตรวจ, the round's assets still "Under Inspection", which the
+  // close also waits for (inspection-confirm spec §3, plan 2 final review). Each count is the rows its link opens.
   const tasks: AuditRoundStepLink[] = [
     ...(insight.pending > 0 ? [{ key: "walk" as const, count: insight.pending, href: canScan ? back(`${round}/scan`) : pendingList.href }] : []),
     ...(insight.pendingReview > 0 ? [{ key: "review" as const, count: insight.pendingReview, href: back(`/${locale}/audit/findings?status=pending&roundId=${roundId}`) }] : []),
     ...(insight.openActions > 0 ? [{ key: "actions" as const, count: insight.openActions, href: back(`/${locale}/audit/findings?status=action_open&roundId=${roundId}`) }] : []),
+    ...(insight.unconfirmedAssets > 0 ? [{ key: "confirm" as const, count: insight.unconfirmedAssets, href: back(`${round}/confirm`) }] : []),
   ]
   const [first, ...rest] = tasks
   const second = rest[0]
   return {
     main: first ?? (insight.readyToClose && canClose ? { key: "close", count: null, href: back(round) } : null),
-    second: second ? { key: second.key === "review" ? "review" : "actions", count: second.count ?? 0 } : null,
+    second: second ? { key: second.key === "review" ? "review" : second.key === "confirm" ? "confirm" : "actions", count: second.count ?? 0 } : null,
     outOfScope: insight.outOfScope > 0
       ? { key: "outOfScope", count: insight.outOfScope, href: `${round}?result=out_of_scope&returnTo=${encodeURIComponent(returnTo)}#audit-result-list` }
       : null,

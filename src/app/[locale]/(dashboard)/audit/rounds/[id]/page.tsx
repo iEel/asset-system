@@ -413,11 +413,12 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <div className="min-w-0 space-y-1">
               <h3 className="text-meta font-medium text-muted-foreground md:sr-only">{stepLabels.confirm}</h3>
               <p className="text-foreground">
-                {/* ยืนยันผลตรวจ (inspection-confirm spec §3): the round's assets still Under Inspection, linked while any remain. */}
+                {/* ยืนยันผลตรวจ (inspection-confirm spec §3): the round's assets still Under Inspection, linked while any remain;
+                    its own short words, as the walk and review columns, never the close line's (plan 2 final review). */}
                 {checklist.unconfirmedAssets > 0 ? (
-                  <Link href={confirmHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{t("closeUnconfirmedCount", { count: formatCount(checklist.unconfirmedAssets) })}</Link>
+                  <Link href={confirmHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{t("stepConfirmWaiting", { count: formatCount(checklist.unconfirmedAssets) })}</Link>
                 ) : (
-                  <span className="text-muted-foreground">{t("closeNoUnconfirmed")}</span>
+                  <span className="text-muted-foreground">{t("stepConfirmDone")}</span>
                 )}
               </p>
             </div>

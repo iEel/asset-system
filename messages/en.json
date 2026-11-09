@@ -3352,7 +3352,10 @@
     "closeNoUnconfirmed": "All audit results confirmed",
     "closeUnconfirmedCount": "{count} still under inspection",
     "nextStepConfirm": "Confirm results ({count})",
-    "nextStepViewConfirm": "View assets awaiting confirmation ({count})"
+    "nextStepViewConfirm": "View assets awaiting confirmation ({count})",
+    "stepConfirmWaiting": "{count} awaiting confirmation",
+    "stepConfirmDone": "All confirmed",
+    "listNextStepConfirm": "Confirm results ({count})"
   },
   "auditScan": {
     "title": "Audit Scan",
@@ -5071,7 +5074,7 @@
     "roundDates": "{start} – {end}",
     "roundDatesOpen": "Started {start}",
     "roundCreatedBy": "Created by {name}",
-    "roundChecklistClear": "No items left to check · no findings left to review · no open action plans",
+    "roundChecklistClear": "No items left to check · no findings left to review · no open action plans · all audit results confirmed",
     "roundOpen": "Open the audit round to close it",
     "emptyTabTitle": "Nothing awaits approval in this tab",
     "emptyTabDescription": "See the other items under All",

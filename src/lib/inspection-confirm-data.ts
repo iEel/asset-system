@@ -53,7 +53,6 @@ export async function loadRoundInspectionRows(db: InspectionDb, auditRoundId: st
       auditStatus: true,
       auditResult: true,
       scannedAt: true,
-      findings: { select: { id: true, findingType: true, reviewStatus: true } },
       asset: {
         select: {
           id: true,
@@ -69,10 +68,29 @@ export async function loadRoundInspectionRows(db: InspectionDb, auditRoundId: st
     },
   })
   if (items.length === 0) return []
+  const itemAssetIds = items.map((item) => item.assetId)
+
+  // The items' findings, read on their own: `audit_findings` has no index on `auditItemId`, and the confirm API reads
+  // these rows inside a Serializable transaction, so a nested `findings` read by item id would scan, and range-lock,
+  // the whole table until commit. Every creator copies the item's asset onto the finding (final review I-1b,
+  // audit-item-review-state.ts), so the round and asset ids give the same set, and the read seeks
+  // `IX_audit_findings_assetId`. Grouped by item, as the relation returned them.
+  const findingsByItem = new Map<string, Array<{ id: string; findingType: string; reviewStatus: string }>>()
+  for (const chunk of chunkAuditIds(itemAssetIds, AUDIT_ID_CHUNK_SIZE)) {
+    const findings = await db.auditFinding.findMany({
+      where: { auditRoundId, assetId: { in: chunk } },
+      select: { id: true, auditItemId: true, findingType: true, reviewStatus: true },
+    })
+    for (const { auditItemId, ...finding } of findings) {
+      const list = findingsByItem.get(auditItemId)
+      if (list) list.push(finding)
+      else findingsByItem.set(auditItemId, [finding])
+    }
+  }
 
   // Open handovers, as asset-state-review-service.ts reads them: not returned and active, counted by handoverMode.
   const handoversByAsset = new Map<string, InspectionHandoverCounts>()
-  for (const chunk of chunkAuditIds(items.map((item) => item.assetId), AUDIT_ID_CHUNK_SIZE)) {
+  for (const chunk of chunkAuditIds(itemAssetIds, AUDIT_ID_CHUNK_SIZE)) {
     const checkouts = await db.assetCheckout.findMany({
       where: { assetId: { in: chunk }, isReturned: false, transactionStatus: "active" },
       select: { assetId: true, handoverMode: true },
@@ -90,6 +108,7 @@ export async function loadRoundInspectionRows(db: InspectionDb, auditRoundId: st
     const { asset } = item
     const conditionName = asset.condition?.name ?? null
     const handovers = handoversByAsset.get(item.assetId) ?? { permanent: 0, temporary: 0, unknown: 0 }
+    const findings = findingsByItem.get(item.id) ?? []
     return {
       auditItemId: item.id,
       assetId: item.assetId,
@@ -104,9 +123,9 @@ export async function loadRoundInspectionRows(db: InspectionDb, auditRoundId: st
       custodianId: asset.custodianId,
       custodianName: asset.custodian?.fullNameTh ?? null,
       locationName: asset.currentLocation?.name ?? null,
-      tab: classifyInspectionItem({ auditStatus: item.auditStatus, auditResult: item.auditResult, findings: item.findings, conditionName }),
+      tab: classifyInspectionItem({ auditStatus: item.auditStatus, auditResult: item.auditResult, findings, conditionName }),
       handovers,
-      pendingFindingIds: item.findings.filter((finding) => finding.reviewStatus === "pending").map((finding) => finding.id),
+      pendingFindingIds: findings.filter((finding) => finding.reviewStatus === "pending").map((finding) => finding.id),
       targetStatusName: inspectionTargetStatusName({ ownershipType: asset.ownershipType, custodianId: asset.custodianId, handovers }, "confirm"),
     }
   })
