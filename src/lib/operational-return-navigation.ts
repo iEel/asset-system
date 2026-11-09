@@ -84,7 +84,8 @@ export function normalizeAuditFindingsReturnTo(locale: string, value: ReturnToPa
 }
 
 // The repair and PM forms' and the repair record's way back (group 5 spec §5 "Way back", G5P1-R14, R15): the repair
-// list (with its query and hash), the PM list (with its query) or one asset page (with its query, e.g. ?view=maintenance).
+// list (with its query and hash), the PM list (with its query), one asset page (with its query, e.g. ?view=maintenance)
+// or one audit round's confirm page (with its query).
 // Anything else, another site, another locale or a deeper asset path, is the page's own list. `new URL` resolves `..`
 // first, so `/th/maintenance/../admin` is `/th/admin` and falls back.
 export function normalizeMaintenanceReturnTo(locale: string, value: ReturnToParam, list: "maintenance" | "maintenance-pm"): string {
@@ -102,6 +103,13 @@ export function normalizeMaintenanceReturnTo(locale: string, value: ReturnToPara
     const assetId = url.pathname.startsWith(assets) ? url.pathname.slice(assets.length) : ""
     // `new` is the asset create route, not an asset page.
     if (assetId.length > 0 && assetId !== "new" && !assetId.includes("/")) return `${url.pathname}${url.search}`
+    // One round's confirm page, with its query (ยืนยันผลตรวจ plan 4: a damaged asset's บันทึกซ่อม returns to its tab).
+    const rounds = `/${locale}/audit/rounds/`
+    const confirmSuffix = "/confirm"
+    if (url.pathname.startsWith(rounds) && url.pathname.endsWith(confirmSuffix)) {
+      const roundId = url.pathname.slice(rounds.length, url.pathname.length - confirmSuffix.length)
+      if (uuidPattern.test(roundId)) return `${url.pathname}${url.search}`
+    }
     return fallback
   } catch {
     return fallback

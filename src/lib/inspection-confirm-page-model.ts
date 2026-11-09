@@ -54,8 +54,12 @@ export function parseInspectionTab(value: string | undefined, counts: Record<Ins
   return inspectionConfirmTabs.find((tab) => counts[tab] > 0) ?? "ready"
 }
 
-/** Only ready rows with a known target can be ticked; a null target is an unclear handover. */
+/**
+ * Ready rows with a known target can be ticked (a null target is an unclear handover); every not-found row can, since its
+ * target is Missing whatever the handover (plan 4 task 3).
+ */
 export function isInspectionRowSelectable(row: InspectionPageRow): boolean {
+  if (row.tab === "notFound") return true
   return row.tab === "ready" && row.targetStatusName !== null
 }
 
@@ -75,8 +79,10 @@ export function inspectionSelectionSummary(
 ): Partial<Record<InspectionTargetStatusName, number>> {
   const summary: Partial<Record<InspectionTargetStatusName, number>> = {}
   for (const row of rows) {
-    if (!selected.has(row.assetId) || row.targetStatusName === null) continue
-    summary[row.targetStatusName] = (summary[row.targetStatusName] ?? 0) + 1
+    // A not-found row becomes Missing (its targetStatusName is the confirm target).
+    const target = row.tab === "notFound" ? "Missing" : row.targetStatusName
+    if (!selected.has(row.assetId) || target === null) continue
+    summary[target] = (summary[target] ?? 0) + 1
   }
   return summary
 }
@@ -92,3 +98,30 @@ export const inspectionBlockedMessageKeys: Readonly<Record<InspectionBlockedCode
   wrongTab: "blocked_wrongTab",
   handoverUnclear: "blocked_handoverUnclear",
 })
+
+// Plan 4 task 3: where the confirm page goes on from the damaged and not-found tabs. returnTo is the confirm page on the
+// tab the link was on.
+
+/** บันทึกซ่อม after a damaged confirm: the repair form for the asset, back to the confirm page. */
+export function damagedRepairHref(locale: string, assetId: string, returnTo: string): string {
+  return `/${locale}/maintenance/new?assetId=${encodeURIComponent(assetId)}&returnTo=${encodeURIComponent(returnTo)}`
+}
+
+/** ขอตัดจำหน่าย after a damaged confirm: the single request form from this round, the method left to choose. */
+export function damagedDisposalHref(locale: string, roundId: string, assetId: string, returnTo: string): string {
+  return `/${locale}/disposal/new?assetId=${encodeURIComponent(assetId)}&sourceType=audit_round&sourceId=${encodeURIComponent(roundId)}&returnTo=${encodeURIComponent(returnTo)}`
+}
+
+/**
+ * ขอตัดจำหน่ายแบบสูญหาย for the round's หาไม่พบ assets with no open request: none is null; one is the single form with the
+ * method สูญหาย; two or more (DISPOSAL_BATCH_MIN_ASSETS) is the batch form, which reads the round's assets itself.
+ */
+export function lostDisposalHref(locale: string, roundId: string, missing: readonly { assetId: string }[], returnTo: string): string | null {
+  if (missing.length === 0) return null
+  const back = encodeURIComponent(returnTo)
+  const round = encodeURIComponent(roundId)
+  if (missing.length === 1) {
+    return `/${locale}/disposal/new?assetId=${encodeURIComponent(missing[0].assetId)}&sourceType=audit_round&sourceId=${round}&type=lost&returnTo=${back}`
+  }
+  return `/${locale}/disposal/batch/new?type=lost&fromAuditRound=${round}&returnTo=${back}`
+}

@@ -1,14 +1,16 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
+import { linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { InspectionConfirmWorkspace } from "@/components/audit/inspection-confirm/inspection-confirm-workspace"
 import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
-import { loadRoundInspectionRows } from "@/lib/inspection-confirm-data"
+import { loadRoundDisposalSummary, loadRoundInspectionRows } from "@/lib/inspection-confirm-data"
 import { inspectionTabCounts, parseInspectionTab, toInspectionPageRow } from "@/lib/inspection-confirm-page-model"
 import type { InspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
 
@@ -26,6 +28,9 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "audit", "view")
   const canConfirm = hasPermission(user, "asset", "edit")
+  // Plan 4 task 3: the damaged row's two ways on, and the not-found tab's lost-disposal block.
+  const canRepair = hasPermission(user, "maintenance", "create")
+  const canDispose = hasPermission(user, "disposal", "create")
   const t = await getTranslations("inspectionConfirmPage")
 
   const round = await prisma.auditRound.findUnique({ where: { id }, select: { id: true, auditNo: true, status: true, isActive: true } })
@@ -77,7 +82,8 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
 
   // No pagination (final review ruling): a round holds at most a few hundred assets, and select-all takes at most
   // INSPECTION_CONFIRM_MAX_ASSETS (500) of the tab and says so when it caps, so the whole tab is one list.
-  const rows = (await loadRoundInspectionRows(prisma, round.id)).map(toInspectionPageRow)
+  const [inspectionRows, disposal] = await Promise.all([loadRoundInspectionRows(prisma, round.id), loadRoundDisposalSummary(prisma, round.id)])
+  const rows = inspectionRows.map(toInspectionPageRow)
   const counts = inspectionTabCounts(rows)
   const tabParam = Array.isArray(rawSearchParams.tab) ? rawSearchParams.tab[0] : rawSearchParams.tab
   const tab = parseInspectionTab(tabParam, counts)
@@ -89,9 +95,23 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
     inspectionTargetStatusNames.map((name) => [name, statuses.find((status) => status.name === name)?.nameTh ?? name]),
   ) as Record<InspectionTargetStatusName, string>
 
+  // The disposal line (plan 4 task 3): requests made from this round, and once some are approved the way to a disposal
+  // round, the queue filtered to this round's approved requests.
+  const disposalLine = disposal.requests > 0 ? (
+    <p className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+      <span>{t("disposalLine", { requests: disposal.requests, approved: disposal.approved })}</span>
+      {disposal.approved > 0 ? (
+        <Link href={`/${locale}/disposal?status=approved&auditRound=${round.id}`} className={`${linkVariants({ size: "inherit" })} inline-flex min-h-11 items-center md:min-h-0`}>
+          {t("disposalRoundLink")}
+        </Link>
+      ) : null}
+    </p>
+  ) : null
+
   return (
     <div>
       {header}
+      {disposalLine}
       <InspectionConfirmWorkspace
         locale={locale}
         roundId={round.id}
@@ -100,6 +120,9 @@ export default async function InspectionConfirmPage({ params, searchParams }: In
         counts={counts}
         rows={tabRows}
         canConfirm={canConfirm}
+        canRepair={canRepair}
+        canDispose={canDispose}
+        missingForDisposal={disposal.missingForDisposal}
         statusLabels={statusLabels}
         links={links}
         returnTo={rawReturnTo ? roundHref : null}

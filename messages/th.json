@@ -7322,7 +7322,6 @@
     "openFinding": "เปิดรายการไม่ตรงทะเบียน",
     "notScannedBanner": "ชิ้นเหล่านี้ยังไม่ได้ตรวจนับในรอบนี้",
     "notScannedLink": "ไปรายการที่ยังไม่ได้ตรวจ",
-    "laterTabNote": "การดำเนินการของกลุ่มนี้จะมาในขั้นถัดไปของงาน",
     "noEditNotice": "ต้องมีสิทธิ์แก้ไขทรัพย์สินจึงจะยืนยันผลได้",
     "cancelledNotice": "รอบตรวจนับนี้ถูกยกเลิกแล้ว ไม่มีอะไรต้องยืนยัน",
     "emptyTitle": "ยืนยันผลตรวจครบแล้ว",
@@ -7352,6 +7351,19 @@
     "blocked_wrongTab": "ผลตรวจเปลี่ยนไปแล้ว",
     "blocked_handoverUnclear": "ใบส่งมอบหรือใบยืมไม่ชัด",
     "errorFallback": "ยืนยันไม่สำเร็จ ลองอีกครั้ง",
-    "selectColumn": "เลือก"
+    "selectColumn": "เลือก",
+    "damagedRepair": "ยืนยันแล้วบันทึกซ่อม",
+    "damagedDispose": "ยืนยันแล้วขอตัดจำหน่าย",
+    "damagedReasonDefault": "ยืนยันตามผลตรวจนับรอบ {auditNo}",
+    "missingOpen": "ตั้งเป็นหาไม่พบ…",
+    "missingDialogTitle": "ตั้งเป็นหาไม่พบ {count, number} ชิ้น",
+    "missingDialogLine": "ตั้งเป็น หาไม่พบ",
+    "missingReasonDefault": "ตรวจนับรอบ {auditNo} ไม่พบ",
+    "missingSubmit": "ตั้งเป็นหาไม่พบ {count, number} ชิ้น",
+    "missingSuccess": "ตั้งเป็นหาไม่พบแล้ว {count, number} ชิ้น",
+    "lostBlock": "ชิ้นที่ตั้งเป็นหาไม่พบจากรอบนี้: {count, number} ชิ้น",
+    "lostLink": "ขอตัดจำหน่ายแบบสูญหาย…",
+    "disposalLine": "ขอตัดจำหน่ายจากรอบนี้: {requests, number} รายการ · อนุมัติแล้ว {approved, number}",
+    "disposalRoundLink": "ไปสร้างรอบตัดจำหน่าย"
   }
 }

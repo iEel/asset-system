@@ -9,7 +9,8 @@ import type { InspectionBlockedEntry } from "./inspection-confirm-dialog"
  * taken focus once, so a later mount takes it again only when focus fell to the body.
  */
 export type InspectionConfirmResult = { roundId: string; tab: InspectionConfirmTab; focused: boolean } & (
-  | { kind: "success"; confirmed: number }
+  /** outcome: the ready tab's confirm or the not-found tab's missing (a damaged 200 goes on to its form instead). */
+  | { kind: "success"; confirmed: number; outcome: "confirm" | "missing" }
   | { kind: "changed"; blocked: InspectionBlockedEntry[] }
 )
 

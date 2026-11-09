@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
 import type { InspectionBlockedCode } from "@/lib/inspection-confirm-page-model"
-import type { InspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
+import type { InspectionConfirmOutcome, InspectionTargetStatusName } from "@/lib/inspection-confirm-rules"
 import { maxLength, minLength, required } from "@/lib/validation-rules"
 
 // The one field, keyed like the route's fieldErrors (validations/inspection-confirm.ts), with the id focus moves to.
@@ -32,14 +32,24 @@ function validate(values: { reason: string }): Partial<Record<ConfirmField, stri
 /** One entry of the route's 409: an asset that can no longer be confirmed, and why. */
 export type InspectionBlockedEntry = { assetId: string; assetTag: string | null; code: InspectionBlockedCode }
 
-// The dialog's lines, in the order the summary reads (Missing never comes from the ready tab).
-const DIALOG_LINES: ReadonlyArray<{ status: InspectionTargetStatusName; key: "dialogLineInUse" | "dialogLineReady" | "dialogLineCheckedOut" }> = [
+// The dialog's lines, in the order the summary reads (Missing only comes from the not-found tab, plan 4 task 3).
+const DIALOG_LINES: ReadonlyArray<{ status: InspectionTargetStatusName; key: "dialogLineInUse" | "dialogLineReady" | "dialogLineCheckedOut" | "missingDialogLine" }> = [
   { status: "In Use", key: "dialogLineInUse" },
   { status: "Ready", key: "dialogLineReady" },
   { status: "Checked Out", key: "dialogLineCheckedOut" },
+  { status: "Missing", key: "missingDialogLine" },
 ]
 
-// ยืนยันผลตรวจ (inspection-confirm plan 3 task 3): the confirm dialog of the ticked assets. Its owner mounts it with a new
+// The reason each outcome starts from (plan 4 Global Constraints).
+function defaultReason(t: ReturnType<typeof useTranslations<"inspectionConfirmPage">>, outcome: InspectionConfirmOutcome, auditNo: string): string {
+  if (outcome === "damaged") return t("damagedReasonDefault", { auditNo })
+  if (outcome === "missing") return t("missingReasonDefault", { auditNo })
+  return t("reasonDefault", { auditNo })
+}
+
+// ยืนยันผลตรวจ (inspection-confirm plan 3 task 3): the confirm dialog of the ticked assets. Plan 4 task 3 adds the outcome:
+// "confirm" (the ready tab), "damaged" (one damaged row, before its repair or disposal form) and "missing" (the ticked
+// not-found rows); each has its own default reason, and missing its own title and submit. Its owner mounts it with a new
 // key per opening, so the reason starts from reasonDefault each time. A 200 and a 409 go to the owner, which closes it,
 // reads the page again on the same tab and shows the answer once it has closed; a refused reason shows under the field;
 // anything else stays in the dialog as the error line, announced (role="alert").
@@ -47,6 +57,7 @@ export function InspectionConfirmDialog({
   open,
   roundId,
   auditNo,
+  outcome,
   assetIds,
   summary,
   returnFocusRef,
@@ -58,6 +69,7 @@ export function InspectionConfirmDialog({
   open: boolean
   roundId: string
   auditNo: string
+  outcome: InspectionConfirmOutcome
   assetIds: readonly string[]
   summary: Partial<Record<InspectionTargetStatusName, number>>
   returnFocusRef?: RefObject<HTMLElement | null>
@@ -69,7 +81,7 @@ export function InspectionConfirmDialog({
 }) {
   const t = useTranslations("inspectionConfirmPage")
   const reasonRef = useRef<HTMLTextAreaElement | null>(null)
-  const [reason, setReason] = useState(() => t("reasonDefault", { auditNo }))
+  const [reason, setReason] = useState(() => defaultReason(t, outcome, auditNo))
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   // A second submit before the next render must not post twice.
@@ -90,7 +102,7 @@ export function InspectionConfirmDialog({
       const response = await fetch(`/api/audit-rounds/${roundId}/confirm-results`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assetIds, reason, outcome: "confirm" }),
+        body: JSON.stringify({ assetIds, reason, outcome }),
       })
       const payload = await response.json().catch(() => null)
       if (response.ok) {
@@ -115,7 +127,7 @@ export function InspectionConfirmDialog({
   return (
     <AccessibleDialog
       open={open}
-      title={t("dialogTitle", { count: assetIds.length })}
+      title={outcome === "missing" ? t("missingDialogTitle", { count: assetIds.length }) : t("dialogTitle", { count: assetIds.length })}
       busy={isSubmitting}
       initialFocusRef={reasonRef}
       returnFocusRef={returnFocusRef}
@@ -150,7 +162,7 @@ export function InspectionConfirmDialog({
         <AccessibleDialogFooter>
           <AccessibleDialogCancel>{t("cancel")}</AccessibleDialogCancel>
           <Button type="submit" busy={isSubmitting}>
-            {t("submit", { count: assetIds.length })}
+            {outcome === "missing" ? t("missingSubmit", { count: assetIds.length }) : t("submit", { count: assetIds.length })}
           </Button>
         </AccessibleDialogFooter>
       </form>

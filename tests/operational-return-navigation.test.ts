@@ -235,3 +235,13 @@ test("the repair create page and the PM create page read the wider returnTo; the
   assert.match(pmNew, /\n\s+returnHref=\{returnTo\}\r?\n\s+initialFacts=\{facts\}\r?\n/)
   assert.doesNotMatch(pmNew, /const returnTo = `/)
 })
+
+// Inspection-confirm plan 4 task 3: the repair form opened from a round's confirm page returns there, with its tab.
+test("normalizeMaintenanceReturnTo accepts one round's confirm page with its query", () => {
+  const roundId = "0b0c5b1e-3f7a-4c2d-9e8f-1a2b3c4d5e6f"
+  assert.equal(normalizeMaintenanceReturnTo("th", `/th/audit/rounds/${roundId}/confirm?tab=damaged`, "maintenance"), `/th/audit/rounds/${roundId}/confirm?tab=damaged`)
+  assert.equal(normalizeMaintenanceReturnTo("th", `/th/audit/rounds/${roundId}/confirm`, "maintenance"), `/th/audit/rounds/${roundId}/confirm`)
+  for (const crafted of ["/th/audit/rounds/x/confirm", `/en/audit/rounds/${roundId}/confirm`, `/th/audit/rounds/${roundId}`, `/th/audit/rounds/${roundId}/confirm/x`, `https://evil.example/th/audit/rounds/${roundId}/confirm`]) {
+    assert.equal(normalizeMaintenanceReturnTo("th", crafted, "maintenance"), "/th/maintenance", crafted)
+  }
+})

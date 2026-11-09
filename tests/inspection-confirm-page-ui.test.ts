@@ -84,23 +84,22 @@ test("the tick column only where ticking is possible (ready tab and asset:edit);
   const workspace = read(WORKSPACE)
   const row = read(ROW)
   assert.match(workspace, /\{!canConfirm \? <Notice tone="info"[^>]*>\{t\("noEditNotice"\)\}<\/Notice> : null\}/)
-  assert.match(workspace, /const ticking = canConfirm && tab === "ready"/)
+  assert.match(workspace, /const ticking = canConfirm && \(tab === "ready" \|\| tab === "notFound"\)/)
   assert.match(workspace, /\{ticking \? <DataTableHead/)
-  assert.match(workspace, /const columnCount = ticking \? 6 : 5/)
+  assert.match(workspace, /const columnCount = 5 \+ \(ticking \? 1 : 0\) \+ \(damagedActions \? 1 : 0\)/)
   assert.equal(workspace.match(/canConfirm=\{ticking\}/g)?.length, 2, "the card and the table row")
   assert.match(row, /\{canConfirm \? <DataTableCell/)
   // A ready tab with nothing to tick names the column neutrally.
   assert.match(workspace, /\) : \(\n\s+t\("selectColumn"\)\n\s+\)/)
 })
 
-test("tab banners: awaiting review links to pending findings, not scanned to the pending list, damaged and not found carry laterTabNote", () => {
+test("tab banners: awaiting review links to pending findings, not scanned to the pending list; laterTabNote is gone (plan 4 task 3)", () => {
   const workspace = read(WORKSPACE)
   assert.match(workspace, /t\("awaitingReviewBanner"\)/)
   assert.match(workspace, /href=\{links\.pendingFindings\}/)
   assert.match(workspace, /t\("notScannedBanner"\)/)
   assert.match(workspace, /href=\{links\.pendingItems\}/)
-  assert.match(workspace, /tab === "damaged" \|\| tab === "notFound"/)
-  assert.match(workspace, /t\("laterTabNote"\)/)
+  assert.doesNotMatch(workspace, /laterTabNote/)
 })
 
 test("the row: tag links to the asset, result badge from auditRoundResultBadge, holder or noHolder, target badge or handoverUnclear, finding link", () => {
@@ -130,11 +129,12 @@ test("phone cards below md, the table from md (the house classes)", () => {
 // Plan 3 task 3: the selection, the confirm dialog and the result.
 const DIALOG = "src/components/audit/inspection-confirm/inspection-confirm-dialog.tsx"
 
-test("the dialog posts { assetIds, reason, outcome: \"confirm\" } to the round's confirm-results route (plan 3 task 3)", () => {
+test("the dialog posts { assetIds, reason, outcome } to the round's confirm-results route (plan 3 task 3, plan 4 task 3)", () => {
   const dialog = read(DIALOG)
   assert.match(dialog, /^"use client"/)
   assert.match(dialog, /fetch\(`\/api\/audit-rounds\/\$\{roundId\}\/confirm-results`/)
-  assert.match(dialog, /JSON\.stringify\(\{ assetIds, reason, outcome: "confirm" \}\)/)
+  assert.match(dialog, /JSON\.stringify\(\{ assetIds, reason, outcome \}\)/)
+  assert.match(dialog, /outcome: InspectionConfirmOutcome/)
 })
 
 test("a 409 reads blocked and maps its codes through inspectionBlockedMessageKeys; after 200 and 409 the owner settles", () => {
@@ -147,7 +147,7 @@ test("a 409 reads blocked and maps its codes through inspectionBlockedMessageKey
   assert.ok(dialog.includes("if (response.ok)"))
   // The dialog no longer refreshes: the workspace replaces the URL with the same tab.
   assert.doesNotMatch(dialog, /router\.|useRouter/)
-  assert.match(workspace, /void settle\(\{ kind: "success", confirmed \}\)/)
+  assert.match(workspace, /void settle\(\{ kind: "success", confirmed, outcome: /)
   assert.match(workspace, /void settle\(\{ kind: "changed", blocked \}\)/)
 })
 
@@ -219,4 +219,94 @@ test("a ready row with no target has a disabled tick described by its handoverUn
 test("a row waiting on a decision or a check shows no target status yet (inspection-confirm plan 3 look step)", () => {
   const row = readFileSync("src/components/audit/inspection-confirm/inspection-row.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(row, /row\.tab === "awaitingReview" \|\| row\.tab === "notScanned" \? \(\n\s*<Nil \/>/)
+})
+
+// Inspection-confirm plan 4 task 3: the damaged and not-found tabs, the lost-disposal block and the disposal line.
+const DATA = "src/lib/inspection-confirm-data.ts"
+const NEW_DISPOSAL = "src/app/[locale]/(dashboard)/disposal/new/page.tsx"
+const REQUEST_FORM = "src/components/disposal/disposal-request-form.tsx"
+
+test("the page passes canRepair and canDispose and reads the round's disposal summary (plan 4 task 3)", () => {
+  const page = read(PAGE)
+  assert.match(page, /const canRepair = hasPermission\(user, "maintenance", "create"\)/)
+  assert.match(page, /const canDispose = hasPermission\(user, "disposal", "create"\)/)
+  assert.match(page, /canRepair=\{canRepair\}/)
+  assert.match(page, /canDispose=\{canDispose\}/)
+  assert.match(page, /loadRoundDisposalSummary\(prisma, round\.id\)/)
+})
+
+test("the damaged buttons open the dialog with outcome damaged for one asset; router.push only after a 200", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /t\("damagedRepair"\)/)
+  assert.match(workspace, /t\("damagedDispose"\)/)
+  assert.match(workspace, /openDamaged\(event, row, damagedRepairHref\(/)
+  assert.match(workspace, /openDamaged\(event, row, damagedDisposalHref\(/)
+  assert.match(workspace, /outcome: "damaged", assetIds: \[row\.assetId\]/)
+  // The repair button needs maintenance:create, the disposal button disposal:create, both canConfirm.
+  assert.match(workspace, /const damagedActions = canConfirm && tab === "damaged" && \(canRepair \|\| canDispose\)/)
+  assert.match(workspace, /\{canRepair \? \(/)
+  assert.match(workspace, /\{canDispose \? \(/)
+  // router.push appears once, inside handleConfirmed (the dialog's 200 branch).
+  assert.equal(workspace.match(/router\.push\(/g)?.length, 1)
+  const confirmed = workspace.slice(workspace.indexOf("function handleConfirmed("), workspace.indexOf("function handleChanged("))
+  assert.match(confirmed, /router\.push\(next\)/)
+  const dialog = read(DIALOG)
+  const ok = dialog.slice(dialog.indexOf("if (response.ok)"), dialog.indexOf("response.status === 409"))
+  assert.match(ok, /onConfirmed\(/)
+  // The damaged returnTo is this page on the damaged tab.
+  assert.match(workspace, /tabHref\("damaged"\)/)
+})
+
+test("the not-found bar opens the dialog with outcome missing; the dialog's defaults and lines follow the outcome", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /t\("missingOpen"\)/)
+  assert.match(workspace, /openBulk\(event, tab === "notFound" \? "missing" : "confirm"\)/)
+  const dialog = read(DIALOG)
+  assert.match(dialog, /t\("damagedReasonDefault", \{ auditNo \}\)/)
+  assert.match(dialog, /t\("missingReasonDefault", \{ auditNo \}\)/)
+  assert.match(dialog, /status: "Missing", key: "missingDialogLine"/)
+  assert.match(dialog, /t\("missingDialogTitle", \{ count: assetIds\.length \}\)/)
+  assert.match(dialog, /t\("missingSubmit", \{ count: assetIds\.length \}\)/)
+  assert.match(workspace, /t\("missingSuccess", \{ count: /)
+})
+
+test("the lost-disposal block shows under the not-found tab, also when empty, with disposal:create", () => {
+  const workspace = read(WORKSPACE)
+  assert.match(workspace, /const lostHref = canDispose \? lostDisposalHref\(locale, roundId, missingForDisposal, tabHref\("notFound"\)\) : null/)
+  assert.match(workspace, /tab === "notFound" && lostHref \?/)
+  assert.match(workspace, /t\("lostBlock", \{ count: missingForDisposal\.length \}\)/)
+  assert.match(workspace, /t\("lostLink"\)/)
+  // Shown when the whole confirm list is empty too (the not-found assets have left Under Inspection).
+  const empty = workspace.slice(workspace.indexOf("if (total === 0)"), workspace.indexOf("const tabItems"))
+  assert.match(empty, /\{lostBlock\}/)
+})
+
+test("the disposal line under the header: requests and approved, the round link when approved > 0", () => {
+  const page = read(PAGE)
+  assert.match(page, /disposal\.requests > 0 \?/)
+  assert.match(page, /t\("disposalLine", \{ requests: disposal\.requests, approved: disposal\.approved \}\)/)
+  assert.match(page, /disposal\.approved > 0 \?/)
+  assert.match(page, /`\/\$\{locale\}\/disposal\?status=approved&auditRound=\$\{round\.id\}`/)
+  assert.match(page, /t\("disposalRoundLink"\)/)
+})
+
+test("loadRoundDisposalSummary: not-found items of Missing assets with no open request, by tag; requests from the round", () => {
+  const data = read(DATA)
+  const body = data.slice(data.indexOf("export async function loadRoundDisposalSummary("))
+  assert.ok(data.includes("export async function loadRoundDisposalSummary("))
+  assert.match(body, /auditResult: "not_found"/)
+  assert.match(body, /status: \{ name: "Missing" \}/)
+  assert.match(body, /requestStatus: \{ in: \["pending", "approved"\] \}/)
+  assert.match(body, /loadAuditRoundDisposalFindingIds\(db, auditRoundId\)/)
+  assert.match(body, /sourceType: "audit_round", sourceId: auditRoundId/)
+  assert.match(body, /requestStatus: "approved"/)
+})
+
+test("/disposal/new starts with the method of a valid ?type= (the lost link passes type=lost)", () => {
+  const page = read(NEW_DISPOSAL)
+  assert.match(page, /initialDisposalType=\{initialMethod\}/)
+  assert.match(page, /disposalTypeFilters as readonly string\[\]\)\.includes\(initialDisposalType\)/)
+  const form = read(REQUEST_FORM)
+  assert.match(form, /initialDisposalType\?: string/)
+  assert.match(form, /disposalType: initialDisposalType \?\? "",/)
 })

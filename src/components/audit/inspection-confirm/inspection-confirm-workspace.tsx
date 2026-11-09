@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { CheckCheck, ClipboardCheck } from "lucide-react"
+import { CheckCheck, ClipboardCheck, SearchX } from "lucide-react"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
@@ -18,15 +18,19 @@ import { formatCount } from "@/lib/display-format"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import {
+  damagedDisposalHref,
+  damagedRepairHref,
   inspectionBlockedMessageKeys,
   inspectionSelectionSummary,
   isInspectionRowSelectable,
+  lostDisposalHref,
   selectAllInspectionRows,
   type InspectionPageRow,
 } from "@/lib/inspection-confirm-page-model"
 import {
   INSPECTION_CONFIRM_MAX_ASSETS,
   inspectionConfirmTabs,
+  type InspectionConfirmOutcome,
   type InspectionConfirmTab,
   type InspectionTargetStatusName,
 } from "@/lib/inspection-confirm-rules"
@@ -44,6 +48,12 @@ export type InspectionConfirmWorkspaceProps = {
   /** The rows of the current tab only. */
   rows: InspectionPageRow[]
   canConfirm: boolean
+  /** maintenance:create: the damaged row's "ยืนยันแล้วบันทึกซ่อม" (plan 4 task 3). */
+  canRepair: boolean
+  /** disposal:create: the damaged row's "ยืนยันแล้วขอตัดจำหน่าย" and the not-found tab's lost-disposal block. */
+  canDispose: boolean
+  /** The round's หาไม่พบ assets with no open disposal request (loadRoundDisposalSummary), by tag. */
+  missingForDisposal: Array<{ assetId: string; assetTag: string }>
   statusLabels: Record<InspectionTargetStatusName, string>
   links: { round: string; pendingFindings: string; pendingItems: string }
   /** The round page's way back when the page was opened with one: the tab links and the refresh after a confirm keep it. */
@@ -53,10 +63,22 @@ export type InspectionConfirmWorkspaceProps = {
 const bannerLinkClasses = cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")
 const tickLabelClasses = "flex min-h-11 w-11 cursor-pointer items-center justify-center"
 
-/** The ticks belong to the tab they were made on: another tab reads an empty selection (ids only come from ready). */
+/** The ticks belong to the tab they were made on: another tab reads an empty selection (ids come from ready or notFound). */
 type Selection = { tab: InspectionConfirmTab; ids: ReadonlySet<string>; capped: boolean }
 /** A 200's count or a 409's blocked entries, before the round, the tab and focused are added. */
-type ConfirmAnswer = { kind: "success"; confirmed: number } | { kind: "changed"; blocked: InspectionBlockedEntry[] }
+type ConfirmAnswer = { kind: "success"; confirmed: number; outcome: "confirm" | "missing" } | { kind: "changed"; blocked: InspectionBlockedEntry[] }
+/**
+ * The dialog: a new key per opening, its outcome, and for a damaged row its one asset, that asset's line and the form a
+ * 200 goes on to (assetIds, summary and next are null for the bulk outcomes, which read the ticks).
+ */
+type DialogState = {
+  open: boolean
+  key: number
+  outcome: InspectionConfirmOutcome
+  assetIds: string[] | null
+  summary: Partial<Record<InspectionTargetStatusName, number>> | null
+  next: string | null
+}
 
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
@@ -67,7 +89,23 @@ function unclearIdFor(view: "card" | "table", assetId: string) {
 
 // ยืนยันผลตรวจ (inspection-confirm plan 3): the five tabs and the list; on the ready tab, with asset:edit, the ticks, the
 // selection bars and the confirm dialog (task 3). No pagination: the page passes the whole tab (see the page's note).
-export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, counts, rows, canConfirm, statusLabels, links, returnTo = null }: InspectionConfirmWorkspaceProps) {
+// Plan 4 task 3: the not-found tab ticks too and sets หาไม่พบ in bulk, with the lost-disposal block under it; a damaged
+// row confirms alone and goes on to the repair or the disposal form.
+export function InspectionConfirmWorkspace({
+  locale,
+  roundId,
+  auditNo,
+  tab,
+  counts,
+  rows,
+  canConfirm,
+  canRepair,
+  canDispose,
+  missingForDisposal,
+  statusLabels,
+  links,
+  returnTo = null,
+}: InspectionConfirmWorkspaceProps) {
   const t = useTranslations("inspectionConfirmPage")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -76,7 +114,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
   const [selection, setSelection] = useState<Selection>({ tab, ids: EMPTY_IDS, capped: false })
   // The last answer is kept above the page (confirm/layout.tsx), so the refresh's remount does not drop it.
   const { result, setResult } = useInspectionConfirmResult()
-  const [dialog, setDialog] = useState<{ open: boolean; key: number }>({ open: false, key: 0 })
+  const [dialog, setDialog] = useState<DialogState>({ open: false, key: 0, outcome: "confirm", assetIds: null, summary: null, next: null })
   const openerRef = useRef<HTMLElement | null>(null)
   const selectAllTickRef = useRef<HTMLInputElement | null>(null)
   // The result region: always mounted, so it is the dialog's fallback when the bar that opened it is gone, and focus
@@ -92,7 +130,8 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     setResult((current) => (current && (current.roundId !== roundId || current.tab !== tab) ? null : current))
   }, [setResult, roundId, tab])
 
-  const ticking = canConfirm && tab === "ready"
+  const ticking = canConfirm && (tab === "ready" || tab === "notFound")
+  const damagedActions = canConfirm && tab === "damaged" && (canRepair || canDispose)
   const selectableRows = useMemo(() => (ticking ? rows.filter(isInspectionRowSelectable) : []), [ticking, rows])
   // A tab change resets the selection; after a refresh only rows still selectable count.
   const tabIds = selection.tab === tab ? selection.ids : EMPTY_IDS
@@ -159,10 +198,19 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     setSelection({ tab, ids, capped: capped })
   }
 
-  function openDialog(event: React.MouseEvent<HTMLElement>) {
+  // The bar's dialog: the ticked rows, confirmed (ready) or set to หาไม่พบ (notFound).
+  function openBulk(event: React.MouseEvent<HTMLElement>, outcome: "confirm" | "missing") {
     openerRef.current = event.currentTarget
     setResult(null)
-    setDialog((current) => ({ open: true, key: current.key + 1 }))
+    setDialog((current) => ({ open: true, key: current.key + 1, outcome, assetIds: null, summary: null, next: null }))
+  }
+
+  // A damaged row's button: that one asset (the route takes exactly one), then next once the route answers 200.
+  function openDamaged(event: React.MouseEvent<HTMLElement>, row: InspectionPageRow, next: string) {
+    openerRef.current = event.currentTarget
+    setResult(null)
+    const summary: Partial<Record<InspectionTargetStatusName, number>> = row.targetStatusName ? { [row.targetStatusName]: 1 } : {}
+    setDialog((current) => ({ open: true, key: current.key + 1, outcome: "damaged", assetIds: [row.assetId], summary, next }))
   }
 
   function closeDialog() {
@@ -180,9 +228,17 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     setResult({ ...answer, roundId, tab, focused: false } as InspectionConfirmResult)
   }
 
+  // A 200. A damaged confirm goes on to its form (router.push only here, after the route said yes); the bulk outcomes
+  // settle on their tab.
   function handleConfirmed(confirmed: number) {
+    const next = dialog.outcome === "damaged" ? dialog.next : null
+    if (next) {
+      closeDialog()
+      router.push(next)
+      return
+    }
     clear()
-    void settle({ kind: "success", confirmed })
+    void settle({ kind: "success", confirmed, outcome: dialog.outcome === "missing" ? "missing" : "confirm" })
   }
 
   // A 409: keep only the ticks the route did not name, and list what changed.
@@ -202,7 +258,11 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
       tabIndex={-1}
       className={cn("rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", !shownResult && "sr-only")}
     >
-      {shownResult?.kind === "success" ? <Notice tone="success">{t("successNotice", { count: shownResult.confirmed })}</Notice> : null}
+      {shownResult?.kind === "success" ? (
+        <Notice tone="success">
+          {shownResult.outcome === "missing" ? t("missingSuccess", { count: shownResult.confirmed }) : t("successNotice", { count: shownResult.confirmed })}
+        </Notice>
+      ) : null}
       {shownResult?.kind === "changed" ? (
         <Notice tone="warning" title={t("changedNotice")}>
           <ul className="space-y-0.5">
@@ -217,11 +277,21 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     </div>
   )
 
+  // The lost-disposal block (plan 4 task 3): the round's หาไม่พบ assets with no open request, with disposal:create. Under
+  // the not-found tab, empty or not, and on the empty page too, since once set they have left Under Inspection.
+  const lostHref = canDispose ? lostDisposalHref(locale, roundId, missingForDisposal, tabHref("notFound")) : null
+  const lostBlock = lostHref ? (
+    <Notice tone="neutral" action={<Link href={lostHref} className={bannerLinkClasses}>{t("lostLink")}</Link>}>
+      {t("lostBlock", { count: missingForDisposal.length })}
+    </Notice>
+  ) : null
+
   // Nothing of this round is still under inspection: no tabs, just the way back.
   if (total === 0) {
     return (
       <div className="space-y-4">
         {liveRegion}
+        {lostBlock}
         <ContentPanel>
           <ActionEmptyState
             icon={<ClipboardCheck className="h-6 w-6" />}
@@ -242,10 +312,11 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     count: formatCount(counts[key]),
     href: tabHref(key),
   }))
-  // The tick column only where ticking is possible (the ready tab, with asset:edit).
-  const columnCount = ticking ? 6 : 5
+  // The tick column only where ticking is possible (ready or not found, with asset:edit); the actions column on damaged.
+  const columnCount = 5 + (ticking ? 1 : 0) + (damagedActions ? 1 : 0)
 
-  // A ready row's tick: live when it has a target, disabled and described by its handoverUnclear text when not.
+  // A ready row's tick: live when it has a target, disabled and described by its handoverUnclear text when not. A
+  // not-found row's is always live (its target is Missing).
   function tickFor(row: InspectionPageRow, view: "card" | "table") {
     if (!ticking) return undefined
     const name = `${row.assetTag} ${row.assetName}`
@@ -280,12 +351,37 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
     t("selectColumn")
   )
   const summaryText = t("selectionSummary", { inUse: summary["In Use"] ?? 0, ready: summary.Ready ?? 0, checkedOut: summary["Checked Out"] ?? 0 })
+  const openBulkDialog = (event: React.MouseEvent<HTMLElement>) => openBulk(event, tab === "notFound" ? "missing" : "confirm")
+  const bulkIcon = tab === "notFound" ? <SearchX aria-hidden="true" /> : <CheckCheck aria-hidden="true" />
+  const bulkLabel = tab === "notFound" ? t("missingOpen") : t("confirmOpen")
+  // The status split reads In use / Ready / Checked out: the ready tab's only (every not-found row becomes หาไม่พบ).
+  const summaryLine = tab === "ready" ? <p className="text-meta text-muted-foreground">{summaryText}</p> : null
   const confirmButton = (
-    <Button size="md" onClick={openDialog}>
-      <CheckCheck aria-hidden="true" />
-      {t("confirmOpen")}
+    <Button size="md" onClick={openBulkDialog}>
+      {bulkIcon}
+      {bulkLabel}
     </Button>
   )
+
+  // The damaged row's two ways on, each confirming the one asset first; a missing permission hides its button.
+  function damagedActionsFor(row: InspectionPageRow) {
+    if (!damagedActions) return undefined
+    const back = tabHref("damaged")
+    return (
+      <div className="flex min-w-0 flex-wrap gap-2">
+        {canRepair ? (
+          <Button variant="outline" size="md" onClick={(event) => openDamaged(event, row, damagedRepairHref(locale, row.assetId, back))}>
+            {t("damagedRepair")}
+          </Button>
+        ) : null}
+        {canDispose ? (
+          <Button variant="outline" size="md" onClick={(event) => openDamaged(event, row, damagedDisposalHref(locale, roundId, row.assetId, back))}>
+            {t("damagedDispose")}
+          </Button>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -305,8 +401,6 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
             {t("notScannedBanner")}
           </Notice>
         ) : null}
-        {/* Plan 4 replaces this note with the damaged and not-found actions. */}
-        {(tab === "damaged" || tab === "notFound") && rows.length > 0 ? <Notice tone="neutral">{t("laterTabNote")}</Notice> : null}
 
         {headerTickShown ? (
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
@@ -327,7 +421,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                 <ActionEmptyState title={t("emptyTabTitle")} />
               ) : (
                 rows.map((row) => (
-                  <InspectionRowCard key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "card")} unclearId={unclearIdFor("card", row.assetId)} />
+                  <InspectionRowCard key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "card")} unclearId={unclearIdFor("card", row.assetId)} actions={damagedActionsFor(row)} />
                 ))
               )}
             </div>
@@ -340,6 +434,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                   <DataTableHead>{t("col_location")}</DataTableHead>
                   <DataTableHead>{t("col_holder")}</DataTableHead>
                   <DataTableHead>{t("col_target")}</DataTableHead>
+                  {damagedActions ? <DataTableHead>{tCommon("actions")}</DataTableHead> : null}
                 </tr>
               </DataTableHeader>
               <DataTableBody>
@@ -347,12 +442,14 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                   <TableEmptyRow colSpan={columnCount} emptyState={{ title: t("emptyTabTitle") }} />
                 ) : (
                   rows.map((row) => (
-                    <InspectionTableRow key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "table")} unclearId={unclearIdFor("table", row.assetId)} />
+                    <InspectionTableRow key={row.assetId} locale={locale} roundId={roundId} row={row} canConfirm={ticking} statusLabels={statusLabels} tick={tickFor(row, "table")} unclearId={unclearIdFor("table", row.assetId)} actions={damagedActionsFor(row)} />
                   ))
                 )}
               </DataTableBody>
             </DataTable>
           </ContentPanel>
+
+          {tab === "notFound" && lostHref ? <div className="mt-4">{lostBlock}</div> : null}
 
           {count > 0 ? (
             <>
@@ -363,7 +460,7 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                 onClear={clear}
                 actions={confirmButton}
               >
-                <p className="text-meta text-muted-foreground">{summaryText}</p>
+                {summaryLine}
               </DesktopSelectionBar>
               {/* The phone bar: the same offset as DesktopSelectionBar, above the Mobile Field Navigation. */}
               <div
@@ -377,10 +474,10 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
                     {t("clear")}
                   </Button>
                 </div>
-                <p className="text-meta text-muted-foreground">{summaryText}</p>
-                <Button size="md" className="w-full" onClick={openDialog}>
-                  <CheckCheck aria-hidden="true" />
-                  {t("confirmOpen")}
+                {summaryLine}
+                <Button size="md" className="w-full" onClick={openBulkDialog}>
+                  {bulkIcon}
+                  {bulkLabel}
                 </Button>
               </div>
             </>
@@ -388,14 +485,15 @@ export function InspectionConfirmWorkspace({ locale, roundId, auditNo, tab, coun
         </div>
       </section>
 
-      {ticking ? (
+      {ticking || damagedActions ? (
         <InspectionConfirmDialog
           key={dialog.key}
           open={dialog.open}
           roundId={roundId}
           auditNo={auditNo}
-          assetIds={selectedIds}
-          summary={summary}
+          outcome={dialog.outcome}
+          assetIds={dialog.assetIds ?? selectedIds}
+          summary={dialog.summary ?? summary}
           returnFocusRef={openerRef}
           fallbackFocusRef={resultRegionRef}
           onClose={closeDialog}

@@ -109,6 +109,7 @@ export function DisposalRequestForm({
   initialReason,
   initialSourceType,
   initialSourceId,
+  initialDisposalType,
   initialRequesterId,
   requesterNeedsChoice,
   statusLabels,
@@ -125,6 +126,8 @@ export function DisposalRequestForm({
   initialReason?: string
   initialSourceType?: string
   initialSourceId?: string
+  /** A valid ?type=: the method the form starts with (none otherwise, spec §8). */
+  initialDisposalType?: string
   /** defaultDisposalRequester: the signed-in user's employee, or "" with needsChoice. */
   initialRequesterId: string
   requesterNeedsChoice: boolean
@@ -153,7 +156,7 @@ export function DisposalRequestForm({
   const focusCardAfterPick = useRef(false)
   const [values, setValues] = useState<DisposalRequestValues>({
     assetId: initialAsset?.id ?? "",
-    disposalType: "",
+    disposalType: initialDisposalType ?? "",
     reason: initialReason ?? "",
     requestedById: initialRequesterId,
     approverId: "",

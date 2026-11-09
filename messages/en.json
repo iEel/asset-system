@@ -7322,7 +7322,6 @@
     "openFinding": "Open the discrepancy",
     "notScannedBanner": "These have not been checked in this round",
     "notScannedLink": "Go to the items left",
-    "laterTabNote": "Actions for this tab come in a later step",
     "noEditNotice": "You need asset edit permission to confirm",
     "cancelledNotice": "This round was cancelled; nothing to confirm",
     "emptyTitle": "All audit results confirmed",
@@ -7352,6 +7351,19 @@
     "blocked_wrongTab": "The audit result changed",
     "blocked_handoverUnclear": "The handover is unclear",
     "errorFallback": "Could not confirm. Try again.",
-    "selectColumn": "Select"
+    "selectColumn": "Select",
+    "damagedRepair": "Confirm, then record a repair",
+    "damagedDispose": "Confirm, then request disposal",
+    "damagedReasonDefault": "Confirmed by audit round {auditNo}",
+    "missingOpen": "Set as not found…",
+    "missingDialogTitle": "Set {count, plural, one {# asset} other {# assets}} as not found",
+    "missingDialogLine": "Set to Not found",
+    "missingReasonDefault": "Not found in audit round {auditNo}",
+    "missingSubmit": "Set {count, plural, one {# asset} other {# assets}} as not found",
+    "missingSuccess": "Set {count, plural, one {# asset} other {# assets}} as not found",
+    "lostBlock": "Set as not found from this round: {count, plural, one {# asset} other {# assets}}",
+    "lostLink": "Request disposal as lost…",
+    "disposalLine": "Disposal requests from this round: {requests, plural, one {# request} other {# requests}} · {approved, number} approved",
+    "disposalRoundLink": "Create a disposal round"
   }
 }

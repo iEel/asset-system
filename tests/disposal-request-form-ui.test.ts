@@ -17,8 +17,8 @@ test("the request form sits on the operation frame with breadcrumbs and method c
   assert.match(form, /summaryOnPhone/)
 })
 
-test("the method starts with no default", () => {
-  assert.match(form, /disposalType: ""/)
+test("the method starts with no default (only a valid ?type= chooses one, inspection-confirm plan 4 task 3)", () => {
+  assert.match(form, /disposalType: initialDisposalType \?\? ""/)
   assert.doesNotMatch(form, /disposalType: "dispose"/)
 })
 

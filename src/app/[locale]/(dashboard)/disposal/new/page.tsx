@@ -8,6 +8,7 @@ import {
   getDisposalReadinessBlockersForAsset,
 } from "@/lib/disposal-readiness"
 import { defaultDisposalRequester, initialDisposalAsset } from "@/lib/disposal-request-form-rules"
+import { disposalTypeFilters } from "@/lib/disposal-query"
 import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
 import { PageBackLink } from "@/components/ui/page-header"
@@ -32,6 +33,8 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
   // ?type= (a lost request) is checked with the asset as the POST will; without it a หาไม่พบ asset stays blocked here
   // and the picker re-checks it once สูญหาย is chosen.
   const initialDisposalType = getSingleSearchParam(rawSearchParams.type) ?? null
+  // A valid ?type= also starts the form with that method (the confirm page's lost link passes type=lost).
+  const initialMethod = initialDisposalType && (disposalTypeFilters as readonly string[]).includes(initialDisposalType) ? initialDisposalType : undefined
   const [t, tCommon, initialAsset, employees, statuses] = await Promise.all([
     getTranslations("disposalPage"),
     getTranslations("common"),
@@ -97,6 +100,7 @@ export default async function NewDisposalPage({ params, searchParams }: NewDispo
       initialReason={getSingleSearchParam(rawSearchParams.reason)}
       initialSourceType={getSingleSearchParam(rawSearchParams.sourceType)}
       initialSourceId={getSingleSearchParam(rawSearchParams.sourceId)}
+      initialDisposalType={initialMethod}
       initialRequesterId={requester.requestedById}
       requesterNeedsChoice={requester.needsChoice}
       statusLabels={statusLabels}

@@ -3,6 +3,7 @@
 // through the one where below. The db is passed in, so a transaction client works and node --test can import it.
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { AUDIT_ID_CHUNK_SIZE, chunkAuditIds } from "./audit-round-counts-rules.ts"
+import { loadAuditRoundDisposalFindingIds } from "./disposal-query.ts"
 import {
   INSPECTION_STATUS_NAME,
   classifyInspectionItem,
@@ -150,4 +151,51 @@ export async function countUnconfirmedAssetsByRound(db: InspectionDb, auditRound
 
 export async function countRoundUnconfirmedAssets(db: InspectionDb, auditRoundId: string): Promise<number> {
   return db.auditItem.count({ where: roundInspectionItemWhere(auditRoundId) })
+}
+
+export type RoundDisposalSummary = {
+  /** The round's not-found assets now หาไม่พบ with no open request (pending or approved), by tag. */
+  missingForDisposal: Array<{ assetId: string; assetTag: string }>
+  /** Active requests made from this round: from its confirm page (audit_round) or one of its findings (audit_finding). */
+  requests: number
+  approved: number
+}
+
+// ยืนยันผลตรวจ plan 4 task 3: the confirm page's lost-disposal block and its disposal line. The requests are the disposal
+// list's round filter (disposal-query.ts), counted; the finding ids come in chunks for SQL Server's parameter limit.
+export async function loadRoundDisposalSummary(db: InspectionDb, auditRoundId: string): Promise<RoundDisposalSummary> {
+  const items = await db.auditItem.findMany({
+    where: {
+      auditRoundId,
+      auditResult: "not_found",
+      asset: {
+        isActive: true,
+        status: { name: "Missing" },
+        disposalRequests: { none: { isActive: true, requestStatus: { in: ["pending", "approved"] } } },
+      },
+    },
+    select: { assetId: true, asset: { select: { assetTag: true } } },
+  })
+  // One item per asset per round (@@unique([auditRoundId, assetId])).
+  const missingForDisposal = items
+    .map((item) => ({ assetId: item.assetId, assetTag: item.asset.assetTag }))
+    // `<` / `>`, as loadRoundInspectionRows sorts.
+    .sort((left, right) => (left.assetTag < right.assetTag ? -1 : left.assetTag > right.assetTag ? 1 : 0))
+
+  const findingIds = await loadAuditRoundDisposalFindingIds(db, auditRoundId)
+  const sourceWheres: Prisma.DisposalRequestWhereInput[] = [
+    { sourceType: "audit_round", sourceId: auditRoundId },
+    ...chunkAuditIds(findingIds, AUDIT_ID_CHUNK_SIZE).map((chunk): Prisma.DisposalRequestWhereInput => ({ sourceType: "audit_finding", sourceId: { in: chunk } })),
+  ]
+  let requests = 0
+  let approved = 0
+  for (const source of sourceWheres) {
+    const [all, done] = await Promise.all([
+      db.disposalRequest.count({ where: { isActive: true, ...source } }),
+      db.disposalRequest.count({ where: { isActive: true, requestStatus: "approved", ...source } }),
+    ])
+    requests += all
+    approved += done
+  }
+  return { missingForDisposal, requests, approved }
 }

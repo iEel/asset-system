@@ -118,8 +118,11 @@ test("the en plural messages are known: 78 keys, so a new one is checked by the 
   // Group 12 plan 5 Task 4 added 1: the LDAP apply confirm's "ซิงก์และปิดบัญชี {n} รายการ" (keyed on count).
   // Inspection-confirm plan 3 Task 1 added 4: the confirm page's "เลือก n ชิ้น", the dialog title, its submit button and
   // the success line (all keyed on count).
-  assert.equal(pluralKeys.size, 229,[...pluralKeys.keys()].join(", "))
-  for (const key of ["selectedCount", "dialogTitle", "submit", "successNotice"]) assert.equal(pluralKeys.get(`inspectionConfirmPage.${key}`), "count", key)
+  // Inspection-confirm plan 4 Task 3 added 5: the not-found dialog's title, its submit and success line, the lost-disposal
+  // block (all keyed on count) and the disposal line "ขอตัดจำหน่ายจากรอบนี้: n รายการ · อนุมัติแล้ว n" (keyed on requests).
+  assert.equal(pluralKeys.size, 234,[...pluralKeys.keys()].join(", "))
+  for (const key of ["selectedCount", "dialogTitle", "submit", "successNotice", "missingDialogTitle", "missingSubmit", "missingSuccess", "lostBlock"]) assert.equal(pluralKeys.get(`inspectionConfirmPage.${key}`), "count", key)
+  assert.equal(pluralKeys.get("inspectionConfirmPage.disposalLine"), "requests")
   assert.equal(pluralKeys.get("notifications.detail.openRepairsOldest"), "days")
   assert.equal(pluralKeys.get("category.form.footerCreateCounts"), "fields")
   assert.match(en.get("category.form.footerCreateCounts") ?? "", /\{photos, plural, one \{# photo item\} other \{# photo items\}\}/)

@@ -4,8 +4,12 @@ import test from "node:test"
 
 import type { InspectionRow } from "../src/lib/inspection-confirm-data.ts"
 import {
+  damagedDisposalHref,
+  damagedRepairHref,
   inspectionBlockedMessageKeys,
   inspectionSelectionSummary,
+  isInspectionRowSelectable,
+  lostDisposalHref,
   inspectionTabCounts,
   parseInspectionTab,
   selectAllInspectionRows,
@@ -130,4 +134,41 @@ test("the row is serialisable", () => {
   assert.equal(bare.firstPendingFindingId, null)
   assert.equal(bare.targetStatusName, null)
   assert.equal(bare.auditResult, null)
+})
+
+// Inspection-confirm plan 4 task 3: the not-found tab ticks every row (its target is Missing), and the links onward.
+test("a not-found row is always selectable and counts as Missing in the summary", () => {
+  const rows = [
+    pageRow({ assetId: "a1", tab: "notFound", targetStatusName: null }),
+    pageRow({ assetId: "a2", tab: "notFound", targetStatusName: "In Use" }),
+    pageRow({ assetId: "a3", tab: "damaged", targetStatusName: "Ready" }),
+  ]
+  assert.equal(isInspectionRowSelectable(rows[0]), true)
+  assert.equal(isInspectionRowSelectable(rows[1]), true)
+  assert.equal(isInspectionRowSelectable(rows[2]), false)
+  assert.deepEqual(selectAllInspectionRows(rows), { ids: ["a1", "a2"], capped: false })
+  assert.deepEqual(inspectionSelectionSummary(rows, new Set(["a1", "a2"])), { Missing: 2 })
+})
+
+test("lostDisposalHref: none is null, one is the single form with type=lost, more is the batch form", () => {
+  const back = "/th/audit/rounds/r1/confirm?tab=notFound"
+  const encoded = encodeURIComponent(back)
+  assert.equal(lostDisposalHref("th", "r1", [], back), null)
+  assert.equal(
+    lostDisposalHref("th", "r1", [{ assetId: "a1" }], back),
+    `/th/disposal/new?assetId=a1&sourceType=audit_round&sourceId=r1&type=lost&returnTo=${encoded}`,
+  )
+  assert.equal(
+    lostDisposalHref("th", "r1", [{ assetId: "a1" }, { assetId: "a2" }, { assetId: "a3" }], back),
+    `/th/disposal/batch/new?type=lost&fromAuditRound=r1&returnTo=${encoded}`,
+  )
+  assert.equal(lostDisposalHref("en", "r1", [{ assetId: "a1" }, { assetId: "a2" }], back), `/en/disposal/batch/new?type=lost&fromAuditRound=r1&returnTo=${encoded}`)
+})
+
+test("the damaged row's forms: the repair form and the disposal form from this round, no method chosen, both back here", () => {
+  const back = "/th/audit/rounds/r1/confirm?tab=damaged"
+  const encoded = encodeURIComponent(back)
+  assert.equal(damagedRepairHref("th", "a1", back), `/th/maintenance/new?assetId=a1&returnTo=${encoded}`)
+  assert.equal(damagedDisposalHref("th", "r1", "a1", back), `/th/disposal/new?assetId=a1&sourceType=audit_round&sourceId=r1&returnTo=${encoded}`)
+  assert.doesNotMatch(damagedDisposalHref("th", "r1", "a1", back), /type=/)
 })

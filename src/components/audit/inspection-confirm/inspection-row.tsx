@@ -25,6 +25,8 @@ export type InspectionRowProps = {
   tick?: React.ReactNode
   /** The id of the handoverUnclear text, which a disabled tick points at with aria-describedby. */
   unclearId?: string
+  /** The damaged tab's buttons (plan 4 task 3): a last column on the table, a footer on the card. Undefined: no column. */
+  actions?: React.ReactNode
 }
 
 /** The status a row would take: a not-found row becomes Missing (plan 2's data); otherwise the confirm target. */
@@ -70,8 +72,8 @@ function useRowParts({ locale, roundId, row, statusLabels, unclearId }: Pick<Ins
   return { t, assetHref, result, holder, targetCell, findingLink }
 }
 
-/** The desktop row: tick (Task 3) · ครุภัณฑ์ · ผลตรวจนับ · ที่ตั้ง · ผู้ถือครอง · จะตั้งสถานะเป็น. */
-export function InspectionTableRow({ locale, roundId, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
+/** The desktop row: tick (Task 3) · ครุภัณฑ์ · ผลตรวจนับ · ที่ตั้ง · ผู้ถือครอง · จะตั้งสถานะเป็น · the damaged tab's actions. */
+export function InspectionTableRow({ locale, roundId, row, canConfirm, statusLabels, tick, unclearId, actions }: InspectionRowProps) {
   const { assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, roundId, row, statusLabels, unclearId })
   return (
     <DataTableRow>
@@ -87,12 +89,13 @@ export function InspectionTableRow({ locale, roundId, row, canConfirm, statusLab
       <DataTableCell className="min-w-40 text-foreground">{row.locationName ?? <Nil />}</DataTableCell>
       <DataTableCell className="min-w-40 text-foreground">{holder}</DataTableCell>
       <DataTableCell className="min-w-48">{targetCell}</DataTableCell>
+      {actions !== undefined ? <DataTableCell className="min-w-56">{actions}</DataTableCell> : null}
     </DataTableRow>
   )
 }
 
 /** The phone card: the same data, the same tick when the viewer can confirm. */
-export function InspectionRowCard({ locale, roundId, row, canConfirm, statusLabels, tick, unclearId }: InspectionRowProps) {
+export function InspectionRowCard({ locale, roundId, row, canConfirm, statusLabels, tick, unclearId, actions }: InspectionRowProps) {
   const { t, assetHref, result, holder, targetCell, findingLink } = useRowParts({ locale, roundId, row, statusLabels, unclearId })
   return (
     <article className="min-w-0 rounded-md border border-border bg-background p-3">
@@ -115,6 +118,7 @@ export function InspectionRowCard({ locale, roundId, row, canConfirm, statusLabe
         ]}
       />
       {findingLink ? <div className="mt-2">{findingLink}</div> : null}
+      {actions !== undefined ? <div className="mt-3">{actions}</div> : null}
     </article>
   )
 }
