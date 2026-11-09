@@ -14,6 +14,7 @@
 // deactivation, all through the page. No other kind is touched; no DELETE; no database access outside the app.
 // axe through recordSettled on every state.
 import type { Locator, Page } from "../shell/shell-steps.ts"
+import { menuItem } from "../asset-detail/detail-steps.ts"
 import { menu, moreSheet, moreTab } from "../shell/shell-steps.ts"
 import { fillTemplate, SHELL_WORDS } from "../shell/shell-words.ts"
 import { asUser, expect, test } from "../support/fixtures.ts"
@@ -57,7 +58,10 @@ async function expectKind(page: Page, device: E2eDevice, name: string, onHand: n
 // The row's ⋯ (named "การดำเนินการของ <name>"), then one of its items.
 async function chooseFromMenu(page: Page, device: E2eDevice, name: string, item: string) {
   await kindRow(page, device, name).getByRole("button", { name: fillTemplate(W.moreActionsFor, { code: name }), exact: true }).click()
-  await page.getByRole("menuitem", { name: item, exact: true }).click()
+  // The dropdown on the desktop, the bottom sheet (buttons and links) on the phone (E2E-1110A).
+  const actions = device === "desktop" ? page.getByRole("menu") : page.getByRole("dialog").filter({ visible: true }).last()
+  await expect(actions).toBeVisible()
+  await menuItem(actions, item).click()
 }
 
 // The row's เบิก (its name carries the kind's, read by a screen reader only).
