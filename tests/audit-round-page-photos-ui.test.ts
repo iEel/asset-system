@@ -13,7 +13,10 @@ const messages = (locale: "th" | "en") => JSON.parse(read(`messages/${locale}.js
 
 test("the page data reads this round's photos through the one loader, and the register photos once for the page's pending rows", () => {
   const data = read(DATA)
-  assert.match(data, /loadAuditRoundPhotos\(prisma as unknown as AuditRoundPhotoDb, evidenceAssetIds, \{ uploadedFrom: round\.startDate \}\)/)
+  assert.match(data, /loadAuditRoundPhotos\(prisma as unknown as AuditRoundPhotoDb, evidenceAssetIds, \{ uploadedFrom: round\.createdAt \}\)/)
+  // startDate is date-only (midnight UTC = 07:00 Bangkok): never the photos' lower bound (fix 1).
+  assert.doesNotMatch(data, /uploadedFrom: round\.startDate/)
+  assert.match(data, /createdBy: true, createdAt: true,/)
   assert.match(data, /\.filter\(\(photo\) => photo\.auditRoundId === roundId\)/)
   assert.doesNotMatch(data, /uploadedAt: \{ gte: round\.startDate \}/)
   assert.doesNotMatch(data, /prisma\.attachment\.findMany/)

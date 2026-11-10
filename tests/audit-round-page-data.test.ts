@@ -58,7 +58,8 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const round = {
   id: "round-1", auditNo: "AUD-2026-0007", name: "ตรวจนับห้อง IT", status: "open",
   startDate: new Date("2026-10-01T00:00:00.000Z"), endDate: new Date("2026-10-31T00:00:00.000Z"),
-  createdBy: "user-opener", cancelledAt: null, cancelledBy: null, cancelReason: null,
+  // Created the evening before its date-only start (fix 1): the photos are read from here.
+  createdBy: "user-opener", createdAt: new Date("2026-09-30T17:30:00.000Z"), cancelledAt: null, cancelledBy: null, cancelReason: null,
 }
 type ItemWhereInput = Parameters<typeof buildAuditRoundItemWhere>[0]
 const itemWhere = (params: Record<string, string>, overrides: Partial<ItemWhereInput> = {}) =>
@@ -87,7 +88,7 @@ test("a missing round reads as no data and loads nothing else; the round is read
   assert.deepEqual(state.calls.map((entry) => entry.call), ["auditRound.findFirst"])
   assert.deepEqual(callsTo("auditRound.findFirst")[0], {
     where: { id: "round-1", isActive: true },
-    select: { id: true, auditNo: true, name: true, status: true, startDate: true, endDate: true, createdBy: true, cancelledAt: true, cancelledBy: true, cancelReason: true },
+    select: { id: true, auditNo: true, name: true, status: true, startDate: true, endDate: true, createdBy: true, createdAt: true, cancelledAt: true, cancelledBy: true, cancelReason: true },
   })
 })
 
@@ -325,7 +326,7 @@ test("รูปหลักฐาน reads the photos of the checked items in ch
   })
   const attachments = callsTo("attachment.findMany").filter(isRoundPhotoRead)
   assert.deepEqual(attachments.map((args) => ids(args, "assetId").length), [2000, 1])
-  assert.deepEqual(attachments[1].where, { assetId: { in: ["x1"] }, module: "asset", isActive: true, fileType: { in: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"] }, uploadedAt: { gte: round.startDate } })
+  assert.deepEqual(attachments[1].where, { assetId: { in: ["x1"] }, module: "asset", isActive: true, fileType: { in: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"] }, uploadedAt: { gte: round.createdAt } })
   assert.deepEqual(callsTo("systemSetting.findMany")[0], { where: { key: { in: ["asset_category_photo_checklist:desk"] } }, select: { key: true, value: true } })
   assert.deepEqual(data.evidence, { checked: 2000, withPhoto: 2, withoutPhoto: 1998, checklistComplete: 1, checklistIncomplete: 1999 })
 })
@@ -466,4 +467,32 @@ test("each checked row carries this round's newest photo and its count; each pen
 test("a page without a pending row reads no register photo (audit photos spec §5)", async () => {
   await loadPage()
   assert.deepEqual(callsTo("attachment.findMany").filter((args) => !isRoundPhotoRead(args)), [])
+})
+
+// Fix 1 (E2E-1111B): startDate is date-only (midnight UTC = 07:00 Bangkok), so a photo taken on the first day before
+// 07:00 Bangkok was cut before the rule ran. The photos are read from the round's creation instead.
+test("a photo taken before the round's date-only start but after its creation, linked to its item, counts (fix 1)", async () => {
+  const early = { id: "p-early", assetId: "asset-1", originalName: "ด้านหน้า.jpg", uploadedAt: new Date("2026-09-30T18:04:00.000Z") } // 01:04 Bangkok, 1 Oct
+  const before = { id: "p-before", assetId: "asset-1", originalName: "เก่า.jpg", uploadedAt: new Date("2026-09-30T17:00:00.000Z") } // before the round existed
+  const asset = { id: "asset-1", modelId: null, assetTag: "TAG-1", name: "asset-1", currentLocation: null, custodian: null, condition: null, parentComponents: [], installedInLinks: [] }
+  const item = { id: "item-1", assetId: "asset-1", auditStatus: "scanned", auditResult: "found", scannedBy: null, scannedAt: null, findings: [], asset }
+  state.respond = (call, args) => {
+    if (call === "auditRound.findFirst") return round
+    if (call === "auditItem.findMany" && args.skip !== undefined) return [item]
+    if (call === "auditItem.findMany" && isPhotoLinkRead(args)) return [{ auditRoundId: "round-1", assetId: "asset-1", photoEvidence: JSON.stringify(["p-early", "p-before"]) }]
+    if (call === "auditItem.findMany" && isEvidenceRead(args)) return [{ assetId: "asset-1", auditStatus: "scanned", auditResult: "found", asset: { categoryId: "desk" } }]
+    if (call === "attachment.findMany" && isRoundPhotoRead(args)) {
+      // The fake db applies the lower bound as SQL Server would.
+      const from = (args.where as { uploadedAt: { gte: Date } }).uploadedAt.gte
+      return [early, before].filter((photo) => photo.uploadedAt >= from)
+    }
+    return undefined
+  }
+  const data = await loadPage()
+  assert.ok(data)
+  assert.ok(early.uploadedAt < round.startDate, "the photo predates the date-only start")
+  assert.deepEqual((callsTo("attachment.findMany").find(isRoundPhotoRead)?.where as { uploadedAt: unknown }).uploadedAt, { gte: round.createdAt })
+  assert.deepEqual(data.rows[0].roundPhoto, { attachmentId: "p-early", count: 1 })
+  assert.equal(data.rows[0].hasPhoto, true)
+  assert.equal(data.evidence.withPhoto, 1)
 })

@@ -40,7 +40,7 @@ import { auditScanPhotoAccess, readAuditScanPhotos } from "@/lib/audit-scan-phot
 
 const roundSelect = {
   id: true, auditNo: true, name: true, status: true, startDate: true, endDate: true,
-  createdBy: true, cancelledAt: true, cancelledBy: true, cancelReason: true,
+  createdBy: true, createdAt: true, cancelledAt: true, cancelledBy: true, cancelReason: true,
 } satisfies Prisma.AuditRoundSelect
 
 function rowInclude(roundId: string) {
@@ -175,7 +175,9 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
       : Promise.resolve([]),
     userIds.length > 0 ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, displayName: true } }) : Promise.resolve([]),
     findings.length > 0 ? buildFindingValueLabels(findings) : Promise.resolve(new Map<string, string>()),
-    loadAuditRoundPhotos(prisma as unknown as AuditRoundPhotoDb, evidenceAssetIds, { uploadedFrom: round.startDate }),
+    // From the round's creation, not its start: startDate is date-only (midnight UTC, 07:00 Bangkok), so a photo taken
+    // early on the first day would be cut before the rule runs; no scan or item link of the round predates createdAt.
+    loadAuditRoundPhotos(prisma as unknown as AuditRoundPhotoDb, evidenceAssetIds, { uploadedFrom: round.createdAt }),
     evidenceCategoryIds.length > 0
       ? prisma.systemSetting.findMany({ where: { key: { in: evidenceCategoryIds.map(categoryPhotoChecklistKey) } }, select: { key: true, value: true } })
       : Promise.resolve([]),
