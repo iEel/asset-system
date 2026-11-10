@@ -21,6 +21,7 @@ import {
   WAITING_WORK_KEYS,
   warrantyExpiringSoonWhere,
 } from "../src/lib/waiting-work-rules.ts"
+import { consumableLowWhere } from "../src/lib/consumable-rules.ts"
 
 // src/lib/waiting-work.ts imports "@/…" and the database, which node --test cannot load, so a resolve hook serves
 // stand-ins (as in tests/notification-read-rules-route.test.ts). The database is a stub that records every call.
@@ -57,6 +58,8 @@ const mockedModuleSources = new Map<string, string>([
     function model(name) {
       return new Proxy({}, {
         get(_target, method) {
+          // A field reference stand-in: prisma.<model>.fields.<field>.
+          if (method === "fields") return new Proxy({}, { get(_t, field) { return { fieldRef: name + "." + String(field) } } })
           return async (args) => {
             state().calls.push({ call: name + "." + String(method), args })
             if (method === "count") return state().counts[name] ?? 0
@@ -135,6 +138,8 @@ test("every count uses its kind's where, with the days the settings hold, and no
     warrantyExpiringSoonWhere(today, rules),
     licenseExpiringSoonWhere(today, rules),
   ])
+  // Consumables plan 4 task 1: the low kinds, the minimum compared as a column through the client's field reference.
+  assert.deepEqual(wheres("consumableItem.count"), [consumableLowWhere({ fieldRef: "consumableItem.minQuantity" } as never)])
   assert.deepEqual(Object.keys(work.counts), [...WAITING_WORK_KEYS])
   assert.deepEqual([work.counts.approvalInbox, work.counts.openRepairs, work.counts.duePm, work.counts.returnsDueSoon], [6, 4, 2, 1])
   assert.equal(state.calls.some((entry) => /\.(?:update|upsert|create|delete)/.test(entry.call)), false, "the source never writes")
@@ -165,6 +170,15 @@ test("permissions decide what a person sees, and the inbox hides the queues it a
 
   work = await source.getWaitingWork(user(["asset:view"]), now)
   assert.deepEqual(work.visibleKeys, ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"])
+  state.calls = []
+  state.counts = { consumableItem: 3 }
+  work = await source.getWaitingWork(user(["consumable:view"]), now)
+  assert.deepEqual(work.visibleKeys, ["consumablesLow"])
+  assert.equal(work.counts.consumablesLow, 3)
+  state.calls = []
+  work = await source.getWaitingWork(user(["asset:view", "maintenance:view"]), now)
+  assert.equal((state.calls as Call[]).some((entry) => entry.call.startsWith("consumableItem.")), false, "without consumable:view the low count is never read")
+  assert.equal(work.counts.consumablesLow, 0)
   work = await source.getWaitingWork(user(["checkout:view"]), now)
   assert.deepEqual(work.visibleKeys, [], "checkout:view alone no longer sees returns: they count assets")
   work = await source.getWaitingWork(user([]), now)
@@ -229,4 +243,8 @@ test("approvals take the inbox's oldest and its SLA, stuck repairs date from the
   state.rows = {}
   assert.deepEqual(await source.getWaitingWorkAges(user([]), ["stuckRepairs"], DEFAULT_WAITING_WORK_RULES, now), {})
   assert.deepEqual(state.calls.map((entry) => entry.call), ["asset.findMany"], "no stuck asset, so no movement read")
+  // Consumables plan 4 task 1: low stock is a state with no age, so its reader asks the database nothing.
+  state.calls = []
+  assert.deepEqual(await source.getWaitingWorkAges(user(["consumable:view"]), ["consumablesLow"], DEFAULT_WAITING_WORK_RULES, now), {})
+  assert.deepEqual(state.calls, [])
 })

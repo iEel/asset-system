@@ -6,6 +6,8 @@ import {
   buildDashboardRegisterHref,
   buildDashboardWaiting,
   DASHBOARD_BRANCH_ROW_LIMIT,
+  DASHBOARD_HIDDEN_WAITING_KEYS,
+  dashboardWaitingKeys,
   DASHBOARD_COMPANY_TAB_LIMIT,
   describeWaitingAge,
   formatDayMonth,
@@ -52,7 +54,7 @@ const noInbox = { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 }
 test("งานที่รอคุณ: the visible queue kinds with a count in the shared order, the kinds at zero, the backlog and the oldest (spec §6.3; group 9 §3.1)", () => {
   const counts = {
     approvalInbox: 9, openRepairs: 4, stuckRepairs: 2, duePm: 0, pendingAuditFindings: 3, openAuditActions: 0,
-    auditActionsDueSoon: 0, pendingDisposals: 1, approvedDisposals: 0, returnsDueSoon: 5, warrantyExpiringSoon: 7, licenseExpiringSoon: 0,
+    auditActionsDueSoon: 0, pendingDisposals: 1, approvedDisposals: 0, returnsDueSoon: 5, warrantyExpiringSoon: 7, licenseExpiringSoon: 0, consumablesLow: 0,
   }
   const visibleKeys: WaitingWorkKey[] = ["openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon"]
   const ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>> = {
@@ -78,7 +80,7 @@ test("งานที่รอคุณ: the visible queue kinds with a count in
 test("buildDashboardWaiting total excludes advance warnings", () => {
   const counts = {
     approvalInbox: 19, openRepairs: 7, stuckRepairs: 0, duePm: 3, pendingAuditFindings: 0, openAuditActions: 4,
-    auditActionsDueSoon: 2, pendingDisposals: 0, approvedDisposals: 3, returnsDueSoon: 2, warrantyExpiringSoon: 5, licenseExpiringSoon: 1,
+    auditActionsDueSoon: 2, pendingDisposals: 0, approvedDisposals: 3, returnsDueSoon: 2, warrantyExpiringSoon: 5, licenseExpiringSoon: 1, consumablesLow: 0,
   }
   const visibleKeys = WAITING_WORK_KEYS.filter((key) => key !== "pendingAuditFindings" && key !== "pendingDisposals")
   const work = { counts, visibleKeys, approvalInbox: { total: 19, disposal: 4, audit: 15, findings: 14, rounds: 1 } }
@@ -90,7 +92,7 @@ test("buildDashboardWaiting total excludes advance warnings", () => {
 test("advanceRows hold returns, warranty and licence", () => {
   const counts = {
     approvalInbox: 0, openRepairs: 1, stuckRepairs: 0, duePm: 0, pendingAuditFindings: 0, openAuditActions: 0,
-    auditActionsDueSoon: 0, pendingDisposals: 0, approvedDisposals: 0, returnsDueSoon: 2, warrantyExpiringSoon: 0, licenseExpiringSoon: 1,
+    auditActionsDueSoon: 0, pendingDisposals: 0, approvedDisposals: 0, returnsDueSoon: 2, warrantyExpiringSoon: 0, licenseExpiringSoon: 1, consumablesLow: 0,
   }
   const ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>> = {
     returnsDueSoon: { kind: "due", days: -3, overdue: true },
@@ -103,6 +105,27 @@ test("advanceRows hold returns, warranty and licence", () => {
   assert.deepEqual(waiting.zeroKeys, ["warrantyExpiringSoon"])
   assert.equal(waiting.total, 1)
   assert.equal(waiting.oldest, null, "an advance warning is never a wait")
+})
+
+test("consumables plan 4: the dashboard leaves consumablesLow to the bell and the work center", () => {
+  assert.deepEqual([...DASHBOARD_HIDDEN_WAITING_KEYS], ["consumablesLow"])
+  assert.deepEqual(dashboardWaitingKeys(["openRepairs", "consumablesLow", "licenseExpiringSoon"]), ["openRepairs", "licenseExpiringSoon"])
+  const counts = {
+    approvalInbox: 0, openRepairs: 1, stuckRepairs: 0, duePm: 0, pendingAuditFindings: 0, openAuditActions: 0,
+    auditActionsDueSoon: 0, pendingDisposals: 0, approvedDisposals: 0, returnsDueSoon: 0, warrantyExpiringSoon: 0, licenseExpiringSoon: 1, consumablesLow: 4,
+  }
+  const waiting = buildDashboardWaiting({ counts, visibleKeys: ["openRepairs", "returnsDueSoon", "licenseExpiringSoon", "consumablesLow"], approvalInbox: noInbox }, {})
+  assert.deepEqual(waiting.rows.map((row) => row.key), ["openRepairs"])
+  assert.deepEqual(waiting.advanceRows.map((row) => row.key), ["licenseExpiringSoon"])
+  assert.deepEqual(waiting.zeroKeys, ["returnsDueSoon"])
+  assert.equal(waiting.total, 1)
+  const zero = buildDashboardWaiting({ counts: { ...counts, consumablesLow: 0 }, visibleKeys: ["consumablesLow"], approvalInbox: noInbox }, {})
+  assert.deepEqual([zero.rows, zero.advanceRows, zero.zeroKeys], [[], [], []], "not in the zero line either")
+  // The page reads only the keys it shows: no age read, and no panel for someone who sees only consumablesLow.
+  const source = page()
+  assert.match(source, /const dashboardKeys = waitingWork \? dashboardWaitingKeys\(waitingWork\.visibleKeys\) : \[\]/)
+  assert.match(source, /const waitingKeysWithCount = waitingWork \? dashboardKeys\.filter\(\(key\) => waitingWork\.counts\[key\] > 0\) : \[\]/)
+  assert.match(source, /const showWaiting = dashboardKeys\.length > 0/)
 })
 
 test("ค้างนานสุด reads an age, a due date or an expiry, in Bangkok days (spec §6.3)", () => {
@@ -203,11 +226,14 @@ test("the dashboard's words (spec §6, docs/19_THAI_GLOSSARY.md)", () => {
   }
   for (const [key, value] of Object.entries(thai)) assert.equal(th[key], value, `th dashboard.${key}`)
   for (const key of Object.keys(thai)) assert.equal(typeof en[key], "string", `en dashboard.${key}`)
-  for (const key of WAITING_WORK_KEYS) {
+  for (const key of dashboardWaitingKeys(WAITING_WORK_KEYS)) {
     assert.equal(typeof th.waitingNext[key], "string", `th dashboard.waitingNext.${key}`)
     assert.equal(typeof en.waitingNext[key], "string", `en dashboard.waitingNext.${key}`)
   }
   assert.equal(th.waitingNext.stuckRepairs, "บันทึกซ่อม")
+  // Consumables plan 4: the dashboard never shows consumablesLow, so it has no next-step words.
+  assert.equal(th.waitingNext.consumablesLow, undefined)
+  assert.equal(en.waitingNext.consumablesLow, undefined)
   for (const key of ["inUse", "warrantyExpiring", "monthlyTrendTitle", "actionableTitle", "recentActivity", "pendingDisposals"]) assert.equal(th[key], undefined, `dashboard.${key} is gone`)
 })
 

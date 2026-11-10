@@ -17,7 +17,9 @@ export function inReport(page: Page, text: string) {
 // A view tab is a link in the "มุมมองรายงาน" navigation (reportsPage.viewNavigation); the view loads on the client.
 export async function openView(page: Page, view: ReportView) {
   await page.getByRole("navigation", { name: "มุมมองรายงาน" }).getByRole("link", { name: VIEWS[view], exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`[?&]view=${view}(?:&|$)`))
+  // 30 s: the URL changes only once the view has rendered, and the operations view's data-fix queue reads the whole dev
+  // register (20,000+ assets after the E2E runs; E2E-1109X/Y), as the register-after-save wait does.
+  await expect(page).toHaveURL(new RegExp(`[?&]view=${view}(?:&|$)`), { timeout: 30_000 })
 }
 
 // The catalog's "สิทธิ์รายงานของคุณ" list (reportsPage.permissionTitle), opened: one badge per export, ใช้ได้ or

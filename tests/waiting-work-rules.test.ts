@@ -38,6 +38,7 @@ test("one order for every surface: approvals, the two repair kinds, then the bel
   assert.deepEqual([...WAITING_WORK_KEYS], [
     "approvalInbox", "openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "openAuditActions",
     "auditActionsDueSoon", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon",
+    "consumablesLow",
   ])
   assert.deepEqual(DEFAULT_WAITING_WORK_RULES, { returnDueSoonDays: 3, auditActionDueSoonDays: 7, warrantyExpiryDays: 30, licenseExpiryDays: 30 })
 })
@@ -110,8 +111,8 @@ test("the bell's ten kinds keep today's rules, cut at Bangkok midnight with the 
 })
 
 test("a kind is visible by its page's permission, and the inbox hides the queues it already holds (group 1 dashboard task 1)", () => {
-  const none: WaitingWorkAccess = { approval: false, maintenance: false, audit: false, disposal: false, asset: false }
-  const all: WaitingWorkAccess = { approval: true, maintenance: true, audit: true, disposal: true, asset: true }
+  const none: WaitingWorkAccess = { approval: false, maintenance: false, audit: false, disposal: false, asset: false, consumable: false }
+  const all: WaitingWorkAccess = { approval: true, maintenance: true, audit: true, disposal: true, asset: true, consumable: true }
   const emptyInbox = { findings: 0, disposal: 0 }
   assert.deepEqual(waitingWorkVisibleKeys(all, emptyInbox), [...WAITING_WORK_KEYS])
   assert.deepEqual(waitingWorkVisibleKeys(none, emptyInbox), [])
@@ -128,6 +129,9 @@ test("a kind is visible by its page's permission, and the inbox hides the queues
   assert.ok(!waitingWorkVisibleKeys(approver, { findings: 1, disposal: 0 }).includes("pendingAuditFindings"), "1 finding: hidden")
   // Returns count assets and link to the register, so asset:view gates them like warranty and licence.
   assert.deepEqual(waitingWorkVisibleKeys({ ...none, asset: true }, emptyInbox), ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"])
+  // ของใช้สิ้นเปลือง plan 4: the low-stock kind shows with consumable:view only.
+  assert.deepEqual(waitingWorkVisibleKeys({ ...none, consumable: true }, emptyInbox), ["consumablesLow"])
+  assert.ok(!waitingWorkVisibleKeys({ ...all, consumable: false }, emptyInbox).includes("consumablesLow"))
 })
 
 test("each kind's age: days since its oldest record, days to its earliest due date, or its earliest expiry (spec §6.3)", () => {
@@ -136,8 +140,11 @@ test("each kind's age: days since its oldest record, days to its earliest due da
     approvalInbox: "age", openRepairs: "age", stuckRepairs: "age", duePm: "due",
     pendingAuditFindings: "age", openAuditActions: "due", auditActionsDueSoon: "due",
     pendingDisposals: "age", approvedDisposals: "age", returnsDueSoon: "due",
-    warrantyExpiringSoon: "expires", licenseExpiringSoon: "expires",
+    warrantyExpiringSoon: "expires", licenseExpiringSoon: "expires", consumablesLow: undefined,
   })
+  // ของใช้สิ้นเปลือง plan 4: low stock is a state, never an age, whatever date it is given.
+  assert.equal(waitingWorkAgeFrom("consumablesLow", at("2026-10-20T05:00:00Z"), today, 3), null)
+  assert.equal(waitingWorkAgeFrom("consumablesLow", null, today, 3), null)
   assert.equal(waitingWorkAgeFrom("duePm", null, today, 3), null)
   // Bangkok days: 23:30 on 25 Oct is one day old today, 00:30 on 26 Oct is none.
   assert.deepEqual(waitingWorkAgeFrom("openRepairs", at("2026-10-25T16:30:00Z"), today, 3), { kind: "age", days: 1, overdue: false })

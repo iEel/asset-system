@@ -26,6 +26,7 @@ import {
   buildDashboardRegisterHref,
   buildDashboardStatusTable,
   buildDashboardWaiting,
+  dashboardWaitingKeys,
   DASHBOARD_BRANCH_ROW_LIMIT,
   DASHBOARD_COMPANY_TAB_LIMIT,
   describeWaitingAge,
@@ -98,7 +99,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   const companyId = normalizeDashboardCompanyId((await searchParams).companyId, companies)
   const companyName = companyId ? companies.find((company) => company.id === companyId)?.nameTh ?? null : null
-  const waitingKeysWithCount = waitingWork ? waitingWork.visibleKeys.filter((key) => waitingWork.counts[key] > 0) : []
+  // Consumables plan 4: consumablesLow stays on the bell and the work center; the dashboard reads only the keys it shows.
+  const dashboardKeys = waitingWork ? dashboardWaitingKeys(waitingWork.visibleKeys) : []
+  const waitingKeysWithCount = waitingWork ? dashboardKeys.filter((key) => waitingWork.counts[key] > 0) : []
 
   // Round 2: the overview for the chosen company, and the ages of the kinds that have a count (R11).
   const [overview, ages] = await Promise.all([
@@ -113,7 +116,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   // With no visible key nothing reads a count.
   const waiting = buildDashboardWaiting(waitingWork ?? { counts: {} as WaitingWorkCounts, visibleKeys: [], approvalInbox: { total: 0, disposal: 0, audit: 0, findings: 0, rounds: 0 } }, ages)
-  const showWaiting = (waitingWork?.visibleKeys.length ?? 0) > 0
+  const showWaiting = dashboardKeys.length > 0
   const statusRows = buildDashboardStatusTable(overview.statusRows, locale, companyId)
   const round = overview.audit.round
   const auditValue = round && overview.audit.expected > 0 ? auditPercent(overview.audit.processed, overview.audit.expected) / 100 : null

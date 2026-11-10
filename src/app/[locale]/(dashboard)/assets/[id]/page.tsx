@@ -6,6 +6,8 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCount } from "@/lib/display-format"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
+import { getAssetConsumableIssues } from "@/lib/consumable-service"
+import { consumableIssueAssetError } from "@/lib/consumable-rules"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
 import { AssetComponentsTab } from "@/components/assets/detail/asset-components-tab"
 import { AssetDetailActions } from "@/components/assets/detail/asset-detail-actions"
@@ -72,6 +74,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const canViewDisposal = hasPermission(user, "disposal", "view")
   const canViewEmployee = hasPermission(user, "employee", "view")
   const canViewAudit = hasPermission(user, "audit", "view")
+  const canViewConsumables = hasPermission(user, "consumable", "view")
+  const canCreateConsumables = hasPermission(user, "consumable", "create")
   // The one document access record of the overview and the tabs (R12): each document page's own permission.
   const documentAccess = assetDocumentAccess((module, action) => hasPermission(user, module, action))
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
@@ -172,14 +176,29 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
   if (!asset) notFound()
 
+  // ของใช้สิ้นเปลือง plan 3: the overview's panel, only with consumable:view; the dialog's kinds only for someone who may
+  // record (consumable:create) on an asset that can take consumables, and only where the panel can show (view, overview).
+  const consumablesEligible = consumableIssueAssetError({ isActive: asset.isActive, statusName: asset.status.name }) === null
+  const canRecordConsumables = canCreateConsumables && consumablesEligible
   // The frame: the open records the action rule and the strip need, the neighbours in the register's list and, on the
-  // overview only, the latest three events (spec §5 Performance, §7; R50).
-  const [frame, neighbours, recentHistory] = await withPerformanceTiming(
+  // overview only, the latest three events (spec §5 Performance, §7; R50) and the consumables reads (plan 3 final review:
+  // in the same batch, not after it).
+  const [frame, neighbours, recentHistory, consumableIssues, consumableKinds] = await withPerformanceTiming(
     "asset-detail.frame-data",
     () => Promise.all([
       getAssetDetailFrame(asset.id),
       registerParams ? getAssetNeighbours(registerParams, asset.id) : Promise.resolve(null),
       assetDetailView === "overview" ? getLatestAssetHistory(asset.id, locale, 3) : Promise.resolve(null),
+      canViewConsumables && assetDetailView === "overview"
+        ? withPerformanceTiming("asset-detail.consumables", () => getAssetConsumableIssues(prisma, asset.id, 10), { route: "/assets/[id]", locale })
+        : Promise.resolve(null),
+      canRecordConsumables && canViewConsumables && assetDetailView === "overview"
+        ? prisma.consumableItem.findMany({
+            where: { isActive: true },
+            orderBy: [{ name: "asc" }],
+            select: { id: true, name: true, unit: true, onHand: true },
+          })
+        : Promise.resolve([]),
     ]),
     { route: "/assets/[id]", locale },
   )
@@ -561,6 +580,19 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const recent = recentHistory
     ? { events: recentHistory, total: detailCounts.history, historyHref: buildAssetDetailViewHref(locale, asset.id, "history", returnToHref) }
     : null
+  // Hidden when it would be empty and the viewer cannot record.
+  const consumablesPanel = consumableIssues && (consumableIssues.total > 0 || canRecordConsumables)
+    ? {
+        locale,
+        assetId: asset.id,
+        issues: consumableIssues.issues,
+        total: consumableIssues.total,
+        often: consumableIssues.often,
+        canRecord: canRecordConsumables,
+        items: consumableKinds,
+        lockedAsset: { id: asset.id, label: `${asset.assetTag} · ${asset.name}` },
+      }
+    : null
 
   return (
     <div className={`space-y-6 ${actionBarPagePadding.single}`}>
@@ -714,6 +746,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             href: dataGapHref(gap),
           }))}
           inspection={inspectionNotice}
+          consumables={consumablesPanel}
         />
       ) : null}
 

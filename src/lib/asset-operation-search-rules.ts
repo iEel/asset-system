@@ -4,6 +4,7 @@ import {
   assetOperationModes,
   getBulkMoveVerdict,
   getCheckoutVerdict,
+  getConsumableVerdict,
   getTransferVerdict,
   type AssetOperationFacts,
   type AssetOperationMode,
@@ -81,7 +82,8 @@ export function parseAssetOperationSearch(params: URLSearchParams): AssetOperati
     q,
     id,
     assignCustodian: params.get("assignCustodian") === "1",
-    ...(id && params.get("detail") === "1" ? { detail: true as const } : {}),
+    // mode=consumable (the เบิกไปใช้ picker, opened by consumable:create) never carries the chosen-asset detail.
+    ...(id && mode !== "consumable" && params.get("detail") === "1" ? { detail: true as const } : {}),
   }
 }
 
@@ -466,6 +468,9 @@ export function getAssetOperationSearchVerdict(
       return pick(getTransferVerdict(facts, { assignCustodian: input.assignCustodian }))
     case "bulkMove":
       return pick(getBulkMoveVerdict(facts))
+    case "consumable":
+      // The search reads active assets only (isActive: true in every where).
+      return pick(getConsumableVerdict({ statusName: facts.statusName, isActive: true }))
   }
 }
 

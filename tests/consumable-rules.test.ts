@@ -1,0 +1,134 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+
+import {
+  CONSUMABLE_ADJUST_MAX,
+  CONSUMABLE_ISSUE_MAX,
+  CONSUMABLE_OFTEN_COUNT,
+  CONSUMABLE_OFTEN_DAYS,
+  consumableAdjustError,
+  consumableBlockedIssueStatusNames,
+  consumableIssueAssetError,
+  consumableLowWhere,
+  consumableOftenChanged,
+  consumableStockState,
+  filterConsumablesByListState,
+  isConsumableLow,
+  parseConsumableListState,
+} from "../src/lib/consumable-rules.ts"
+import { getBangkokDateKey } from "../src/lib/preventive-maintenance.ts"
+import {
+  consumableAdjustSchema,
+  consumableIssueSchema,
+  consumableItemSchema,
+  consumableReceiveSchema,
+} from "../src/lib/validations/consumables.ts"
+
+const dayMs = 86_400_000
+
+test("the limits match the spec", () => {
+  assert.equal(CONSUMABLE_ISSUE_MAX, 9999)
+  assert.equal(CONSUMABLE_ADJUST_MAX, 99999)
+  assert.equal(CONSUMABLE_OFTEN_DAYS, 90)
+  assert.equal(CONSUMABLE_OFTEN_COUNT, 2)
+  assert.deepEqual([...consumableBlockedIssueStatusNames], ["Disposed", "Retired", "Lost", "Missing", "Pending Disposal"])
+})
+
+test("stock state: out first, then low", () => {
+  assert.equal(consumableStockState({ onHand: 0, minQuantity: 0 }), "out")
+  assert.equal(consumableStockState({ onHand: 1, minQuantity: 2 }), "low")
+  assert.equal(consumableStockState({ onHand: 2, minQuantity: 2 }), "low")
+  assert.equal(consumableStockState({ onHand: 3, minQuantity: 2 }), "ok")
+  assert.equal(consumableStockState({ onHand: 5, minQuantity: 0 }), "ok")
+  assert.equal(isConsumableLow({ onHand: 2, minQuantity: 2 }), true)
+  assert.equal(isConsumableLow({ onHand: 0, minQuantity: 0 }), false)
+  assert.equal(isConsumableLow({ onHand: 3, minQuantity: 2 }), false)
+})
+
+// Consumables plan 4 task 1: the one "active and low" where the bell's counter and the list's ?state=low share. Prisma
+// compares two columns through a field reference (prisma.consumableItem.fields.minQuantity), which only the database
+// client holds, so the caller passes it in and this module stays client-safe.
+test("the low where: active, a minimum set, and on-hand at or under the minimum column (isConsumableLow)", () => {
+  const minQuantity = { modelName: "ConsumableItem", name: "minQuantity" } as never
+  assert.deepEqual(consumableLowWhere(minQuantity), { isActive: true, minQuantity: { gt: 0 }, onHand: { lte: minQuantity } })
+})
+
+test("adjust: a count equal to on-hand is no change, outside 0–99999 is out of range", () => {
+  assert.equal(consumableAdjustError(5, 5), "noChange")
+  assert.equal(consumableAdjustError(5, -1), "range")
+  assert.equal(consumableAdjustError(5, 100000), "range")
+  assert.equal(consumableAdjustError(5, 1.5), "range")
+  assert.equal(consumableAdjustError(5, 6), null)
+  assert.equal(consumableAdjustError(5, 0), null)
+})
+
+test("issue target: an active asset not in a blocked status", () => {
+  for (const statusName of consumableBlockedIssueStatusNames) {
+    assert.equal(consumableIssueAssetError({ isActive: true, statusName }), "assetStatus", statusName)
+  }
+  assert.equal(consumableIssueAssetError({ isActive: false, statusName: "Ready" }), "assetStatus")
+  assert.equal(consumableIssueAssetError(null), "assetNotFound")
+  assert.equal(consumableIssueAssetError({ isActive: true, statusName: "Ready" }), null)
+})
+
+test("changed often: 2+ issues of an item within 90 days", () => {
+  const now = new Date("2026-11-09T05:00:00.000Z")
+  const ago = (days: number) => new Date(now.getTime() - days * dayMs)
+  assert.deepEqual(
+    consumableOftenChanged([
+      { itemId: "a", performedAt: ago(10) },
+      { itemId: "a", performedAt: ago(80) },
+      { itemId: "b", performedAt: ago(5) },
+    ], now),
+    [{ itemId: "a", count: 2 }],
+  )
+  assert.deepEqual(
+    consumableOftenChanged([
+      { itemId: "a", performedAt: ago(10) },
+      { itemId: "a", performedAt: ago(100) },
+    ], now),
+    [],
+  )
+})
+
+test("schemas: receive date, quantity, default unit, reason length", () => {
+  const tomorrow = getBangkokDateKey(new Date(Date.now() + dayMs))
+  const today = getBangkokDateKey(new Date())
+  assert.equal(consumableReceiveSchema.safeParse({ itemId: "i", quantity: 1, receivedDate: tomorrow }).success, false)
+  assert.equal(consumableReceiveSchema.safeParse({ itemId: "i", quantity: 1, receivedDate: today }).success, true)
+  assert.equal(consumableReceiveSchema.safeParse({ itemId: "i", quantity: 1, receivedDate: "2026-02-30" }).success, false)
+  assert.equal(consumableReceiveSchema.safeParse({ itemId: "i", quantity: 1, receivedDate: "9/11/2026" }).success, false)
+  assert.equal(consumableReceiveSchema.safeParse({ itemId: "i", quantity: 0, receivedDate: today }).success, false)
+  assert.equal(consumableReceiveSchema.safeParse({ itemId: "i", quantity: 10000, receivedDate: today }).success, false)
+
+  assert.equal(consumableIssueSchema.safeParse({ itemId: "i", quantity: 0, assetId: "a" }).success, false)
+  assert.equal(consumableIssueSchema.safeParse({ itemId: "i", quantity: 1.5, assetId: "a" }).success, false)
+  assert.equal(consumableIssueSchema.safeParse({ itemId: "i", quantity: 3, assetId: "a" }).success, true)
+
+  const item = consumableItemSchema.parse({ name: "  เมาส์  " })
+  assert.equal(item.unit, "ชิ้น")
+  assert.equal(item.name, "เมาส์")
+  assert.equal(consumableItemSchema.safeParse({ name: "   " }).success, false)
+  assert.equal(consumableItemSchema.safeParse({ name: "x", minQuantity: 100000 }).success, false)
+
+  assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 3, reason: "ab" }).success, false)
+  assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 3, reason: "  ab  " }).success, false)
+  assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 0, reason: "นับใหม่" }).success, true)
+  assert.equal(consumableAdjustSchema.safeParse({ itemId: "i", counted: 100000, reason: "นับใหม่" }).success, false)
+})
+
+// Consumables plan 4 final review: ?state=low and the banner follow the bell's rule (isConsumableLow, spec §2 "0 means
+// no warning"), so a kind with no minimum is never kept, out or not; the row's badge (หมด / ต้องซื้อเพิ่ม) is unchanged.
+test("the list's ?state=low (consumables plan 4): only the kinds the bell counts (isConsumableLow); anything else is the whole list", () => {
+  assert.equal(parseConsumableListState("low"), "low")
+  for (const value of [undefined, "", "ok", "out", "LOW", "all"]) assert.equal(parseConsumableListState(value), null, String(value))
+  const rows = [
+    { id: "a", onHand: 5, minQuantity: 2 },
+    { id: "b", onHand: 2, minQuantity: 2 },
+    { id: "c", onHand: 0, minQuantity: 2 },
+    { id: "d", onHand: 9, minQuantity: 0 },
+    { id: "e", onHand: 0, minQuantity: 0 },
+  ]
+  assert.deepEqual(filterConsumablesByListState(rows, "low").map((row) => row.id), ["b", "c"], "min 0, onHand 0 (e) is not kept")
+  assert.equal(filterConsumablesByListState(rows, null), rows, "no filter: the same list, unchanged")
+})

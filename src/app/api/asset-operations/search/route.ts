@@ -7,11 +7,14 @@ import { searchAssetOperationOptions, type AssetOperationSearchDb } from "@/lib/
 import { parseAssetOperationSearch } from "@/lib/asset-operation-search-rules"
 
 // The transaction pages' asset picker (server search spec 6.2): asset:edit, as the four pages and their save routes.
+// mode=consumable is the เบิกไปใช้ dialog's picker (consumables plan 2): consumable:create, as the issue route.
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "asset", "edit")
-    const input = parseAssetOperationSearch(new URL(request.url).searchParams)
+    const searchParams = new URL(request.url).searchParams
+    if (searchParams.get("mode") === "consumable") requirePermission(user, "consumable", "create")
+    else requirePermission(user, "asset", "edit")
+    const input = parseAssetOperationSearch(searchParams)
     if ("error" in input) return NextResponse.json({ error: input.error }, { status: 400 })
     const data = await withPerformanceTiming(
       "asset-operation-search",

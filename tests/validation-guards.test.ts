@@ -69,6 +69,11 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}admin/asset-state-review-dialog.tsx`]: 1,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
   [`${C}reports/report-preset-controls.tsx`]: 1,
+  // ของใช้สิ้นเปลือง plan 2 Task 3: the issue, receive, adjust and kind dialogs (deactivate is the shared ConfirmDialog).
+  [`${C}consumables/consumable-issue-dialog.tsx`]: 1,
+  [`${C}consumables/consumable-receive-dialog.tsx`]: 1,
+  [`${C}consumables/consumable-adjust-dialog.tsx`]: 1,
+  [`${C}consumables/consumable-kind-dialog.tsx`]: 1,
 }
 
 // Files with a <form> that is not role="search" and not in V_SCOPE, each with why (spec §3 non-goals, §5 "Left out").
@@ -127,6 +132,10 @@ const V_FORMS: readonly string[] = [
   `${C}maintenance/maintenance-plan-form.tsx`,
   `${C}maintenance/repair-record-form.tsx`,
   `${C}maintenance/repair-record-actions.tsx`,
+  `${C}consumables/consumable-issue-dialog.tsx`,
+  `${C}consumables/consumable-receive-dialog.tsx`,
+  `${C}consumables/consumable-adjust-dialog.tsx`,
+  `${C}consumables/consumable-kind-dialog.tsx`,
   `${C}admin/system-settings-form.tsx`,
 ]
 
@@ -185,7 +194,8 @@ test("the V readers skip comments and see a catch block, a .catch() handler and 
 // Group 7 plan 4 Task 4 added รับคืนหลายรายการ: 51 became 52.
 // Inspection-confirm plan 3 Task 3 added the ยืนยันผลตรวจ dialog: 52 became 53.
 // Inspection-confirm plan 5 Task 2 added the asset page's ยืนยันผลตรวจ dialog: 53 became 54.
-test("V1 the scope list names every form a person submits, 54 in all (spec §5)", () => {
+// ของใช้สิ้นเปลือง plan 2 Task 3 added the issue, receive, adjust and kind dialogs: 54 became 58.
+test("V1 the scope list names every form a person submits, 58 in all (spec §5)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
   for (const path of [...Object.keys(V_SCOPE), ...Object.keys(NOT_IN_SCOPE), ...V_FORMS, ...Object.keys(SELECT_STAR_ONLY)]) if (!exists(path)) problems.push(`${path} not found`)
@@ -201,7 +211,7 @@ test("V1 the scope list names every form a person submits, 54 in all (spec §5)"
     else if (forms > V_SCOPE[file.path]) problems.push(`${file.path}: ${forms} <form>, V_SCOPE counts ${V_SCOPE[file.path]}`)
   }
   assert.deepEqual(problems, [])
-  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 54)
+  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 58)
 })
 
 // Group 4 plan 6 Task 5: the labels page's note and print actions are no form. Print opens the print route, whose one

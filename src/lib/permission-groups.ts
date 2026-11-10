@@ -5,7 +5,7 @@ export type PermissionGroupKey = "assets" | "transactions" | "operations" | "mas
 export const PERMISSION_GROUPS: readonly { key: PermissionGroupKey; modules: readonly string[] }[] = [
   { key: "assets", modules: ["dashboard", "asset"] },
   { key: "transactions", modules: ["checkout", "checkin", "transfer"] },
-  { key: "operations", modules: ["audit", "maintenance", "disposal", "report"] },
+  { key: "operations", modules: ["audit", "maintenance", "disposal", "report", "consumable"] },
   {
     key: "masterData",
     modules: ["company", "branch", "department", "employee", "location", "category", "brand", "supplier", "status", "condition"],

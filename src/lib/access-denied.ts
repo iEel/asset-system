@@ -36,7 +36,7 @@ export function buildAccessDeniedHref({
 // The words under adminRolesPage.actions and adminRolesPage.modules (messages/*.json).
 const permissionActions = new Set(["view", "create", "edit", "delete", "export", "approve"])
 const permissionModules = new Set([
-  "dashboard", "asset", "checkout", "checkin", "transfer", "audit", "maintenance", "disposal", "report", "company",
+  "dashboard", "asset", "checkout", "checkin", "transfer", "audit", "maintenance", "disposal", "report", "consumable", "company",
   "branch", "department", "employee", "location", "category", "brand", "supplier", "status", "condition", "user",
   "role", "setting", "import", "export", "log",
 ])

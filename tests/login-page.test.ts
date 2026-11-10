@@ -23,6 +23,9 @@ test("the destination names the page kind from the callback's path, never its te
   assert.equal(getLoginDestinationKey("th", "/th/admin/settings"), "nav.systemSetting")
   assert.equal(getLoginDestinationKey("th", "/th/admin"), "nav.administration")
   assert.equal(getLoginDestinationKey("en", "/en/maintenance?status=in_progress"), "nav.maintenance")
+  // ของใช้สิ้นเปลือง (consumables plan 2): the list and a kind's history page.
+  assert.equal(getLoginDestinationKey("th", "/th/consumables"), "nav.consumables")
+  assert.equal(getLoginDestinationKey("en", "/en/consumables/0b6c2f7e-1111-4222-8333-944445555666"), "nav.consumables")
   assert.equal(getLoginDestinationKey("th", "/th/assetsx"), "auth.destinationFallback")
   assert.equal(getLoginDestinationKey("th", "/th/something-new"), "auth.destinationFallback")
 })

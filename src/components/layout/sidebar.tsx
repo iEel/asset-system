@@ -37,6 +37,7 @@ import {
   KeyRound,
   Rocket,
   Boxes,
+  Cable,
   Handshake,
   Move,
   ClipboardList,
@@ -140,6 +141,12 @@ export function useNavigationMenu(user: SessionUser): { sections: MenuSection[];
           href: `/${locale}/assets`,
           permission: { module: "asset", action: "view" },
           icon: <Package size={20} />,
+        },
+        {
+          labelKey: "consumables",
+          href: `/${locale}/consumables`,
+          permission: { module: "consumable", action: "view" },
+          icon: <Cable size={20} />,
         },
         {
           labelKey: "assetManagement",

@@ -8,13 +8,15 @@ import {
   transferConditionBlockReasonKeys,
 } from "./asset-lifecycle-policy.ts"
 import type { AssetOwnershipType } from "./asset-ownership.ts"
+import { consumableIssueAssetError } from "./consumable-rules.ts"
 
 // The one rule for "can this transaction take this asset, and if not, why" (server-search spec 6.3, choice ก). Read by
 // getAssetActions (the asset page and the register), the transaction search and the save routes, so none can drift.
 // Pure: callers pass the open handover and the open repair from dedicated queries. Each verdict returns the first rule
 // that fails, in its route's order. Reason keys are full message keys, written as literals.
 
-export const assetOperationModes = ["checkout", "checkin", "transfer", "bulkMove"] as const
+// consumable: the เบิกไปใช้ dialog's picker (consumables plan 2), not a transaction page.
+export const assetOperationModes = ["checkout", "checkin", "transfer", "bulkMove", "consumable"] as const
 export type AssetOperationMode = (typeof assetOperationModes)[number]
 
 export type AssetOperationFacts = {
@@ -159,5 +161,12 @@ export function getBulkMoveVerdict(facts: AssetOperationFacts): AssetOperationVe
   if (refused) return refused
   if (facts.openCheckout) return no("asset.transactionReasonOpenCheckoutBulkMove")
   if (getAssetLifecycleTransitionError("move_scope", facts.statusName)) return no("asset.transactionReasonWrittenOff")
+  return yes
+}
+
+// ของใช้สิ้นเปลือง (consumables plan 2): the issue's asset rule, one with the issue route (consumableIssueAssetError): an
+// active asset whose status is not blocked, any category or ownership; the transaction facts do not refuse.
+export function getConsumableVerdict(facts: { statusName: string; isActive: boolean }): AssetOperationVerdict {
+  if (consumableIssueAssetError(facts)) return no("consumablesPage.pickerBlocked")
   return yes
 }

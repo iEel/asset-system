@@ -12,6 +12,7 @@ test("the decide group holds the approval inbox only; the two repair kinds lead 
   assert.deepEqual(groups.follow.map((item) => item.key), [
     "openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "openAuditActions", "auditActionsDueSoon",
     "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon",
+    "consumablesLow",
   ])
   assert.equal(groups.decide[0], items[0]) // the same objects, not copies
   assert.deepEqual(groupNotificationItems([]), { decide: [], follow: [] })

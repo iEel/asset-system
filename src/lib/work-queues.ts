@@ -5,8 +5,9 @@ import type { WaitingWorkCounts, WaitingWorkKey } from "./waiting-work-rules.ts"
 export const WORK_QUEUES = ["approvals", "maintenance", "audit", "disposal"] as const
 export type WorkQueue = (typeof WORK_QUEUES)[number]
 
-// Expiries and returns coming up: listed apart, never part of งานค้างทั้งหมด.
-export const ADVANCE_WARNING_KEYS = ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"] as const
+// Expiries and returns coming up, and consumables to restock (consumables plan 4): listed apart, never part of
+// งานค้างทั้งหมด.
+export const ADVANCE_WARNING_KEYS = ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon", "consumablesLow"] as const
 
 // pendingAuditFindings and pendingDisposals are only visible when the inbox does not hold them (waitingWorkVisibleKeys),
 // so a pending item is never counted in both the approvals queue and its own.

@@ -46,6 +46,7 @@ const permissionModules = [
   "maintenance",
   "disposal",
   "report",
+  "consumable",
   "company",
   "branch",
   "department",

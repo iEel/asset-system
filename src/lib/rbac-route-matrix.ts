@@ -58,7 +58,10 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     label: "Role export",
     checks: [{ module: "role", action: "export" }],
   },
-  { filePath: "src/app/api/asset-operations/search/route.ts", label: "Asset operation picker search", checks: [{ module: "asset", action: "edit" }] },
+  // asset:edit for the transaction modes; consumable:create for mode=consumable (consumables plan 2).
+  { filePath: "src/app/api/asset-operations/search/route.ts", label: "Asset operation picker search", checks: [{ module: "asset", action: "edit" }, { module: "consumable", action: "create" }] },
+  // ของใช้สิ้นเปลือง: the list, and adding a kind (catalog management, consumable:edit as the UI; consumables plan 2).
+  { filePath: "src/app/api/consumables/route.ts", label: "Consumable kinds", checks: [{ module: "consumable", action: "view" }, { module: "consumable", action: "edit" }] },
   { filePath: "src/app/api/asset-operations/bulk-move-list/route.ts", label: "Bulk move list", checks: [{ module: "asset", action: "edit" }] },
   // The viewer holds asset:view, so this route has no viewer refusal row (group 4 plan 4).
   { filePath: "src/app/api/assets/scan-search/route.ts", label: "Asset scan search", checks: [{ module: "asset", action: "view" }] },

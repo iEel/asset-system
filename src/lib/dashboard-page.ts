@@ -37,6 +37,16 @@ export type DashboardWaiting = {
 }
 
 /**
+ * Consumables plan 4: the restock warning (consumablesLow) belongs to the bell and the work center, never the
+ * dashboard, so the dashboard reads, lists and zero-lines only the other visible keys.
+ */
+export const DASHBOARD_HIDDEN_WAITING_KEYS: readonly WaitingWorkKey[] = Object.freeze(["consumablesLow"])
+
+export function dashboardWaitingKeys(visibleKeys: readonly WaitingWorkKey[]): WaitingWorkKey[] {
+  return visibleKeys.filter((key) => !DASHBOARD_HIDDEN_WAITING_KEYS.includes(key))
+}
+
+/**
  * The visible queue kinds with a count in the shared order, the advance warnings (เตือนล่วงหน้า) with a count apart,
  * the kinds at zero, the work center's งานค้างทั้งหมด and the oldest wait (spec §6.3; group 9 spec §3.1).
  */
@@ -44,12 +54,13 @@ export function buildDashboardWaiting(
   work: WorkQueueInput,
   ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>>,
 ): DashboardWaiting {
-  const withCount = work.visibleKeys
+  const visibleKeys = dashboardWaitingKeys(work.visibleKeys)
+  const withCount = visibleKeys
     .filter((key) => work.counts[key] > 0)
     .map((key) => ({ key, count: work.counts[key], age: ages[key] ?? null }))
   const rows = withCount.filter((row) => !isAdvanceWarningKey(row.key))
   const advanceRows = withCount.filter((row) => isAdvanceWarningKey(row.key))
-  const zeroKeys = work.visibleKeys.filter((key) => work.counts[key] === 0)
+  const zeroKeys = visibleKeys.filter((key) => work.counts[key] === 0)
   // The same backlog as the work center: the advance warnings are listed, never added.
   const total = buildWorkQueueSummary(work).backlogTotal
 

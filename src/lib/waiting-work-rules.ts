@@ -21,6 +21,7 @@ export const WAITING_WORK_KEYS = [
   "returnsDueSoon",
   "warrantyExpiringSoon",
   "licenseExpiringSoon",
+  "consumablesLow",
 ] as const
 
 export type WaitingWorkKey = (typeof WAITING_WORK_KEYS)[number]
@@ -56,6 +57,8 @@ export type WaitingWorkAccess = {
   audit: boolean
   disposal: boolean
   asset: boolean
+  /** consumable:view: ของใช้สิ้นเปลืองต้องซื้อเพิ่ม (consumables plan 4). */
+  consumable: boolean
 }
 
 // A kind is visible by its page's permission; the inbox hides the queues it already holds. Pending findings hide only
@@ -74,6 +77,7 @@ export function waitingWorkVisibleKeys(access: WaitingWorkAccess, inbox: { findi
     returnsDueSoon: access.asset,
     warrantyExpiringSoon: access.asset,
     licenseExpiringSoon: access.asset,
+    consumablesLow: access.consumable,
   }
   return WAITING_WORK_KEYS.filter((key) => visible[key])
 }
@@ -170,6 +174,7 @@ const waitingWorkHrefs: Record<WaitingWorkKey, (locale: string) => string> = {
   returnsDueSoon: (locale) => buildExactAssetRegisterHref(locale, { dataQuality: "returnDue" }),
   warrantyExpiringSoon: (locale) => buildExactAssetRegisterHref(locale, { dataQuality: "warranty" }),
   licenseExpiringSoon: (locale) => buildExactAssetRegisterHref(locale, { dataQuality: "licenseExpiry" }),
+  consumablesLow: (locale) => `/${locale}/consumables?state=low`,
 }
 
 export function buildWaitingWorkHref(locale: string, key: WaitingWorkKey): string {
@@ -182,7 +187,8 @@ export type WaitingWorkAge =
   | { kind: "due"; days: number; overdue: boolean }
   | { kind: "expires"; date: Date; days: number }
 
-const waitingWorkAgeKinds: Record<WaitingWorkKey, WaitingWorkAge["kind"]> = {
+// "state": a kind that is a standing condition, not a wait (low consumables, consumables plan 4), so it never has an age.
+const waitingWorkAgeKinds: Record<WaitingWorkKey, WaitingWorkAge["kind"] | "state"> = {
   approvalInbox: "age",
   openRepairs: "age",
   stuckRepairs: "age",
@@ -195,6 +201,7 @@ const waitingWorkAgeKinds: Record<WaitingWorkKey, WaitingWorkAge["kind"]> = {
   returnsDueSoon: "due",
   warrantyExpiringSoon: "expires",
   licenseExpiringSoon: "expires",
+  consumablesLow: "state",
 }
 
 // Bangkok days throughout. Only approvals carry the SLA (the rule of getApprovalAgeStatus: overdue once age passes it);
@@ -202,6 +209,7 @@ const waitingWorkAgeKinds: Record<WaitingWorkKey, WaitingWorkAge["kind"]> = {
 export function waitingWorkAgeFrom(key: WaitingWorkKey, oldest: Date | null, today: Date, slaDays: number): WaitingWorkAge | null {
   if (oldest === null) return null
   const kind = waitingWorkAgeKinds[key]
+  if (kind === "state") return null
   if (kind === "age") {
     const days = Math.max(0, bangkokDayDiff(oldest, today))
     return { kind, days, overdue: key === "approvalInbox" ? days > slaDays : false }

@@ -15,6 +15,7 @@ import {
   notificationWarrantyExpiryDaysKey,
 } from "@/lib/system-setting-defaults"
 import { workflowApprovalDefaults } from "@/lib/workflow-approval"
+import { consumableLowWhere } from "@/lib/consumable-rules"
 import {
   approvedDisposalsWhere,
   auditActionsDueSoonWhere,
@@ -82,6 +83,7 @@ export async function getWaitingWork(user: SessionUser, now: Date = new Date()):
       disposal: hasPermission(user, "disposal", "view"),
       // Returns count assets and link to the register, so asset:view gates them like warranty and licence.
       asset: hasPermission(user, "asset", "view"),
+      consumable: hasPermission(user, "consumable", "view"),
     },
     approvalInbox,
   )
@@ -98,6 +100,8 @@ export async function getWaitingWork(user: SessionUser, now: Date = new Date()):
     returnsDueSoon: () => prisma.asset.count({ where: returnsDueSoonAssetWhere(today, rules) }),
     warrantyExpiringSoon: () => prisma.asset.count({ where: warrantyExpiringSoonWhere(today, rules) }),
     licenseExpiringSoon: () => prisma.asset.count({ where: licenseExpiringSoonWhere(today, rules) }),
+    // Kinds, not units; onHand <= minQuantity compares the two columns through the client's field reference.
+    consumablesLow: () => prisma.consumableItem.count({ where: consumableLowWhere(prisma.consumableItem.fields.minQuantity) }),
   }
 
   const visible = new Set(visibleKeys)
@@ -158,6 +162,8 @@ export async function getWaitingWorkAges(
       plain((await prisma.asset.aggregate({ where: warrantyExpiringSoonWhere(today, rules), _min: { warrantyEndDate: true } }))._min.warrantyEndDate),
     licenseExpiringSoon: async () =>
       plain((await prisma.asset.aggregate({ where: licenseExpiringSoonWhere(today, rules), _min: { warrantyEndDate: true } }))._min.warrantyEndDate),
+    // A standing state with no age: nothing to read.
+    consumablesLow: async () => plain(null),
   }
 
   // Every read starts in the order of visibleKeys, inside one Promise.all.

@@ -29,6 +29,8 @@ export const WAITING_TITLES = {
   returnsDueSoon: "ใกล้/เกินกำหนดคืน",
   warrantyExpiringSoon: "ประกันใกล้หมดอายุ",
   licenseExpiringSoon: "License ใกล้หมดอายุ",
+  // Consumables plan 4: the bell and the work center list it; the dashboard leaves it out (plan 4 task 2).
+  consumablesLow: "ของใช้สิ้นเปลืองต้องซื้อเพิ่ม",
 } as const
 export type WaitingKey = keyof typeof WAITING_TITLES
 export const WAITING_ORDER = Object.keys(WAITING_TITLES) as WaitingKey[]

@@ -315,6 +315,7 @@ model Asset {
   auditScanHistory      AuditScanHistory[]
   labelPrints           AssetLabelPrint[]
   stateReviews          AssetStateReview[]
+  consumableMovements   ConsumableMovement[]
 
   @@index([licenseAssignedAssetId])
   @@index([isActive, createdAt], map: "IX_assets_isActive_createdAt")
@@ -940,6 +941,51 @@ model DisposalRound {
   @@index([isActive, executionDate], map: "IX_disposal_rounds_isActive_executionDate")
   @@index([executedById], map: "IX_disposal_rounds_executedById")
   @@map("disposal_rounds")
+}
+
+// ============================================================
+// Consumables (ของใช้สิ้นเปลือง; consumables plan 1, spec §2)
+// ============================================================
+
+// One row per kind. onHand changes only together with a ConsumableMovement, in one transaction.
+model ConsumableItem {
+  id          String   @id @default(uuid())
+  name        String   @db.NVarChar(100) // unique among active items (filtered index owned by the manual migration)
+  unit        String   @default("ชิ้น") @db.NVarChar(20)
+  minQuantity Int      @default(0) // 0 means no low-stock warning
+  onHand      Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdBy   String   @db.NVarChar(100)
+  updatedBy   String?  @db.NVarChar(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  movements ConsumableMovement[]
+
+  // UNIQUE ... WHERE [isActive] = 1 in 2026-11-10-add-consumables.sql; Prisma cannot express the filter.
+  @@index([name], map: "UX_consumable_items_name_active")
+  @@map("consumable_items")
+}
+
+// Append-only: receive (+n), issue (-n, to an asset), adjust (the difference to a count).
+model ConsumableMovement {
+  id             String         @id @default(uuid())
+  itemId         String
+  item           ConsumableItem @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  type           String         @db.NVarChar(20) // receive | issue | adjust
+  quantityChange Int // signed, never 0
+  onHandAfter    Int
+  assetId        String? // required for issue
+  asset          Asset?         @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receivedDate   DateTime?      @db.Date // required for receive, a Bangkok day
+  reason         String?        @db.NVarChar(500) // required for adjust
+  note           String?        @db.NVarChar(500)
+  performedBy    String         @db.NVarChar(100)
+  performedAt    DateTime       @default(now())
+
+  @@index([itemId, performedAt], map: "IX_consumable_movements_item_performedAt")
+  @@index([assetId, performedAt], map: "IX_consumable_movements_asset_performedAt")
+  @@map("consumable_movements")
 }
 
 // ============================================================

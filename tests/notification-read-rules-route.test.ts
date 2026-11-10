@@ -97,7 +97,7 @@ const summaryModule = await load<{
 const { NextRequest } = await import("next/server") as unknown as { NextRequest: typeof Request }
 
 const calls = (name: string) => state.calls.filter((c) => c.call === name).map((c) => c.args)
-const WAITING_KEYS = ["approvalInbox", "openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "openAuditActions", "auditActionsDueSoon", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"]
+const WAITING_KEYS = ["approvalInbox", "openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "openAuditActions", "auditActionsDueSoon", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon", "consumablesLow"]
 const stateRow = (key: string, isRead: boolean, lastCount: number, snoozedUntil: string | null = null) =>
   ({ key, isRead, lastCount, snoozedUntil, assignedToUserId: null })
 const getSummary = () => route.GET(new NextRequest("http://localhost/api/notifications?locale=th"))
