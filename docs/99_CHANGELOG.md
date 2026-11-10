@@ -6,6 +6,12 @@
 
 ## 2026-11-10
 
+### Deploy ขึ้น Production
+
+- 2026-11-10 22:29 (ผู้ใช้สั่ง) เครื่อง `ubuntu-codex` (192.168.110.231) จาก `e3a91bb` (build 8 ต.ค.) เป็น master `6566cf5a` (1,411 commit: กลุ่มหน้า 1–12, ยืนยันผลตรวจ, ของใช้สิ้นเปลือง) · ก่อนหน้านั้นรัน migration ขั้นที่ 2–5 บน Production (ผู้ใช้สำรองฐานข้อมูลและอนุมัติทีละขั้น) · `npm ci` แล้ว build ผ่านรอบแรก · คัด build เดิมไว้ที่ `/var/www/asset-system/backup/standalone-e3a91bb-20261110` ไว้ย้อนกลับ · ตรวจหลังเปิด: service active, `/th/login` 200 ทั้ง 3000, 8080 และ https://asset.soniclogistic.org, ตัวจัดเวลา (scheduler) ทำงานปกติ · ยังไม่ได้ทำ UAT ตามบทบาทและการลองบน iPhone/iPad/พิมพ์ฉลาก · หลัง deploy: ยกเลิก AUD-2026-0002, ติ๊กสิทธิ์ consumable ให้บทบาท IT, ปลดทรัพย์สินที่ค้างอยู่ระหว่างตรวจสอบผ่านหน้ายืนยันผลตรวจ
+
+  ย้อนกลับ: `systemctl stop asset-system` → ย้าย `app/.next/standalone` ออก → คัด backup กลับเป็น `app/.next/standalone` → `systemctl start asset-system` (ฐานข้อมูลไม่ต้องย้อน: migration เพิ่มอย่างเดียว build เดิมใช้ได้)
+
 ### ของใช้สิ้นเปลือง merge แล้ว
 
 - `feat/consumables` merge เข้า master ที่ `a3545431` และ push ทั้ง origin และ company (2026-11-10 ผู้ใช้สั่ง) · unit test บน master 5,512 ผ่าน 5,511 ข้าม 1 ล้ม 0 · ยังไม่ deploy · วัน deploy ขั้นที่ 5 รัน migration `2026-11-10-add-consumables.sql` บน Production (ขออนุมัติพร้อม SQL เต็ม) · หลัง deploy ผู้ดูแลระบบติ๊กสิทธิ์ `consumable:*` ให้บทบาทของทีม IT ที่หน้าบทบาท
