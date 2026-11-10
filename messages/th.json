@@ -1553,7 +1553,11 @@
         "disposal": "ตัดจำหน่าย"
       },
       "componentInstallPhoto": "รูปตอนติดตั้ง",
-      "componentRemovePhoto": "รูปตอนถอด"
+      "componentRemovePhoto": "รูปตอนถอด",
+      "roundFilterLabel": "กรองรูปตามรอบตรวจนับ",
+      "notFromAudit": "ไม่ได้มาจากการตรวจนับ",
+      "roundCancelled": "ยกเลิกแล้ว",
+      "roundScannedBy": "ตรวจโดย {name}"
     },
     "repairTab": {
       "repairCount": "ซ่อมมาแล้ว",

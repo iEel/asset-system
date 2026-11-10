@@ -1553,7 +1553,11 @@
         "disposal": "Disposal"
       },
       "componentInstallPhoto": "Photo at installation",
-      "componentRemovePhoto": "Photo at removal"
+      "componentRemovePhoto": "Photo at removal",
+      "roundFilterLabel": "Filter photos by audit round",
+      "notFromAudit": "Not from an audit",
+      "roundCancelled": "Cancelled",
+      "roundScannedBy": "Checked by {name}"
     },
     "repairTab": {
       "repairCount": "Repaired",

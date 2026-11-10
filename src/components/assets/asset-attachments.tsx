@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react"
 import { useTranslations } from "next-intl"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Download, FileText, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { AssetPhotoFrame } from "@/components/assets/asset-photo-frame"
 import { Button } from "@/components/ui/button"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { ContentPanel } from "@/components/ui/content-panel"
@@ -16,14 +17,15 @@ import { Field } from "@/components/ui/field"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { TabNav } from "@/components/ui/tab-nav"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { useApiError } from "@/components/ui/use-api-error"
 import { isUnauthorizedError } from "@/lib/api-error-catalog"
 import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
-import type { AssetFilePhoto, AssetFileRecord } from "@/lib/asset-files-rules"
+import type { AssetFilePhoto, AssetFileRecord, AssetPhotoRoundFacts, AssetPhotoRoundFilter } from "@/lib/asset-files-rules"
 import { formatCount } from "@/lib/display-format"
 import { formatFileSize, MAX_UPLOAD_BYTES } from "@/lib/uploads"
-import { cn, formatDate } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 
 // One file per request: the route takes one file and, for a checklist photo, its label as the photoLabel field.
 async function postAssetAttachment(assetId: string, file: File, label: string, fallbackError: string): Promise<void> {
@@ -43,19 +45,25 @@ async function postAssetAttachment(assetId: string, file: File, label: string, f
 }
 
 // The files tab's "รูปและไฟล์แนบ" (group 1 spec §7.7): the asset's photos as card-size tiles, its other files as rows,
-// and for an editor the uploads, the missing checklist photos and the deletes.
+// and for an editor the uploads, the missing checklist photos and the deletes. Audit photos spec §4 (option ข): the one
+// photo list gets filter chips by round (roundFilter, null when no photo is a round's) and the selected round's line;
+// roundHref is that round's link, null without audit:view.
 export function AssetAttachments({
   assetId,
   photos,
   documents,
   missingChecklistLabels,
   canEdit,
+  roundFilter = null,
+  roundHref = null,
 }: {
   assetId: string
   photos: readonly AssetFilePhoto[]
   documents: readonly AssetFileRecord[]
   missingChecklistLabels: readonly string[]
   canEdit: boolean
+  roundFilter?: AssetPhotoRoundFilter | null
+  roundHref?: string | null
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -66,7 +74,11 @@ export function AssetAttachments({
   const [preview, setPreview] = useState<AssetFilePhoto | null>(null)
   const [showAllPhotos, setShowAllPhotos] = useState(false)
   const [uploadingLabel, setUploadingLabel] = useState<string | null>(null)
-  const gallery = getAssetPhotoGalleryState(photos, showAllPhotos)
+  // The fold applies to the filtered tiles; the primary chip and the checklist order come from every photo.
+  const visibleIds = new Set(roundFilter?.visiblePhotoIds ?? [])
+  const shownPhotos = roundFilter ? photos.filter((photo) => visibleIds.has(photo.id)) : photos
+  const gallery = getAssetPhotoGalleryState(shownPhotos, showAllPhotos)
+  const selectedRound = roundFilter && roundFilter.selected !== "none" ? roundFilter.selected : null
   const showPhotos = photos.length > 0 || (canEdit && missingChecklistLabels.length > 0)
   const showDocuments = documents.length > 0
   const split = showPhotos && showDocuments
@@ -121,6 +133,22 @@ export function AssetAttachments({
             {showPhotos ? (
               <div className={cn("min-w-0", split && "lg:col-span-7")}>
                 <h3 className="mb-3 text-sm font-semibold text-foreground">{t("filesTab.photos", { count: formatCount(photos.length) })}</h3>
+                {roundFilter ? (
+                  <div className="mb-3 space-y-2">
+                    <TabNav
+                      aria-label={t("filesTab.roundFilterLabel")}
+                      items={roundFilter.chips.map((chip) => ({
+                        key: chip.key,
+                        label: chip.key === "all" ? tCommon("all") : chip.key === "none" ? t("filesTab.notFromAudit") : chip.label,
+                        count: formatCount(chip.count),
+                        href: chip.href,
+                      }))}
+                      current={roundFilter.chips.find((chip) => chip.selected)?.key ?? "all"}
+                      scroll={false}
+                    />
+                    {selectedRound ? <RoundLine selectedRound={selectedRound} roundHref={roundHref} /> : null}
+                  </div>
+                ) : null}
                 <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {gallery.visibleItems.map((photo) => (
                     <PhotoTile
@@ -229,6 +257,7 @@ function PhotoTile({
       </button>
       <div className="mt-2 flex min-w-0 items-center gap-2">
         {photo.primary ? <Chip>{t("filesTab.primaryPhoto")}</Chip> : null}
+        {photo.round ? <Chip className="tag">{photo.round.auditNo}</Chip> : null}
         <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
         {onDelete ? (
           <Button
@@ -244,6 +273,29 @@ function PhotoTile({
         ) : null}
       </div>
     </li>
+  )
+}
+
+// The selected round's facts, as the history row gives them: the round (a link only with audit:view), the scan time, the
+// result in words and who scanned; a cancelled round says so.
+function RoundLine({ selectedRound, roundHref }: { selectedRound: AssetPhotoRoundFacts; roundHref: string | null }) {
+  const t = useTranslations("asset")
+  const tAll = useTranslations()
+
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-meta text-muted-foreground">
+      {roundHref ? (
+        <Link href={roundHref} className={linkVariants({ size: "inherit" })}>
+          <span className="tag">{selectedRound.auditNo}</span>
+        </Link>
+      ) : (
+        <span className="tag text-foreground">{selectedRound.auditNo}</span>
+      )}
+      {selectedRound.cancelled ? <StatusBadge label={t("filesTab.roundCancelled")} tone="muted" /> : null}
+      {selectedRound.scannedAtIso ? <span>{formatDateTime(selectedRound.scannedAtIso)}</span> : null}
+      {selectedRound.resultKey ? <span className="text-foreground">{tAll(selectedRound.resultKey as never)}</span> : null}
+      {selectedRound.scannedBy ? <span>{t("filesTab.roundScannedBy", { name: selectedRound.scannedBy })}</span> : null}
+    </p>
   )
 }
 

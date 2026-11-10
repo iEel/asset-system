@@ -59,7 +59,8 @@ import type { AssetInspectionNoticeProps } from "@/components/assets/detail/asse
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
-  searchParams: Promise<{ returnTo?: string | string[]; view?: string | string[]; type?: string | string[] }>
+  // photoRound: the files tab's round chip (audit photos spec §4): an auditNo, or none.
+  searchParams: Promise<{ returnTo?: string | string[]; view?: string | string[]; type?: string | string[]; photoRound?: string | string[] }>
 }
 
 export default async function AssetDetailPage({ params, searchParams }: AssetDetailPageProps) {
@@ -220,6 +221,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             {
               locale,
               componentsHref: buildAssetDetailViewHref(locale, asset.id, "components", returnToHref),
+              filesHref: buildAssetDetailViewHref(locale, asset.id, "files", returnToHref),
+              photoRound: rawSearchParams.photoRound,
               can: { maintenanceView: canViewMaintenance, auditView: canViewAudit, disposalView: canViewDisposal },
             },
           ),
