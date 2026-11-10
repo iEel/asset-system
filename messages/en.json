@@ -3363,7 +3363,13 @@
     "stepConfirmWaiting": "{count} awaiting confirmation",
     "stepConfirmDone": "All confirmed",
     "listNextStepConfirm": "Confirm results ({count})",
-    "closedDisposalLine": "{count, plural, one {# asset from this round can go to disposal} other {# assets from this round can go to disposal}}"
+    "closedDisposalLine": "{count, plural, one {# asset from this round can go to disposal} other {# assets from this round can go to disposal}}",
+    "registerPhoto": "Register photo",
+    "roundPhotosTitle": "Photos of {assetTag} in {auditNo}",
+    "roundPhotosViewInFiles": "View in the Files tab",
+    "roundPhotoCount": "{label} ({count})",
+    "roundPhotosEmpty": "No photos from this round",
+    "roundPhotosLoadFailed": "Could not load the photos"
   },
   "auditScan": {
     "title": "Audit Scan",

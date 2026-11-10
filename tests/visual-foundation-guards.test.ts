@@ -374,6 +374,7 @@ const RAW_BUTTON_EXEMPT: ExemptList = {
   "src/components/assets/asset-photo-frame.tsx": { count: 1, kind: "permanent", why: "the card photo is the control that opens the original in the preview dialog", ruling: "2D-3 R5, group 1 asset detail task 4" },
   "src/components/assets/asset-state-help-popover.tsx": { count: 1, kind: "permanent", why: "the 24px help circle in a field label row or a table head, with a 44px hit area below md", ruling: "2D-3 R5, the user 2026-10-16" },
   "src/components/assets/asset-thumbnail.tsx": { count: 1, kind: "permanent", why: "the thumbnail image is the control that opens the photo", ruling: "2D-3 R5" },
+  "src/components/audit/audit-round-photos-dialog.tsx": { count: 2, kind: "permanent", why: "the round page's row thumbnail opens the item's photos for the round; a dialog tile's photo opens its preview", ruling: "audit photos spec 2026-11-10 §5; plan 2 Task 3" },
   "src/components/audit/audit-scan-camera.tsx": { count: 3, kind: "permanent", why: "zoom, torch and stop on the camera image, with their own dark fill and white ink", ruling: "2D-4 R5" },
   "src/components/audit/audit-scan-lookup-card.tsx": { count: 1, kind: "permanent", why: "a two-line register match that opens it", ruling: "2D-4 R5" },
   "src/components/audit/audit-scan-room-list.tsx": { count: 2, kind: "permanent", why: "the whole row of two to four lines opens the check sheet; a recorded out-of-scope find's row opens its out-of-scope form", ruling: "2D-4 R5; group 2 plan 3 P3-R25" },

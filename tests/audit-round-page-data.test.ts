@@ -15,6 +15,13 @@ const state: { calls: Call[]; respond: (call: string, args: Args) => unknown } =
 Object.assign(globalThis, { __roundPageData: state })
 
 const stubs = new Map<string, string>([
+  // The register photos' reader (audit-scan-photos.ts) imports hasAttachmentPermission, whose file imports the auth helpers.
+  ["@/lib/auth-utils", `
+    export function hasPermission(user, module, action) {
+      if (user.roles.includes("system_admin")) return true
+      return user.permissions.includes(module + ":" + action)
+    }
+  `],
   ["@/lib/db", `
     const state = () => globalThis.__roundPageData
     const model = (name) => new Proxy({}, {
@@ -62,8 +69,12 @@ const callsTo = (call: string) => state.calls.filter((entry) => entry.call === c
 const hasWhere = (call: string, where: unknown) => callsTo(call).some((args) => isDeepStrictEqual(args.where, where))
 const listCall = () => callsTo("auditItem.findMany").find((args) => args.skip !== undefined)
 const ids = (args: Args | undefined, key: "id" | "assetId") => (args?.where as Record<string, { in: string[] }>)[key].in
-const loadPage = (params: Record<string, string> = {}, options: { page?: number; userId?: string } = {}) =>
-  getAuditRoundPageData({ roundId: "round-1", filters: parseAuditRoundListFilters(params), page: options.page ?? 1, pageSize: 25, user: { id: options.userId ?? "user-head" } })
+const loadPage = (params: Record<string, string> = {}, options: { page?: number; userId?: string; permissions?: string[] } = {}) =>
+  getAuditRoundPageData({ roundId: "round-1", filters: parseAuditRoundListFilters(params), page: options.page ?? 1, pageSize: 25, user: { id: options.userId ?? "user-head", name: "head", roles: [], permissions: options.permissions ?? ["audit:view", "asset:view"] } })
+// The round photos' reads (loadAuditRoundPhotos): the photos carry uploadedFrom, the links read photoEvidence.
+const isRoundPhotoRead = (args: Args) => Boolean((args.where as { uploadedAt?: unknown } | undefined)?.uploadedAt)
+const isPhotoLinkRead = (args: Args) => Boolean((args.where as { photoEvidence?: unknown } | undefined)?.photoEvidence)
+const isEvidenceRead = (args: Args) => args.skip === undefined && Boolean((args.where as { auditStatus?: unknown } | undefined)?.auditStatus)
 
 beforeEach(() => {
   state.calls = []
@@ -281,26 +292,40 @@ test("step 3 reads the close API's own checklist; the opener is told and never o
   assert.deepEqual(await getAuditRoundCloseChecklist("round-1"), { pendingItems: 0, pendingFindings: 2, openActions: 0, unconfirmedAssets: 0, canClose: false })
 })
 
-test("รูปหลักฐาน reads the photos of the checked items in chunks of 2,000 and counts the own ones (bug 10, R17)", async () => {
+test("รูปหลักฐาน reads the photos of the checked items in chunks of 2,000 and counts the own ones, this round's photos only (bug 10, R17, audit photos spec §5)", async () => {
   const checked = Array.from({ length: 2000 }, (_, index) => ({ assetId: `a${index}`, auditStatus: "scanned", auditResult: "found", asset: { categoryId: "desk" } }))
   const outOfScope = { assetId: "x1", auditStatus: "reviewed", auditResult: "out_of_scope", asset: { categoryId: "desk" } }
-  const photos = [{ assetId: "a0", originalName: "ด้านหน้า - 1.jpg" }, { assetId: "a1", originalName: "อื่น ๆ.jpg" }, { assetId: "x1", originalName: "ด้านหน้า - 2.jpg" }]
+  const at = new Date("2026-10-05T03:00:00.000Z")
+  // a2's photo belongs to another round: it is not this round's evidence.
+  const photos = [
+    { id: "p-a0", assetId: "a0", originalName: "ด้านหน้า - 1.jpg", uploadedAt: at },
+    { id: "p-a1", assetId: "a1", originalName: "อื่น ๆ.jpg", uploadedAt: at },
+    { id: "p-x1", assetId: "x1", originalName: "ด้านหน้า - 2.jpg", uploadedAt: at },
+    { id: "p-a2", assetId: "a2", originalName: "ด้านหน้า - 3.jpg", uploadedAt: at },
+  ]
+  const links = [
+    { auditRoundId: "round-1", assetId: "a0", photoEvidence: JSON.stringify(["p-a0"]) },
+    { auditRoundId: "round-1", assetId: "a1", photoEvidence: JSON.stringify(["p-a1"]) },
+    { auditRoundId: "round-1", assetId: "x1", photoEvidence: JSON.stringify(["p-x1"]) },
+    { auditRoundId: "round-other", assetId: "a2", photoEvidence: JSON.stringify(["p-a2"]) },
+  ]
   state.respond = (call, args) => {
     if (call === "auditRound.findFirst") return round
-    if (call === "auditItem.findMany" && args.skip === undefined) return [...checked, outOfScope]
-    if (call === "attachment.findMany") return photos.filter((photo) => ids(args, "assetId").includes(photo.assetId))
+    if (call === "auditItem.findMany" && isPhotoLinkRead(args)) return links.filter((link) => ids(args, "assetId").includes(link.assetId))
+    if (call === "auditItem.findMany" && isEvidenceRead(args)) return [...checked, outOfScope]
+    if (call === "attachment.findMany" && isRoundPhotoRead(args)) return photos.filter((photo) => ids(args, "assetId").includes(photo.assetId))
     if (call === "systemSetting.findMany") return [{ key: "asset_category_photo_checklist:desk", value: JSON.stringify(["ด้านหน้า"]) }]
     return undefined
   }
   const data = await loadPage()
   assert.ok(data)
-  assert.deepEqual(callsTo("auditItem.findMany").find((args) => args.skip === undefined), {
+  assert.deepEqual(callsTo("auditItem.findMany").find(isEvidenceRead), {
     where: { auditRoundId: "round-1", auditStatus: { not: "pending" } },
     select: { assetId: true, auditStatus: true, auditResult: true, asset: { select: { categoryId: true } } },
   })
-  const attachments = callsTo("attachment.findMany")
+  const attachments = callsTo("attachment.findMany").filter(isRoundPhotoRead)
   assert.deepEqual(attachments.map((args) => ids(args, "assetId").length), [2000, 1])
-  assert.deepEqual(attachments[1], { where: { assetId: { in: ["x1"] }, module: "asset", isActive: true, uploadedAt: { gte: round.startDate } }, select: { assetId: true, originalName: true } })
+  assert.deepEqual(attachments[1].where, { assetId: { in: ["x1"] }, module: "asset", isActive: true, fileType: { in: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"] }, uploadedAt: { gte: round.startDate } })
   assert.deepEqual(callsTo("systemSetting.findMany")[0], { where: { key: { in: ["asset_category_photo_checklist:desk"] } }, select: { key: true, value: true } })
   assert.deepEqual(data.evidence, { checked: 2000, withPhoto: 2, withoutPhoto: 1998, checklistComplete: 1, checklistIncomplete: 1999 })
 })
@@ -324,8 +349,9 @@ test("each row carries who checked it and when, its photo, its missing component
   state.respond = (call, args) => {
     if (call === "auditRound.findFirst") return round
     if (call === "auditItem.findMany" && args.skip !== undefined) return [parent, missing, waiting]
-    if (call === "auditItem.findMany") return [parent, missing].map((item) => ({ assetId: item.assetId, auditStatus: item.auditStatus, auditResult: item.auditResult, asset: { categoryId: "desk" } }))
-    if (call === "attachment.findMany") return [{ assetId: "asset-1", originalName: "ด้านหน้า - 1.jpg" }]
+    if (call === "auditItem.findMany" && isPhotoLinkRead(args)) return [{ auditRoundId: "round-1", assetId: "asset-1", photoEvidence: JSON.stringify(["p-1"]) }]
+    if (call === "auditItem.findMany" && isEvidenceRead(args)) return [parent, missing].map((item) => ({ assetId: item.assetId, auditStatus: item.auditStatus, auditResult: item.auditResult, asset: { categoryId: "desk" } }))
+    if (call === "attachment.findMany" && isRoundPhotoRead(args)) return [{ id: "p-1", assetId: "asset-1", originalName: "ด้านหน้า - 1.jpg", uploadedAt: new Date("2026-10-07T02:05:00.000Z") }]
     if (call === "systemLog.findMany") {
       return [{ id: "log-1", action: "scan_result_corrected", module: "audit", recordId: "item-1", oldValue: JSON.stringify({ auditResult: "wrong_location" }), newValue: JSON.stringify({ auditResult: "found", assetId: "asset-1" }), remark: null, createdAt: new Date("2026-10-09T01:00:00.000Z"), user: { username: "somchai", displayName: "สมชาย ใจดี" } }]
     }
@@ -399,4 +425,45 @@ test("closedDisposalCount: a closed round's หาไม่พบ and damaged as
     return undefined
   }
   assert.equal((await loadPage())?.closedDisposalCount, 2)
+})
+
+// Audit photos plan 2 task 3 (spec 2026-11-10-audit-photos-design §5): a checked row carries this round's newest photo
+// and how many; a pending row on the page carries its register photo (own newest → model) from one reader call.
+test("each checked row carries this round's newest photo and its count; each pending row on the page its register photo, from one read (audit photos spec §5)", async () => {
+  const asset = (id: string, modelId: string | null) => ({ id, modelId, assetTag: `TAG-${id}`, name: id, currentLocation: null, custodian: null, condition: null, parentComponents: [], installedInLinks: [] })
+  const row = (id: string, assetId: string, auditStatus: string, modelId: string | null = null) => ({ id, assetId, auditStatus, auditResult: auditStatus === "pending" ? null : "found", scannedBy: null, scannedAt: null, findings: [], asset: asset(assetId, modelId) })
+  const rows = [row("item-1", "asset-1", "scanned"), row("item-2", "asset-2", "scanned"), row("item-3", "asset-3", "pending", "model-3"), row("item-4", "asset-4", "pending", "model-4"), row("item-5", "asset-5", "pending")]
+  const photo = (id: string, assetId: string, minute: number) => ({ id, assetId, originalName: `${id}.jpg`, uploadedAt: new Date(`2026-10-07T02:${String(minute).padStart(2, "0")}:00.000Z`) })
+  state.respond = (call, args) => {
+    if (call === "auditRound.findFirst") return round
+    if (call === "auditItem.findMany" && args.skip !== undefined) return rows
+    if (call === "auditItem.findMany" && isPhotoLinkRead(args)) {
+      return [
+        { auditRoundId: "round-1", assetId: "asset-1", photoEvidence: JSON.stringify(["p-old", "p-new"]) },
+        { auditRoundId: "round-other", assetId: "asset-2", photoEvidence: JSON.stringify(["p-2"]) },
+      ]
+    }
+    if (call === "auditItem.findMany" && isEvidenceRead(args)) return rows.slice(0, 2).map((item) => ({ assetId: item.assetId, auditStatus: item.auditStatus, auditResult: item.auditResult, asset: { categoryId: "desk" } }))
+    if (call === "attachment.findMany" && isRoundPhotoRead(args)) return [photo("p-new", "asset-1", 10), photo("p-2", "asset-2", 9), photo("p-old", "asset-1", 5)]
+    // The register photos: asset-3's own, asset-4's model's, asset-5 none.
+    if (call === "attachment.findMany" && (args.where as { module?: string }).module === "asset") return [{ id: "own-3", assetId: "asset-3" }]
+    if (call === "attachment.findMany" && (args.where as { module?: string }).module === "asset_model") return [{ id: "model-4-photo", referenceId: "model-4" }]
+    return undefined
+  }
+  const data = await loadPage()
+  assert.ok(data)
+  assert.deepEqual(data.rows.map((entry) => entry.roundPhoto), [{ attachmentId: "p-new", count: 2 }, null, null, null, null])
+  assert.deepEqual(data.rows.map((entry) => entry.hasPhoto), [true, false, null, null, null], "asset-2's photo is another round's")
+  assert.deepEqual(data.rows.map((entry) => entry.registerPhoto), [null, null, { attachmentId: "own-3", fromModel: false }, { attachmentId: "model-4-photo", fromModel: true }, null])
+  assert.deepEqual(data.evidence.withPhoto, 1)
+  // One reader call: the own photos of the pending rows on the page, then the models of those left without one.
+  const registerReads = callsTo("attachment.findMany").filter((args) => !isRoundPhotoRead(args))
+  assert.deepEqual(registerReads.map((args) => (args.where as { module: string }).module), ["asset", "asset_model"])
+  assert.deepEqual(ids(registerReads[0], "assetId"), ["asset-3", "asset-4", "asset-5"])
+  assert.deepEqual((registerReads[1].where as { referenceId: { in: string[] } }).referenceId.in, ["model-4"])
+})
+
+test("a page without a pending row reads no register photo (audit photos spec §5)", async () => {
+  await loadPage()
+  assert.deepEqual(callsTo("attachment.findMany").filter((args) => !isRoundPhotoRead(args)), [])
 })

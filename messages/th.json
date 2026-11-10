@@ -3363,7 +3363,13 @@
     "stepConfirmWaiting": "รอยืนยัน {count} ชิ้น",
     "stepConfirmDone": "ยืนยันครบแล้ว",
     "listNextStepConfirm": "ยืนยันผลตรวจ ({count})",
-    "closedDisposalLine": "ขอตัดจำหน่ายจากรอบนี้ได้ {count, number} ชิ้น"
+    "closedDisposalLine": "ขอตัดจำหน่ายจากรอบนี้ได้ {count, number} ชิ้น",
+    "registerPhoto": "รูปทะเบียน",
+    "roundPhotosTitle": "รูปของ {assetTag} ในรอบ {auditNo}",
+    "roundPhotosViewInFiles": "ดูในแท็บไฟล์",
+    "roundPhotoCount": "{label} {count} รูป",
+    "roundPhotosEmpty": "ไม่มีรูปของรอบนี้",
+    "roundPhotosLoadFailed": "โหลดรูปไม่สำเร็จ"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",
