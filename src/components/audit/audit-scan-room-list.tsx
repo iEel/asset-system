@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Segmented } from "@/components/ui/segmented"
+import { AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { getAuditItemBadge, type AuditItemBadge, type AuditScanItemRow, type AuditScanListScope, type AuditScanListTab } from "@/lib/audit-scan-session"
 import { getPanelClasses } from "@/lib/design-system"
@@ -64,6 +65,7 @@ export function AuditScanRoomList({
   recordedOutOfScope,
   onOpenRecorded,
   activeItemId = null,
+  canSeePhotos,
 }: {
   rows: AuditScanItemRow[]
   total: number
@@ -93,8 +95,11 @@ export function AuditScanRoomList({
   onOpenRecorded: (item: AuditScanItemRow) => void
   /** The row whose check panel is open beside the list (wide screens). */
   activeItemId?: string | null
+  /** The viewer may see photos: a row without one keeps the neutral square (audit photos spec §3). */
+  canSeePhotos: boolean
 }) {
   const t = useTranslations("auditScan")
+  const tAsset = useTranslations("asset")
   const locale = useLocale()
   const timeFormat = new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" })
   const recordedHeadingId = useId()
@@ -172,9 +177,13 @@ export function AuditScanRoomList({
                         active && "bg-accent",
                       )}
                     >
+                      <AuditScanPhotoThumb photo={item.photo} alt={`${item.assetTag} ${item.name}`} emptyFrame={canSeePhotos} />
                       <span className="min-w-0 flex-1">
                         <span className="block break-words text-sm font-semibold text-foreground">{item.name}</span>
-                        <span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">{item.assetTag}</span></span>
+                        <span className="block text-meta text-muted-foreground">
+                          <span className="tag whitespace-normal break-all">{item.assetTag}</span>
+                          {item.photo?.fromModel ? <> · <span data-audit-scan-model-photo>{tAsset("modelPhoto")}</span></> : null}
+                        </span>
                         {place ? <span data-audit-scan-row-room className="block break-words text-meta text-muted-foreground">{place}</span> : null}
                         {detail ? <span className="block truncate text-meta text-muted-foreground">{detail}</span> : null}
                         {checked ? <span className="block truncate text-meta text-muted-foreground">{checked}</span> : null}

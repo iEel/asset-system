@@ -8,6 +8,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Notice } from "@/components/ui/notice"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { AuditScanPhotoCard } from "@/components/audit/audit-scan-photo"
 import type { AuditLookupAsset, AuditLookupMatch } from "@/components/audit/audit-scan-types"
 
 export type { AuditLookupMatch } from "@/components/audit/audit-scan-types"
@@ -63,7 +64,8 @@ export function AuditScanLookupCard({
             </Button>
           }
         >
-          {state.asset.subtitle}
+          <AuditScanPhotoCard photo={state.asset.photo} alt={`${state.asset.assetTag} ${state.asset.title}`} />
+          <p className={state.asset.photo ? "mt-2" : undefined}>{state.asset.subtitle}</p>
         </Notice>
       ) : null}
       {state.status === "candidates" ? (

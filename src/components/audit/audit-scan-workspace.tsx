@@ -89,6 +89,7 @@ export function AuditScanWorkspace({
   photoChecklistByCategory,
   categories,
   canApplyCorrections,
+  canSeePhotos,
   initialAssetId,
   currentUser,
 }: {
@@ -104,6 +105,8 @@ export function AuditScanWorkspace({
   /** The round's categories, for the chips' names (spec §11, P3-R6). */
   categories: AuditScanCategory[]
   canApplyCorrections: boolean
+  /** The viewer may see asset or model photos: the rows keep a frame for a missing photo (audit photos spec §3). */
+  canSeePhotos: boolean
   initialAssetId?: string
   /** The signed-in person: queued checks are stamped with them, and only theirs send from this session. */
   currentUser: { id: string; name: string }
@@ -864,6 +867,7 @@ export function AuditScanWorkspace({
             recordedOutOfScope={recordedOutOfScope}
             onOpenRecorded={openRecordedOutOfScope}
             activeItemId={isWide && target?.kind === "item" ? target.item.itemId : null}
+            canSeePhotos={canSeePhotos}
           />
           {searching ? (
             <AuditScanSearchResults
@@ -875,6 +879,7 @@ export function AuditScanWorkspace({
               locationLabels={locationLabels}
               queuedAssetIds={queuedAssetIds}
               onOpen={(item) => openItem(item, true)}
+              canSeePhotos={canSeePhotos}
               lookupAfterMatches={outOfScopeHint}
               lookup={
                 <AuditScanLookupCard
@@ -919,6 +924,7 @@ export function AuditScanWorkspace({
             options={options}
             photoChecklist={target.kind === "item" ? photoChecklistByCategory[target.item.categoryId] ?? [] : []}
             canApplyCorrections={canApplyCorrections}
+            canSeePhotos={canSeePhotos}
             saving={saving}
             disabled={roundClosed}
             components={components}

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { AuditScanPhotoThumb } from "./audit-scan-photo"
 import { isAuditComponentChecked, isAuditComponentPending } from "./audit-scan-helpers"
 import type { AuditScanComponent } from "./audit-scan-types"
 
@@ -26,6 +27,7 @@ export function AuditComponentPanel({
   onConfirmWithParent,
   onConfirmAll,
   onMarkMissing,
+  emptyFrame,
   t,
 }: {
   components: AuditScanComponent[]
@@ -36,6 +38,8 @@ export function AuditComponentPanel({
   onConfirmWithParent: (component: AuditScanComponent) => void
   onConfirmAll: () => void
   onMarkMissing: (component: AuditScanComponent) => void
+  /** The viewer may see photos: a component without one keeps the neutral square (audit photos spec §3). */
+  emptyFrame: boolean
   t: AuditScanTranslator
 }) {
   const tCommon = useTranslations("common")
@@ -67,6 +71,7 @@ export function AuditComponentPanel({
 
           return (
             <li key={component.assetId} data-audit-component-row className="flex min-h-16 items-center gap-2 px-3 py-2">
+              <AuditScanPhotoThumb photo={component.photo} alt={`${component.assetTag} ${component.name}`} emptyFrame={emptyFrame} />
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="min-w-0 truncate text-sm text-foreground">

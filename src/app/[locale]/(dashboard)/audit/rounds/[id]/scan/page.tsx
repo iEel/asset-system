@@ -27,6 +27,9 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
   const { locale, id } = await params
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "audit", "edit")
+  // A pure permission check (no read): a viewer who may see either kind of photo gets aligned frames on the rows.
+  const photoAccess = auditScanPhotoAccess(user)
+  const canSeePhotos = photoAccess.assetPhotos || photoAccess.modelPhotos
   const canApplyCorrections = canApplyAuditScanCorrections({
     canApprove: hasPermission(user, "audit", "approve"),
     segregationRequired: parseWorkflowApprovalPolicy(await prisma.systemSetting.findMany({
@@ -87,6 +90,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       }}
       photoChecklistByCategory={photoChecklistByCategory}
       canApplyCorrections={canApplyCorrections}
+      canSeePhotos={canSeePhotos}
       categories={categories}
       initialAssetId={resolveFirstSearchParam(rawSearchParams.assetId)}
       currentUser={{ id: user.id, name: user.name }}

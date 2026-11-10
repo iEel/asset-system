@@ -400,3 +400,49 @@ test("the detail-page ยืนยันผลตรวจ spec walks one asset 
   assert.ok(!spec.includes("backToRound"), "no round back label")
   assert.ok(!spec.includes("cancelAsItHead") && !/action: "(?:cancel|close)"/.test(spec), "the round stays open")
 })
+
+test("the scan photos spec reads the app's own words, key by key (audit photos plan 1 task 5)", async () => {
+  const { SCAN_PHOTO_WORDS: W } = await import("../e2e/audit/scan-photos-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const scan = th.auditScan as Record<string, string>
+  const byKey: Record<keyof typeof W, string> = {
+    modelPhoto: th.asset.modelPhoto,
+    addNotePhoto: scan.addNotePhoto,
+    queuedPhotos: scan.queuedPhotos,
+    saveAllMatch: scan.saveAllMatch,
+    savedAllMatch: scan.savedAllMatch,
+  }
+  assert.deepEqual({ ...W }, byKey)
+})
+
+test("the scan photos spec opens its own round on its own room, uploads the model photo as the IT head on a run model, and the IT head cancels it whatever happens (audit photos plan 1 task 5)", () => {
+  const spec = read("e2e/audit/scan-photos.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  assert.ok(spec.split("\n").includes("runPhoneOnWebKit()"), "the phone on WebKit, as the field audit's walk")
+  assert.ok(spec.includes(`asUser("itStaff")`))
+  assert.doesNotMatch(spec, /test\.skip\(/, "all four projects")
+  // Its own records: a room, five run assets, a run brand and model, a round on that room.
+  assert.ok(spec.includes(`const prefix = recordPrefix(testInfo, "AUP")`))
+  assert.ok(spec.includes("const roomId = await createRoom(roomCode, roomName)"))
+  assert.ok(spec.includes("scopeLocationId: roomId,"))
+  assert.doesNotMatch(spec, /\bstatus: "/, "the round's body sends no status (spec §7)")
+  assert.ok(spec.includes(`expect(round.generatedItems, "the room's five assets").toBe(5)`))
+  // The model photo as the IT head (brand:edit), on the run's model only; the context is disposed.
+  assert.ok(spec.includes(`playwright.request.newContext({ baseURL, storageState: fromRoot(authStateFile(runId, "itHead")) })`))
+  assert.ok(spec.includes("itHead.post(`/api/models/${modelId}/attachments`"))
+  assert.ok(spec.includes("name: `${prefix} รุ่นทดสอบรูป`"))
+  assert.match(spec, /\} finally \{\n\s+await itHead\.dispose\(\)/)
+  assert.ok(spec.includes("await installComponentByApi(page, d.id, e.id, "))
+  // The four checks, then the link: the upload of the check's photo answers auditLinked: true.
+  for (const step of [
+    "the room list shows A's thumb, B's thumb with รูปประจำรุ่น in its meta line, and C's neutral square",
+    "the check form shows A's card without the chip and B's card with the chip, and C shows no card",
+    "D's check form lists E with E's thumb",
+    "a photo taken in A's check form uploads with the item id",
+  ]) assert.ok(spec.includes(`await test.step("${step}"`), step)
+  assert.ok(spec.includes(`toMatchObject({ auditLinked: true })`))
+  // No DELETE, no admin route, no settings, no database.
+  assert.doesNotMatch(spec, /\.delete\(|\/api\/admin\/|prisma/)
+  // Cancelled whatever happens, by the IT head through the round route.
+  assert.match(spec, /\} finally \{\n\s+await rounds\.cancelAsItHead\(playwright\.request, baseURL, round\.id, /)
+})
