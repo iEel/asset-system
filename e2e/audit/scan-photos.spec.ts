@@ -8,15 +8,24 @@
 // shows A's card, B's card with the รูปประจำรุ่น chip and C's card empty (ยังไม่มีรูป); D's check lists E with E's thumb; and a photo
 // taken in A's check form uploads with the audit item's id, so the upload answers auditLinked: true (the only check of
 // the link in plan 1). The IT head cancels the round whatever happens (never a DELETE); no shared master data is changed.
+// Plan 2 task 5 (spec §4-§6), in the same round before it is cancelled: C is checked too, with no photo; A's files tab
+// chips the round (its line names the round, the scan time, พบตรง and IT staff); the round page's A thumbnail opens the
+// round's dialog, whose ดูในแท็บไฟล์ lands on the chip, C reads ไม่มีรูป, and under รอตรวจ B shows the model photo plainly
+// with รูปประจำรุ่น, E its own with รูปทะเบียน and D —; A's history audit row has ดูรูป to the chip and C's none; and the
+// viewer keeps ดูรูป without the round's link (skipped, saying so, while the run's viewer holds audit:view).
 import { readFileSync } from "node:fs"
 import type { Locator, Page } from "../asset-detail/detail-steps.ts"
 import { asUser, expect, runPhoneOnWebKit, test } from "../support/fixtures.ts"
+import type { E2eDevice } from "../support/matrix.ts"
 import { authStateFile, fromRoot } from "../support/paths.ts"
+import { E2E_ROLE_PERMISSIONS } from "../support/run-plan.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createRoom, readAssetChoices, recordPrefix, type AssetChoices } from "../disposal/disposal-support.ts"
-import { fillTemplate } from "../shell/shell-words.ts"
+import { fillTemplate, templatePattern } from "../shell/shell-words.ts"
 import { bangkokDate } from "../transactions/tx-plan.ts"
 import { installComponentByApi } from "../transactions/tx-support.ts"
+import * as roundPage from "./round-page-steps.ts"
+import { ROUND_PAGE_WORDS } from "./round-page-words.ts"
 import * as rounds from "./round-steps.ts"
 import * as scan from "./scan-steps.ts"
 import { recordSettled } from "./settle.ts"
@@ -83,13 +92,32 @@ async function openRow(page: Page, asset: RunAsset) {
   await expect(scan.checkHeading(page, asset)).toBeVisible()
 }
 
+// The files tab's filter chips by round (spec §4), its photo tiles' buttons and the round chips on the tiles.
+const roundFilter = (page: Page): Locator => page.getByRole("main").getByRole("navigation", { name: W.roundFilterLabel, exact: true })
+const photoTiles = (scope: Locator): Locator => scope.getByRole("button", { name: templatePattern(W.openPhoto, { name: ".+" }) })
+const tileRoundChips = (page: Page, auditNo: string): Locator =>
+  page.getByRole("main").locator('li [data-slot="chip"]').filter({ hasText: new RegExp(`^${scan.escapeRegExp(auditNo)}$`) })
+// The selected round's line, right after the chips (asset-attachments.tsx RoundLine).
+const roundLine = (page: Page): Locator => roundFilter(page).locator("xpath=following-sibling::p[1]")
+
+// The round page's photo cell of a result row: the phone card's รูป value, or the table's fifth cell.
+function photoCell(row: Locator, device: E2eDevice): Locator {
+  return device === "phone"
+    ? row.locator("dt").filter({ hasText: new RegExp(`^${scan.escapeRegExp(W.photoColumn)}$`) }).locator("xpath=following-sibling::dd[1]")
+    : row.locator("td").nth(4)
+}
+
+// The asset's files tab with a round's chip (the links' target, spec "Links to the files tab").
+const onFilesChip = (assetId: string, auditNo: string) => (url: URL) =>
+  url.pathname === `/th/assets/${assetId}` && url.searchParams.get("view") === "files" && url.searchParams.get("photoRound") === auditNo
+
 // The image was drawn by the thumbnail route (in view, so the lazy image loads).
 async function expectDrawn(image: Locator) {
   await image.scrollIntoViewIfNeeded()
   await expect.poll(() => image.evaluate((element) => (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0)).toBe(true)
 }
 
-test("the scan page shows the asset's photo, the model's as the fallback, the components' thumbs, and a photo taken in the check links to its round (audit photos spec §3)", async ({ page, measure, playwright, baseURL }, testInfo) => {
+test("the scan page shows the asset's photo, the model's as the fallback, the components' thumbs, and a photo taken in the check links to its round (audit photos spec §3)", async ({ page, measure, playwright, browser, baseURL, e2eDevice }, testInfo) => {
   test.setTimeout(300_000)
   const { runId } = readRunState()
   const prefix = recordPrefix(testInfo, "AUP")
@@ -140,6 +168,8 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
   })
   expect(opened.status(), await opened.text()).toBe(201)
   const round = (await opened.json()) as { id: string; auditNo: string; generatedItems: number }
+  // The photo taken in A's check (test 4), the round's only photo.
+  let checkPhotoId = ""
   try {
     // Inside the try, so a round that generates the wrong items is still cancelled (final review F2).
     expect(round.generatedItems, "the room's five assets").toBe(5)
@@ -205,8 +235,162 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       const response = await uploaded
       expect(response.status(), "the check's photo is uploaded after the save").toBe(201)
       expect(response.request().postDataBuffer()?.toString("latin1") ?? "", "the upload names the audit item").toContain('name="auditItemId"')
-      expect(await response.json(), "the photo is linked to the round").toMatchObject({ auditLinked: true })
+      const linked = (await response.json()) as { id: string; auditLinked?: boolean }
+      expect(linked, "the photo is linked to the round").toMatchObject({ auditLinked: true })
+      checkPhotoId = linked.id
       await recordSettled(page, measure, "A saved with a photo from the check")
+    })
+
+    await test.step("C is checked with no photo", async () => {
+      await openRow(page, c)
+      await expect(scan.saveButton(page)).toHaveText(W.saveAllMatch)
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(fillTemplate(W.savedAllMatch, { assetTag: c.assetTag }))
+      await recordSettled(page, measure, "C saved without a photo")
+    })
+
+    // Who scanned, as the history and the round's line name a linked user (assetHistoryActorLabel).
+    const data = readRunData()
+    const staff = data.users.itStaff
+    const staffEmployee = Object.values(data.employees).find((employee) => employee.id === staff?.employeeId)
+    const scannedBy = staffEmployee ? `${staffEmployee.code} - ${staffEmployee.fullNameTh}` : `${staff?.displayName} (${staff?.username})`
+
+    await test.step("A's files tab chips the round, marks its tile and shows the round's line; an unknown photoRound shows ทั้งหมด", async () => {
+      await roundPage.settlePageRequests(page)
+      await measure.visit(`/th/assets/${a.id}?view=files`, "A's files tab with a round photo")
+      // A's own photo (before the round) and the check's: two photos, one of the round, one from no round.
+      await roundPage.expectChips(roundFilter(page), [[W.all, 2], [round.auditNo, 1], [W.notFromAudit, 1]])
+      await expect(roundPage.chipByLabel(roundFilter(page), W.all)).toHaveAttribute("aria-current", "page")
+      await expect(photoTiles(page.getByRole("main"))).toHaveCount(2)
+      await expect(tileRoundChips(page, round.auditNo), "the round chip on the check photo's tile only").toHaveCount(1)
+      await expect(roundLine(page), "no round chosen, no round line").toHaveCount(0)
+
+      await roundPage.chipByLabel(roundFilter(page), round.auditNo).click()
+      await page.waitForURL(onFilesChip(a.id, round.auditNo))
+      await expect(roundPage.chipByLabel(roundFilter(page), round.auditNo)).toHaveAttribute("aria-current", "page")
+      await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await expect(tileRoundChips(page, round.auditNo)).toHaveCount(1)
+      // The round (linked: IT staff hold audit:view), the scan time, the result in words and who scanned; not cancelled.
+      const line = roundLine(page)
+      await expect(line.getByRole("link", { name: round.auditNo, exact: true })).toHaveAttribute("href", `/th/audit/rounds/${round.id}`)
+      await expect(line).toContainText(/\d{2}:\d{2}/)
+      await expect(line).toContainText(W.found)
+      await expect(line).toContainText(fillTemplate(W.roundScannedBy, { name: scannedBy }))
+      await expect(line).not.toContainText(W.roundCancelled)
+      await recordSettled(page, measure, "A's files tab, the round's chip")
+
+      await roundPage.chipByLabel(roundFilter(page), W.notFromAudit).click()
+      await page.waitForURL((url) => url.searchParams.get("photoRound") === "none")
+      await expect(roundPage.chipByLabel(roundFilter(page), W.notFromAudit)).toHaveAttribute("aria-current", "page")
+      await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await expect(tileRoundChips(page, round.auditNo)).toHaveCount(0)
+      await expect(roundLine(page)).toHaveCount(0)
+
+      await roundPage.settlePageRequests(page)
+      await measure.visit(`/th/assets/${a.id}?view=files&photoRound=JUNK`, "A's files tab, an unknown round")
+      await expect(roundPage.chipByLabel(roundFilter(page), W.all)).toHaveAttribute("aria-current", "page")
+      await expect(photoTiles(page.getByRole("main"))).toHaveCount(2)
+      await expect(roundLine(page)).toHaveCount(0)
+    })
+
+    await test.step("the round page: A's thumbnail opens its round photos, C reads ไม่มีรูป, the pending rows show their register photos plainly, and ดูในแท็บไฟล์ lands on the chip", async () => {
+      await roundPage.settlePageRequests(page)
+      await measure.visit(`/th/audit/rounds/${round.id}`, "round page with a round photo")
+      await expect(roundPage.resultRows(page, e2eDevice, prefix)).toHaveCount(5)
+      const aRow = roundPage.resultRows(page, e2eDevice, a.assetTag)
+      const cRow = roundPage.resultRows(page, e2eDevice, c.assetTag)
+      const aButton = aRow.getByRole("button", { name: fillTemplate(W.roundPhotoCount, { label: W.photoAttached, count: 1 }), exact: true })
+      await expect(aButton).toBeVisible()
+      await expect(aButton.locator("img")).toHaveAttribute("src", thumbSrc(checkPhotoId))
+      await expectDrawn(aButton.locator("img"))
+      await expect(aButton, "one photo: no +n").not.toContainText("+")
+      // C checked without a photo: the words, no button, no register photo standing in.
+      await expect(photoCell(cRow, e2eDevice)).toHaveText(W.photoMissing)
+      await expect(cRow.locator("[data-audit-round-photo], [data-audit-register-photo]")).toHaveCount(0)
+      await recordSettled(page, measure, "round page, the photo column")
+
+      // รอตรวจ: B, D and E. A pending row's register photo is plain (no button) and labelled.
+      const pendingChip = roundPage.chipByLabel(roundPage.resultChips(page), ROUND_PAGE_WORDS.resultPending)
+      await pendingChip.click()
+      await expect(pendingChip).toHaveAttribute("aria-current", "page")
+      await expect(roundPage.resultRows(page, e2eDevice, prefix)).toHaveCount(3)
+      const bCell = photoCell(roundPage.resultRows(page, e2eDevice, b.assetTag), e2eDevice)
+      const bPhoto = bCell.locator("[data-audit-register-photo]")
+      await expect(bPhoto).toHaveAttribute("data-from-model", "true")
+      await expect(bPhoto.locator("img")).toHaveAttribute("src", thumbSrc(model.photoId))
+      await expect(bPhoto).toContainText(W.modelPhoto)
+      await expect(bCell.getByRole("button")).toHaveCount(0)
+      const eCell = photoCell(roundPage.resultRows(page, e2eDevice, e.assetTag), e2eDevice)
+      const ePhoto = eCell.locator("[data-audit-register-photo]")
+      await expect(ePhoto.locator("img")).toHaveAttribute("src", thumbSrc(ePhotoId))
+      await expect(ePhoto).toContainText(W.registerPhoto)
+      await expect(ePhoto).not.toHaveAttribute("data-from-model", "true")
+      await expect(eCell.getByRole("button")).toHaveCount(0)
+      // D: no photo of its own and no model (E's photo is E's): the dash.
+      const dCell = photoCell(roundPage.resultRows(page, e2eDevice, d.assetTag), e2eDevice)
+      await expect(dCell.locator('[data-slot="nil"]')).toHaveCount(1)
+      await expect(dCell.locator("img, button")).toHaveCount(0)
+      await recordSettled(page, measure, "round page, pending rows with their register photos")
+
+      // Back to ทั้งหมด: A's thumbnail opens the round's dialog, one tile, whose link lands on the files tab's chip.
+      const allChip = roundPage.chipByLabel(roundPage.resultChips(page), ROUND_PAGE_WORDS.resultAll)
+      await allChip.click()
+      await expect(allChip).toHaveAttribute("aria-current", "page")
+      await aButton.click()
+      const dialog = page.getByRole("dialog", { name: fillTemplate(W.roundPhotosTitle, { assetTag: a.assetTag, auditNo: round.auditNo }), exact: true })
+      await expect(dialog).toBeVisible()
+      await expect(photoTiles(dialog)).toHaveCount(1)
+      await expect(photoTiles(dialog).locator("img")).toHaveAttribute("src", cardSrc(checkPhotoId))
+      await expect(page, "the dialog does not open the asset").toHaveURL((url) => url.pathname === `/th/audit/rounds/${round.id}`)
+      await recordSettled(page, measure, "round page, A's round photos")
+      await dialog.getByRole("link", { name: W.roundPhotosViewInFiles, exact: true }).click()
+      await page.waitForURL(onFilesChip(a.id, round.auditNo))
+      await expect(roundPage.chipByLabel(roundFilter(page), round.auditNo)).toHaveAttribute("aria-current", "page")
+      await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await recordSettled(page, measure, "A's files tab from the round's dialog")
+    })
+
+    await test.step("the history: A's audit row has ดูรูป, which lands on the chip; C's has none", async () => {
+      await roundPage.settlePageRequests(page)
+      await measure.visit(`/th/assets/${c.id}?view=history`, "C's history, a round without its photo")
+      // C's audit row is there (its round's link), without ดูรูป.
+      await expect(page.getByRole("main").getByRole("link", { name: new RegExp(scan.escapeRegExp(round.auditNo)) }).first()).toBeVisible()
+      await expect(page.getByRole("main").getByRole("link", { name: templatePattern(W.viewPhotosLabel, {}) })).toHaveCount(0)
+
+      await roundPage.settlePageRequests(page)
+      await measure.visit(`/th/assets/${a.id}?view=history`, "A's history with the round's photos")
+      const viewPhotos = page.getByRole("main").getByRole("link", { name: fillTemplate(W.viewPhotosLabel, { auditNo: round.auditNo }), exact: true })
+      await expect(viewPhotos).toHaveCount(1)
+      await expect(viewPhotos).toHaveText(W.viewPhotos)
+      await recordSettled(page, measure, "A's history, ดูรูป")
+      await viewPhotos.click()
+      await page.waitForURL(onFilesChip(a.id, round.auditNo))
+      await expect(roundPage.chipByLabel(roundFilter(page), round.auditNo)).toHaveAttribute("aria-current", "page")
+      await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await recordSettled(page, measure, "A's files tab from the history")
+    })
+
+    await test.step("the viewer: A's history row keeps ดูรูป without the round's link", async () => {
+      // Spec §6: ดูรูป needs asset:view only and stays when the round's link is dropped for lack of audit:view. The run's
+      // viewer role (e2e/support/run-plan.ts) holds audit:view, so it would see the round's link: skipped, saying so.
+      if (E2E_ROLE_PERMISSIONS.viewer.includes("audit:view")) {
+        testInfo.annotations.push({ type: "skipped step", description: "the viewer step: the run's viewer role holds audit:view, so no run user has asset:view without audit:view" })
+        return
+      }
+      const viewer = await browser.newContext({ baseURL, viewport: page.viewportSize(), storageState: fromRoot(authStateFile(runId, "viewer")) })
+      try {
+        const viewerPage = await viewer.newPage()
+        await viewerPage.goto(`/th/assets/${a.id}?view=history`, { waitUntil: "load" })
+        const viewPhotos = viewerPage.getByRole("main").getByRole("link", { name: fillTemplate(W.viewPhotosLabel, { auditNo: round.auditNo }), exact: true })
+        await expect(viewPhotos).toHaveCount(1)
+        await expect(viewerPage.getByRole("main").locator(`a[href="/th/audit/rounds/${round.id}"]`), "no round link without audit:view").toHaveCount(0)
+        await viewPhotos.click()
+        await viewerPage.waitForURL(onFilesChip(a.id, round.auditNo))
+        await expect(roundLine(viewerPage).getByRole("link")).toHaveCount(0)
+        await expect(roundLine(viewerPage)).toContainText(round.auditNo)
+      } finally {
+        await viewer.close()
+      }
     })
   } finally {
     await rounds.cancelAsItHead(playwright.request, baseURL, round.id, `${prefix} ยกเลิกรอบทดสอบรูปตรวจนับ`)

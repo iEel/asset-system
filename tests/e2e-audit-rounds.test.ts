@@ -412,6 +412,22 @@ test("the scan photos spec reads the app's own words, key by key (audit photos p
     queuedPhotos: scan.queuedPhotos,
     saveAllMatch: scan.saveAllMatch,
     savedAllMatch: scan.savedAllMatch,
+    all: th.common.all,
+    roundFilterLabel: th.asset.filesTab.roundFilterLabel,
+    notFromAudit: th.asset.filesTab.notFromAudit,
+    roundCancelled: th.asset.filesTab.roundCancelled,
+    roundScannedBy: th.asset.filesTab.roundScannedBy,
+    openPhoto: th.asset.filesTab.openPhoto,
+    found: th.auditRound.found,
+    photoColumn: th.auditRound.photoColumn,
+    photoAttached: th.auditRound.photoAttached,
+    photoMissing: th.auditRound.photoMissing,
+    roundPhotoCount: th.auditRound.roundPhotoCount,
+    roundPhotosTitle: th.auditRound.roundPhotosTitle,
+    roundPhotosViewInFiles: th.auditRound.roundPhotosViewInFiles,
+    registerPhoto: th.auditRound.registerPhoto,
+    viewPhotos: th.asset.history.viewPhotos,
+    viewPhotosLabel: th.asset.history.viewPhotosLabel,
   }
   assert.deepEqual({ ...W }, byKey)
 })
@@ -448,6 +464,24 @@ test("the scan photos spec opens its own round on its own room, uploads the mode
     "a photo taken in A's check form uploads with the item id",
   ]) assert.ok(spec.includes(`await test.step("${step}"`), step)
   assert.ok(spec.includes(`toMatchObject({ auditLinked: true })`))
+  // Plan 2 task 5: the files tab, the round page and the history, in the same round, all before the finally cancels it.
+  const finallyAt = spec.search(/\} finally \{\r?\n\s+await rounds\.cancelAsItHead\(/)
+  assert.ok(finallyAt > 0, "the round's finally")
+  for (const step of [
+    "C is checked with no photo",
+    "A's files tab chips the round, marks its tile and shows the round's line; an unknown photoRound shows ทั้งหมด",
+    "the round page: A's thumbnail opens its round photos, C reads ไม่มีรูป, the pending rows show their register photos plainly, and ดูในแท็บไฟล์ lands on the chip",
+    "the history: A's audit row has ดูรูป, which lands on the chip; C's has none",
+    "the viewer: A's history row keeps ดูรูป without the round's link",
+  ]) {
+    const at = spec.indexOf(`await test.step("${step}"`)
+    assert.ok(at > 0, step)
+    assert.ok(at < finallyAt, `${step}: before the round is cancelled`)
+  }
+  // The viewer step skips itself, saying why, when the run's viewer holds audit:view (no test.skip: all four projects).
+  assert.ok(spec.includes(`E2E_ROLE_PERMISSIONS.viewer.includes("audit:view")`))
+  assert.ok(spec.includes(`storageState: fromRoot(authStateFile(runId, "viewer"))`))
+  assert.match(spec, /\} finally \{\r?\n\s+await viewer\.close\(\)/)
   // No DELETE, no admin route, no settings, no database.
   assert.doesNotMatch(spec, /\.delete\(|\/api\/admin\/|prisma/)
   // Cancelled whatever happens, by the IT head through the round route.
