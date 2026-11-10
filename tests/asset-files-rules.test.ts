@@ -2,7 +2,15 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { matchPhotoChecklistLabel } from "../src/lib/asset-detail-format.ts"
-import { ASSET_EVIDENCE_MODULES, buildAssetEvidenceGroups, groupAssetFiles, type AssetEvidenceSource, type AssetFileRecord } from "../src/lib/asset-files-rules.ts"
+import {
+  ASSET_EVIDENCE_MODULES,
+  buildAssetEvidenceGroups,
+  buildAssetPhotoRoundFilter,
+  groupAssetFiles,
+  type AssetEvidenceSource,
+  type AssetFileRecord,
+  type AssetPhotoRoundFacts,
+} from "../src/lib/asset-files-rules.ts"
 
 // Group 1 asset detail task 11 (spec 2026-10-25 §7.7): the files tab. Photos are the asset's own thumbnailable images,
 // the main photo first, then the category checklist's order, then the newest; everything else of modules asset and
@@ -108,4 +116,103 @@ test("the evidence modules are the ones the drawer and the handover cards showed
     const value = labelKey.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], asset)
     assert.equal(typeof value, "string", `${module}: asset.${labelKey}`)
   }
+})
+
+// Audit photos plan 2 task 2 (spec 2026-11-10-audit-photos-design §4, option ข): one photo list, a round chip on each
+// round photo's tile, and filter chips by round above the tiles.
+const r3 = { auditNo: "AUD-2026-0003", roundId: "ar3" }
+const r1 = { auditNo: "AUD-2026-0001", roundId: "ar1" }
+const roundFacts = (round: { auditNo: string; roundId: string }, cancelled = false): AssetPhotoRoundFacts => ({
+  roundId: round.roundId,
+  auditNo: round.auditNo,
+  cancelled,
+  scannedAtIso: "2026-11-05T03:00:00.000Z",
+  resultKey: "auditRound.resultFound",
+  scannedBy: "E001 - สมชาย",
+})
+const hrefFor = (key: string | null) => (key === null ? "/th/assets/a1?view=files" : `/th/assets/a1?view=files&photoRound=${key}`)
+const roundPhotos = () =>
+  groupAssetFiles(
+    [
+      file("p1", "asset", "IMG_1.jpg", "image/jpeg", 20),
+      file("p2", "asset", "IMG_2.jpg", "image/jpeg", 19),
+      file("p3", "asset", "IMG_3.jpg", "image/jpeg", 18),
+      file("p4", "asset", "IMG_4.jpg", "image/jpeg", 10),
+      file("p5", "asset", "IMG_5.jpg", "image/jpeg", 9),
+    ],
+    [],
+    new Map([
+      ["p1", r3],
+      ["p3", r3],
+      ["p4", r1],
+    ]),
+  ).photos
+
+test("groupAssetFiles keeps the primary first and sets round on each photo", () => {
+  const photos = roundPhotos()
+  assert.deepEqual(photos.map((photo) => [photo.id, photo.primary, photo.round?.auditNo ?? null]), [
+    ["p1", true, "AUD-2026-0003"],
+    ["p2", false, null],
+    ["p3", false, "AUD-2026-0003"],
+    ["p4", false, "AUD-2026-0001"],
+    ["p5", false, null],
+  ])
+  assert.deepEqual(photos[0].round, r3, "a round photo that is also the primary photo keeps both")
+  // Without a round map every photo has no round.
+  assert.ok(groupAssetFiles([file("x", "asset", "x.jpg", "image/jpeg", 1)], []).photos.every((photo) => photo.round === null))
+})
+
+test("buildAssetPhotoRoundFilter gives ทั้งหมด, then the rounds latest first, then ไม่ได้มาจากการตรวจนับ, each count its tiles", () => {
+  const filter = buildAssetPhotoRoundFilter({ photos: roundPhotos(), rounds: [roundFacts(r1, true), roundFacts(r3)], selected: null, hrefFor })
+  assert.ok(filter)
+  assert.deepEqual(filter.chips, [
+    { key: "all", label: "all", count: 5, href: "/th/assets/a1?view=files", selected: true },
+    { key: "AUD-2026-0003", label: "AUD-2026-0003", count: 2, href: "/th/assets/a1?view=files&photoRound=AUD-2026-0003", selected: false },
+    { key: "AUD-2026-0001", label: "AUD-2026-0001", count: 1, href: "/th/assets/a1?view=files&photoRound=AUD-2026-0001", selected: false },
+    { key: "none", label: "none", count: 2, href: "/th/assets/a1?view=files&photoRound=none", selected: false },
+  ])
+  assert.equal(filter.selected, null)
+  assert.deepEqual(filter.visiblePhotoIds, ["p1", "p2", "p3", "p4", "p5"], "ทั้งหมด keeps the primary first")
+
+  const round = buildAssetPhotoRoundFilter({ photos: roundPhotos(), rounds: [roundFacts(r1, true), roundFacts(r3)], selected: "AUD-2026-0001", hrefFor })
+  assert.ok(round)
+  assert.deepEqual(round.selected, roundFacts(r1, true))
+  assert.deepEqual(round.visiblePhotoIds, ["p4"])
+  assert.deepEqual(round.chips.filter((chip) => chip.selected).map((chip) => chip.key), ["AUD-2026-0001"])
+  // Each count equals the tiles that chip shows.
+  for (const chip of round.chips) {
+    const shown = buildAssetPhotoRoundFilter({ photos: roundPhotos(), rounds: [roundFacts(r1, true), roundFacts(r3)], selected: chip.key === "all" ? null : chip.key, hrefFor })
+    assert.equal(shown?.visiblePhotoIds.length, chip.count, chip.key)
+  }
+})
+
+test("an unknown or junk photoRound falls back to ทั้งหมด", () => {
+  for (const selected of ["AUD-2026-0002", "", "all", "<script>", "AUD-2026-0003 ", "NONE"]) {
+    const filter = buildAssetPhotoRoundFilter({ photos: roundPhotos(), rounds: [roundFacts(r3)], selected, hrefFor })
+    assert.ok(filter)
+    assert.equal(filter.selected, null, JSON.stringify(selected))
+    assert.equal(filter.visiblePhotoIds.length, 5)
+    assert.deepEqual(filter.chips.filter((chip) => chip.selected).map((chip) => chip.key), ["all"])
+  }
+  // A round with photos but no facts still filters, with the facts it can tell.
+  const bare = buildAssetPhotoRoundFilter({ photos: roundPhotos(), rounds: [], selected: "AUD-2026-0003", hrefFor })
+  assert.deepEqual(bare?.selected, { roundId: "ar3", auditNo: "AUD-2026-0003", cancelled: false, scannedAtIso: null, resultKey: null, scannedBy: null })
+})
+
+test("no round photo, no chips", () => {
+  const photos = groupAssetFiles([file("q1", "asset", "a.jpg", "image/jpeg", 2), file("q2", "asset", "b.jpg", "image/jpeg", 1)], []).photos
+  assert.equal(buildAssetPhotoRoundFilter({ photos, rounds: [], selected: "none", hrefFor }), null)
+  assert.equal(buildAssetPhotoRoundFilter({ photos: [], rounds: [], selected: null, hrefFor }), null)
+})
+
+test("none selects the photos without a round", () => {
+  const filter = buildAssetPhotoRoundFilter({ photos: roundPhotos(), rounds: [roundFacts(r3)], selected: "none", hrefFor })
+  assert.ok(filter)
+  assert.equal(filter.selected, "none")
+  assert.deepEqual(filter.visiblePhotoIds, ["p2", "p5"])
+  // Every photo in a round: no ไม่ได้มาจากการตรวจนับ chip, and none falls back to ทั้งหมด.
+  const allRound = groupAssetFiles([file("s1", "asset", "a.jpg", "image/jpeg", 2)], [], new Map([["s1", r3]])).photos
+  const only = buildAssetPhotoRoundFilter({ photos: allRound, rounds: [roundFacts(r3)], selected: "none", hrefFor })
+  assert.deepEqual(only?.chips.map((chip) => chip.key), ["all", "AUD-2026-0003"])
+  assert.equal(only?.selected, null)
 })

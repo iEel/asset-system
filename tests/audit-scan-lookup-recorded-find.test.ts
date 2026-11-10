@@ -5,7 +5,14 @@ import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
 
 type Related = { id: string; assetId: string; auditStatus: string; auditResult: string | null }
-type State = { asset: Record<string, unknown>; item: Record<string, unknown> | null; related: Related[]; itemSelects: unknown[] }
+type State = {
+  asset: Record<string, unknown>
+  item: Record<string, unknown> | null
+  related: Related[]
+  itemSelects: unknown[]
+  photos: Array<{ id: string; assetId?: string; referenceId?: string; module: string }>
+  photoReads: unknown[]
+}
 
 function notebook(): Record<string, unknown> {
   return {
@@ -23,7 +30,7 @@ const recordedFind = {
   actualLocationId: "loc-2", actualCustodianId: null, actualDepartmentId: "dept-1", actualConditionId: "condition-good",
 }
 
-const state: State = { asset: notebook(), item: null, related: [], itemSelects: [] }
+const state: State = { asset: notebook(), item: null, related: [], itemSelects: [], photos: [], photoReads: [] }
 Object.assign(globalThis, { __lookupRecordedFindState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -36,11 +43,19 @@ const mockedModuleSources = new Map<string, string>([
   ["@/lib/auth-utils", `
     export async function requireAuth() { return { id: "user-1", roles: [], permissions: ["audit:edit"] } }
     export function requirePermission() {}
+    export function hasPermission() { return true }
   `],
   ["@/lib/db", `
     const state = () => globalThis.__lookupRecordedFindState
     export const prisma = {
       auditRound: { findFirst: async () => ({ id: "round-1", status: "open" }) },
+      attachment: {
+        findMany: async (args) => {
+          state().photoReads.push(args.where)
+          const key = args.where.module === "asset" ? "assetId" : "referenceId"
+          return state().photos.filter((photo) => photo.module === args.where.module && args.where[key].in.includes(photo[key]))
+        },
+      },
       asset: { findFirst: async () => state().asset, findMany: async () => [] },
       auditItem: {
         findUnique: async (args) => { state().itemSelects.push(args.select); return state().item },
@@ -97,6 +112,8 @@ beforeEach(() => {
   state.item = null
   state.related = []
   state.itemSelects = []
+  state.photos = []
+  state.photoReads = []
 })
 
 test("an asset with no item in the round is out of scope and carries no item", async () => {
@@ -142,4 +159,22 @@ test("a component or parent that is an out-of-scope find reads as not in the rou
   const payload = await (await lookup("GRL-COM-26-0099")).json() as LookupPayload
   assert.deepEqual(payload.asset.components.map((component) => [component.assetId, component.auditItem?.id ?? null]), [["asset-c1", "item-c1"], ["asset-c2", null]])
   assert.deepEqual(payload.asset.installedIn.map((parent) => [parent.parentAssetId, parent.auditItem?.id ?? null]), [["asset-p1", null]])
+})
+
+test("the asset, its components and its installed-in parent carry their photos from one read (audit photos plan 1 task 4)", async () => {
+  state.asset = {
+    ...notebook(),
+    modelId: "model-nb",
+    parentComponents: [{ componentRole: "ram", slotNo: "1", componentAsset: { id: "asset-c1", assetTag: "GRL-COM-26-0101", name: "RAM", modelId: null } }],
+    installedInLinks: [{ componentRole: "dock", slotNo: null, parentAsset: { id: "asset-p1", assetTag: "GRL-COM-26-0100", name: "Desktop", modelId: "model-pc" } }],
+  }
+  state.photos = [
+    { id: "att-c1", module: "asset", assetId: "asset-c1" },
+    { id: "att-model-nb", module: "asset_model", referenceId: "model-nb" },
+  ]
+  const payload = await (await lookup("GRL-COM-26-0099")).json() as LookupPayload & { asset: { photo: unknown; components: Array<{ photo: unknown }>; installedIn: Array<{ photo: unknown }> } }
+  assert.deepEqual(payload.asset.photo, { attachmentId: "att-model-nb", fromModel: true })
+  assert.deepEqual(payload.asset.components[0].photo, { attachmentId: "att-c1", fromModel: false })
+  assert.equal(payload.asset.installedIn[0].photo, null)
+  assert.equal(state.photoReads.length, 2, "one own-photo read and one model-photo read for all three")
 })

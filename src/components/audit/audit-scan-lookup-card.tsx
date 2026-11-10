@@ -8,6 +8,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Notice } from "@/components/ui/notice"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { AuditScanPhotoCard } from "@/components/audit/audit-scan-photo"
 import type { AuditLookupAsset, AuditLookupMatch } from "@/components/audit/audit-scan-types"
 
 export type { AuditLookupMatch } from "@/components/audit/audit-scan-types"
@@ -27,6 +28,7 @@ export function AuditScanLookupCard({
   onSearchRegister,
   onRecordOutOfScope,
   onPickMatch,
+  canSeePhotos,
 }: {
   state: AuditLookupState
   /** The first line: "ไม่พบในรอบนี้" by default; "ไม่ใช่รายการข้างบน" under matches. */
@@ -34,6 +36,8 @@ export function AuditScanLookupCard({
   onSearchRegister: () => void
   onRecordOutOfScope: (asset: AuditLookupAsset) => void
   onPickMatch: (match: AuditLookupMatch) => void
+  /** The viewer may see photos: an asset without one shows the empty frame (audit photos spec §3). */
+  canSeePhotos: boolean
 }) {
   const t = useTranslations("auditScan")
 
@@ -63,7 +67,8 @@ export function AuditScanLookupCard({
             </Button>
           }
         >
-          {state.asset.subtitle}
+          <AuditScanPhotoCard photo={state.asset.photo} alt={`${state.asset.assetTag} ${state.asset.title}`} emptyFrame={canSeePhotos} />
+          <p className={state.asset.photo || canSeePhotos ? "mt-2" : undefined}>{state.asset.subtitle}</p>
         </Notice>
       ) : null}
       {state.status === "candidates" ? (

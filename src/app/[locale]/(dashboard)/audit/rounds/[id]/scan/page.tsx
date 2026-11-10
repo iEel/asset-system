@@ -4,6 +4,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { AuditScanWorkspace } from "@/components/audit/audit-scan-workspace"
 import { getAuditRoundOptions } from "@/lib/audit-options"
 import { loadAuditScanCategories, loadAuditScanRows } from "@/lib/audit-scan-data"
+import { auditScanPhotoAccess } from "@/lib/audit-scan-photos"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 import { withPerformanceTiming } from "@/lib/performance-timing"
@@ -26,6 +27,9 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
   const { locale, id } = await params
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "audit", "edit")
+  // A pure permission check (no read): a viewer who may see either kind of photo gets aligned frames on the rows.
+  const photoAccess = auditScanPhotoAccess(user)
+  const canSeePhotos = photoAccess.assetPhotos || photoAccess.modelPhotos
   const canApplyCorrections = canApplyAuditScanCorrections({
     canApprove: hasPermission(user, "audit", "approve"),
     segregationRequired: parseWorkflowApprovalPolicy(await prisma.systemSetting.findMany({
@@ -44,7 +48,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
         select: { id: true, name: true, auditNo: true, status: true },
       }),
       getAuditRoundOptions(),
-      loadAuditScanRows(id),
+      loadAuditScanRows(id, { photoAccess: auditScanPhotoAccess(user) }),
       loadAuditScanCategories(id),
     ]),
     { route: "/audit/rounds/[id]/scan", locale }
@@ -86,6 +90,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       }}
       photoChecklistByCategory={photoChecklistByCategory}
       canApplyCorrections={canApplyCorrections}
+      canSeePhotos={canSeePhotos}
       categories={categories}
       initialAssetId={resolveFirstSearchParam(rawSearchParams.assetId)}
       currentUser={{ id: user.id, name: user.name }}

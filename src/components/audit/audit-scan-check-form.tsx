@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
+import { AuditScanModelPhotoLabel, AuditScanPhotoCard, AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
 import { isAuditComponentChecked, isAuditComponentPending, revealFocusInScrollArea } from "@/components/audit/audit-scan-helpers"
 import type { AuditInstalledInParent, AuditLookupAsset, AuditScanComponent, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import {
@@ -130,6 +131,7 @@ export function AuditScanCheckForm({
   options,
   photoChecklist,
   canApplyCorrections,
+  canSeePhotos,
   saving,
   disabled,
   components,
@@ -145,6 +147,8 @@ export function AuditScanCheckForm({
   options: AuditScanOptions
   photoChecklist: string[]
   canApplyCorrections: boolean
+  /** The viewer may see photos: the component rows and the installed-in line keep a frame for a missing one. */
+  canSeePhotos: boolean
   saving: boolean
   disabled: boolean
   components: AuditCheckComponentsState
@@ -163,6 +167,9 @@ export function AuditScanCheckForm({
     ? expectedCheckValues(target.item)
     : target.recorded ? expectedCheckValues(target.recorded) : masterCheckValues(lookupMasterValues(target.asset))
   const ownershipType = target.kind === "item" ? target.item.ownershipType : target.asset.ownershipType ?? null
+  // The asset's own photo, else its model's (audit photos spec §3); the card names the asset for the preview.
+  const targetPhoto = target.kind === "item" ? target.item.photo : target.asset.photo
+  const targetPhotoAlt = target.kind === "item" ? `${target.item.assetTag} ${target.item.name}` : `${target.asset.assetTag} ${target.asset.title}`
   const recordContext: AuditCheckRecordContext = { expected, ownershipType, employees: options.employees }
   // One record: the values the save sends, and beside them each row's ตรง / ไม่ตรง and whether "ที่พบ" is chosen (P3-R8).
   // An edit, or a recorded out-of-scope find, starts from the saved result: a saved difference opens ไม่ตรง with
@@ -358,6 +365,7 @@ export function AuditScanCheckForm({
     // A flex column inside the sheet or the wide panel: the fields scroll, the action bar under them never does (D1).
     <div data-audit-check-form className="flex min-h-0 flex-1 flex-col">
       <div ref={bodyRef} data-audit-check-body className="min-h-0 flex-1 scroll-py-3 space-y-3 overflow-y-auto px-4 py-3">
+        <AuditScanPhotoCard photo={targetPhoto} alt={targetPhotoAlt} emptyFrame={canSeePhotos} />
         <p className="text-sm text-muted-foreground">{statusLine}</p>
 
         {/* Only the fields the server compares for this asset (bug 22, P3-R11); a hidden one sends the expected value. */}
@@ -386,7 +394,13 @@ export function AuditScanCheckForm({
         {target.kind === "item" && components.installedIn.length > 0 ? (
           <Notice tone="info">
             {components.installedIn.map((parent) => (
-              <p key={parent.parentAssetId}>{t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}</p>
+              <p key={parent.parentAssetId} className="flex items-center gap-2">
+                <AuditScanPhotoThumb photo={parent.photo} emptyFrame={canSeePhotos} />
+                <span className="min-w-0">
+                  {t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}{" "}
+                  <AuditScanModelPhotoLabel photo={parent.photo} />
+                </span>
+              </p>
             ))}
           </Notice>
         ) : null}
@@ -409,6 +423,7 @@ export function AuditScanCheckForm({
             onConfirmWithParent={(component) => onConfirmComponent(component, { values, remark })}
             onConfirmAll={() => void confirmAllComponents()}
             onMarkMissing={onMarkComponentMissing}
+            emptyFrame={canSeePhotos}
             t={t}
           />
         ) : null}

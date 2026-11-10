@@ -19,7 +19,7 @@ export async function AssetFilesTab({ locale, assetId, data, canEdit }: { locale
   return (
     <div className="space-y-6">
       <div id="photos" className="scroll-mt-24">
-        <AssetAttachments assetId={assetId} photos={data.photos} documents={data.documents} missingChecklistLabels={data.missingChecklistLabels} canEdit={canEdit} />
+        <AssetAttachments assetId={assetId} photos={data.photos} documents={data.documents} missingChecklistLabels={data.missingChecklistLabels} canEdit={canEdit} roundFilter={data.photoRoundFilter} roundHref={data.photoRoundHref} />
       </div>
       <div id="purchase-documents" className="scroll-mt-24">
         <AssetPurchaseDocuments documents={data.purchaseDocuments} canEdit={canEdit} />

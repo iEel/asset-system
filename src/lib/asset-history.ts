@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import {
   ASSET_HISTORY_DEFAULT_LIMIT,
   assetHistoryActorLabel,
+  assetHistoryAuditPhotos,
   assetHistoryCategory,
   assetHistoryLookupIds,
   assetHistoryMovementDetail,
@@ -22,6 +23,7 @@ import {
 import { assetMovementLabelKey, assetMovementReferenceLookup, buildAssetMovementDocumentHref } from "@/lib/asset-movement-labels"
 import { resolveAssetMovementDocuments } from "@/lib/asset-movement-documents"
 import { getMovementValueLookup } from "@/lib/movement-labels"
+import { loadAuditRoundPhotos, type AuditRoundPhotoDb } from "@/lib/audit-round-photos-data"
 
 export type { AssetHistory, AssetHistoryCategory, AssetHistoryEvent }
 
@@ -96,9 +98,9 @@ function countsOf(groups: readonly MovementGroup[], auditEvents: number): AssetH
   return countAssetHistory(groups.map((group) => ({ movementType: group.movementType, count: group._count._all })), auditEvents)
 }
 
-// The newest `limit` events, in two rounds of reads: the movements, the audit inputs and the words; then the documents
-// and the records the detail column needs.
-async function loadAssetHistory(assetId: string, locale: string, limit: number, withGroups: boolean) {
+// The newest `limit` events, in two rounds of reads: the movements, the audit inputs and the words; then the documents,
+// the records the detail column needs and, with the files tab's link, the asset's photos by round (audit photos §6).
+async function loadAssetHistory(assetId: string, locale: string, limit: number, withGroups: boolean, filesHref: string | null) {
   const [movements, { groups, auditItems }, t] = await Promise.all([
     prisma.assetMovement.findMany({
       where: { assetId },
@@ -136,7 +138,7 @@ async function loadAssetHistory(assetId: string, locale: string, limit: number, 
   for (const item of auditItems) if (item.scannedBy) userIds.add(item.scannedBy)
 
   // The document numbers come from the shared reader; these reads are only what the detail column needs.
-  const [documentOf, checkouts, checkins, repairs, users] = await Promise.all([
+  const [documentOf, checkouts, checkins, repairs, users, photos] = await Promise.all([
     resolveAssetMovementDocuments(movements),
     checkoutIds.size > 0
       ? prisma.assetCheckout.findMany({
@@ -167,6 +169,8 @@ async function loadAssetHistory(assetId: string, locale: string, limit: number, 
           select: { id: true, username: true, displayName: true, email: true, employee: { select: { code: true, fullNameTh: true } } },
         })
       : [],
+    // Only an audit event shows "ดูรูป", and only where the caller gives the link.
+    filesHref && auditItems.length > 0 ? loadAuditRoundPhotos(prisma as unknown as AuditRoundPhotoDb, [assetId]) : [],
   ])
 
   const lookup = await getMovementValueLookup(
@@ -191,6 +195,7 @@ async function loadAssetHistory(assetId: string, locale: string, limit: number, 
   const checkinsById = new Map(checkins.map((checkin) => [checkin.id, checkin]))
   const repairsById = new Map(repairs.map((repair) => [repair.id, repair]))
   const actorsById = new Map(users.map((user) => [user.id, assetHistoryActorLabel(user)]))
+  const photoRoundIds = new Set(photos.flatMap((photo) => (photo.auditRoundId ? [photo.auditRoundId] : [])))
   const closedRepairIds = new Set(
     movements.flatMap((movement) => (movement.movementType === "maintenance_close" && movement.referenceId ? [movement.referenceId] : [])),
   )
@@ -248,6 +253,7 @@ async function loadAssetHistory(assetId: string, locale: string, limit: number, 
       ),
       actor: actorsById.get(movement.performedBy) ?? movement.performedBy,
       document: document ? { code: document.code, kind: document.kind, href: buildAssetMovementDocumentHref(locale, document) } : null,
+      auditPhotos: null,
     }
   })
 
@@ -263,23 +269,25 @@ async function loadAssetHistory(assetId: string, locale: string, limit: number, 
       detail: resultKey ? t(resultKey) : item.auditResult ?? item.auditStatus,
       actor: item.scannedBy ? actorsById.get(item.scannedBy) ?? null : null,
       document: { code: round.code, kind: round.kind, href: buildAssetMovementDocumentHref(locale, round) },
+      auditPhotos: assetHistoryAuditPhotos(photoRoundIds, item.auditRound, filesHref),
     }
   })
 
   return { events: orderAssetHistory([...movementEvents, ...auditEvents], limit), groups, auditItems }
 }
 
-/** The asset's history: newest first, at most `limit` (500) events, with the total and each chip's count over every event. */
-export async function getAssetHistory(assetId: string, locale: string, options?: { limit?: number }): Promise<AssetHistory> {
+/** The asset's history: newest first, at most `limit` (500) events, with the total and each chip's count over every event.
+ *  With `filesHref` (the files tab's link, with its returnTo) an audit event of a round with photos carries "ดูรูป". */
+export async function getAssetHistory(assetId: string, locale: string, options?: { limit?: number; filesHref?: string }): Promise<AssetHistory> {
   const limit = options?.limit ?? ASSET_HISTORY_DEFAULT_LIMIT
-  const { events, groups, auditItems } = await loadAssetHistory(assetId, locale, limit, true)
+  const { events, groups, auditItems } = await loadAssetHistory(assetId, locale, limit, true, options?.filesHref ?? null)
   const { total, counts } = countsOf(groups, auditItems.length)
   return { events, total, counts, capped: total > events.length }
 }
 
-/** The newest `take` events (the overview's latest), through the same loader, without the counts (R50). */
+/** The newest `take` events (the overview's latest), through the same loader, without the counts (R50) or the photos. */
 export async function getLatestAssetHistory(assetId: string, locale: string, take: number): Promise<AssetHistoryEvent[]> {
-  return (await loadAssetHistory(assetId, locale, take, false)).events
+  return (await loadAssetHistory(assetId, locale, take, false, null)).events
 }
 
 /** The same total and chip counts as getAssetHistory, without loading the events (R11). */

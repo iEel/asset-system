@@ -6,7 +6,10 @@ export function attachmentThumbnailSizeFor(raw: string | null): number {
   return raw === "card" ? attachmentCardThumbnailSize : attachmentThumbnailSize
 }
 
-const thumbnailableImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
+/** The image types the thumbnail route draws; a photo reader that feeds it filters on exactly these. */
+export const THUMBNAILABLE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"] as const
+
+const thumbnailableImageTypes: ReadonlySet<string> = new Set(THUMBNAILABLE_IMAGE_TYPES)
 const thumbnailCacheControl = "private, max-age=604800, immutable"
 
 export function isThumbnailable(fileType: string | null | undefined) {

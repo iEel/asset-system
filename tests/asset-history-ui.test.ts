@@ -46,7 +46,7 @@ test("the history tab: rows built on the server in Bangkok time, the panel insid
 
 test("the page loads the whole history only on its tab, and the old timeline is gone (spec §7.6, §7.9)", () => {
   const source = read(PAGE)
-  assert.match(source, /withPerformanceTiming\("asset-detail\.history-tab", \(\) => getAssetHistory\(asset\.id, locale\)/)
+  assert.match(source, /withPerformanceTiming\("asset-detail\.history-tab", \(\) => getAssetHistory\(asset\.id, locale, \{ filesHref: /)
   assert.match(source, /const documentAccess = assetDocumentAccess\(\(module, action\) => hasPermission\(user, module, action\)\)/)
   assert.doesNotMatch(source, /ASSET_MOVEMENT_DOCUMENT_PERMISSION/, "one access record for the overview and the tabs")
   assert.match(source, /parseAssetHistoryType\(rawSearchParams\.type\) \?\? historyType/, "an explicit ?type= wins over view=audit (R17)")
@@ -80,4 +80,21 @@ test("the history tab's words, in the one asset.history namespace (spec §7.6; R
   assert.equal(th.history.export, "ส่งออก Excel")
   assert.equal(th.history.showMore, "แสดงเพิ่ม (เหลือ {count} รายการ)")
   assert.equal(en.history.showMore, "Show more ({count} left)")
+})
+
+test("an audit row's ดูรูป: a link beside the round code on the desktop and below the phone card, named with the round (audit photos spec §6)", () => {
+  const source = read(PANEL)
+  const links = source.match(/<Link\s+href=\{row\.photosHref\}\s+aria-label=\{t\("history\.viewPhotosLabel", \{ auditNo: row\.photosAuditNo \?\? "" \}\)\}/g)
+  assert.equal(links?.length, 2, "the table and the phone card")
+  assert.equal(source.match(/\{t\("history\.viewPhotos"\)\}/g)?.length, 2)
+  assert.equal(source.match(/\{row\.photosHref \? \(/g)?.length, 2, "rows without photos show no link")
+  assert.ok(source.includes(") : row.photosHref ? null : (\n                      <Nil />"), "a row with only ดูรูป shows no dash beside it")
+  // On the phone the card itself may be the round's link, so ดูรูป sits after it, never inside it.
+  assert.match(source, /<\/Link>\n\s+\) : \(\n\s+<div className="min-h-14">\{card\}<\/div>\n\s+\)\}\n\s+\{row\.photosHref \? \(/)
+  const th = assetWords("th")
+  const en = assetWords("en")
+  assert.equal(th.history.viewPhotos, "ดูรูป")
+  assert.equal(th.history.viewPhotosLabel, "ดูรูป {auditNo}")
+  assert.equal(en.history.viewPhotos, "View photos")
+  assert.equal(en.history.viewPhotosLabel, "View photos {auditNo}")
 })

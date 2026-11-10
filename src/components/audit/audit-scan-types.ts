@@ -1,3 +1,6 @@
+// Type only: audit-scan-photos.ts is server-only (it reaches the db); these types reach client components.
+import type { AuditScanPhoto } from "../../lib/audit-scan-photos.ts"
+
 export type AuditScanComponent = {
   assetId: string
   assetTag: string
@@ -7,6 +10,7 @@ export type AuditScanComponent = {
   auditItemId: string | null
   auditStatus: string
   auditResult: string | null
+  photo: AuditScanPhoto | null
 }
 export type AuditInstalledInParent = {
   parentAssetId: string
@@ -14,6 +18,7 @@ export type AuditInstalledInParent = {
   name: string
   componentRole: string
   slotNo: string | null
+  photo: AuditScanPhoto | null
 }
 export type CameraDevice = { id: string; label: string }
 export type QueuedAuditPhoto = { id: string; label: string; file: File; previewUrl: string | null }
@@ -42,6 +47,7 @@ export type AuditLookupComponent = {
   componentRole: string
   slotNo: string | null
   auditItem: AuditLookupAuditItem | null
+  photo: AuditScanPhoto | null
 }
 export type AuditLookupInstalledInParent = AuditInstalledInParent & { auditItem: AuditLookupAuditItem | null }
 export type AuditLookupAsset = {
@@ -58,6 +64,7 @@ export type AuditLookupAsset = {
   meta: { location: string; custodian: string | null }
   components: AuditLookupComponent[]
   installedIn: AuditLookupInstalledInParent[]
+  photo: AuditScanPhoto | null
 }
 export type AuditLookupMatch = { assetId: string; assetTag: string; title: string; inRound: boolean }
 export type AuditScanLookupResponse =

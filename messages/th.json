@@ -1498,7 +1498,9 @@
       "capped": "แสดง {shown} รายการล่าสุดจาก {total} รายการ ส่งออก Excel เพื่อดูรายการที่เก่ากว่า",
       "receivedBy": "รับโดย {name}",
       "lateReturnReattached": "กลับเข้าเครื่องหลัก",
-      "lateReturnStandalone": "แยกเป็นทรัพย์สินเดี่ยว"
+      "lateReturnStandalone": "แยกเป็นทรัพย์สินเดี่ยว",
+      "viewPhotos": "ดูรูป",
+      "viewPhotosLabel": "ดูรูป {auditNo}"
     },
     "photoFrame": {
       "emptyTitle": "ยังไม่มีรูป",
@@ -1553,7 +1555,11 @@
         "disposal": "ตัดจำหน่าย"
       },
       "componentInstallPhoto": "รูปตอนติดตั้ง",
-      "componentRemovePhoto": "รูปตอนถอด"
+      "componentRemovePhoto": "รูปตอนถอด",
+      "roundFilterLabel": "กรองรูปตามรอบตรวจนับ",
+      "notFromAudit": "ไม่ได้มาจากการตรวจนับ",
+      "roundCancelled": "ยกเลิกแล้ว",
+      "roundScannedBy": "ตรวจโดย {name}"
     },
     "repairTab": {
       "repairCount": "ซ่อมมาแล้ว",
@@ -3359,7 +3365,13 @@
     "stepConfirmWaiting": "รอยืนยัน {count} ชิ้น",
     "stepConfirmDone": "ยืนยันครบแล้ว",
     "listNextStepConfirm": "ยืนยันผลตรวจ ({count})",
-    "closedDisposalLine": "ขอตัดจำหน่ายจากรอบนี้ได้ {count, number} ชิ้น"
+    "closedDisposalLine": "ขอตัดจำหน่ายจากรอบนี้ได้ {count, number} ชิ้น",
+    "registerPhoto": "รูปทะเบียน",
+    "roundPhotosTitle": "รูปของ {assetTag} ในรอบ {auditNo}",
+    "roundPhotosViewInFiles": "ดูในแท็บไฟล์",
+    "roundPhotoCount": "{label} {count} รูป",
+    "roundPhotosEmpty": "ไม่มีรูปของรอบนี้",
+    "roundPhotosLoadFailed": "โหลดรูปไม่สำเร็จ"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { AuditScanModelPhotoLabel, AuditScanPhotoThumb } from "./audit-scan-photo"
 import { isAuditComponentChecked, isAuditComponentPending } from "./audit-scan-helpers"
 import type { AuditScanComponent } from "./audit-scan-types"
 
@@ -26,6 +27,7 @@ export function AuditComponentPanel({
   onConfirmWithParent,
   onConfirmAll,
   onMarkMissing,
+  emptyFrame,
   t,
 }: {
   components: AuditScanComponent[]
@@ -36,6 +38,8 @@ export function AuditComponentPanel({
   onConfirmWithParent: (component: AuditScanComponent) => void
   onConfirmAll: () => void
   onMarkMissing: (component: AuditScanComponent) => void
+  /** The viewer may see photos: a component without one keeps the neutral square (audit photos spec §3). */
+  emptyFrame: boolean
   t: AuditScanTranslator
 }) {
   const tCommon = useTranslations("common")
@@ -64,9 +68,11 @@ export function AuditComponentPanel({
           const statusMeta = getAuditComponentStatusMeta(component, t)
           const isConfirmedWithParent = component.auditResult === "confirmed_with_parent"
           const rowDisabled = saving || confirmingAll || componentActionsDisabled || !component.auditItemId
+          const meta = [component.name, component.componentRole, component.slotNo].filter(Boolean).join(" · ")
 
           return (
             <li key={component.assetId} data-audit-component-row className="flex min-h-16 items-center gap-2 px-3 py-2">
+              <AuditScanPhotoThumb photo={component.photo} emptyFrame={emptyFrame} />
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="min-w-0 truncate text-sm text-foreground">
@@ -74,8 +80,10 @@ export function AuditComponentPanel({
                   </span>
                   <StatusBadge label={statusMeta.label} tone={statusMeta.tone} />
                 </div>
-                <p className="truncate text-meta text-muted-foreground">
-                  {[component.name, component.componentRole, component.slotNo].filter(Boolean).join(" · ")}
+                {/* A model photo is named after the meta, outside its truncation (final review F4). */}
+                <p className="flex min-w-0 items-baseline gap-1 text-meta text-muted-foreground">
+                  {meta ? <span className="min-w-0 truncate">{meta}</span> : null}
+                  <AuditScanModelPhotoLabel photo={component.photo} separator={Boolean(meta)} />
                 </p>
               </div>
               {isConfirmedWithParent ? (

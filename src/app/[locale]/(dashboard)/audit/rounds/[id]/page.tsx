@@ -8,6 +8,7 @@ import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { AuditRoundHeaderMenus } from "@/components/audit/audit-round-header-menus"
+import { AuditRegisterPhotoThumb, AuditRoundPhotosButton } from "@/components/audit/audit-round-photos-dialog"
 import { hasPermission } from "@/lib/auth-utils"
 import { ActionBar, actionBarPagePadding, type ActionBarLink } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
@@ -310,7 +311,25 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       })),
       checkedBy: item.checkedBy?.label ?? null,
       checkedAt: item.checkedBy?.at ?? null,
-      photo: item.hasPhoto === null ? null : item.hasPhoto ? t("photoAttached") : t("photoMissing"),
+      // This round's newest photo opens the item's photos for the round; "ไม่มีรูป" stays text, no other photo stands in
+      // for the round's evidence; without asset:view (no roundPhoto) a row with photos keeps the plain "มีรูป" text; a
+      // pending row shows its register photo, plain and labelled, else — (audit photos §5, plan 2 final review F1).
+      photo: item.roundPhoto ? (
+        <AuditRoundPhotosButton
+          roundId={round.id}
+          itemId={item.id}
+          assetId={item.asset.id}
+          assetTag={item.asset.assetTag}
+          auditNo={round.auditNo}
+          photo={item.roundPhoto}
+        />
+      ) : item.hasPhoto === false ? (
+        t("photoMissing")
+      ) : item.hasPhoto ? (
+        t("photoAttached")
+      ) : item.registerPhoto ? (
+        <AuditRegisterPhotoThumb photo={item.registerPhoto} />
+      ) : null,
       review: review ? { label: tFinding(`status_${review}`), tone: auditRoundReviewStateTone[review] } : null,
       componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
       missingComponents: item.missingComponents.map((component) => ({ ...component, href: pageHref(roundWideFilters, { search: component.assetTag }) })),

@@ -22,9 +22,9 @@ const at = (iso: string) => new Date(iso)
 const now = at("2026-10-26T05:00:00Z") // noon on 26 Oct in Bangkok
 const access = { checkout: true, checkin: true, transfer: true, repair: false, disposal: false, auditRound: true }
 const events: AssetHistoryEvent[] = [
-  { id: "e3", at: at("2026-10-12T10:05:00Z"), category: "audit", labelKey: "asset.movementTypes.audit_correction", detail: "ตรงตามทะเบียน", actor: "IT01 - ผู้ตรวจ", document: { code: "AUD-2026-0003", href: "/th/audit/rounds/r1", kind: "auditRound" } },
-  { id: "e2", at: at("2025-10-25T17:00:00Z"), category: "checkout", labelKey: "asset.movementTypes.checkout", detail: null, actor: null, document: { code: "HO-2025-0001", href: "/th/asset-management/checkouts/c1", kind: "checkout" } },
-  { id: "e1", at: at("2025-10-25T16:59:00Z"), category: "repair", labelKey: "asset.movementTypes.maintenance_close", detail: "เปลี่ยนจอ", actor: "IT02 - ช่าง", document: { code: "MT-20251025-0001", href: "/th/maintenance/t1", kind: "repair" } },
+  { id: "e3", at: at("2026-10-12T10:05:00Z"), category: "audit", labelKey: "asset.movementTypes.audit_correction", detail: "ตรงตามทะเบียน", actor: "IT01 - ผู้ตรวจ", document: { code: "AUD-2026-0003", href: "/th/audit/rounds/r1", kind: "auditRound" }, auditPhotos: null },
+  { id: "e2", at: at("2025-10-25T17:00:00Z"), category: "checkout", labelKey: "asset.movementTypes.checkout", detail: null, actor: null, document: { code: "HO-2025-0001", href: "/th/asset-management/checkouts/c1", kind: "checkout" }, auditPhotos: null },
+  { id: "e1", at: at("2025-10-25T16:59:00Z"), category: "repair", labelKey: "asset.movementTypes.maintenance_close", detail: "เปลี่ยนจอ", actor: "IT02 - ช่าง", document: { code: "MT-20251025-0001", href: "/th/maintenance/t1", kind: "repair" }, auditPhotos: null },
 ]
 const rows = buildAssetHistoryRows(events, { locale: "th", now, access, label: (key) => `<${key}>` })
 const zero = { checkout: 0, checkin: 0, transfer: 0, audit: 0, repair: 0, disposal: 0, component: 0, edit: 0 }
@@ -61,9 +61,9 @@ test("times and months in Bangkok with the Buddhist year in Thai; 12 เดื�
 
 test("each event becomes a row with its own label, the detail page's date and the Bangkok time, its month, and a document only where the person may open it (spec §7.6; R12, R37)", () => {
   assert.deepEqual(rows, [
-    { id: "e3", category: "audit", label: "<asset.movementTypes.audit_correction>", atIso: "2026-10-12T10:05:00.000Z", when: "12 ต.ค. 2569 · 17:05", monthKey: "2026-10", monthLabel: "ตุลาคม 2569", recent: true, detail: "ตรงตามทะเบียน", actor: "IT01 - ผู้ตรวจ", document: { code: "AUD-2026-0003", href: "/th/audit/rounds/r1" } },
-    { id: "e2", category: "checkout", label: "<asset.movementTypes.checkout>", atIso: "2025-10-25T17:00:00.000Z", when: "26 ต.ค. 2568 · 00:00", monthKey: "2025-10", monthLabel: "ตุลาคม 2568", recent: true, detail: null, actor: null, document: { code: "HO-2025-0001", href: "/th/asset-management/checkouts/c1" } },
-    { id: "e1", category: "repair", label: "<asset.movementTypes.maintenance_close>", atIso: "2025-10-25T16:59:00.000Z", when: "25 ต.ค. 2568 · 23:59", monthKey: "2025-10", monthLabel: "ตุลาคม 2568", recent: false, detail: "เปลี่ยนจอ", actor: "IT02 - ช่าง", document: null },
+    { id: "e3", category: "audit", label: "<asset.movementTypes.audit_correction>", atIso: "2026-10-12T10:05:00.000Z", when: "12 ต.ค. 2569 · 17:05", monthKey: "2026-10", monthLabel: "ตุลาคม 2569", recent: true, detail: "ตรงตามทะเบียน", actor: "IT01 - ผู้ตรวจ", document: { code: "AUD-2026-0003", href: "/th/audit/rounds/r1" }, photosHref: null, photosAuditNo: null },
+    { id: "e2", category: "checkout", label: "<asset.movementTypes.checkout>", atIso: "2025-10-25T17:00:00.000Z", when: "26 ต.ค. 2568 · 00:00", monthKey: "2025-10", monthLabel: "ตุลาคม 2568", recent: true, detail: null, actor: null, document: { code: "HO-2025-0001", href: "/th/asset-management/checkouts/c1" }, photosHref: null, photosAuditNo: null },
+    { id: "e1", category: "repair", label: "<asset.movementTypes.maintenance_close>", atIso: "2025-10-25T16:59:00.000Z", when: "25 ต.ค. 2568 · 23:59", monthKey: "2025-10", monthLabel: "ตุลาคม 2568", recent: false, detail: "เปลี่ยนจอ", actor: "IT02 - ช่าง", document: null, photosHref: null, photosAuditNo: null },
   ])
   const [en] = buildAssetHistoryRows([events[0]], { locale: "en", now, access, label: (key) => key })
   assert.deepEqual([en.when, en.monthLabel], ["12 Oct 2026 · 17:05", "October 2026"])
@@ -71,6 +71,17 @@ test("each event becomes a row with its own label, the detail page's date and th
   assert.deepEqual([edge.monthKey, edge.when], ["2026-10", "1 ต.ค. 2569 · 00:30"], "the Bangkok month and date, not the UTC ones")
   const [denied] = buildAssetHistoryRows([events[1]], { locale: "th", now, access: { ...access, checkout: false }, label: (key) => key })
   assert.equal(denied.document, null, "no permission: neither the link nor the code (R12, the dashboard's rule)")
+})
+
+test("buildAssetHistoryRows keeps photosHref for a viewer without audit:view, while document is dropped (audit photos spec §6)", () => {
+  const href = "/th/assets/a1?view=files&photoRound=AUD-2026-0003"
+  const withPhotos: AssetHistoryEvent = { ...events[0], id: "audit-i1", labelKey: "asset.history.auditScan", auditPhotos: { auditNo: "AUD-2026-0003", href } }
+  const [allowed] = buildAssetHistoryRows([withPhotos], { locale: "th", now, access, label: (key) => key })
+  assert.deepEqual([allowed.document, allowed.photosHref, allowed.photosAuditNo], [{ code: "AUD-2026-0003", href: "/th/audit/rounds/r1" }, href, "AUD-2026-0003"])
+  const [viewer] = buildAssetHistoryRows([withPhotos], { locale: "th", now, access: { ...access, auditRound: false }, label: (key) => key })
+  assert.equal(viewer.document, null, "the round link needs audit:view")
+  assert.equal(viewer.photosHref, href, "ดูรูป needs asset:view only")
+  assert.equal(viewer.photosAuditNo, "AUD-2026-0003", "the link's name keeps the round number")
 })
 
 test("a chip and the period filter in place; counts follow the period; months group in order; 50 at a time (spec §7.6)", () => {

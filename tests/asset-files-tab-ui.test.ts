@@ -43,7 +43,7 @@ test("asset files: a photo is the card-size frame, its original opens only in th
 test("the files tab: the asset's files, the purchase documents and the read-only evidence, each in its own panel", () => {
   const tab = read(TAB)
   assert.doesNotMatch(tab, /"use client"/)
-  assert.match(tab, /<div id="photos" className="scroll-mt-24">\n\s+<AssetAttachments assetId=\{assetId\} photos=\{data\.photos\} documents=\{data\.documents\} missingChecklistLabels=\{data\.missingChecklistLabels\} canEdit=\{canEdit\} \/>/)
+  assert.match(tab, /<div id="photos" className="scroll-mt-24">\n\s+<AssetAttachments assetId=\{assetId\} photos=\{data\.photos\} documents=\{data\.documents\} missingChecklistLabels=\{data\.missingChecklistLabels\} canEdit=\{canEdit\} roundFilter=\{data\.photoRoundFilter\} roundHref=\{data\.photoRoundHref\} \/>/)
   assert.match(tab, /<div id="purchase-documents" className="scroll-mt-24">\n\s+<AssetPurchaseDocuments documents=\{data\.purchaseDocuments\} canEdit=\{canEdit\} \/>/)
   assert.match(tab, /<ContentPanel divided flush title=\{t\("filesTab\.evidenceTitle"\)\} description=\{t\("filesTab\.evidenceHelp"\)\}>/)
   assert.match(tab, /<EmptyNote padded>\{t\("filesTab\.evidenceEmpty"\)\}<\/EmptyNote>/)

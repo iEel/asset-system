@@ -400,3 +400,100 @@ test("the detail-page ยืนยันผลตรวจ spec walks one asset 
   assert.ok(!spec.includes("backToRound"), "no round back label")
   assert.ok(!spec.includes("cancelAsItHead") && !/action: "(?:cancel|close)"/.test(spec), "the round stays open")
 })
+
+test("the scan photos spec reads the app's own words, key by key (audit photos plan 1 task 5)", async () => {
+  const { SCAN_PHOTO_WORDS: W } = await import("../e2e/audit/scan-photos-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const scan = th.auditScan as Record<string, string>
+  const byKey: Record<keyof typeof W, string> = {
+    modelPhoto: th.asset.modelPhoto,
+    emptyTitle: th.asset.photoFrame.emptyTitle,
+    addNotePhoto: scan.addNotePhoto,
+    queuedPhotos: scan.queuedPhotos,
+    saveAllMatch: scan.saveAllMatch,
+    savedAllMatch: scan.savedAllMatch,
+    all: th.common.all,
+    roundFilterLabel: th.asset.filesTab.roundFilterLabel,
+    notFromAudit: th.asset.filesTab.notFromAudit,
+    roundCancelled: th.asset.filesTab.roundCancelled,
+    roundScannedBy: th.asset.filesTab.roundScannedBy,
+    openPhoto: th.asset.filesTab.openPhoto,
+    found: th.auditRound.found,
+    photoColumn: th.auditRound.photoColumn,
+    photoAttached: th.auditRound.photoAttached,
+    photoMissing: th.auditRound.photoMissing,
+    roundPhotoCount: th.auditRound.roundPhotoCount,
+    roundPhotosTitle: th.auditRound.roundPhotosTitle,
+    roundPhotosViewInFiles: th.auditRound.roundPhotosViewInFiles,
+    registerPhoto: th.auditRound.registerPhoto,
+    viewPhotos: th.asset.history.viewPhotos,
+    viewPhotosLabel: th.asset.history.viewPhotosLabel,
+  }
+  assert.deepEqual({ ...W }, byKey)
+})
+
+test("the scan photos spec opens its own round on its own room, uploads the model photo as the IT head on a run model, and the IT head cancels it whatever happens (audit photos plan 1 task 5)", () => {
+  const spec = read("e2e/audit/scan-photos.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  assert.ok(spec.split("\n").includes("runPhoneOnWebKit()"), "the phone on WebKit, as the field audit's walk")
+  assert.ok(spec.includes(`asUser("itStaff")`))
+  assert.doesNotMatch(spec, /test\.skip\(/, "all four projects")
+  // Its own records: a room, five run assets, a run brand and model, a round on that room.
+  assert.ok(spec.includes(`const prefix = recordPrefix(testInfo, "AUP")`))
+  assert.ok(spec.includes("const roomId = await createRoom(roomCode, roomName)"))
+  assert.ok(spec.includes("scopeLocationId: roomId,"))
+  assert.doesNotMatch(spec, /\bstatus: "/, "the round's body sends no status (spec §7)")
+  assert.ok(spec.includes(`expect(round.generatedItems, "the room's five assets").toBe(5)`))
+  // No check runs between the round's creation and the try, so the finally always cancels it (final review F2).
+  const opened = spec.indexOf("const round = (await opened.json())")
+  const tryAt = spec.indexOf("try {", opened)
+  assert.ok(opened > 0 && tryAt > opened, "the round's try")
+  assert.doesNotMatch(spec.slice(opened, tryAt), /expect\(/, "no expect before the try")
+  assert.ok(spec.indexOf(`expect(round.generatedItems, "the room's five assets")`) > tryAt, "the generatedItems check sits inside the try")
+  // The model photo as the IT head (brand:edit), on the run's model only; the context is disposed.
+  assert.ok(spec.includes(`playwright.request.newContext({ baseURL, storageState: fromRoot(authStateFile(runId, "itHead")) })`))
+  assert.ok(spec.includes("itHead.post(`/api/models/${modelId}/attachments`"))
+  assert.ok(spec.includes("name: `${prefix} รุ่นทดสอบรูป`"))
+  assert.match(spec, /\} finally \{\n\s+await itHead\.dispose\(\)/)
+  assert.ok(spec.includes("await installComponentByApi(page, d.id, e.id, "))
+  // The four checks, then the link: the upload of the check's photo answers auditLinked: true.
+  for (const step of [
+    "the room list shows A's thumb, B's thumb with รูปประจำรุ่น in its meta line, and C's neutral square",
+    "the check form shows A's card without the chip, B's card with the chip, and C's card empty with ยังไม่มีรูป",
+    "D's check form lists E with E's thumb",
+    "a photo taken in A's check form uploads with the item id",
+  ]) assert.ok(spec.includes(`await test.step("${step}"`), step)
+  assert.ok(spec.includes(`toMatchObject({ auditLinked: true })`))
+  // Plan 2 task 5: the files tab, the round page and the history, in the same round, all before the finally cancels it.
+  const finallyAt = spec.search(/\} finally \{\r?\n\s+await rounds\.cancelAsItHead\(/)
+  assert.ok(finallyAt > 0, "the round's finally")
+  for (const step of [
+    "C is checked with no photo",
+    "A's files tab chips the round, marks its tile and shows the round's line; an unknown photoRound shows ทั้งหมด",
+    "the round page: A's thumbnail opens its round photos, C reads ไม่มีรูป, the pending rows show their register photos plainly, and ดูในแท็บไฟล์ lands on the chip",
+    "the history: A's audit row has ดูรูป, which lands on the chip; C's has none",
+    "the viewer: A's history row keeps ดูรูป without the round's link",
+  ]) {
+    const at = spec.indexOf(`await test.step("${step}"`)
+    assert.ok(at > 0, step)
+    assert.ok(at < finallyAt, `${step}: before the round is cancelled`)
+  }
+  // The viewer step skips itself, saying why, when the run's viewer holds audit:view (no test.skip: all four projects).
+  assert.ok(spec.includes(`E2E_ROLE_PERMISSIONS.viewer.includes("audit:view")`))
+  assert.ok(spec.includes(`storageState: fromRoot(authStateFile(runId, "viewer"))`))
+  assert.match(spec, /\} finally \{\r?\n\s+await viewer\.close\(\)/)
+  // The files tab ties the round chip and each filter to the right photo by its image (final review F4).
+  assert.ok(spec.includes("const photoTileOf = (page: Page, attachmentId: string): Locator => page.getByRole(\"main\").locator(`li:has(img[src=\"${cardSrc(attachmentId)}\"])`)"))
+  assert.ok(spec.includes(`await expect(roundChipOn(photoTileOf(page, checkPhotoId), round.auditNo), "the check photo's tile carries the round").toHaveCount(1)`))
+  assert.ok(spec.includes(`await expect(roundChipOn(photoTileOf(page, aPhotoId), round.auditNo), "A's own photo (before the round) carries no round").toHaveCount(0)`))
+  assert.ok(spec.includes(`.toHaveAttribute("src", cardSrc(aPhotoId))`), "ไม่ได้มาจากการตรวจนับ shows A's own photo")
+  // Under the round chip: from the chip, from the dialog's link and from the history's ดูรูป, plus the dialog's own tile.
+  assert.equal(spec.match(/photoTiles\(page\.getByRole\("main"\)\)\.locator\("img"\)[^\n]*\.toHaveAttribute\("src", cardSrc\(checkPhotoId\)\)/g)?.length, 3)
+  // One asset's round row by its exact tag (fix 1, E2E-1111C): a component's card names its parent's tag.
+  assert.doesNotMatch(spec, /resultRows\(page, e2eDevice, [a-e]\.assetTag\)/)
+  assert.ok(spec.includes(`page.getByRole("link", { name: asset.assetTag, exact: true })`))
+  // No DELETE, no admin route, no settings, no database.
+  assert.doesNotMatch(spec, /\.delete\(|\/api\/admin\/|prisma/)
+  // Cancelled whatever happens, by the IT head through the round route.
+  assert.match(spec, /\} finally \{\n\s+await rounds\.cancelAsItHead\(playwright\.request, baseURL, round\.id, /)
+})

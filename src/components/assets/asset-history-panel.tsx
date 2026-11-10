@@ -22,6 +22,7 @@ import { FilterSelect } from "@/components/ui/filter-select"
 import { Nil, orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
 import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 import type { AssetHistoryCategory } from "@/lib/asset-history-rules"
 import {
   ASSET_HISTORY_PAGE_SIZE,
@@ -168,9 +169,21 @@ export function AssetHistoryPanel({
                       <Link href={row.document.href} className={linkVariants({ size: "inherit" })}>
                         <span className="tag">{row.document.code}</span>
                       </Link>
-                    ) : (
+                    ) : row.photosHref ? null : (
                       <Nil />
                     )}
+                    {row.photosHref ? (
+                      <>
+                        {row.document ? " · " : null}
+                        <Link
+                          href={row.photosHref}
+                          aria-label={t("history.viewPhotosLabel", { auditNo: row.photosAuditNo ?? "" })}
+                          className={linkVariants({ size: "inherit" })}
+                        >
+                          {t("history.viewPhotos")}
+                        </Link>
+                      </>
+                    ) : null}
                   </DataTableCell>
                 </DataTableRow>
               ))}
@@ -216,6 +229,16 @@ export function AssetHistoryPanel({
                       ) : (
                         <div className="min-h-14">{card}</div>
                       )}
+                      {row.photosHref ? (
+                        <Link
+                          href={row.photosHref}
+                          aria-label={t("history.viewPhotosLabel", { auditNo: row.photosAuditNo ?? "" })}
+                          // The round's card link reaches into the row's padding (-my-3); start below it.
+                          className={cn(linkVariants(), "flex min-h-11 w-fit items-center", row.document && "mt-3")}
+                        >
+                          {t("history.viewPhotos")}
+                        </Link>
+                      ) : null}
                     </li>
                   )
                 })}

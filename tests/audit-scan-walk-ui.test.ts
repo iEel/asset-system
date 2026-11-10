@@ -14,7 +14,7 @@ test("the page passes the round's name and every category of its items, closed o
   const page = read(PAGE)
   assert.match(page, /^import \{ loadAuditScanCategories, loadAuditScanRows \} from "@\/lib\/audit-scan-data"$/m)
   assert.match(page, /const \[round, options, rows, categories\] = await withPerformanceTiming\(/)
-  assert.match(page, /loadAuditScanRows\(id\),\n\s+loadAuditScanCategories\(id\),\n\s+\]\),/)
+  assert.match(page, /loadAuditScanRows\(id, \{ photoAccess: auditScanPhotoAccess\(user\) \}\),\n\s+loadAuditScanCategories\(id\),\n\s+\]\),/)
   assert.match(page, /roundName=\{round\.name\}/)
   assert.match(page, /roundCode=\{round\.auditNo\}/)
   assert.match(page, /categories=\{categories\}/)
@@ -73,7 +73,7 @@ test("the switch names its scope, the chips are a shared Segmented in their own 
 
 test("rows: the name in bold, the code under it, then the custodian and ส่วนควบ N, the checker's line and the badge kept (spec §11)", () => {
   const source = read(`${A}audit-scan-room-list.tsx`)
-  assert.match(source, /<span className="block break-words text-sm font-semibold text-foreground">\{item\.name\}<\/span>\n\s+<span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span><\/span>/)
+  assert.match(source, /<span className="block break-words text-sm font-semibold text-foreground">\{item\.name\}<\/span>\n\s+<span className="block text-meta text-muted-foreground">\s*<span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span>\{" "\}\s*<AuditScanModelPhotoLabel photo=\{item\.photo\} \/>\s*<\/span>/)
   assert.match(source, /const custodian = item\.expectedCustodianId \? custodianLabels\.get\(item\.expectedCustodianId\) \?\? null : null/)
   assert.match(source, /const components = item\.componentCount > 0 \? t\("rowComponents", \{ count: formatCount\(item\.componentCount\) \}\) : null/)
   assert.match(source, /return \[custodian, components\]\.filter\(Boolean\)\.join\(" · "\) \|\| null/)

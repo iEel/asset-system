@@ -89,6 +89,7 @@ export function AuditScanWorkspace({
   photoChecklistByCategory,
   categories,
   canApplyCorrections,
+  canSeePhotos,
   initialAssetId,
   currentUser,
 }: {
@@ -104,6 +105,8 @@ export function AuditScanWorkspace({
   /** The round's categories, for the chips' names (spec §11, P3-R6). */
   categories: AuditScanCategory[]
   canApplyCorrections: boolean
+  /** The viewer may see asset or model photos: the rows keep a frame for a missing photo (audit photos spec §3). */
+  canSeePhotos: boolean
   initialAssetId?: string
   /** The signed-in person: queued checks are stamped with them, and only theirs send from this session. */
   currentUser: { id: string; name: string }
@@ -147,7 +150,7 @@ export function AuditScanWorkspace({
   const [scanSource, setScanSource] = useState<"manual" | "qr">("manual")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<AuditSavedNotice | null>(null)
-  const [photoRetry, setPhotoRetry] = useState<{ assetId: string; photos: QueuedAuditPhoto[] } | null>(null)
+  const [photoRetry, setPhotoRetry] = useState<{ assetId: string; auditItemId: string | null; photos: QueuedAuditPhoto[] } | null>(null)
   const [roundClosed, setRoundClosed] = useState(false)
   const [queue, setQueue] = useState<QueuedAuditScan[]>([])
   const online = useOnlineStatus()
@@ -266,10 +269,12 @@ export function AuditScanWorkspace({
     }
   }, [roundId])
 
-  const uploadPhotoFile = useCallback(async (assetId: string, file: File, label: string) => {
+  // auditItemId: the audit item the photo was taken for, so the upload records its round (audit photos spec §2).
+  const uploadPhotoFile = useCallback(async (assetId: string, file: File, label: string, auditItemId?: string) => {
     const body = new FormData()
     body.append("file", file)
     if (label) body.append("photoLabel", label)
+    if (auditItemId) body.append("auditItemId", auditItemId)
     const response = await fetch(`/api/assets/${assetId}/attachments`, { method: "POST", body })
     if (!response.ok) {
       const result = await response.json().catch(() => null)
@@ -323,9 +328,11 @@ export function AuditScanWorkspace({
           break
         }
         setItems((current) => applyScanResult(current, { item: result.item, scannedByName: result.scannedByName }))
+        // The item this send's own /scan response returned, never an id kept in the queue.
+        const sentItemId = typeof result?.item?.id === "string" ? result.item.id : undefined
         for (const photo of queued.photos ?? []) {
           try {
-            await uploadPhotoFile(queued.assetId, new File([photo.blob], photo.fileName, { type: photo.fileType }), photo.label)
+            await uploadPhotoFile(queued.assetId, new File([photo.blob], photo.fileName, { type: photo.fileType }), photo.label, sentItemId)
           } catch {
             toast.error(t("auditPhotoUploadFailed"))
           }
@@ -600,12 +607,12 @@ export function AuditScanWorkspace({
     }
   }
 
-  async function uploadPhotos(assetId: string, photos: QueuedAuditPhoto[]) {
+  async function uploadPhotos(assetId: string, photos: QueuedAuditPhoto[], auditItemId?: string) {
     try {
-      for (const photo of photos) await uploadPhotoFile(assetId, photo.file, photo.label)
+      for (const photo of photos) await uploadPhotoFile(assetId, photo.file, photo.label, auditItemId)
       setPhotoRetry(null)
     } catch (error) {
-      setPhotoRetry({ assetId, photos })
+      setPhotoRetry({ assetId, auditItemId: auditItemId ?? null, photos })
       apiError.toast(error instanceof Error ? error : t("auditPhotoUploadFailed"))
     }
   }
@@ -664,7 +671,7 @@ export function AuditScanWorkspace({
     }
     setItems((current) => applyScanResult(current, { item: result.item, scannedByName: result.scannedByName }))
     finishSave(notice, true)
-    if (submission.photos.length > 0) await uploadPhotos(row.assetId, submission.photos)
+    if (submission.photos.length > 0) await uploadPhotos(row.assetId, submission.photos, result.item.id)
     setSaving(false)
     void syncNow()
   }
@@ -833,7 +840,7 @@ export function AuditScanWorkspace({
               if (item) openItem(item, false)
             }}
             onRetryPhotos={() => {
-              if (photoRetry) void uploadPhotos(photoRetry.assetId, photoRetry.photos)
+              if (photoRetry) void uploadPhotos(photoRetry.assetId, photoRetry.photos, photoRetry.auditItemId ?? undefined)
             }}
           />
         ) : null}
@@ -860,6 +867,7 @@ export function AuditScanWorkspace({
             recordedOutOfScope={recordedOutOfScope}
             onOpenRecorded={openRecordedOutOfScope}
             activeItemId={isWide && target?.kind === "item" ? target.item.itemId : null}
+            canSeePhotos={canSeePhotos}
           />
           {searching ? (
             <AuditScanSearchResults
@@ -871,6 +879,7 @@ export function AuditScanWorkspace({
               locationLabels={locationLabels}
               queuedAssetIds={queuedAssetIds}
               onOpen={(item) => openItem(item, true)}
+              canSeePhotos={canSeePhotos}
               lookupAfterMatches={outOfScopeHint}
               lookup={
                 <AuditScanLookupCard
@@ -879,6 +888,7 @@ export function AuditScanWorkspace({
                   onSearchRegister={() => void searchRegister()}
                   onRecordOutOfScope={openOutOfScope}
                   onPickMatch={pickRegisterMatch}
+                  canSeePhotos={canSeePhotos}
                 />
               }
             />
@@ -915,6 +925,7 @@ export function AuditScanWorkspace({
             options={options}
             photoChecklist={target.kind === "item" ? photoChecklistByCategory[target.item.categoryId] ?? [] : []}
             canApplyCorrections={canApplyCorrections}
+            canSeePhotos={canSeePhotos}
             saving={saving}
             disabled={roundClosed}
             components={components}

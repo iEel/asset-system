@@ -24,7 +24,7 @@ function row(overrides: Partial<AuditScanItemRow> = {}): AuditScanItemRow {
     expectedLocationId: "loc-2", expectedCustodianId: "emp-1", expectedDepartmentId: "dept-1", expectedConditionId: "cond-good",
     actualLocationId: null, actualCustodianId: null, actualDepartmentId: null, actualConditionId: null,
     auditStatus: "pending", auditResult: null, lastScanAt: null, scannedByName: null,
-    currentLocationId: "loc-2", currentCustodianId: "emp-1", currentDepartmentId: "dept-1", componentCount: 0,
+    currentLocationId: "loc-2", currentCustodianId: "emp-1", currentDepartmentId: "dept-1", componentCount: 0, photo: null,
     ...overrides,
   }
 }
@@ -116,6 +116,12 @@ test("a save result updates only its row, and status updates replace or add rows
   assert.equal(saved[0].lastScanAt, "2026-10-07T05:00:00.000Z")
   assert.equal(saved[0].scannedByName, "สมชาย")
   assert.equal(saved[1], items[1])
+  const withPhoto = [row({ photo: { attachmentId: "att-1", fromModel: false } })]
+  assert.deepEqual(
+    applyScanResult(withPhoto, { item: { id: "item-1", auditStatus: "scanned", auditResult: "found", actualLocationId: "loc-2", actualCustodianId: "emp-1", actualDepartmentId: "dept-1", actualConditionId: null, lastScanAt: null } })[0].photo,
+    { attachmentId: "att-1", fromModel: false },
+    "a save keeps the photo the row had (audit photos plan 1 task 4)",
+  )
 
   const merged = mergeStatusUpdates(saved, [row({ itemId: "item-2", assetId: "asset-2", auditStatus: "scanned", auditResult: "found" }), row({ itemId: "item-9", assetId: "asset-9" })])
   assert.deepEqual(merged.map((item) => [item.itemId, item.auditStatus]), [["item-1", "scanned"], ["item-2", "scanned"], ["item-9", "pending"]])

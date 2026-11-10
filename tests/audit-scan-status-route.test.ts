@@ -4,9 +4,15 @@ import * as nodeModule from "node:module"
 import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
 
-const state: { permissions: string[]; round: { id: string; status: string } | null; calls: Array<{ call: string; args: Record<string, unknown> }> } = {
+const state: {
+  permissions: string[]
+  round: { id: string; status: string } | null
+  attachments: Array<{ id: string; module: string; assetId: string | null; referenceId: string | null }>
+  calls: Array<{ call: string; args: Record<string, unknown> }>
+} = {
   permissions: ["audit:edit"],
   round: { id: "round-1", status: "open" },
+  attachments: [],
   calls: [],
 }
 Object.assign(globalThis, { __scanStatusState: state })
@@ -33,7 +39,7 @@ const mockedModuleSources = new Map<string, string>([
       expectedLocationId: "loc-1", expectedCustodianId: null, expectedDepartmentId: null, expectedConditionId: null,
       actualLocationId: "loc-1", actualCustodianId: null, actualDepartmentId: null, actualConditionId: null,
       lastScanAt: new Date("2026-10-07T03:42:00Z"), scannedBy: "user-7",
-      asset: { assetTag: "SNI-EQU-19-0271", name: "Laptop", serialNumber: null, fixedAssetCode: null, categoryId: "cat-1", ownershipType: "personal", currentLocationId: "loc-1", custodianId: null, departmentId: null },
+      asset: { assetTag: "SNI-EQU-19-0271", name: "Laptop", modelId: "model-1", serialNumber: null, fixedAssetCode: null, categoryId: "cat-1", ownershipType: "personal", currentLocationId: "loc-1", custodianId: null, departmentId: null },
     }
     function log(call, args) { state().calls.push({ call, args: args ?? {} }) }
     export const prisma = {
@@ -41,6 +47,17 @@ const mockedModuleSources = new Map<string, string>([
       auditItem: { findMany: async (args) => { log("auditItem.findMany", args); return [record] } },
       user: { findMany: async (args) => { log("user.findMany", args); return [{ id: "user-7", displayName: "วิไล" }] } },
       assetComponent: { groupBy: async (args) => { log("assetComponent.groupBy", args); return [{ parentAssetId: "asset-1", _count: { _all: 3 } }] } },
+      // The poll's photo read (final review F3): the rows of the asked module whose key is in the id list.
+      attachment: {
+        findMany: async (args) => {
+          log("attachment.findMany", args)
+          const where = args.where
+          const key = where.module === "asset" ? "assetId" : "referenceId"
+          return state().attachments
+            .filter((row) => row.module === where.module && where[key].in.includes(row[key]))
+            .map((row) => ({ id: row.id, [key]: row[key] }))
+        },
+      },
     }
   `],
 ])
@@ -76,6 +93,7 @@ function get(query: string) {
 beforeEach(() => {
   state.permissions = ["audit:edit"]
   state.round = { id: "round-1", status: "open" }
+  state.attachments = []
   state.calls = []
 })
 
@@ -122,4 +140,35 @@ test("a closed round still reports its status so the screen can stop saving", as
   state.round = { id: "round-1", status: "closed" }
   const payload = await (await get("?since=2026-10-07T03:00:00.000Z")).json() as { roundStatus: string }
   assert.equal(payload.roundStatus, "closed")
+})
+
+test("with photo access, the poll's rows carry the photo, read only for the changed records (final review F3)", async () => {
+  state.permissions = ["audit:edit", "asset:view"]
+  state.attachments = [
+    { id: "photo-own", module: "asset", assetId: "asset-1", referenceId: "asset-1" },
+    { id: "photo-other", module: "asset", assetId: "asset-9", referenceId: "asset-9" },
+  ]
+  const payload = await (await get("?since=2026-10-07T03:00:00.000Z")).json() as { items: Array<{ photo: unknown }> }
+  assert.equal(payload.items.length, 1)
+  assert.deepEqual(payload.items[0].photo, { attachmentId: "photo-own", fromModel: false })
+
+  const reads = state.calls.filter((entry) => entry.call === "attachment.findMany").map((entry) => entry.args as { where: { module: string; assetId?: { in: string[] } } })
+  const own = reads.find((read) => read.where.module === "asset")!
+  assert.deepEqual(own.where.assetId!.in, ["asset-1"], "only the changed records' asset ids")
+  // The own photo was found, so no model read.
+  assert.equal(reads.some((read) => read.where.module === "asset_model"), false)
+})
+
+test("with photo access and no own photo, the poll's row carries the model photo", async () => {
+  state.permissions = ["audit:edit", "asset:view"]
+  state.attachments = [{ id: "photo-model", module: "asset_model", assetId: null, referenceId: "model-1" }]
+  const payload = await (await get("?since=2026-10-07T03:00:00.000Z")).json() as { items: Array<{ photo: unknown }> }
+  assert.deepEqual(payload.items[0].photo, { attachmentId: "photo-model", fromModel: true })
+})
+
+test("without photo access the poll reads no photo", async () => {
+  state.attachments = [{ id: "photo-own", module: "asset", assetId: "asset-1", referenceId: "asset-1" }]
+  const payload = await (await get("?since=2026-10-07T03:00:00.000Z")).json() as { items: Array<{ photo: unknown }> }
+  assert.equal(payload.items[0].photo, null)
+  assert.equal(state.calls.some((entry) => entry.call === "attachment.findMany"), false)
 })

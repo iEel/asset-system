@@ -1,9 +1,11 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import type { AssetPhotoPreviewDb } from "@/lib/asset-photo-preview"
+import type { SessionUser } from "@/lib/auth-utils"
 import { buildAuditCorrectionHistoryByItemId } from "@/lib/audit-correction-history"
 import { buildFindingValueLabels } from "@/lib/audit-finding-labels"
 import { getAuditRoundCloseChecklist } from "@/lib/audit-round-close"
-import { chunkAuditIds, withAuditRoundOwnItems } from "@/lib/audit-round-counts-rules"
+import { withAuditRoundOwnItems } from "@/lib/audit-round-counts-rules"
 import { countAuditRoundItemCategories, findAuditRoundSearchLocations } from "@/lib/audit-round-list-lookups"
 import {
   auditRoundAnyFieldFindingWhere,
@@ -29,6 +31,9 @@ import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import { loadRoundDisposalSummary } from "@/lib/inspection-confirm-data"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
+import { loadAuditRoundPhotos, type AuditRoundPhotoDb } from "@/lib/audit-round-photos-data"
+import { auditScanPhotoAccess, readAuditScanPhotos } from "@/lib/audit-scan-photos"
+import { hasAttachmentPermission } from "@/lib/attachment-access"
 
 // The round page's data (group 2 spec §5, §8): one server load, so every number and the rows it opens come from one
 // where. The result card, the next-step card and "ไม่ตรงเรื่องอะไร" are round-wide (their links clear the other
@@ -36,7 +41,7 @@ import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-p
 
 const roundSelect = {
   id: true, auditNo: true, name: true, status: true, startDate: true, endDate: true,
-  createdBy: true, cancelledAt: true, cancelledBy: true, cancelReason: true,
+  createdBy: true, createdAt: true, cancelledAt: true, cancelledBy: true, cancelReason: true,
 } satisfies Prisma.AuditRoundSelect
 
 function rowInclude(roundId: string) {
@@ -46,6 +51,8 @@ function rowInclude(roundId: string) {
         id: true,
         assetTag: true,
         name: true,
+        // A pending row's register photo falls back to its model's (audit photos spec §5).
+        modelId: true,
         currentLocation: { select: { code: true, name: true } },
         custodian: { select: { code: true, fullNameTh: true } },
         condition: { select: { nameTh: true } },
@@ -76,7 +83,7 @@ type ItemWhereInput = Parameters<typeof buildAuditRoundItemWhere>[0]
 type CountRow = { auditStatus: string; auditResult: string | null; _count: { _all: number } }
 const toCountRows = (rows: readonly CountRow[]) => rows.map((row) => ({ auditStatus: row.auditStatus, auditResult: row.auditResult, count: row._count._all }))
 
-export type AuditRoundPageDataInput = { roundId: string; filters: AuditRoundListFilters; page: number; pageSize: number; user: { id: string } }
+export type AuditRoundPageDataInput = { roundId: string; filters: AuditRoundListFilters; page: number; pageSize: number; user: SessionUser }
 
 export async function getAuditRoundPageData({ roundId, filters, page, pageSize, user }: AuditRoundPageDataInput) {
   // A. The round, and the rooms the search names (the item's expected room, bug 11, P2-R5): Task 2's lookup, the one
@@ -152,12 +159,14 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
   ])
 
   // D. What the page's rows and the photo count need: the page's correction history (its item ids only, P2-R9), the
-  // people, the finding values, and the photos of the checked items in chunks of 2,000 (bug 10, R17).
+  // people, the finding values, the photos of the checked items (the loader reads in chunks of 2,000, bug 10, R17; each
+  // photo with its round, audit photos spec §2), and the register photos of the page's pending rows (spec §5).
   const findings = items.flatMap((item) => item.findings)
   const userIds = [...new Set([round.createdBy, round.cancelledBy, ...items.map((item) => item.scannedBy), ...findings.map((finding) => finding.reportedBy)].filter((id): id is string => Boolean(id)))]
   const evidenceAssetIds = [...new Set(evidenceItems.map((item) => item.assetId))]
   const evidenceCategoryIds = [...new Set(evidenceItems.map((item) => item.asset.categoryId))]
-  const [logs, users, findingValueLabels, attachmentChunks, checklistSettings] = await Promise.all([
+  const pendingAssetsOnPage = items.filter((item) => item.auditStatus === "pending").map((item) => ({ id: item.asset.id, modelId: item.asset.modelId }))
+  const [logs, users, findingValueLabels, evidencePhotos, checklistSettings, registerPhotos] = await Promise.all([
     items.length > 0
       ? prisma.systemLog.findMany({
           where: { module: "audit", action: "scan_result_corrected", recordId: { in: items.map((item) => item.id) } },
@@ -167,25 +176,27 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
       : Promise.resolve([]),
     userIds.length > 0 ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, displayName: true } }) : Promise.resolve([]),
     findings.length > 0 ? buildFindingValueLabels(findings) : Promise.resolve(new Map<string, string>()),
-    Promise.all(
-      chunkAuditIds(evidenceAssetIds).map((chunk) =>
-        prisma.attachment.findMany({
-          where: { assetId: { in: chunk }, module: "asset", isActive: true, uploadedAt: { gte: round.startDate } },
-          select: { assetId: true, originalName: true },
-        }),
-      ),
-    ),
+    // From the round's creation, not its start: startDate is date-only (midnight UTC, 07:00 Bangkok), so a photo taken
+    // early on the first day would be cut before the rule runs. No photo of the round predates createdAt: its scans
+    // come after it, and the scan route refuses out-of-scope evidence uploaded before it (plan 2 final review F2).
+    loadAuditRoundPhotos(prisma as unknown as AuditRoundPhotoDb, evidenceAssetIds, { uploadedFrom: round.createdAt }),
     evidenceCategoryIds.length > 0
       ? prisma.systemSetting.findMany({ where: { key: { in: evidenceCategoryIds.map(categoryPhotoChecklistKey) } }, select: { key: true, value: true } })
       : Promise.resolve([]),
+    // The scan page's reader and permission rule: own newest → model → none. It returns at once for no pending row.
+    readAuditScanPhotos(prisma as unknown as AssetPhotoPreviewDb, pendingAssetsOnPage, auditScanPhotoAccess(user)),
   ])
 
   const usersById = new Map(users.map((entry) => [entry.id, entry]))
   const userLabel = (id: string | null) => formatAuditUserLabel(id ? usersById.get(id) : null, id)
+  // This round's photos only (spec §5): the checklist, the evidence line, hasPhoto and the row thumbnail read the same
+  // ones. The loader gives them newest first, so each asset's first is its thumbnail.
   const attachmentNamesByAssetId = new Map<string, string[]>()
-  for (const attachment of attachmentChunks.flat()) {
-    if (!attachment.assetId) continue
-    attachmentNamesByAssetId.set(attachment.assetId, [...(attachmentNamesByAssetId.get(attachment.assetId) ?? []), attachment.originalName])
+  const roundPhotoByAssetId = new Map<string, { attachmentId: string; count: number }>()
+  for (const photo of evidencePhotos.filter((photo) => photo.auditRoundId === roundId)) {
+    attachmentNamesByAssetId.set(photo.assetId, [...(attachmentNamesByAssetId.get(photo.assetId) ?? []), photo.originalName])
+    const shown = roundPhotoByAssetId.get(photo.assetId)
+    roundPhotoByAssetId.set(photo.assetId, shown ? { ...shown, count: shown.count + 1 } : { attachmentId: photo.id, count: 1 })
   }
   const checklistByCategoryId = new Map(checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)]))
   const correctionHistoryByItemId = buildAuditCorrectionHistoryByItemId(logs)
@@ -194,6 +205,9 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
   const walk = { checked: resultCard.all - resultCard.pending, total: resultCard.all, left: resultCard.pending }
   const fieldCounts = Object.fromEntries(auditFindingFields.map((field, index) => [field, fieldItemCounts[index]])) as Record<AuditFindingField, number>
   const openedByViewer = isSameAuditActor(user.id, round.createdBy)
+  // The round photo's thumbnail and dialog open asset photos, so only for asset:view; without it the cell keeps the
+  // plain "มีรูป" text and the evidence line still counts the row (plan 2 final review F1).
+  const canViewRoundPhotos = hasAttachmentPermission(user, "asset", "view")
   // A closed round's assets that can now go to disposal (inspection-confirm plan 4 task 4b): its หาไม่พบ and its
   // confirmed damaged assets with no open request, read only once the round is closed. The page shows the count to
   // disposal:create.
@@ -234,6 +248,8 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
         correctionHistory: correctionHistoryByItemId.get(item.id) ?? [],
         missingComponents: listAuditRoundMissingComponents(item.asset.parentComponents),
         hasPhoto: item.auditStatus === "pending" ? null : attachmentNamesByAssetId.has(item.assetId),
+        roundPhoto: item.auditStatus === "pending" || !canViewRoundPhotos ? null : (roundPhotoByAssetId.get(item.assetId) ?? null),
+        registerPhoto: item.auditStatus === "pending" ? (registerPhotos.get(item.asset.id) ?? null) : null,
         checkedBy: checker ? { label: userLabel(checker.userId) ?? checker.userId, at: checker.at } : null,
       }
     }),

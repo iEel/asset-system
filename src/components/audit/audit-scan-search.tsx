@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { AuditScanModelPhotoLabel, AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
 import {
   getAuditItemBadge,
   splitSearchHighlight,
@@ -107,6 +108,7 @@ export function AuditScanSearchResults({
   locationLabels,
   queuedAssetIds,
   onOpen,
+  canSeePhotos,
   lookup,
   lookupAfterMatches,
 }: {
@@ -120,6 +122,8 @@ export function AuditScanSearchResults({
   locationLabels: ReadonlyMap<string, string>
   queuedAssetIds: ReadonlySet<string>
   onOpen: (item: AuditScanItemRow) => void
+  /** The viewer may see photos: a row without one keeps the neutral square (audit photos spec §3). */
+  canSeePhotos: boolean
   lookup: ReactNode
   /** After the out-of-scope box the find is not among the matches, so the register lookup stays under them. */
   lookupAfterMatches: boolean
@@ -170,9 +174,14 @@ export function AuditScanSearchResults({
                     onClick={() => onOpen(match.item)}
                     className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   >
+                    <AuditScanPhotoThumb photo={match.item.photo} emptyFrame={canSeePhotos} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-foreground">
-                        <span className="tag font-medium">{match.field === "assetTag" ? highlight(match.item.assetTag) : match.item.assetTag}</span>
+                      {/* The model label sits beside the tag and never shrinks: a long tag truncates, the label stays (F5). */}
+                      <span className="flex min-w-0 items-baseline gap-1">
+                        <span className="min-w-0 truncate text-sm text-foreground">
+                          <span className="tag font-medium">{match.field === "assetTag" ? highlight(match.item.assetTag) : match.item.assetTag}</span>
+                        </span>
+                        <AuditScanModelPhotoLabel photo={match.item.photo} className="text-meta text-muted-foreground" />
                       </span>
                       <span className="block truncate text-meta text-muted-foreground">
                         {line.prefix}

@@ -17,6 +17,7 @@ import { auditScanSchema } from "@/lib/validations/audit"
 import { isAuditRoundOwnItem } from "@/lib/audit-round-counts-rules"
 import { auditOutOfScopeRescanEvidenceFields, planAuditOutOfScopeRescanFindings } from "@/lib/audit-out-of-scope-rescan"
 import { auditItemReviewState } from "@/lib/audit-item-review-state"
+import { appendPhotoEvidence } from "@/lib/audit-round-photos-rules"
 
 type AuditScanContext = {
   params: Promise<{ id: string }>
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
     const input = auditScanSchema.parse(await request.json())
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
-      select: { id: true, status: true },
+      // createdAt: out-of-scope evidence must be uploaded after it (audit photos plan 2 final review F2).
+      select: { id: true, status: true, createdAt: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     const readOnlyError = getAuditRoundReadOnlyError(round.status)
@@ -130,6 +132,9 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
                 module: "asset",
                 isActive: true,
                 uploadedBy: user.id,
+                // A photo linked here belongs to this round (spec §2); none predates the round, so the round page's
+                // createdAt cut holds (final review F2). The scan page always uploads fresh files.
+                uploadedAt: { gte: round.createdAt },
               },
               select: {
                 fileName: true,
@@ -168,6 +173,10 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             lastScanAt: scannedAt,
             scanCount: 1,
             remark: input.remark,
+            // Audit photos (spec 2026-11-10 §2): the evidence photos were taken for this find.
+            // Ids past the 12-id cap stay unlinked and, uploaded before this scan, belong to no round (rare: the
+            // schema allows 20). Spec §2, final review F9.
+            photoEvidence: appendPhotoEvidence(null, evidenceAttachmentIds).value,
           },
         })
 
@@ -306,7 +315,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       if (evidenceFieldTypes.length > 0 && evidenceAttachmentIds.length === 0) {
         return NextResponse.json({ error: "Evidence attachment is required for changed out-of-scope actual fields" }, { status: 400 })
       }
-      const evidenceAttachments = await findOutOfScopeEvidence(item.assetId, user.id, evidenceAttachmentIds)
+      const evidenceAttachments = await findOutOfScopeEvidence(item.assetId, user.id, evidenceAttachmentIds, round.createdAt)
       if (evidenceAttachments.length !== evidenceAttachmentIds.length) {
         return NextResponse.json({ error: "Evidence attachment is invalid for this asset" }, { status: 400 })
       }
@@ -406,9 +415,12 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
         // pending finding decides it from the rest, and a new finding on a reconciled find puts it back to "reviewed".
         const findings = await tx.auditFinding.findMany({ where: { auditItemId: item.id }, select: { findingType: true, reviewStatus: true } })
         const reviewState = findings.length > 0 ? auditItemReviewState(findings, { pendingAuditStatus: "reviewed" }) : null
+        // Audit photos (spec 2026-11-10 §2): this save's evidence photos join the find's photoEvidence.
+        const rescanEvidence = appendPhotoEvidence(item.photoEvidence, evidenceAttachmentIds)
         return tx.auditItem.update({
           where: { id: item.id },
           data: {
+            ...(rescanEvidence.linked.length > 0 ? { photoEvidence: rescanEvidence.value } : {}),
             actualDepartmentId: actual.departmentId,
             actualLocationId: actual.locationId,
             actualCustodianId: actual.custodianId,
@@ -979,10 +991,11 @@ function optionalActualValue(value: string | null | undefined, fallback: string 
 
 // The evidence of an out-of-scope re-scan: the scanner's own active photos of this asset, read the way the first
 // out-of-scope scan reads them (above, inline). No ids, no query.
-async function findOutOfScopeEvidence(assetId: string, userId: string, attachmentIds: readonly string[]) {
+// Uploaded from the round's creation on (audit photos plan 2 final review F2): the linked photos belong to the round.
+async function findOutOfScopeEvidence(assetId: string, userId: string, attachmentIds: readonly string[], roundCreatedAt: Date) {
   if (attachmentIds.length === 0) return []
   return prisma.attachment.findMany({
-    where: { id: { in: [...attachmentIds] }, assetId, module: "asset", isActive: true, uploadedBy: userId },
+    where: { id: { in: [...attachmentIds] }, assetId, module: "asset", isActive: true, uploadedBy: userId, uploadedAt: { gte: roundCreatedAt } },
     select: { fileName: true, originalName: true, fileType: true, fileSize: true, filePath: true },
   })
 }

@@ -28,7 +28,7 @@ test("minor 2: a recorded find not in state opens from the lookup's own answer, 
   const asset = {
     id: "asset-x1", assetTag: "GRL-COM-26-0099", title: "GRL-COM-26-0099", subtitle: "Notebook", serialNumber: "SN-1",
     currentLocationId: "loc-9", custodianId: "emp-9", departmentId: "dept-9", conditionId: "good", ownershipType: "personal",
-    meta: { location: "", custodian: null }, components: [], installedIn: [],
+    meta: { location: "", custodian: null }, components: [], installedIn: [], photo: null,
   } as AuditLookupAsset
   const row = auditScanRowFromRecordedFind(item, asset)
   assert.equal(row.itemId, "item-x1")
