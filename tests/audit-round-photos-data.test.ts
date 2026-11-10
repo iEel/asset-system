@@ -59,6 +59,8 @@ test("loadAuditRoundPhotos maps a linked photo and a timed photo, and leaves an 
   const items = calls[1].args
   assert.deepEqual(items.where, { assetId: { in: ["a1", "a2"] }, photoEvidence: { not: null } })
   assert.deepEqual(items.select, { auditRoundId: true, assetId: true, photoEvidence: true })
+  // "The last link wins" reads the links in a fixed order (final review F2).
+  assert.deepEqual(items.orderBy, [{ updatedAt: "asc" }, { id: "asc" }])
   const scans = calls[2].args
   // No uploadedFrom: from the oldest photo, minus 30 minutes.
   assert.deepEqual(scans.where, { assetId: { in: ["a1", "a2"] }, scannedAt: { gte: at("2026-11-01T07:30:00Z") } })

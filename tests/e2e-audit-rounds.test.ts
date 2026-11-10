@@ -482,6 +482,13 @@ test("the scan photos spec opens its own round on its own room, uploads the mode
   assert.ok(spec.includes(`E2E_ROLE_PERMISSIONS.viewer.includes("audit:view")`))
   assert.ok(spec.includes(`storageState: fromRoot(authStateFile(runId, "viewer"))`))
   assert.match(spec, /\} finally \{\r?\n\s+await viewer\.close\(\)/)
+  // The files tab ties the round chip and each filter to the right photo by its image (final review F4).
+  assert.ok(spec.includes("const photoTileOf = (page: Page, attachmentId: string): Locator => page.getByRole(\"main\").locator(`li:has(img[src=\"${cardSrc(attachmentId)}\"])`)"))
+  assert.ok(spec.includes(`await expect(roundChipOn(photoTileOf(page, checkPhotoId), round.auditNo), "the check photo's tile carries the round").toHaveCount(1)`))
+  assert.ok(spec.includes(`await expect(roundChipOn(photoTileOf(page, aPhotoId), round.auditNo), "A's own photo (before the round) carries no round").toHaveCount(0)`))
+  assert.ok(spec.includes(`.toHaveAttribute("src", cardSrc(aPhotoId))`), "ไม่ได้มาจากการตรวจนับ shows A's own photo")
+  // Under the round chip: from the chip, from the dialog's link and from the history's ดูรูป, plus the dialog's own tile.
+  assert.equal(spec.match(/photoTiles\(page\.getByRole\("main"\)\)\.locator\("img"\)[^\n]*\.toHaveAttribute\("src", cardSrc\(checkPhotoId\)\)/g)?.length, 3)
   // One asset's round row by its exact tag (fix 1, E2E-1111C): a component's card names its parent's tag.
   assert.doesNotMatch(spec, /resultRows\(page, e2eDevice, [a-e]\.assetTag\)/)
   assert.ok(spec.includes(`page.getByRole("link", { name: asset.assetTag, exact: true })`))

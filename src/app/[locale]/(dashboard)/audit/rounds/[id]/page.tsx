@@ -312,7 +312,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       checkedBy: item.checkedBy?.label ?? null,
       checkedAt: item.checkedBy?.at ?? null,
       // This round's newest photo opens the item's photos for the round; "ไม่มีรูป" stays text, no other photo stands in
-      // for the round's evidence; a pending row shows its register photo, plain and labelled, else — (audit photos §5).
+      // for the round's evidence; without asset:view (no roundPhoto) a row with photos keeps the plain "มีรูป" text; a
+      // pending row shows its register photo, plain and labelled, else — (audit photos §5, plan 2 final review F1).
       photo: item.roundPhoto ? (
         <AuditRoundPhotosButton
           roundId={round.id}
@@ -324,6 +325,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         />
       ) : item.hasPhoto === false ? (
         t("photoMissing")
+      ) : item.hasPhoto ? (
+        t("photoAttached")
       ) : item.registerPhoto ? (
         <AuditRegisterPhotoThumb photo={item.registerPhoto} />
       ) : null,

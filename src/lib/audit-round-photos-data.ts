@@ -55,12 +55,14 @@ export async function loadAuditRoundPhotos(
     photos.push(...rows)
   }
 
-  // 2. The items that link photos.
+  // 2. The items that link photos, in a fixed order: when two items link one photo the last wins (the rule), so the
+  // winner never depends on the database's unordered return (plan 2 final review F2).
   const links: AuditPhotoLinkInput[] = []
   for (const chunk of chunks) {
     const rows = (await db.auditItem.findMany({
       where: { assetId: { in: chunk }, photoEvidence: { not: null } },
       select: { auditRoundId: true, assetId: true, photoEvidence: true },
+      orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
     })) as AuditPhotoLinkInput[]
     links.push(...rows)
   }

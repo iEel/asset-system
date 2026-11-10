@@ -27,7 +27,10 @@ test("the page data reads this round's photos through the one loader, and the re
   // The checklist and hasPhoto read the same names: this round's photos.
   assert.match(data, /attachmentNamesByAssetId,\n\s+checklistByCategoryId,/)
   assert.match(data, /hasPhoto: item\.auditStatus === "pending" \? null : attachmentNamesByAssetId\.has\(item\.assetId\),/)
-  assert.match(data, /roundPhoto: item\.auditStatus === "pending" \? null : \(roundPhotoByAssetId\.get\(item\.assetId\) \?\? null\),/)
+  // The round photo opens asset photos: only for asset:view (final review F1).
+  assert.match(data, /import \{ hasAttachmentPermission \} from "@\/lib\/attachment-access"/)
+  assert.match(data, /const canViewRoundPhotos = hasAttachmentPermission\(user, "asset", "view"\)/)
+  assert.match(data, /roundPhoto: item\.auditStatus === "pending" \|\| !canViewRoundPhotos \? null : \(roundPhotoByAssetId\.get\(item\.assetId\) \?\? null\),/)
   assert.match(data, /registerPhoto: item\.auditStatus === "pending" \? \(registerPhotos\.get\(item\.asset\.id\) \?\? null\) : null,/)
 })
 
@@ -36,9 +39,10 @@ test("the page: the round photo button on a checked row with photos, ไม่�
   assert.match(page, /import \{ AuditRegisterPhotoThumb, AuditRoundPhotosButton \} from "@\/components\/audit\/audit-round-photos-dialog"/)
   assert.match(page, /photo: item\.roundPhoto \? \(/)
   assert.match(page, /<AuditRoundPhotosButton\s+roundId=\{round\.id\}\s+itemId=\{item\.id\}\s+assetId=\{item\.asset\.id\}\s+assetTag=\{item\.asset\.assetTag\}\s+auditNo=\{round\.auditNo\}\s+photo=\{item\.roundPhoto\}\s*\/>/)
-  assert.match(page, /\) : item\.hasPhoto === false \? \(\n\s+t\("photoMissing"\)\n\s+\) : item\.registerPhoto \? \(\n\s+<AuditRegisterPhotoThumb photo=\{item\.registerPhoto\} \/>\n\s+\) : null,/)
-  // "มีรูป" is no longer the cell's text: the button carries it as its name.
-  assert.doesNotMatch(page, /t\("photoAttached"\)/)
+  // Without asset:view (no roundPhoto) a row with this round's photos keeps the plain "มีรูป" text (final review F1).
+  assert.match(page, /\) : item\.hasPhoto === false \? \(\n\s+t\("photoMissing"\)\n\s+\) : item\.hasPhoto \? \(\n\s+t\("photoAttached"\)\n\s+\) : item\.registerPhoto \? \(\n\s+<AuditRegisterPhotoThumb photo=\{item\.registerPhoto\} \/>\n\s+\) : null,/)
+  // With asset:view the button carries "มีรูป" as its name; the plain text is the one fallback.
+  assert.equal(page.match(/t\("photoAttached"\)/g)?.length, 1)
   // Both layouts draw the one value: the phone card's KeyValueList and the table cell (— when null).
   assert.match(page, /\{ key: "photo", label: t\("photoColumn"\), value: item\.photo \},/)
   assert.match(page, /<DataTableCell className="whitespace-nowrap text-muted-foreground">\{item\.photo \?\? <Nil \/>\}<\/DataTableCell>/)

@@ -97,6 +97,10 @@ const roundFilter = (page: Page): Locator => page.getByRole("main").getByRole("n
 const photoTiles = (scope: Locator): Locator => scope.getByRole("button", { name: templatePattern(W.openPhoto, { name: ".+" }) })
 const tileRoundChips = (page: Page, auditNo: string): Locator =>
   page.getByRole("main").locator('li [data-slot="chip"]').filter({ hasText: new RegExp(`^${scan.escapeRegExp(auditNo)}$`) })
+// One photo's tile on the files tab, by its image (final review F4): the chip and the filters are tied to that photo.
+const photoTileOf = (page: Page, attachmentId: string): Locator => page.getByRole("main").locator(`li:has(img[src="${cardSrc(attachmentId)}"])`)
+const roundChipOn = (tile: Locator, auditNo: string): Locator =>
+  tile.locator('[data-slot="chip"]').filter({ hasText: new RegExp(`^${scan.escapeRegExp(auditNo)}$`) })
 // The selected round's line, right after the chips (asset-attachments.tsx RoundLine).
 const roundLine = (page: Page): Locator => roundFilter(page).locator("xpath=following-sibling::p[1]")
 
@@ -273,12 +277,16 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await expect(roundPage.chipByLabel(roundFilter(page), W.all)).toHaveAttribute("aria-current", "page")
       await expect(photoTiles(page.getByRole("main"))).toHaveCount(2)
       await expect(tileRoundChips(page, round.auditNo), "the round chip on the check photo's tile only").toHaveCount(1)
+      await expect(roundChipOn(photoTileOf(page, checkPhotoId), round.auditNo), "the check photo's tile carries the round").toHaveCount(1)
+      await expect(photoTileOf(page, aPhotoId), "A's own photo is on the tab").toHaveCount(1)
+      await expect(roundChipOn(photoTileOf(page, aPhotoId), round.auditNo), "A's own photo (before the round) carries no round").toHaveCount(0)
       await expect(roundLine(page), "no round chosen, no round line").toHaveCount(0)
 
       await roundPage.chipByLabel(roundFilter(page), round.auditNo).click()
       await page.waitForURL(onFilesChip(a.id, round.auditNo))
       await expect(roundPage.chipByLabel(roundFilter(page), round.auditNo)).toHaveAttribute("aria-current", "page")
       await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await expect(photoTiles(page.getByRole("main")).locator("img"), "the round's chip shows the check photo").toHaveAttribute("src", cardSrc(checkPhotoId))
       await expect(tileRoundChips(page, round.auditNo)).toHaveCount(1)
       // The round (linked: IT staff hold audit:view), the scan time, the result in words and who scanned; not cancelled.
       const line = roundLine(page)
@@ -293,6 +301,7 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await page.waitForURL((url) => url.searchParams.get("photoRound") === "none")
       await expect(roundPage.chipByLabel(roundFilter(page), W.notFromAudit)).toHaveAttribute("aria-current", "page")
       await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await expect(photoTiles(page.getByRole("main")).locator("img"), "ไม่ได้มาจากการตรวจนับ shows A's own photo").toHaveAttribute("src", cardSrc(aPhotoId))
       await expect(tileRoundChips(page, round.auditNo)).toHaveCount(0)
       await expect(roundLine(page)).toHaveCount(0)
 
@@ -357,6 +366,7 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await page.waitForURL(onFilesChip(a.id, round.auditNo))
       await expect(roundPage.chipByLabel(roundFilter(page), round.auditNo)).toHaveAttribute("aria-current", "page")
       await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await expect(photoTiles(page.getByRole("main")).locator("img")).toHaveAttribute("src", cardSrc(checkPhotoId))
       await recordSettled(page, measure, "A's files tab from the round's dialog")
     })
 
@@ -377,6 +387,7 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await page.waitForURL(onFilesChip(a.id, round.auditNo))
       await expect(roundPage.chipByLabel(roundFilter(page), round.auditNo)).toHaveAttribute("aria-current", "page")
       await expect(photoTiles(page.getByRole("main"))).toHaveCount(1)
+      await expect(photoTiles(page.getByRole("main")).locator("img")).toHaveAttribute("src", cardSrc(checkPhotoId))
       await recordSettled(page, measure, "A's files tab from the history")
     })
 

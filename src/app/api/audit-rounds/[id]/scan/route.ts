@@ -61,7 +61,8 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
     const input = auditScanSchema.parse(await request.json())
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
-      select: { id: true, status: true },
+      // createdAt: out-of-scope evidence must be uploaded after it (audit photos plan 2 final review F2).
+      select: { id: true, status: true, createdAt: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     const readOnlyError = getAuditRoundReadOnlyError(round.status)
@@ -131,6 +132,9 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
                 module: "asset",
                 isActive: true,
                 uploadedBy: user.id,
+                // A photo linked here belongs to this round (spec §2); none predates the round, so the round page's
+                // createdAt cut holds (final review F2). The scan page always uploads fresh files.
+                uploadedAt: { gte: round.createdAt },
               },
               select: {
                 fileName: true,
@@ -311,7 +315,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       if (evidenceFieldTypes.length > 0 && evidenceAttachmentIds.length === 0) {
         return NextResponse.json({ error: "Evidence attachment is required for changed out-of-scope actual fields" }, { status: 400 })
       }
-      const evidenceAttachments = await findOutOfScopeEvidence(item.assetId, user.id, evidenceAttachmentIds)
+      const evidenceAttachments = await findOutOfScopeEvidence(item.assetId, user.id, evidenceAttachmentIds, round.createdAt)
       if (evidenceAttachments.length !== evidenceAttachmentIds.length) {
         return NextResponse.json({ error: "Evidence attachment is invalid for this asset" }, { status: 400 })
       }
@@ -987,10 +991,11 @@ function optionalActualValue(value: string | null | undefined, fallback: string 
 
 // The evidence of an out-of-scope re-scan: the scanner's own active photos of this asset, read the way the first
 // out-of-scope scan reads them (above, inline). No ids, no query.
-async function findOutOfScopeEvidence(assetId: string, userId: string, attachmentIds: readonly string[]) {
+// Uploaded from the round's creation on (audit photos plan 2 final review F2): the linked photos belong to the round.
+async function findOutOfScopeEvidence(assetId: string, userId: string, attachmentIds: readonly string[], roundCreatedAt: Date) {
   if (attachmentIds.length === 0) return []
   return prisma.attachment.findMany({
-    where: { id: { in: [...attachmentIds] }, assetId, module: "asset", isActive: true, uploadedBy: userId },
+    where: { id: { in: [...attachmentIds] }, assetId, module: "asset", isActive: true, uploadedBy: userId, uploadedAt: { gte: roundCreatedAt } },
     select: { fileName: true, originalName: true, fileType: true, fileSize: true, filePath: true },
   })
 }

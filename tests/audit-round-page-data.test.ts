@@ -496,3 +496,26 @@ test("a photo taken before the round's date-only start but after its creation, l
   assert.equal(data.rows[0].hasPhoto, true)
   assert.equal(data.evidence.withPhoto, 1)
 })
+
+// Plan 2 final review F1: the round photo's thumbnail and dialog open asset photos, so a role with audit:view and no
+// asset:view gets no roundPhoto (the page keeps the plain "มีรูป" text); hasPhoto and the evidence line still count it.
+test("without asset:view a checked row with this round's photo carries no roundPhoto, but hasPhoto and the evidence line still count it (final review F1)", async () => {
+  const photo = { id: "p-1", assetId: "asset-1", originalName: "ด้านหน้า.jpg", uploadedAt: new Date("2026-10-07T02:00:00.000Z") }
+  const asset = { id: "asset-1", modelId: null, assetTag: "TAG-1", name: "asset-1", currentLocation: null, custodian: null, condition: null, parentComponents: [], installedInLinks: [] }
+  const item = { id: "item-1", assetId: "asset-1", auditStatus: "scanned", auditResult: "found", scannedBy: null, scannedAt: null, findings: [], asset }
+  state.respond = (call, args) => {
+    if (call === "auditRound.findFirst") return round
+    if (call === "auditItem.findMany" && args.skip !== undefined) return [item]
+    if (call === "auditItem.findMany" && isPhotoLinkRead(args)) return [{ auditRoundId: "round-1", assetId: "asset-1", photoEvidence: JSON.stringify(["p-1"]) }]
+    if (call === "auditItem.findMany" && isEvidenceRead(args)) return [{ assetId: "asset-1", auditStatus: "scanned", auditResult: "found", asset: { categoryId: "desk" } }]
+    if (call === "attachment.findMany" && isRoundPhotoRead(args)) return [photo]
+    return undefined
+  }
+  const withAssetView = await loadPage()
+  assert.deepEqual(withAssetView?.rows[0].roundPhoto, { attachmentId: "p-1", count: 1 })
+  const auditOnly = await loadPage({}, { permissions: ["audit:view"] })
+  assert.ok(auditOnly)
+  assert.equal(auditOnly.rows[0].roundPhoto, null)
+  assert.equal(auditOnly.rows[0].hasPhoto, true)
+  assert.equal(auditOnly.evidence.withPhoto, 1)
+})

@@ -13,6 +13,8 @@ type State = {
   findings: Finding[]
   outOfScopeFindingId: string | null
   attachmentIds: string[]
+  /** An active asset outside the round (the new-find branch), or none. */
+  newAsset: Record<string, unknown> | null
   /** Every finding of the item, as the review state reads them after the plan is applied. */
   reviewFindings: Array<{ findingType: string; reviewStatus: string }>
   calls: Call[]
@@ -32,7 +34,9 @@ function recordedFind(): Record<string, unknown> {
   }
 }
 
-const state: State = { item: recordedFind(), parentItem: null, permissions: ["audit:edit"], findings: [], outOfScopeFindingId: "finding-oos", attachmentIds: ["att-1"], reviewFindings: [], calls: [], logs: [] }
+const state: State = { item: recordedFind(), parentItem: null, permissions: ["audit:edit"], findings: [], outOfScopeFindingId: "finding-oos", attachmentIds: ["att-1"], newAsset: null, reviewFindings: [], calls: [], logs: [] }
+// The round was created before X1's first scan; an "old-" attachment was uploaded before the round (final review F2).
+const roundCreatedAt = new Date("2026-10-20T00:00:00Z")
 Object.assign(globalThis, { __outOfScopeRescanState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -63,7 +67,7 @@ const mockedModuleSources = new Map<string, string>([
     const state = () => globalThis.__outOfScopeRescanState
     const attachment = (id) => ({ fileName: id + ".jpg", originalName: id + ".jpg", fileType: "image/jpeg", fileSize: 1000, filePath: "audit/" + id + ".jpg" })
     function answer(name, method, args) {
-      if (name === "auditRound" && method === "findFirst") return { id: "round-1", status: "open" }
+      if (name === "auditRound" && method === "findFirst") return { id: "round-1", status: "open", createdAt: new Date("2026-10-20T00:00:00Z") }
       if (name === "auditItem" && method === "findUnique") {
         return args.where.auditRoundId_assetId.assetId === state().item.assetId ? state().item : state().parentItem
       }
@@ -80,7 +84,13 @@ const mockedModuleSources = new Map<string, string>([
         return args.where?.findingType === "out_of_scope" && state().outOfScopeFindingId ? { id: state().outOfScopeFindingId } : null
       }
       if (name === "auditFinding" && method === "create") return { id: "created-" + args.data.findingType, ...args.data }
-      if (name === "attachment" && method === "findMany") return args.where.id.in.filter((id) => state().attachmentIds.includes(id)).map(attachment)
+      if (name === "attachment" && method === "findMany") {
+        // Upload times as SQL Server would compare them: "old-" ids predate the round, the rest follow it.
+        const uploadedAt = (id) => new Date(id.startsWith("old-") ? "2026-10-01T00:00:00Z" : "2026-10-27T01:55:00Z")
+        const from = args.where.uploadedAt?.gte
+        return args.where.id.in.filter((id) => state().attachmentIds.includes(id) && (!from || uploadedAt(id) >= from)).map(attachment)
+      }
+      if (name === "asset" && method === "findFirst") return state().newAsset
       if (name === "assetComponent" && method === "findFirst") return { parentAssetId: "asset-p1", parentAsset: { assetTag: "GRL-COM-26-0100", name: "Desktop" } }
       if (method === "updateMany") return { count: 0 }
       if (method === "count") return 0
@@ -156,6 +166,7 @@ beforeEach(() => {
   state.findings = []
   state.outOfScopeFindingId = "finding-oos"
   state.attachmentIds = ["att-1"]
+  state.newAsset = null
   state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "pending" }]
   state.calls = []
   state.logs = []
@@ -252,7 +263,7 @@ test("the evidence must be the scanner's own active photos of this asset", async
   const response = await scan({ actualLocationId: "loc-3", evidenceAttachmentIds: ["att-other"] })
   assert.equal(response.status, 400)
   assert.deepEqual(await response.json(), { error: "Evidence attachment is invalid for this asset" })
-  assert.deepEqual(callsTo("attachment.findMany")[0].where, { id: { in: ["att-other"] }, assetId: "asset-x1", module: "asset", isActive: true, uploadedBy: "auditor-1" })
+  assert.deepEqual(callsTo("attachment.findMany")[0].where, { id: { in: ["att-other"] }, assetId: "asset-x1", module: "asset", isActive: true, uploadedBy: "auditor-1", uploadedAt: { gte: roundCreatedAt } })
   assert.deepEqual(callsTo("auditItem.update"), [])
 })
 
@@ -399,4 +410,32 @@ test("the item's review state follows its findings after the re-scan, as the rev
   assert.equal(response.status, 200)
   data = dataOf(callsTo("auditItem.update")[0])
   assert.deepEqual([data.auditStatus, data.reconcileStatus], ["reviewed", "exception"])
+})
+
+// Audit photos plan 2 final review F2: a photo linked through photoEvidence belongs to the round, and the round page
+// reads its photos from the round's creation, so both out-of-scope branches refuse evidence uploaded before it.
+test("a re-scan refuses the scanner's own photo of the asset uploaded before the round was created (final review F2)", async () => {
+  state.attachmentIds = ["att-1", "old-1"]
+  const response = await scan({ actualLocationId: "loc-3", evidenceAttachmentIds: ["old-1"] })
+  assert.equal(response.status, 400)
+  assert.deepEqual(await response.json(), { error: "Evidence attachment is invalid for this asset" })
+  assert.deepEqual(callsTo("auditItem.update"), [])
+})
+
+test("a new out-of-scope find refuses evidence uploaded before the round was created, and links a fresh one (final review F2)", async () => {
+  state.newAsset = {
+    id: "asset-new", assetTag: "GRL-COM-26-0200", name: "Monitor", companyId: "co-1", branchId: "br-1", departmentId: "dept-1",
+    ownershipType: "shared", currentLocationId: "loc-1", custodianId: null, conditionId: "condition-good",
+  }
+  state.attachmentIds = ["att-new", "old-new"]
+  const refused = await scan({ assetId: "asset-new", actualLocationId: "loc-3", evidenceAttachmentIds: ["old-new"] })
+  assert.equal(refused.status, 400)
+  assert.deepEqual(await refused.json(), { error: "Evidence attachment is invalid for this asset" })
+  assert.deepEqual(callsTo("attachment.findMany")[0].where, { id: { in: ["old-new"] }, assetId: "asset-new", module: "asset", isActive: true, uploadedBy: "auditor-1", uploadedAt: { gte: roundCreatedAt } })
+  assert.deepEqual(callsTo("auditItem.create"), [])
+
+  state.calls = []
+  const linked = await scan({ assetId: "asset-new", actualLocationId: "loc-3", evidenceAttachmentIds: ["att-new"] })
+  assert.equal(linked.status, 202, "a new out-of-scope find is accepted for review")
+  assert.equal(dataOf(callsTo("auditItem.create")[0]).photoEvidence, JSON.stringify(["att-new"]))
 })

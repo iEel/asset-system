@@ -257,7 +257,6 @@ function PhotoTile({
       </button>
       <div className="mt-2 flex min-w-0 items-center gap-2">
         {photo.primary ? <Chip>{t("filesTab.primaryPhoto")}</Chip> : null}
-        {photo.round ? <Chip className="tag">{photo.round.auditNo}</Chip> : null}
         <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
         {onDelete ? (
           <Button
@@ -272,6 +271,14 @@ function PhotoTile({
           </Button>
         ) : null}
       </div>
+      {/* The round chip on its own line, so the name row stays as it was on a narrow tile (plan 2 final review F3). */}
+      {photo.round ? (
+        <div className="mt-1 flex min-w-0">
+          <Chip title={photo.round.auditNo}>
+            <span className="tag">{photo.round.auditNo}</span>
+          </Chip>
+        </div>
+      ) : null}
     </li>
   )
 }

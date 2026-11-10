@@ -33,6 +33,7 @@ import { loadRoundDisposalSummary } from "@/lib/inspection-confirm-data"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { loadAuditRoundPhotos, type AuditRoundPhotoDb } from "@/lib/audit-round-photos-data"
 import { auditScanPhotoAccess, readAuditScanPhotos } from "@/lib/audit-scan-photos"
+import { hasAttachmentPermission } from "@/lib/attachment-access"
 
 // The round page's data (group 2 spec §5, §8): one server load, so every number and the rows it opens come from one
 // where. The result card, the next-step card and "ไม่ตรงเรื่องอะไร" are round-wide (their links clear the other
@@ -176,7 +177,8 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
     userIds.length > 0 ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, displayName: true } }) : Promise.resolve([]),
     findings.length > 0 ? buildFindingValueLabels(findings) : Promise.resolve(new Map<string, string>()),
     // From the round's creation, not its start: startDate is date-only (midnight UTC, 07:00 Bangkok), so a photo taken
-    // early on the first day would be cut before the rule runs; no scan or item link of the round predates createdAt.
+    // early on the first day would be cut before the rule runs. No photo of the round predates createdAt: its scans
+    // come after it, and the scan route refuses out-of-scope evidence uploaded before it (plan 2 final review F2).
     loadAuditRoundPhotos(prisma as unknown as AuditRoundPhotoDb, evidenceAssetIds, { uploadedFrom: round.createdAt }),
     evidenceCategoryIds.length > 0
       ? prisma.systemSetting.findMany({ where: { key: { in: evidenceCategoryIds.map(categoryPhotoChecklistKey) } }, select: { key: true, value: true } })
@@ -203,6 +205,9 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
   const walk = { checked: resultCard.all - resultCard.pending, total: resultCard.all, left: resultCard.pending }
   const fieldCounts = Object.fromEntries(auditFindingFields.map((field, index) => [field, fieldItemCounts[index]])) as Record<AuditFindingField, number>
   const openedByViewer = isSameAuditActor(user.id, round.createdBy)
+  // The round photo's thumbnail and dialog open asset photos, so only for asset:view; without it the cell keeps the
+  // plain "มีรูป" text and the evidence line still counts the row (plan 2 final review F1).
+  const canViewRoundPhotos = hasAttachmentPermission(user, "asset", "view")
   // A closed round's assets that can now go to disposal (inspection-confirm plan 4 task 4b): its หาไม่พบ and its
   // confirmed damaged assets with no open request, read only once the round is closed. The page shows the count to
   // disposal:create.
@@ -243,7 +248,7 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
         correctionHistory: correctionHistoryByItemId.get(item.id) ?? [],
         missingComponents: listAuditRoundMissingComponents(item.asset.parentComponents),
         hasPhoto: item.auditStatus === "pending" ? null : attachmentNamesByAssetId.has(item.assetId),
-        roundPhoto: item.auditStatus === "pending" ? null : (roundPhotoByAssetId.get(item.assetId) ?? null),
+        roundPhoto: item.auditStatus === "pending" || !canViewRoundPhotos ? null : (roundPhotoByAssetId.get(item.assetId) ?? null),
         registerPhoto: item.auditStatus === "pending" ? (registerPhotos.get(item.asset.id) ?? null) : null,
         checkedBy: checker ? { label: userLabel(checker.userId) ?? checker.userId, at: checker.at } : null,
       }
