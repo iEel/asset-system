@@ -8,7 +8,7 @@
 
 ### รูปกับการตรวจนับ (แผน 1–2): รูปบนหน้าตรวจนับ แท็บไฟล์กรองตามรอบ รูปในหน้ารอบ และ "ดูรูป" จากประวัติ
 
-spec `docs/superpowers/specs/2026-11-10-audit-photos-design.md` · plans `docs/superpowers/plans/2026-11-10-audit-photos-1-rule-scan.md`, `...-2-files-round-history.md` · branch `feat/audit-photos` · ไม่มี migration (ใช้ช่อง `audit_items.photoEvidence` ที่มีอยู่)
+spec `docs/superpowers/specs/2026-11-10-audit-photos-design.md` · plans `docs/superpowers/plans/2026-11-10-audit-photos-1-rule-scan.md`, `...-2-files-round-history.md` · branch `feat/audit-photos` (merged d5bb0fa9 · E2E ทั้งชุด E2E-1111F–I ผ่าน, approvals-inbox 1 ครั้งสะดุดที่ toast รันซ้ำ E2E-1111J ผ่าน) · ไม่มี migration (ใช้ช่อง `audit_items.photoEvidence` ที่มีอยู่)
 
 - กฎเดียวว่ารูปไหนเป็นของรอบไหน (`audit-round-photos-rules.ts`, ตัวโหลด `audit-round-photos-data.ts`): รูปที่ถ่ายจากหน้าตรวจนับจดรอบไว้ใน `photoEvidence` (อาร์เรย์ JSON ไม่เกิน 12 รหัส) · รูปเก่าหรือรูปที่จดไม่ได้ใช้กฎเวลา ภายใน 30 นาทีหลังสแกนเครื่องนั้นในรอบ · รอบที่ยกเลิกยังนับ · จดรอบต้องมีสิทธิ์ audit:edit และจดไม่ได้ก็ไม่ทำให้รูปหาย
 - หน้าตรวจนับ: รูปของเครื่อง → รูปประจำรุ่น (มีป้าย) → กรอบ "ยังไม่มีรูป" บนฟอร์มตรวจ การ์ดเครื่องนอกรายการตรวจ แถวในห้อง ผลค้นหา ส่วนควบ และบรรทัดติดตั้งอยู่ใน · อ่านเป็นชุดชุดละ 2,000 · ดูสิทธิ์ก่อนส่งรูป
