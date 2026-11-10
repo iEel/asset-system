@@ -13,10 +13,18 @@ import type { AuditScanPhoto } from "@/lib/audit-scan-photos"
 // none. The card sits at the top of the check form and on the out-of-scope card; the thumb at the start of a row.
 
 /** The check form's photo: the thumbnail route's card size in the shared photo frame, a รูปประจำรุ่น chip over a model
- * photo; nothing at all without a photo (the rows already say there is none). */
-export function AuditScanPhotoCard({ photo, alt }: { photo: AuditScanPhoto | null; alt: string }) {
+ * photo. Without a photo, a viewer who may see photos gets the shared empty frame (ยังไม่มีรูป, no upload link: the photo
+ * is taken in the form's own photo field); a viewer who may not gets nothing (own → model → empty frame, spec §3). */
+export function AuditScanPhotoCard({ photo, alt, emptyFrame }: { photo: AuditScanPhoto | null; alt: string; emptyFrame: boolean }) {
   const t = useTranslations("asset")
-  if (!photo) return null
+  if (!photo && !emptyFrame) return null
+  if (!photo) {
+    return (
+      <div data-audit-scan-photo-card data-empty="true" className="relative h-40 md:h-48">
+        <AssetPhotoFrame attachmentId={null} alt={alt} canUpload={false} />
+      </div>
+    )
+  }
   return (
     <div data-audit-scan-photo-card data-from-model={photo.fromModel ? "true" : undefined} className="relative h-40 md:h-48">
       <AssetPhotoFrame attachmentId={photo.attachmentId} alt={alt} canUpload={false} />
@@ -29,8 +37,8 @@ const thumbBox = "flex size-12 shrink-0 items-center justify-center overflow-hid
 
 /** A row's 48px photo, drawn from the thumbnail route's 96px size so it stays sharp on a phone. A row without a photo
  * (or one that fails to load) keeps a neutral square when the viewer may see photos, so the rows line up; a viewer who
- * may not gets no frame. */
-export function AuditScanPhotoThumb({ photo, alt, emptyFrame }: { photo: AuditScanPhoto | null; alt: string; emptyFrame: boolean }) {
+ * may not gets no frame. Decorative (alt=""): every row it sits in already names the asset. */
+export function AuditScanPhotoThumb({ photo, emptyFrame }: { photo: AuditScanPhoto | null; emptyFrame: boolean }) {
   // Keyed by the photo, so a row that gets a new photo tries it again.
   const [failedId, setFailedId] = useState<string | null>(null)
   if (!photo && !emptyFrame) return null
@@ -46,7 +54,7 @@ export function AuditScanPhotoThumb({ photo, alt, emptyFrame }: { photo: AuditSc
       {/* eslint-disable-next-line @next/next/no-img-element -- already resized by the thumbnail route */}
       <img
         src={thumbnailUrl(photo.attachmentId)}
-        alt={alt}
+        alt=""
         width={48}
         height={48}
         loading="lazy"

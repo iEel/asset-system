@@ -175,7 +175,7 @@ export function AuditScanSearchResults({
                     onClick={() => onOpen(match.item)}
                     className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   >
-                    <AuditScanPhotoThumb photo={match.item.photo} alt={`${match.item.assetTag} ${match.item.name}`} emptyFrame={canSeePhotos} />
+                    <AuditScanPhotoThumb photo={match.item.photo} emptyFrame={canSeePhotos} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-foreground">
                         <span className="tag font-medium">{match.field === "assetTag" ? highlight(match.item.assetTag) : match.item.assetTag}</span>

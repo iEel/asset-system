@@ -365,7 +365,7 @@ export function AuditScanCheckForm({
     // A flex column inside the sheet or the wide panel: the fields scroll, the action bar under them never does (D1).
     <div data-audit-check-form className="flex min-h-0 flex-1 flex-col">
       <div ref={bodyRef} data-audit-check-body className="min-h-0 flex-1 scroll-py-3 space-y-3 overflow-y-auto px-4 py-3">
-        <AuditScanPhotoCard photo={targetPhoto} alt={targetPhotoAlt} />
+        <AuditScanPhotoCard photo={targetPhoto} alt={targetPhotoAlt} emptyFrame={canSeePhotos} />
         <p className="text-sm text-muted-foreground">{statusLine}</p>
 
         {/* Only the fields the server compares for this asset (bug 22, P3-R11); a hidden one sends the expected value. */}
@@ -395,7 +395,7 @@ export function AuditScanCheckForm({
           <Notice tone="info">
             {components.installedIn.map((parent) => (
               <p key={parent.parentAssetId} className="flex items-center gap-2">
-                <AuditScanPhotoThumb photo={parent.photo} alt={`${parent.assetTag} ${parent.name}`} emptyFrame={canSeePhotos} />
+                <AuditScanPhotoThumb photo={parent.photo} emptyFrame={canSeePhotos} />
                 <span className="min-w-0">{t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}</span>
               </p>
             ))}

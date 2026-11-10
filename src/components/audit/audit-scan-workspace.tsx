@@ -888,6 +888,7 @@ export function AuditScanWorkspace({
                   onSearchRegister={() => void searchRegister()}
                   onRecordOutOfScope={openOutOfScope}
                   onPickMatch={pickRegisterMatch}
+                  canSeePhotos={canSeePhotos}
                 />
               }
             />

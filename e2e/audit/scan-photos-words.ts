@@ -3,6 +3,8 @@
 export const SCAN_PHOTO_WORDS = {
   // asset.modelPhoto: the chip on a model photo's card and the meta line of a row whose photo is the model's.
   modelPhoto: "รูปประจำรุ่น",
+  // asset.photoFrame.emptyTitle: the check form's card for an asset with no photo (own → model → empty frame).
+  emptyTitle: "ยังไม่มีรูป",
   // auditScan.addNotePhoto: the check form's note-and-photo section.
   addNotePhoto: "ถ่ายรูป / เพิ่มหมายเหตุ",
   // auditScan.queuedPhotos: the list of photos waiting to upload.

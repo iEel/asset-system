@@ -407,6 +407,7 @@ test("the scan photos spec reads the app's own words, key by key (audit photos p
   const scan = th.auditScan as Record<string, string>
   const byKey: Record<keyof typeof W, string> = {
     modelPhoto: th.asset.modelPhoto,
+    emptyTitle: th.asset.photoFrame.emptyTitle,
     addNotePhoto: scan.addNotePhoto,
     queuedPhotos: scan.queuedPhotos,
     saveAllMatch: scan.saveAllMatch,
@@ -436,7 +437,7 @@ test("the scan photos spec opens its own round on its own room, uploads the mode
   // The four checks, then the link: the upload of the check's photo answers auditLinked: true.
   for (const step of [
     "the room list shows A's thumb, B's thumb with รูปประจำรุ่น in its meta line, and C's neutral square",
-    "the check form shows A's card without the chip and B's card with the chip, and C shows no card",
+    "the check form shows A's card without the chip, B's card with the chip, and C's card empty with ยังไม่มีรูป",
     "D's check form lists E with E's thumb",
     "a photo taken in A's check form uploads with the item id",
   ]) assert.ok(spec.includes(`await test.step("${step}"`), step)

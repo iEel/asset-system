@@ -71,7 +71,7 @@ export function AuditComponentPanel({
 
           return (
             <li key={component.assetId} data-audit-component-row className="flex min-h-16 items-center gap-2 px-3 py-2">
-              <AuditScanPhotoThumb photo={component.photo} alt={`${component.assetTag} ${component.name}`} emptyFrame={emptyFrame} />
+              <AuditScanPhotoThumb photo={component.photo} emptyFrame={emptyFrame} />
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="min-w-0 truncate text-sm text-foreground">

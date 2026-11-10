@@ -177,7 +177,7 @@ export function AuditScanRoomList({
                         active && "bg-accent",
                       )}
                     >
-                      <AuditScanPhotoThumb photo={item.photo} alt={`${item.assetTag} ${item.name}`} emptyFrame={canSeePhotos} />
+                      <AuditScanPhotoThumb photo={item.photo} emptyFrame={canSeePhotos} />
                       <span className="min-w-0 flex-1">
                         <span className="block break-words text-sm font-semibold text-foreground">{item.name}</span>
                         <span className="block text-meta text-muted-foreground">

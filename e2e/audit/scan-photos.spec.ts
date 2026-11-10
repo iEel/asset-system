@@ -5,7 +5,7 @@
 // - C has neither;
 // - D is a parent with E installed in it, and E has a photo of its own.
 // The room list shows A's thumb, B's model thumb with รูปประจำรุ่น in its meta line and C's neutral square; the check form
-// shows A's card, B's card with the รูปประจำรุ่น chip and no card for C; D's check lists E with E's thumb; and a photo
+// shows A's card, B's card with the รูปประจำรุ่น chip and C's card empty (ยังไม่มีรูป); D's check lists E with E's thumb; and a photo
 // taken in A's check form uploads with the audit item's id, so the upload answers auditLinked: true (the only check of
 // the link in plan 1). The IT head cancels the round whatever happens (never a DELETE); no shared master data is changed.
 import { readFileSync } from "node:fs"
@@ -149,7 +149,7 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
     await test.step("the room list shows A's thumb, B's thumb with รูปประจำรุ่น in its meta line, and C's neutral square", async () => {
       const aThumb = thumb(row(page, a)).locator("img")
       await expect(aThumb).toHaveAttribute("src", thumbSrc(aPhotoId))
-      await expect(aThumb).toHaveAttribute("alt", `${a.assetTag} ${a.name}`)
+      await expect(aThumb, "decorative: the row names the asset").toHaveAttribute("alt", "")
       await expect(aThumb).toHaveAttribute("loading", "lazy")
       await expectDrawn(aThumb)
       await expect(row(page, a).locator("[data-audit-scan-model-photo]")).toHaveCount(0)
@@ -163,7 +163,7 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await recordSettled(page, measure, "room list with the photos")
     })
 
-    await test.step("the check form shows A's card without the chip and B's card with the chip, and C shows no card", async () => {
+    await test.step("the check form shows A's card without the chip, B's card with the chip, and C's card empty with ยังไม่มีรูป", async () => {
       await openRow(page, a)
       await expect(photoCard(page).locator("img")).toHaveAttribute("src", cardSrc(aPhotoId))
       await expectDrawn(photoCard(page).locator("img"))
@@ -176,7 +176,11 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await recordSettled(page, measure, "check of B, the model's photo")
 
       await openRow(page, c)
-      await expect(photoCard(page)).toHaveCount(0)
+      await expect(photoCard(page)).toHaveAttribute("data-empty", "true")
+      await expect(photoCard(page).getByText(W.emptyTitle, { exact: true })).toBeVisible()
+      await expect(photoCard(page).locator("img")).toHaveCount(0)
+      await expect(photoCard(page).getByRole("link")).toHaveCount(0)
+      await recordSettled(page, measure, "check of C, the empty frame")
     })
 
     await test.step("D's check form lists E with E's thumb", async () => {
@@ -184,7 +188,7 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       const component = scan.checkForm(page).locator("[data-audit-component-row]").filter({ hasText: e.assetTag })
       await expect(component).toHaveCount(1)
       await expect(thumb(component).locator("img")).toHaveAttribute("src", thumbSrc(ePhotoId))
-      await expect(thumb(component).locator("img")).toHaveAttribute("alt", `${e.assetTag} ${e.name}`)
+      await expect(thumb(component).locator("img"), "decorative: the row names the component").toHaveAttribute("alt", "")
       await recordSettled(page, measure, "check of D, its component's thumb")
     })
 
