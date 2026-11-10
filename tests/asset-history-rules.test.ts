@@ -9,6 +9,7 @@ import {
   ASSET_HISTORY_EXPORT_LIMIT,
   ASSET_HISTORY_REASON_TYPES,
   assetHistoryActorLabel,
+  assetHistoryAuditPhotos,
   assetHistoryCategory,
   assetHistoryExcelRow,
   assetHistoryLookupIds,
@@ -225,7 +226,7 @@ test("a handover names who received it and how, a return who gave it back, and o
 })
 
 test("newest first, a fixed order for events at the same instant, and the cap", () => {
-  const event = (id: string, iso: string): AssetHistoryEvent => ({ id, at: new Date(iso), category: "edit", labelKey: "asset.movementTypes.create", detail: null, actor: null, document: null })
+  const event = (id: string, iso: string): AssetHistoryEvent => ({ id, at: new Date(iso), category: "edit", labelKey: "asset.movementTypes.create", detail: null, actor: null, document: null, auditPhotos: null })
   const events = [event("a", "2026-10-01T00:00:00Z"), event("b", "2026-10-02T00:00:00Z"), event("c", "2026-10-02T00:00:00Z"), event("d", "2026-09-30T00:00:00Z")]
   assert.deepEqual(orderAssetHistory(events, 500).map((item) => item.id), ["c", "b", "a", "d"])
   assert.deepEqual(orderAssetHistory(events, 2).map((item) => item.id), ["c", "b"])
@@ -250,12 +251,13 @@ test("the Excel row: the Bangkok date and time, the chip word, the event, the de
       detail: "เปลี่ยนสายแพจอ · ใช้เวลา 13 วัน",
       actor: "E009 - ช่าง ไอที",
       document: { kind: "repair", code: "MT-20260802-0001", href: "/th/maintenance/t1" },
+      auditPhotos: null,
     }, t),
     { at: "2026-08-15 14:30", type: "ซ่อม", event: "ซ่อมเสร็จ", detail: "เปลี่ยนสายแพจอ · ใช้เวลา 13 วัน", actor: "E009 - ช่าง ไอที", document: "MT-20260802-0001" },
   )
   // No document, or one the downloader may not open (the route passes it as null, R52): an empty cell.
   assert.deepEqual(
-    assetHistoryExcelRow({ id: "audit-i1", at: new Date("2026-10-12T10:05:00Z"), category: "audit", labelKey: "asset.history.auditScan", detail: "พบตรง", actor: null, document: null }, t),
+    assetHistoryExcelRow({ id: "audit-i1", at: new Date("2026-10-12T10:05:00Z"), category: "audit", labelKey: "asset.history.auditScan", detail: "พบตรง", actor: null, document: null, auditPhotos: null }, t),
     { at: "2026-10-12 17:05", type: "ตรวจนับ", event: "ตรวจนับ", detail: "พบตรง", actor: "", document: "" },
   )
   assert.equal(buildAssetHistoryExportFilename("GRL-COM-26-0017", new Date("2026-10-25T17:30:00Z")), "asset-history-GRL-COM-26-0017-2026-10-26.xlsx")
@@ -304,4 +306,16 @@ test("a field correction reads as <field>: old → new, an id by its name and an
     assert.ok(key && typeof en.asset.history.fields[key] === "string", `${column} has an English word`)
   }
   assert.equal(new Set(columns.map((column) => correction({ [column]: "old" }, { [column]: "new" })?.split(":")[0])).size, 14, "one word each")
+})
+
+test("an audit event of a round with photos carries auditPhotos, one without carries null (audit photos spec §6)", () => {
+  const rounds = new Set(["r1"])
+  const filesHref = "/th/assets/a1?view=files&returnTo=%2Fth%2Fassets"
+  assert.deepEqual(assetHistoryAuditPhotos(rounds, { id: "r1", auditNo: "AUD-2026-0003" }, filesHref), {
+    auditNo: "AUD-2026-0003",
+    href: "/th/assets/a1?view=files&returnTo=%2Fth%2Fassets&photoRound=AUD-2026-0003",
+  })
+  assert.equal(assetHistoryAuditPhotos(rounds, { id: "r2", auditNo: "AUD-2026-0004" }, filesHref), null, "a round without a photo of the asset")
+  assert.equal(assetHistoryAuditPhotos(rounds, { id: "r1", auditNo: "AUD-2026-0003" }, null), null, "a loader that read no photos")
+  assert.equal(assetHistoryAuditPhotos(rounds, { id: "r1", auditNo: "A B&C" }, "/th/assets/a1?view=files")?.href, "/th/assets/a1?view=files&photoRound=A%20B%26C")
 })

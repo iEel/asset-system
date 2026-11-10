@@ -30,6 +30,8 @@ export type AssetHistoryEvent = {
   detail: string | null
   actor: string | null
   document: { code: string; href: string; kind: AssetMovementDocumentKind } | null
+  /** An audit event of a round with photos of the asset (audit photos spec §6): the files tab with that round's chip. */
+  auditPhotos: { auditNo: string; href: string } | null
 }
 
 export type AssetHistoryCounts = { total: number; counts: Record<AssetHistoryCategory, number> }
@@ -358,6 +360,17 @@ export function countAssetHistory(
   counts.audit += auditEvents
   const total = ASSET_HISTORY_CATEGORIES.reduce((sum, category) => sum + counts[category], 0)
   return { total, counts }
+}
+
+/** An audit event's "ดูรูป" (audit photos spec §6): the files tab's link with the round's chip, when that round holds a
+ *  photo of the asset. A null filesHref is a caller that read no photos. */
+export function assetHistoryAuditPhotos(
+  photoRoundIds: ReadonlySet<string>,
+  round: { id: string; auditNo: string },
+  filesHref: string | null,
+): { auditNo: string; href: string } | null {
+  if (!filesHref || !photoRoundIds.has(round.id)) return null
+  return { auditNo: round.auditNo, href: `${filesHref}&photoRound=${encodeURIComponent(round.auditNo)}` }
 }
 
 /** Newest first, then by id for events at the same instant, at most `limit`. The input is not reordered. */

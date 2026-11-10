@@ -1498,7 +1498,9 @@
       "capped": "แสดง {shown} รายการล่าสุดจาก {total} รายการ ส่งออก Excel เพื่อดูรายการที่เก่ากว่า",
       "receivedBy": "รับโดย {name}",
       "lateReturnReattached": "กลับเข้าเครื่องหลัก",
-      "lateReturnStandalone": "แยกเป็นทรัพย์สินเดี่ยว"
+      "lateReturnStandalone": "แยกเป็นทรัพย์สินเดี่ยว",
+      "viewPhotos": "ดูรูป",
+      "viewPhotosLabel": "ดูรูป {auditNo}"
     },
     "photoFrame": {
       "emptyTitle": "ยังไม่มีรูป",

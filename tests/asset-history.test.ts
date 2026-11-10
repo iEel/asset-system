@@ -19,11 +19,11 @@ test("the history rules are pure and count days with the waiting work's Bangkok 
 
 test("one history: the movements as its spine, the scans that wrote no movement, the repair records merged in; reads in rounds, never a write (spec §7.6)", () => {
   const source = read("src/lib/asset-history.ts")
-  assert.match(source, /export async function getAssetHistory\(assetId: string, locale: string, options\?: \{ limit\?: number \}\): Promise<AssetHistory>/)
+  assert.match(source, /export async function getAssetHistory\(assetId: string, locale: string, options\?: \{ limit\?: number; filesHref\?: string \}\): Promise<AssetHistory>/)
   assert.match(source, /export async function getAssetHistoryCounts\(assetId: string\): Promise<AssetHistoryCounts>/)
   assert.match(source, /export async function getLatestAssetHistory\(assetId: string, locale: string, take: number\): Promise<AssetHistoryEvent\[\]>/)
   // The overview's latest events come from the history's own loader: the same sources, merge rules and order (R50).
-  assert.ok(source.includes("return (await loadAssetHistory(assetId, locale, take, false)).events"), "getLatestAssetHistory delegates to the shared loader")
+  assert.ok(source.includes("return (await loadAssetHistory(assetId, locale, take, false, null)).events"), "getLatestAssetHistory delegates to the shared loader, without the photos")
   assert.match(source, /prisma\.assetMovement\.findMany\(\{\n\s*where: \{ assetId \},\n\s*orderBy: \[\{ performedAt: "desc" \}, \{ id: "desc" \}\],\n\s*take: limit,/)
   assert.match(source, /prisma\.assetMovement\.groupBy\(\{\n\s*by: \["movementType"\],\n\s*where: \{ assetId \},/)
   assert.match(source, /prisma\.auditItem\.findMany\(\{\n\s*where: \{ assetId, auditStatus: \{ not: "pending" \} \},/)
@@ -91,4 +91,17 @@ test("the history's Excel: every event of one asset, with asset:view, in the pag
     "return errorResponse(error)",
   ]) assert.ok(route.includes(call), call)
   assert.deepEqual(rbacRoutePermissionMatrix.find((entry) => entry.filePath === ROUTE)?.checks, [{ module: "asset", action: "view" }])
+})
+
+test("an audit event links to its round's photos: one photo read for the asset, only for a caller that gives the files tab's link (audit photos spec §6)", () => {
+  const source = read("src/lib/asset-history.ts")
+  assert.match(source, /^import \{ loadAuditRoundPhotos, type AuditRoundPhotoDb \} from "@\/lib\/audit-round-photos-data"$/m)
+  assert.equal(source.match(/loadAuditRoundPhotos\(/g)?.length, 1, "one call")
+  assert.ok(source.includes("filesHref && auditItems.length > 0 ? loadAuditRoundPhotos(prisma as unknown as AuditRoundPhotoDb, [assetId]) : []"))
+  assert.ok(source.includes("auditPhotos: assetHistoryAuditPhotos(photoRoundIds, item.auditRound, filesHref),"))
+  assert.equal(source.match(/auditPhotos: null,/g)?.length, 1, "a movement event never carries photos")
+  assert.ok(source.includes("const { events, groups, auditItems } = await loadAssetHistory(assetId, locale, limit, true, options?.filesHref ?? null)"))
+  // The page gives the files tab's own link, with the same returnTo the files tab keeps.
+  const page = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  assert.ok(page.includes('getAssetHistory(asset.id, locale, { filesHref: buildAssetDetailViewHref(locale, asset.id, "files", returnToHref) })'))
 })

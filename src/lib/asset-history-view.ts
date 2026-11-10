@@ -27,6 +27,10 @@ export type AssetHistoryRow = {
   detail: string | null
   actor: string | null
   document: { code: string; href: string } | null
+  /** "ดูรูป" (audit photos spec §6): needs asset:view only, so it stays when the round's link is dropped. */
+  photosHref: string | null
+  /** The round number in the link's name, so several rows' links tell apart. */
+  photosAuditNo: string | null
 }
 
 const historyCategories: ReadonlySet<string> = new Set(ASSET_HISTORY_CATEGORIES)
@@ -69,7 +73,7 @@ export function formatHistoryMonth(at: Date, locale: string): string {
   }).format(at)
 }
 
-/** One row per event, in the events' order. A document shows only to a person who may open its page (R12). */
+/** One row per event, in the events' order. A document shows only to a person who may open its page (R12); "ดูรูป" stays. */
 export function buildAssetHistoryRows(
   events: readonly AssetHistoryEvent[],
   options: { locale: string; now: Date; access: Record<AssetMovementDocumentKind, boolean>; label: (key: string) => string },
@@ -87,6 +91,8 @@ export function buildAssetHistoryRows(
     detail: event.detail,
     actor: event.actor,
     document: event.document && options.access[event.document.kind] ? { code: event.document.code, href: event.document.href } : null,
+    photosHref: event.auditPhotos?.href ?? null,
+    photosAuditNo: event.auditPhotos?.auditNo ?? null,
   }))
 }
 

@@ -1498,7 +1498,9 @@
       "capped": "Showing the latest {shown} of {total} events. Export to Excel to see older ones.",
       "receivedBy": "Received by {name}",
       "lateReturnReattached": "Back in its parent asset",
-      "lateReturnStandalone": "Stands alone"
+      "lateReturnStandalone": "Stands alone",
+      "viewPhotos": "View photos",
+      "viewPhotosLabel": "View photos {auditNo}"
     },
     "photoFrame": {
       "emptyTitle": "No photo yet",

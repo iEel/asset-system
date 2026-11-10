@@ -205,7 +205,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   )
   // The history tab's own loader (R24): every event, newest first, at most 500, only on its tab.
   const history = assetDetailView === "history"
-    ? await withPerformanceTiming("asset-detail.history-tab", () => getAssetHistory(asset.id, locale), { route: "/assets/[id]", locale })
+    ? await withPerformanceTiming("asset-detail.history-tab", () => getAssetHistory(asset.id, locale, { filesHref: buildAssetDetailViewHref(locale, asset.id, "files", returnToHref) }), { route: "/assets/[id]", locale })
     : null
   // The components tab's install/remove history (R24): both sides of every link, only on its tab.
   const componentHistory = assetDetailView === "components"
