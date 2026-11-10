@@ -44,7 +44,7 @@
 - **Links to the files tab:** `/${locale}/assets/${assetId}?view=files&photoRound=${auditNo}`, the detail page's
   existing `view` param.
 - **Round page:**
-  - A checked item with photos in the round shows the newest one as a small thumbnail (plus "+n" when more), a button that opens a dialog. "ไม่มี" stays text; a pending item stays "—". No register or model photo stands in. The dialog loads on open.
+  - A checked item with photos in the round shows the newest one as a small thumbnail (plus "+n" when more), a button that opens a dialog. "ไม่มี" stays text, and no register or model photo stands in for a checked item. A pending item (รอตรวจ) shows its register photo instead, by plan 1's `readAuditScanPhotos` (own → model, same permissions). It is a plain thumbnail, not a button, with the small text "รูปทะเบียน" or "รูปประจำรุ่น" under it, and "—" when there is none (user, 2026-11-10). The dialog loads on open.
   - The evidence line's "มีรูป" count and the column use the same rule.
 - **History:** "ดูรูป" shows only when that round has photos for the asset. It needs `asset:view` only, and it stays
   when the round link is dropped for lack of `audit:view`.
@@ -160,6 +160,7 @@
   - replace the `uploadedAt >= round.startDate` read with `loadAuditRoundPhotos(db, evidenceAssetIds, { uploadedFrom: round.startDate })`;
   - keep the photos whose `auditRoundId === roundId`;
   - each row gains `roundPhoto: { attachmentId: string; count: number } | null` (the newest of this round's photos, and how many), null for a pending item or none;
+  - each pending row on the page gains `registerPhoto: AuditScanPhoto | null` from one `readAuditScanPhotos(prisma, pendingRowsOnPage, auditScanPhotoAccess(user))` call (plan 1 Task 3), null for checked rows;
   - build `attachmentNamesByAssetId` from them, so `foldAuditRoundEvidence` and `hasPhoto` both use them, and the
     checklist names still match.
 - Create: GET `src/app/api/audit-rounds/[id]/items/[itemId]/photos/route.ts`:
@@ -174,7 +175,7 @@
   - an empty state when the list comes back empty;
   - a retry when the request fails.
 - Modify: `src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx`, L313, L585 and L657: the thumbnail button replaces the "มี"
-  text on the desktop table and the phone card. "ไม่มี" stays text; a pending row stays "—".
+  text on the desktop table and the phone card. "ไม่มี" stays text; a pending row shows its register photo (or "—").
 - Test:
   - `tests/audit-round-photos-route.test.ts` (pins);
   - `tests/audit-round-page-photos-ui.test.ts` (pins);
@@ -189,7 +190,9 @@
   - no `uploadedAt: { gte: round.startDate }` read is left;
   - the route checks both permissions and the item's round;
   - the dialog loads on open, not on render;
-  - the row thumbnail is lazy with a fixed size, and a pending row and a "ไม่มี" row draw no image;
+  - the row thumbnail is lazy with a fixed size, and a "ไม่มี" row draws no image;
+  - a pending row with `registerPhoto` draws a plain (non-button) thumbnail with "รูปทะเบียน" or `asset.modelPhoto` under it, and "—" without one;
+  - `readAuditScanPhotos` is called once, for the pending rows of the page only;
   - "ไม่มี" stays plain text.
 - [ ] **Step 2: Run them.** Expected: FAIL.
 - [ ] **Step 3: Implement.**
@@ -234,7 +237,7 @@
 - [ ] **Step 1: Write the E2E,** after plan 1's test 4 linked a photo to A's item:
   - **Files tab:** A's files tab shows the run round's chip with count 1 and the round chip on the tile. Pressing it
     shows the round's line (round, date, result, IT staff's name). `?photoRound=JUNK` shows "ทั้งหมด".
-  - **Round page:** A's row shows its round photo thumbnail. Pressing it opens the dialog with one tile. Its "ดูในแท็บไฟล์" lands on the
+  - **Round page:** A's row shows its round photo thumbnail. Pressing it opens the dialog with one tile. Under the รอตรวจ filter, B's pending row (if B is still pending; otherwise a pending run asset with a model photo) shows a plain thumbnail with "รูปประจำรุ่น", and C's shows "—". Its "ดูในแท็บไฟล์" lands on the
     files tab with the chip selected. C's row reads "ไม่มี", as text.
   - **History:** A's history audit row has "ดูรูป", which lands on the same chip. C's row has none.
   - **Viewer:** as the viewer (`asset:view`, no `audit:view`), A's history row still has "ดูรูป" and no round link.

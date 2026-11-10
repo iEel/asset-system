@@ -184,7 +184,14 @@ User, 2026-11-10: the round page's result list (the one with the รอตรว
 - **A checked item without a photo in this round:** "ไม่มี" stays text. **(my call, accepted)** No register or model
   photo is shown in its place, because this column is the round's evidence. Another photo would read as if the round
   had one.
-- **A pending item (รอตรวจ):** the column stays empty as today ("—"). There is no evidence yet.
+- **A pending item (รอตรวจ)** (user, 2026-11-10: "เพิ่มด้วย"): it shows the register photo by the scan page's order
+  (own newest → model → nothing), so the person knows what machine to look for.
+  - It is a thumbnail of the same size, but marked so that it never reads as the round's evidence. Under it is a small
+    text: "รูปทะเบียน" for an own photo, "รูปประจำรุ่น" for a model photo.
+  - **(my call)** It is not a button. The round dialog is for this round's photos, and a pending item has none.
+  - With no photo the column stays empty as today ("—").
+  - The scan page's reader (`readAuditScanPhotos`) supplies it, with the same permission rule. It reads only the
+    pending rows on the page.
 - **Loading:**
   - The rows are paged already. Only the rows on the page get thumbnails: the small size, `loading="lazy"`, and a
     fixed width and height.
