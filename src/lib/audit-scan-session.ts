@@ -3,6 +3,8 @@ import { normalizeAssetOwnershipType, requiresCustodian } from "./asset-ownershi
 import { isSuccessfulAuditResult } from "./audit-result-summary.ts"
 import { isAuditRoundOwnItem } from "./audit-round-counts-rules.ts"
 import { foldAuditRoundResultCounts } from "./audit-round-result-filters.ts"
+// Type only: audit-scan-photos.ts is server-only (it reaches the db), and this file is imported by the client.
+import type { AuditScanPhoto } from "./audit-scan-photos.ts"
 
 export const auditScanListPageSize = 50
 /** The search shows this many matches at a time, and "แสดงเพิ่ม" adds as many again (bug 20, P3-R5). The rule returns them all. */
@@ -48,6 +50,8 @@ export type AuditScanItemRow = {
   currentCustodianId: string | null
   currentDepartmentId: string | null
   componentCount: number
+  /** The asset's own photo, else its model's, else null (audit photos spec §3). */
+  photo: AuditScanPhoto | null
 }
 
 export type AuditScanRoom = AuditScanContext

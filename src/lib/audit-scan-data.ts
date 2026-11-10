@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { toAuditScanItemRow } from "@/lib/audit-scan-rows"
+import type { AssetPhotoPreviewDb } from "@/lib/asset-photo-preview"
+import { readAuditScanPhotos, type AuditScanPhotoAccess } from "@/lib/audit-scan-photos"
 import type { AuditScanCategory } from "@/lib/audit-scan-session"
 
 export const auditScanItemSelect = {
@@ -29,12 +31,16 @@ export const auditScanItemSelect = {
       currentLocationId: true,
       custodianId: true,
       departmentId: true,
+      modelId: true,
     },
   },
 } satisfies Prisma.AuditItemSelect
 
-/** Every audit item of a round (or only those changed after `since`) as scan rows. */
-export async function loadAuditScanRows(roundId: string, options: { since?: Date } = {}) {
+/**
+ * Every audit item of a round (or only those changed after `since`) as scan rows, each with the photo the viewer may see
+ * (audit photos spec §3). The photos are read for the records already loaded, so a poll reads only its changed rows.
+ */
+export async function loadAuditScanRows(roundId: string, options: { since?: Date; photoAccess: AuditScanPhotoAccess }) {
   const records = await prisma.auditItem.findMany({
     where: { auditRoundId: roundId, ...(options.since ? { updatedAt: { gt: options.since } } : {}) },
     select: auditScanItemSelect,
@@ -43,7 +49,7 @@ export async function loadAuditScanRows(roundId: string, options: { since?: Date
   if (records.length === 0) return []
 
   const userIds = Array.from(new Set(records.map((record) => record.scannedBy).filter((id): id is string => Boolean(id))))
-  const [users, componentGroups] = await Promise.all([
+  const [users, componentGroups, photos] = await Promise.all([
     userIds.length > 0
       ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, displayName: true } })
       : Promise.resolve([] as Array<{ id: string; displayName: string }>),
@@ -60,11 +66,16 @@ export async function loadAuditScanRows(roundId: string, options: { since?: Date
       },
       _count: { _all: true },
     }),
+    readAuditScanPhotos(
+      prisma as unknown as AssetPhotoPreviewDb,
+      records.map((record) => ({ id: record.assetId, modelId: record.asset.modelId })),
+      options.photoAccess,
+    ),
   ])
 
   const userNames = new Map(users.map((user) => [user.id, user.displayName]))
   const componentCounts = new Map(componentGroups.map((group) => [group.parentAssetId, group._count._all]))
-  return records.map((record) => toAuditScanItemRow(record, { userNames, componentCounts }))
+  return records.map((record) => toAuditScanItemRow(record, { userNames, componentCounts, photos }))
 }
 
 /**

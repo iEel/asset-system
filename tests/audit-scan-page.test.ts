@@ -6,7 +6,7 @@ const page = () => readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/
 
 test("the scan page loads slim rows and renders the workspace", () => {
   const source = page()
-  assert.match(source, /loadAuditScanRows\(id\)/)
+  assert.match(source, /loadAuditScanRows\(id, \{ photoAccess: auditScanPhotoAccess\(user\) \}\)/)
   assert.match(source, /<AuditScanWorkspace/)
   assert.match(source, /initialServerTime=\{serverTime\.toISOString\(\)\}/)
   assert.match(source, /initialAssetId=\{resolveFirstSearchParam\(rawSearchParams\.assetId\)\}/)

@@ -1,3 +1,4 @@
+import type { AuditScanPhoto } from "./audit-scan-photos.ts"
 import type { AuditScanItemRow } from "./audit-scan-session.ts"
 
 export type AuditScanItemRecord = {
@@ -25,12 +26,17 @@ export type AuditScanItemRecord = {
     currentLocationId: string
     custodianId: string | null
     departmentId: string | null
+    modelId: string | null
   }
 }
 
 export function toAuditScanItemRow(
   record: AuditScanItemRecord,
-  lookups: { userNames: ReadonlyMap<string, string>; componentCounts: ReadonlyMap<string, number> },
+  lookups: {
+    userNames: ReadonlyMap<string, string>
+    componentCounts: ReadonlyMap<string, number>
+    photos: ReadonlyMap<string, AuditScanPhoto>
+  },
 ): AuditScanItemRow {
   return {
     itemId: record.id,
@@ -57,5 +63,6 @@ export function toAuditScanItemRow(
     currentCustodianId: record.asset.custodianId,
     currentDepartmentId: record.asset.departmentId,
     componentCount: lookups.componentCounts.get(record.assetId) ?? 0,
+    photo: lookups.photos.get(record.assetId) ?? null,
   }
 }

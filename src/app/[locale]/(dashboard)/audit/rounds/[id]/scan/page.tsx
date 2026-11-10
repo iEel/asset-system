@@ -4,6 +4,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { AuditScanWorkspace } from "@/components/audit/audit-scan-workspace"
 import { getAuditRoundOptions } from "@/lib/audit-options"
 import { loadAuditScanCategories, loadAuditScanRows } from "@/lib/audit-scan-data"
+import { auditScanPhotoAccess } from "@/lib/audit-scan-photos"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 import { withPerformanceTiming } from "@/lib/performance-timing"
@@ -44,7 +45,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
         select: { id: true, name: true, auditNo: true, status: true },
       }),
       getAuditRoundOptions(),
-      loadAuditScanRows(id),
+      loadAuditScanRows(id, { photoAccess: auditScanPhotoAccess(user) }),
       loadAuditScanCategories(id),
     ]),
     { route: "/audit/rounds/[id]/scan", locale }

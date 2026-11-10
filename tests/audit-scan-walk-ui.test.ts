@@ -14,7 +14,7 @@ test("the page passes the round's name and every category of its items, closed o
   const page = read(PAGE)
   assert.match(page, /^import \{ loadAuditScanCategories, loadAuditScanRows \} from "@\/lib\/audit-scan-data"$/m)
   assert.match(page, /const \[round, options, rows, categories\] = await withPerformanceTiming\(/)
-  assert.match(page, /loadAuditScanRows\(id\),\n\s+loadAuditScanCategories\(id\),\n\s+\]\),/)
+  assert.match(page, /loadAuditScanRows\(id, \{ photoAccess: auditScanPhotoAccess\(user\) \}\),\n\s+loadAuditScanCategories\(id\),\n\s+\]\),/)
   assert.match(page, /roundName=\{round\.name\}/)
   assert.match(page, /roundCode=\{round\.auditNo\}/)
   assert.match(page, /categories=\{categories\}/)

@@ -20,6 +20,7 @@ export function normalizeAuditLookupComponents(components: AuditLookupComponent[
     auditItemId: component.auditItem?.id ?? null,
     auditStatus: component.auditItem?.auditStatus ?? "out_of_round",
     auditResult: component.auditItem?.auditResult ?? null,
+    photo: component.photo ?? null,
   }))
 }
 
@@ -30,6 +31,7 @@ export function normalizeAuditLookupInstalledIn(installedIn: AuditLookupInstalle
     name: parent.name,
     componentRole: parent.componentRole,
     slotNo: parent.slotNo,
+    photo: parent.photo ?? null,
   }))
 }
 
@@ -62,6 +64,7 @@ export function auditScanRowFromRecordedFind(item: AuditLookupRecordedFind, asse
     currentCustodianId: asset.custodianId,
     currentDepartmentId: asset.departmentId,
     componentCount: asset.components.length,
+    photo: asset.photo ?? null,
   }
 }
 

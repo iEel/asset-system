@@ -17,6 +17,7 @@ test("audit scan helpers keep lookup normalization for components", async () => 
         componentRole: "memory",
         slotNo: "A1",
         auditItem: null,
+        photo: null,
       },
     ]),
     [
@@ -29,6 +30,7 @@ test("audit scan helpers keep lookup normalization for components", async () => 
         auditItemId: null,
         auditStatus: "out_of_round",
         auditResult: null,
+        photo: null,
       },
     ]
   )

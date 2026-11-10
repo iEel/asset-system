@@ -6,6 +6,8 @@ import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { auditScanLookupSchema } from "@/lib/validations/audit"
 import { isAuditRoundOwnItem } from "@/lib/audit-round-counts-rules"
+import type { AssetPhotoPreviewDb } from "@/lib/asset-photo-preview"
+import { auditScanPhotoAccess, readAuditScanPhotos, type AuditScanPhoto } from "@/lib/audit-scan-photos"
 
 type AuditScanLookupContext = {
   params: Promise<{ id: string }>
@@ -22,6 +24,7 @@ type AuditScanLookupAsset = {
   departmentId: string | null
   conditionId: string | null
   ownershipType: string | null
+  modelId: string | null
   category: { code: string; name: string }
   custodian: { code: string; fullNameTh: string } | null
   currentLocation: { code: string; name: string }
@@ -29,12 +32,12 @@ type AuditScanLookupAsset = {
   parentComponents: Array<{
     componentRole: string
     slotNo: string | null
-    componentAsset: { id: string; assetTag: string; name: string }
+    componentAsset: { id: string; assetTag: string; name: string; modelId: string | null }
   }>
   installedInLinks: Array<{
     componentRole: string
     slotNo: string | null
-    parentAsset: { id: string; assetTag: string; name: string }
+    parentAsset: { id: string; assetTag: string; name: string; modelId: string | null }
   }>
 }
 
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
         departmentId: true,
         conditionId: true,
         ownershipType: true,
+        modelId: true,
         category: { select: { code: true, name: true } },
         custodian: { select: { code: true, fullNameTh: true } },
         currentLocation: { select: { code: true, name: true } },
@@ -91,7 +95,7 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
           select: {
             componentRole: true,
             slotNo: true,
-            componentAsset: { select: { id: true, assetTag: true, name: true } },
+            componentAsset: { select: { id: true, assetTag: true, name: true, modelId: true } },
           },
         },
         installedInLinks: {
@@ -99,7 +103,7 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
           select: {
             componentRole: true,
             slotNo: true,
-            parentAsset: { select: { id: true, assetTag: true, name: true } },
+            parentAsset: { select: { id: true, assetTag: true, name: true, modelId: true } },
           },
         },
       },
@@ -168,18 +172,30 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
     ]
     // A related component or parent that is an out-of-scope find reads as not in the round, so the walk never confirms
     // it with its parent or marks it (P3-R3).
-    const relatedAuditItems = relatedAssetIds.length
-      ? (
-          await prisma.auditItem.findMany({
-            where: { auditRoundId: id, assetId: { in: relatedAssetIds } },
-            select: { id: true, assetId: true, auditStatus: true, auditResult: true },
-          })
-        ).filter(isAuditRoundOwnItem)
-      : []
+    // The photos of the asset, its components and its installed-in parents in one read (audit photos spec §3).
+    const [relatedAuditItems, photos] = await Promise.all([
+      relatedAssetIds.length
+        ? prisma.auditItem
+            .findMany({
+              where: { auditRoundId: id, assetId: { in: relatedAssetIds } },
+              select: { id: true, assetId: true, auditStatus: true, auditResult: true },
+            })
+            .then((items) => items.filter(isAuditRoundOwnItem))
+        : Promise.resolve([]),
+      readAuditScanPhotos(
+        prisma as unknown as AssetPhotoPreviewDb,
+        [
+          { id: asset.id, modelId: asset.modelId },
+          ...asset.parentComponents.map((component) => component.componentAsset),
+          ...asset.installedInLinks.map((link) => link.parentAsset),
+        ],
+        auditScanPhotoAccess(user),
+      ),
+    ])
 
     const payload = {
       candidates,
-      asset: buildAuditScanLookupAsset(asset, relatedAuditItems),
+      asset: buildAuditScanLookupAsset(asset, relatedAuditItems, photos),
     }
 
     // A recorded out-of-scope find answers out of scope with its item: the walk edits it through the out-of-scope form,
@@ -196,7 +212,8 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
 
 function buildAuditScanLookupAsset(
   asset: AuditScanLookupAsset,
-  relatedAuditItems: Array<{ id: string; assetId: string; auditStatus: string; auditResult: string | null }>
+  relatedAuditItems: Array<{ id: string; assetId: string; auditStatus: string; auditResult: string | null }>,
+  photos: ReadonlyMap<string, AuditScanPhoto>
 ) {
   const location = `${asset.currentLocation.code} - ${asset.currentLocation.name}`
   const category = `${asset.category.code} - ${asset.category.name}`
@@ -220,7 +237,8 @@ function buildAuditScanLookupAsset(
       colorCode: asset.status.colorCode,
     },
     meta: { custodian, location, category },
-    components: buildAuditComponentLookupContext(asset.parentComponents, auditItemByAssetId),
+    photo: photos.get(asset.id) ?? null,
+    components: buildAuditComponentLookupContext(asset.parentComponents, auditItemByAssetId, photos),
     installedIn: asset.installedInLinks.map((link) => ({
       parentAssetId: link.parentAsset.id,
       assetTag: link.parentAsset.assetTag,
@@ -228,13 +246,15 @@ function buildAuditScanLookupAsset(
       componentRole: link.componentRole,
       slotNo: link.slotNo,
       auditItem: auditItemByAssetId.get(link.parentAsset.id) ?? null,
+      photo: photos.get(link.parentAsset.id) ?? null,
     })),
   }
 }
 
 function buildAuditComponentLookupContext(
   components: AuditScanLookupAsset["parentComponents"],
-  auditItemByAssetId: Map<string, { id: string; assetId: string; auditStatus: string; auditResult: string | null }>
+  auditItemByAssetId: Map<string, { id: string; assetId: string; auditStatus: string; auditResult: string | null }>,
+  photos: ReadonlyMap<string, AuditScanPhoto>
 ) {
   return components.map((component) => ({
     assetId: component.componentAsset.id,
@@ -243,5 +263,6 @@ function buildAuditComponentLookupContext(
     componentRole: component.componentRole,
     slotNo: component.slotNo,
     auditItem: auditItemByAssetId.get(component.componentAsset.id) ?? null,
+    photo: photos.get(component.componentAsset.id) ?? null,
   }))
 }

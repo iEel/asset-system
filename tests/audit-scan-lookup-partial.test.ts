@@ -17,11 +17,13 @@ const mockedModuleSources = new Map<string, string>([
   ["@/lib/auth-utils", `
     export async function requireAuth() { return { id: "user-1", roles: [], permissions: ["audit:edit"] } }
     export function requirePermission() {}
+    export function hasPermission() { return true }
   `],
   ["@/lib/db", `
     const state = () => globalThis.__lookupPartialState
     export const prisma = {
       auditRound: { findFirst: async () => ({ id: "round-1", status: "open" }) },
+      attachment: { findMany: async () => [] },
       asset: {
         findFirst: async () => { state().calls.push("asset.findFirst"); return null },
         findMany: async () => { state().calls.push("asset.findMany"); return state().partial },

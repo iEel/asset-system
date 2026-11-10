@@ -40,6 +40,7 @@ function row(overrides: Partial<AuditScanItemRow> = {}): AuditScanItemRow {
     currentCustodianId: "emp-1",
     currentDepartmentId: "dept-1",
     componentCount: 0,
+    photo: null,
     ...overrides,
   }
 }
