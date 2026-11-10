@@ -4,7 +4,7 @@
 
 **Goal:** Every place that talks about a round's photos uses plan 1's rule:
 - the files tab marks and filters photos by round;
-- the round page's "มี" opens that item's photos, and its count follows the same rule;
+- the round page's result list shows each item's newest photo of the round as a thumbnail that opens its photos, and its count follows the same rule;
 - the history's audit rows link to them.
 
 **Architecture:**
@@ -44,7 +44,7 @@
 - **Links to the files tab:** `/${locale}/assets/${assetId}?view=files&photoRound=${auditNo}`, the detail page's
   existing `view` param.
 - **Round page:**
-  - "มี" becomes a button that opens a dialog. The dialog loads on open.
+  - A checked item with photos in the round shows the newest one as a small thumbnail (plus "+n" when more), a button that opens a dialog. "ไม่มี" stays text; a pending item stays "—". No register or model photo stands in. The dialog loads on open.
   - The evidence line's "มีรูป" count and the column use the same rule.
 - **History:** "ดูรูป" shows only when that round has photos for the asset. It needs `asset:view` only, and it stays
   when the round link is dropped for lack of `audit:view`.
@@ -59,7 +59,7 @@
    "ทั้งหมด". The test is in Task 2.
 2. **`?photoRound=` naming a round the asset has no photo in, or junk:** "ทั้งหมด" is selected and nothing breaks.
    The test is in Task 2.
-3. **The round page of a 1,781-item round:** the photo count reads in chunks and the page loads no image. The pin is in
+3. **The round page of a 1,781-item round:** the photo count reads in chunks, and only the page's rows get lazy thumbnails. The pin is in
    Task 3.
 4. **The dialog for an item whose photos were deleted after the page loaded:** an empty state, not an error. The test
    is in Task 3.
@@ -153,12 +153,13 @@
 - [ ] **Step 4: Run** `npm test` and `npx tsc --noEmit`. Expected: green.
 - [ ] **Step 5: Commit** `feat(audit-photos): the files tab marks and filters photos by round (plan 2 task 2)`.
 
-### Task 3: Round page: "มี" opens the item's photos, the count follows the rule
+### Task 3: Round page: the round photo as a thumbnail that opens the item's photos, the count follows the rule
 
 **Files:**
 - Modify: `src/lib/audit-round-page-data.ts`, around L170-236:
   - replace the `uploadedAt >= round.startDate` read with `loadAuditRoundPhotos(db, evidenceAssetIds, { uploadedFrom: round.startDate })`;
   - keep the photos whose `auditRoundId === roundId`;
+  - each row gains `roundPhoto: { attachmentId: string; count: number } | null` (the newest of this round's photos, and how many), null for a pending item or none;
   - build `attachmentNamesByAssetId` from them, so `foldAuditRoundEvidence` and `hasPhoto` both use them, and the
     checklist names still match.
 - Create: GET `src/app/api/audit-rounds/[id]/items/[itemId]/photos/route.ts`:
@@ -167,13 +168,13 @@
     from `loadAuditRoundPhotos(db, [item.assetId])`, filtered to this round;
   - it answers 404 when the item is not in the round.
 - Create: `src/components/audit/audit-round-photos-dialog.tsx`:
-  - a button "มี" (the `photoAttached` word) that opens the shared dialog;
+  - a button showing the row's `roundPhoto` thumbnail (thumbnail route small size, `loading="lazy"`, fixed width and height, "+n" when `count > 1`), accessible name with the `photoAttached` word and the count, that opens the shared dialog;
   - card-size tiles through the thumbnail route; a tile opens the existing attachment preview;
   - a link "ดูในแท็บไฟล์" to the files tab with `photoRound`;
   - an empty state when the list comes back empty;
   - a retry when the request fails.
-- Modify: `src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx`, L313, L585 and L657: the button replaces the "มี"
-  text on the desktop table and the phone card. "ไม่มี" stays text.
+- Modify: `src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx`, L313, L585 and L657: the thumbnail button replaces the "มี"
+  text on the desktop table and the phone card. "ไม่มี" stays text; a pending row stays "—".
 - Test:
   - `tests/audit-round-photos-route.test.ts` (pins);
   - `tests/audit-round-page-photos-ui.test.ts` (pins);
@@ -188,11 +189,12 @@
   - no `uploadedAt: { gte: round.startDate }` read is left;
   - the route checks both permissions and the item's round;
   - the dialog loads on open, not on render;
+  - the row thumbnail is lazy with a fixed size, and a pending row and a "ไม่มี" row draw no image;
   - "ไม่มี" stays plain text.
 - [ ] **Step 2: Run them.** Expected: FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `npm test` and `npx tsc --noEmit`. Expected: green.
-- [ ] **Step 5: Commit** `feat(audit-photos): the round page's มี opens the item's photos for the round (plan 2 task 3)`.
+- [ ] **Step 5: Commit** `feat(audit-photos): the round page shows the round photo and opens the item's photos (plan 2 task 3)`.
 
 ### Task 4: History: "ดูรูป" on an audit row
 
@@ -232,7 +234,7 @@
 - [ ] **Step 1: Write the E2E,** after plan 1's test 4 linked a photo to A's item:
   - **Files tab:** A's files tab shows the run round's chip with count 1 and the round chip on the tile. Pressing it
     shows the round's line (round, date, result, IT staff's name). `?photoRound=JUNK` shows "ทั้งหมด".
-  - **Round page:** A's row reads "มี". Pressing it opens the dialog with one tile. Its "ดูในแท็บไฟล์" lands on the
+  - **Round page:** A's row shows its round photo thumbnail. Pressing it opens the dialog with one tile. Its "ดูในแท็บไฟล์" lands on the
     files tab with the chip selected. C's row reads "ไม่มี", as text.
   - **History:** A's history audit row has "ดูรูป", which lands on the same chip. C's row has none.
   - **Viewer:** as the viewer (`asset:view`, no `audit:view`), A's history row still has "ดูรูป" and no round link.

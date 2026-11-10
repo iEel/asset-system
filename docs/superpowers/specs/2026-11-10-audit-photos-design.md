@@ -36,7 +36,7 @@
 **Goals:**
 - The counter sees what the machine looks like before confirming it, on the phone and on the desktop.
 - Anyone reading an asset sees which photos came from which round, and when.
-- The round page's "มี" (photo attached) opens the photos it counts.
+- The round page's result list shows each item's photo from that round, and it opens the photos it counts.
 
 **Non-goals:**
 - No new photo types, no change to the photo checklist, and no change to how photos are taken.
@@ -170,15 +170,26 @@ The user chose one photo list filtered by round. Two other options were turned d
 - **Existing evidence groups** (`buildAssetEvidenceGroups`, finding files by AUD- number) stay where they are and
   unchanged. Finding evidence is a different kind of file from a scan photo.
 
-## 5. Round page: "มี" opens the photos
+## 5. Round page: the round's photo in the result list, and it opens the photos
 
-- **In the photo column:** "มี" (`photoAttached`) becomes a button, on the desktop table and on the phone card. It
-  opens a dialog with that item's photos for this round, under the rule in §2.
+User, 2026-11-10: the round page's result list (the one with the รอตรวจ filter) shows the photo itself ("เอาตามที่เสนอเลย").
+
+- **The photo column:** a checked item with photos in this round (§2) shows a small thumbnail of the newest one
+  instead of the word "มี", with a small count "+n" when the round has more than one. Desktop table and phone card alike.
+  - The thumbnail is a button. It opens a dialog with that item's photos for this round.
   - The dialog shows card-size tiles. Clicking a tile opens the original, the same preview as the files tab.
   - The dialog has a link to the asset's files tab with that round's chip selected.
-- **"ไม่มี"** stays text.
-- **The evidence line** ("มีรูป x จาก y ที่ตรวจแล้ว") uses the same rule, so its number equals the count of "มี".
-- **Loading:** **(my call)** the dialog loads its photos when opened. The page itself loads no more images than today.
+  - The button's accessible name keeps the words ("มีรูป n รูป", or "มี" plus the count), so the column still reads
+    without the image.
+- **A checked item without a photo in this round:** "ไม่มี" stays text. **(my call, accepted)** No register or model
+  photo is shown in its place, because this column is the round's evidence. Another photo would read as if the round
+  had one.
+- **A pending item (รอตรวจ):** the column stays empty as today ("—"). There is no evidence yet.
+- **Loading:**
+  - The rows are paged already. Only the rows on the page get thumbnails: the small size, `loading="lazy"`, and a
+    fixed width and height.
+  - The dialog loads its full list when opened.
+- **The evidence line** ("มีรูป x จาก y ที่ตรวจแล้ว") uses the same rule, so its number equals the rows with a thumbnail.
 
 ## 6. History: "ดูรูป"
 
