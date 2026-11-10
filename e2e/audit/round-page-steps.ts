@@ -80,6 +80,9 @@ export async function settlePageRequests(page: Page) {
 // step started on. The rows are the run's own, so another run's data never counts.
 export async function expectChipsMatchRows(page: Page, row: Locator, rows: Locator) {
   const start = page.url()
+  // evaluateAll does not wait: a row caught mid-render reads as no chips (E2E-1110B, the category row after the
+  // result row's last goto). The first chip shown first.
+  await expect(row.getByRole("link").first(), "the row has chips").toBeVisible()
   const chips = await row.getByRole("link").evaluateAll((links) =>
     links.map((link) => ({
       href: link.getAttribute("href") ?? "",
