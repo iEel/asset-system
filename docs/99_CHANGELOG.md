@@ -6,6 +6,10 @@
 
 ## 2026-11-10
 
+### ของใช้สิ้นเปลือง merge แล้ว
+
+- `feat/consumables` merge เข้า master ที่ `a3545431` และ push ทั้ง origin และ company (2026-11-10 ผู้ใช้สั่ง) · unit test บน master 5,512 ผ่าน 5,511 ข้าม 1 ล้ม 0 · ยังไม่ deploy · วัน deploy ขั้นที่ 5 รัน migration `2026-11-10-add-consumables.sql` บน Production (ขออนุมัติพร้อม SQL เต็ม) · หลัง deploy ผู้ดูแลระบบติ๊กสิทธิ์ `consumable:*` ให้บทบาทของทีม IT ที่หน้าบทบาท
+
 ### ของใช้สิ้นเปลือง แผน 4: เตือนของใกล้หมดที่กระดิ่งและศูนย์งานค้าง
 
 plan `docs/superpowers/plans/2026-11-10-consumables-4-low-stock-warning.md` · branch `feat/consumables` · ทำระหว่างคืน · ยังไม่ merge · ไม่มี migration ใหม่ (นับรายวันเก็บ key เป็นข้อความ)
