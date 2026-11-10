@@ -107,6 +107,25 @@ A photo is an active `attachments` row with module `asset` and an image type tha
 - **No photo:** the existing empty frame ("ยังไม่มีรูป", as on the handover picker, group 3 spec §19.5).
   - On list rows the empty frame is a neutral square, so the rows stay aligned.
 
+**Components (ส่วนควบ)** (user asked 2026-11-10; Production: 148 installed components on 81 machines, at most 7 on
+one machine, every one with its own or its model's photo, 21 with their own):
+- **The parent's check form:** each row of its components panel (`AuditComponentPanel`) gets a small thumbnail at
+  the row's start, by the same order (own → model with the text chip → empty). The counter can then check that the
+  installed part is the one on the record before confirming it with the parent ("ยืนยันกับทรัพย์สินหลัก") or recording it
+  not found ("บันทึกส่วนควบที่ไม่พบ").
+- **A component recorded not found** can carry one optional evidence photo, from `mark-not-found`. That file is finding
+  evidence (module `audit_finding`), so it stays in the existing evidence groups and is not a scan photo under §2.
+- **A component scanned on its own:** its check form shows its own photo like any asset. The "ติดตั้งอยู่ใน" (installed
+  in) line gets the parent's small thumbnail.
+- **Room list and search:** a component in the round is its own row, so it gets its own thumbnail like any row.
+- **Photos taken while checking a parent** stay the parent's photos, as today, and belong to the round through the
+  parent's item. There is no per-component photo in the check form. That would change how photos are taken, which is
+  a non-goal.
+- **Files tab:** each asset's files tab shows only its own photos, as today. Component photos are on the component's
+  own page.
+- **Data:** `AuditScanComponent`, `AuditLookupComponent` and the installed-in parent gain the same `photo` field. It
+  is filled in the same batched read as the rows.
+
 **Data:**
 - `AuditScanItemRow` and the lookup's asset gain one field, for example
   `photo: { attachmentId: string; fromModel: boolean } | null`.
