@@ -482,6 +482,9 @@ test("the scan photos spec opens its own round on its own room, uploads the mode
   assert.ok(spec.includes(`E2E_ROLE_PERMISSIONS.viewer.includes("audit:view")`))
   assert.ok(spec.includes(`storageState: fromRoot(authStateFile(runId, "viewer"))`))
   assert.match(spec, /\} finally \{\r?\n\s+await viewer\.close\(\)/)
+  // One asset's round row by its exact tag (fix 1, E2E-1111C): a component's card names its parent's tag.
+  assert.doesNotMatch(spec, /resultRows\(page, e2eDevice, [a-e]\.assetTag\)/)
+  assert.ok(spec.includes(`page.getByRole("link", { name: asset.assetTag, exact: true })`))
   // No DELETE, no admin route, no settings, no database.
   assert.doesNotMatch(spec, /\.delete\(|\/api\/admin\/|prisma/)
   // Cancelled whatever happens, by the IT head through the round route.

@@ -100,6 +100,16 @@ const tileRoundChips = (page: Page, auditNo: string): Locator =>
 // The selected round's line, right after the chips (asset-attachments.tsx RoundLine).
 const roundLine = (page: Page): Locator => roundFilter(page).locator("xpath=following-sibling::p[1]")
 
+// One asset's result row on the round page, by its own tag only: the phone card's tag link, or the table's tag line
+// (exact). A hasText filter on the tag also matches a component's card, whose "ติดตั้งอยู่ใน <parent tag>" line names
+// the parent (E2E-1111C), so the shared resultRows serves the counts by the run prefix only.
+function resultRow(page: Page, device: E2eDevice, asset: RunAsset): Locator {
+  const exactTag = new RegExp(`^${scan.escapeRegExp(asset.assetTag)}$`)
+  return device === "phone"
+    ? page.locator("#audit-result-list article").filter({ has: page.getByRole("link", { name: asset.assetTag, exact: true }) })
+    : page.locator("#audit-result-list tbody tr").filter({ has: page.locator("td:nth-child(2) span.tag").filter({ hasText: exactTag }) })
+}
+
 // The round page's photo cell of a result row: the phone card's รูป value, or the table's fifth cell.
 function photoCell(row: Locator, device: E2eDevice): Locator {
   return device === "phone"
@@ -297,8 +307,8 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await roundPage.settlePageRequests(page)
       await measure.visit(`/th/audit/rounds/${round.id}`, "round page with a round photo")
       await expect(roundPage.resultRows(page, e2eDevice, prefix)).toHaveCount(5)
-      const aRow = roundPage.resultRows(page, e2eDevice, a.assetTag)
-      const cRow = roundPage.resultRows(page, e2eDevice, c.assetTag)
+      const aRow = resultRow(page, e2eDevice, a)
+      const cRow = resultRow(page, e2eDevice, c)
       const aButton = aRow.getByRole("button", { name: fillTemplate(W.roundPhotoCount, { label: W.photoAttached, count: 1 }), exact: true })
       await expect(aButton).toBeVisible()
       await expect(aButton.locator("img")).toHaveAttribute("src", thumbSrc(checkPhotoId))
@@ -314,20 +324,20 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
       await pendingChip.click()
       await expect(pendingChip).toHaveAttribute("aria-current", "page")
       await expect(roundPage.resultRows(page, e2eDevice, prefix)).toHaveCount(3)
-      const bCell = photoCell(roundPage.resultRows(page, e2eDevice, b.assetTag), e2eDevice)
+      const bCell = photoCell(resultRow(page, e2eDevice, b), e2eDevice)
       const bPhoto = bCell.locator("[data-audit-register-photo]")
       await expect(bPhoto).toHaveAttribute("data-from-model", "true")
       await expect(bPhoto.locator("img")).toHaveAttribute("src", thumbSrc(model.photoId))
       await expect(bPhoto).toContainText(W.modelPhoto)
       await expect(bCell.getByRole("button")).toHaveCount(0)
-      const eCell = photoCell(roundPage.resultRows(page, e2eDevice, e.assetTag), e2eDevice)
+      const eCell = photoCell(resultRow(page, e2eDevice, e), e2eDevice)
       const ePhoto = eCell.locator("[data-audit-register-photo]")
       await expect(ePhoto.locator("img")).toHaveAttribute("src", thumbSrc(ePhotoId))
       await expect(ePhoto).toContainText(W.registerPhoto)
       await expect(ePhoto).not.toHaveAttribute("data-from-model", "true")
       await expect(eCell.getByRole("button")).toHaveCount(0)
       // D: no photo of its own and no model (E's photo is E's): the dash.
-      const dCell = photoCell(roundPage.resultRows(page, e2eDevice, d.assetTag), e2eDevice)
+      const dCell = photoCell(resultRow(page, e2eDevice, d), e2eDevice)
       await expect(dCell.locator('[data-slot="nil"]')).toHaveCount(1)
       await expect(dCell.locator("img, button")).toHaveCount(0)
       await recordSettled(page, measure, "round page, pending rows with their register photos")
