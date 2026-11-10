@@ -181,6 +181,8 @@ test("a re-scan of an out-of-scope find stays out of scope: result and status ke
   const data = dataOf(updates[0])
   assert.ok(data.lastScanAt instanceof Date)
   assert.deepEqual({ ...data, lastScanAt: "now" }, {
+    // Audit photos plan 1 task 2: this save's evidence photo joins the find's photoEvidence.
+    photoEvidence: JSON.stringify(["att-1"]),
     actualDepartmentId: "dept-1",
     actualLocationId: "loc-2",
     actualCustodianId: null,

@@ -17,6 +17,7 @@ import { auditScanSchema } from "@/lib/validations/audit"
 import { isAuditRoundOwnItem } from "@/lib/audit-round-counts-rules"
 import { auditOutOfScopeRescanEvidenceFields, planAuditOutOfScopeRescanFindings } from "@/lib/audit-out-of-scope-rescan"
 import { auditItemReviewState } from "@/lib/audit-item-review-state"
+import { appendPhotoEvidence } from "@/lib/audit-round-photos-rules"
 
 type AuditScanContext = {
   params: Promise<{ id: string }>
@@ -168,6 +169,8 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             lastScanAt: scannedAt,
             scanCount: 1,
             remark: input.remark,
+            // Audit photos (spec 2026-11-10 §2): the evidence photos were taken for this find.
+            photoEvidence: appendPhotoEvidence(null, evidenceAttachmentIds).value,
           },
         })
 
@@ -406,9 +409,12 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
         // pending finding decides it from the rest, and a new finding on a reconciled find puts it back to "reviewed".
         const findings = await tx.auditFinding.findMany({ where: { auditItemId: item.id }, select: { findingType: true, reviewStatus: true } })
         const reviewState = findings.length > 0 ? auditItemReviewState(findings, { pendingAuditStatus: "reviewed" }) : null
+        // Audit photos (spec 2026-11-10 §2): this save's evidence photos join the find's photoEvidence.
+        const rescanEvidence = appendPhotoEvidence(item.photoEvidence, evidenceAttachmentIds)
         return tx.auditItem.update({
           where: { id: item.id },
           data: {
+            ...(rescanEvidence.linked.length > 0 ? { photoEvidence: rescanEvidence.value } : {}),
             actualDepartmentId: actual.departmentId,
             actualLocationId: actual.locationId,
             actualCustodianId: actual.custodianId,
