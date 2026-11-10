@@ -172,9 +172,12 @@ test.describe("the IT head adds a model from the asset form and finds it on the 
       await brandSelect.locator("xpath=ancestor::form").getByRole("button", { name: W.filter, exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`[?&]modelBrandId=${brand.id}(?:&|$)`))
       await expect(page.locator("li article")).toHaveCount(2)
-      for (const name of [newName, similarName]) await expect(modelEntry(name)).toBeVisible()
-      await expect(modelEntry(newName)).toContainText(fillTemplate(W.assetCount, { count: 1 }))
-      await expect(modelEntry(newName).getByText(W.photoNone, { exact: true })).toBeVisible()
+      // The same brief double card as above (E2E-1110C, phone-dark: two cards of the new model for a moment, one
+      // hidden), so each card is read only while it is there once.
+      for (const name of [newName, similarName]) await expect.poll(singleEntryText(name)).toContain(name)
+      await expect.poll(singleEntryText(newName)).toContain(fillTemplate(W.assetCount, { count: 1 }))
+      await expect.poll(singleEntryText(newName)).toContain(W.photoNone)
+      await expect(modelEntry(newName)).toHaveCount(1)
       await recordSettled(page, measure, "brands page on the phone, one brand's model cards")
     } else {
       await expect(page.getByLabel(W.phoneBrandSelect, { exact: true })).toBeHidden()
