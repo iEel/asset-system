@@ -66,7 +66,12 @@ A photo is an active `attachments` row with module `asset` and an image type tha
   - **Out-of-scope finds** upload their photos before the scan, as `evidenceAttachmentIds`, and the item does not
     exist yet. **(my call)** When the scan route creates the item, it writes those ids into the new item's
     `photoEvidence`, so these photos belong to the round as well.
+  - Evidence photos past the 12-id cap stay unlinked. They were uploaded before the scan, so the time rule gives
+    them no round either: they belong to no round. This is rare (the scan schema allows 20 evidence photos).
   - Writing the link bumps the item's `updatedAt`, so the `scan-status` poll returns the row with its new photo.
+    A link the cap or the length guard refuses, on an item that is valid for this asset, still bumps `updatedAt`.
+  - Only an uploader who also holds `audit:edit` links a photo. Without it the photo saves unlinked, as before.
+    Closed rounds stay linkable; only a cancelled round is refused.
 - **Every photo without a link (older photos, the overflow, a refused link):**
   - **(my call)** The time rule covers all of them, with no cutoff date.
   - A photo belongs to round R if it was uploaded at or after a scan of the same asset in R, and less than 30

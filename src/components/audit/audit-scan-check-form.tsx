@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
-import { AuditScanPhotoCard, AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
+import { AuditScanModelPhotoLabel, AuditScanPhotoCard, AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
 import { isAuditComponentChecked, isAuditComponentPending, revealFocusInScrollArea } from "@/components/audit/audit-scan-helpers"
 import type { AuditInstalledInParent, AuditLookupAsset, AuditScanComponent, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import {
@@ -396,7 +396,10 @@ export function AuditScanCheckForm({
             {components.installedIn.map((parent) => (
               <p key={parent.parentAssetId} className="flex items-center gap-2">
                 <AuditScanPhotoThumb photo={parent.photo} emptyFrame={canSeePhotos} />
-                <span className="min-w-0">{t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}</span>
+                <span className="min-w-0">
+                  {t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}{" "}
+                  <AuditScanModelPhotoLabel photo={parent.photo} />
+                </span>
               </p>
             ))}
           </Notice>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Segmented } from "@/components/ui/segmented"
-import { AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
+import { AuditScanModelPhotoLabel, AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { getAuditItemBadge, type AuditItemBadge, type AuditScanItemRow, type AuditScanListScope, type AuditScanListTab } from "@/lib/audit-scan-session"
 import { getPanelClasses } from "@/lib/design-system"
@@ -99,7 +99,6 @@ export function AuditScanRoomList({
   canSeePhotos: boolean
 }) {
   const t = useTranslations("auditScan")
-  const tAsset = useTranslations("asset")
   const locale = useLocale()
   const timeFormat = new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" })
   const recordedHeadingId = useId()
@@ -181,8 +180,8 @@ export function AuditScanRoomList({
                       <span className="min-w-0 flex-1">
                         <span className="block break-words text-sm font-semibold text-foreground">{item.name}</span>
                         <span className="block text-meta text-muted-foreground">
-                          <span className="tag whitespace-normal break-all">{item.assetTag}</span>
-                          {item.photo?.fromModel ? <> · <span data-audit-scan-model-photo>{tAsset("modelPhoto")}</span></> : null}
+                          <span className="tag whitespace-normal break-all">{item.assetTag}</span>{" "}
+                          <AuditScanModelPhotoLabel photo={item.photo} />
                         </span>
                         {place ? <span data-audit-scan-row-room className="block break-words text-meta text-muted-foreground">{place}</span> : null}
                         {detail ? <span className="block truncate text-meta text-muted-foreground">{detail}</span> : null}
@@ -225,9 +224,13 @@ export function AuditScanRoomList({
                         onClick={() => onOpenRecorded(item)}
                         className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                       >
+                        <AuditScanPhotoThumb photo={item.photo} emptyFrame={canSeePhotos} />
                         <span className="min-w-0 flex-1">
                           <span className="block break-words text-sm font-semibold text-foreground">{item.name}</span>
-                          <span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">{item.assetTag}</span></span>
+                          <span className="block text-meta text-muted-foreground">
+                            <span className="tag whitespace-normal break-all">{item.assetTag}</span>{" "}
+                            <AuditScanModelPhotoLabel photo={item.photo} />
+                          </span>
                           {checked ? <span className="block truncate text-meta text-muted-foreground">{checked}</span> : null}
                         </span>
                         <StatusBadge label={t(badgeLabelKey.out_of_scope)} tone={badgeTone.out_of_scope} className="shrink-0" />

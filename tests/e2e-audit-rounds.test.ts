@@ -428,6 +428,12 @@ test("the scan photos spec opens its own round on its own room, uploads the mode
   assert.ok(spec.includes("scopeLocationId: roomId,"))
   assert.doesNotMatch(spec, /\bstatus: "/, "the round's body sends no status (spec §7)")
   assert.ok(spec.includes(`expect(round.generatedItems, "the room's five assets").toBe(5)`))
+  // No check runs between the round's creation and the try, so the finally always cancels it (final review F2).
+  const opened = spec.indexOf("const round = (await opened.json())")
+  const tryAt = spec.indexOf("try {", opened)
+  assert.ok(opened > 0 && tryAt > opened, "the round's try")
+  assert.doesNotMatch(spec.slice(opened, tryAt), /expect\(/, "no expect before the try")
+  assert.ok(spec.indexOf(`expect(round.generatedItems, "the room's five assets")`) > tryAt, "the generatedItems check sits inside the try")
   // The model photo as the IT head (brand:edit), on the run's model only; the context is disposed.
   assert.ok(spec.includes(`playwright.request.newContext({ baseURL, storageState: fromRoot(authStateFile(runId, "itHead")) })`))
   assert.ok(spec.includes("itHead.post(`/api/models/${modelId}/attachments`"))

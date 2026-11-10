@@ -69,7 +69,9 @@ test("check field: the expected value is a line in the row, struck through on 喙
 test("component panel: the checked count and each row's name 路 role 路 slot are meta lines, and the 64px rows stay (DESIGN.md Typography; audit mobile fix D2)", () => {
   const source = read(`${A}audit-scan-panels.tsx`)
   assert.match(source, /<p className="text-meta text-muted-foreground">\{t\("componentsCheckedCount", \{ checked: checkedCount, total: components\.length \}\)\}<\/p>/)
-  assert.match(source, /<p className="truncate text-meta text-muted-foreground">\s*\{\[component\.name, component\.componentRole, component\.slotNo\]\.filter\(Boolean\)\.join\(" 路 "\)\}/)
+  assert.match(source, /const meta = \[component\.name, component\.componentRole, component\.slotNo\]\.filter\(Boolean\)\.join\(" 路 "\)/)
+  // The meta truncates; the model photo label after it does not (audit photos final review F4).
+  assert.match(source, /<p className="flex min-w-0 items-baseline gap-1 text-meta text-muted-foreground">\s*\{meta \? <span className="min-w-0 truncate">\{meta\}<\/span> : null\}/)
   assert.match(source, /data-audit-component-row className="flex min-h-16 items-center gap-2 px-3 py-2"/)
   // The scan frame on the camera image keeps its raw dim and white corners, and says why (2D-5 lists it as permanent).
   assert.match(source, /\/\/ The camera's scan frame keeps its own dim and white corners[^\n]*\bpermanent\b[^\n]*\n(?:\/\/[^\n]*\n)*export function AuditQrScannerOverlay\(\)/)
@@ -103,7 +105,7 @@ test("room list: counts through formatCount, EmptyNote for an empty tab, the lis
   assert.match(source, /<span className="num">\{formatCount\(counts\[key\]\)\}<\/span>/)
   assert.match(source, /<EmptyNote tone=\{tab === "pending" \? "clear" : "empty"\} className="justify-center px-2 py-6">\{t\(emptyLabelKey\[scope\]\[tab\]\)\}<\/EmptyNote>/)
   assert.match(source, /<ul className=\{cn\(getPanelClasses\(\), "mt-2 divide-y divide-border overflow-hidden"\)\}>/)
-  assert.match(source, /<span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span><\/span>/)
+  assert.match(source, /<span className="block text-meta text-muted-foreground">\s*<span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span>\{" "\}\s*<AuditScanModelPhotoLabel photo=\{item\.photo\} \/>\s*<\/span>/)
   assert.match(source, /<Button variant="outline" onClick=\{onShowMore\} className="mt-2 w-full">\s*\{t\("showMore"\)\}\s*<\/Button>/)
   assert.match(source, /href=\{pendingHref\}\s+className=\{cn\(linkVariants\(\), "mt-3 inline-flex min-h-11 items-center md:min-h-0"\)\}/)
   // The row stays a raw button (the whole row opens the sheet) and says so for 2D-5; the recorded out-of-scope finds'

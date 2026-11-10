@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { AssetPhotoFrame } from "@/components/assets/asset-photo-frame"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { thumbnailUrl } from "@/lib/attachment-thumbnail"
+import { cn } from "@/lib/utils"
 // Type only: audit-scan-photos.ts is server-only (it reaches the db).
 import type { AuditScanPhoto } from "@/lib/audit-scan-photos"
 
@@ -27,9 +28,25 @@ export function AuditScanPhotoCard({ photo, alt, emptyFrame }: { photo: AuditSca
   }
   return (
     <div data-audit-scan-photo-card data-from-model={photo.fromModel ? "true" : undefined} className="relative h-40 md:h-48">
-      <AssetPhotoFrame attachmentId={photo.attachmentId} alt={alt} canUpload={false} />
+      {/* A model photo's alt names it as the model's, so the full-size preview's title and the open button never pass it
+          off as this machine's own photo (final review F6). */}
+      <AssetPhotoFrame attachmentId={photo.attachmentId} alt={photo.fromModel ? `${t("modelPhoto")} ${alt}` : alt} canUpload={false} />
       {photo.fromModel ? <StatusBadge tone="info" label={t("modelPhoto")} className="pointer-events-none absolute left-2 top-2" /> : null}
     </div>
+  )
+}
+
+/** "รูปประจำรุ่น" beside a row that shows a model photo (spec §1: a model photo is always labelled). It never shrinks and
+ * never wraps, so neither a truncated line nor a narrow row cuts it or breaks it mid-word (final review F4, F5). The
+ * "·" before it is drawn only when the row has text before it. */
+export function AuditScanModelPhotoLabel({ photo, separator = true, className }: { photo: AuditScanPhoto | null; separator?: boolean; className?: string }) {
+  const t = useTranslations("asset")
+  if (!photo?.fromModel) return null
+  return (
+    <span className={cn("shrink-0 whitespace-nowrap", className)}>
+      {separator ? <span aria-hidden="true">· </span> : null}
+      <span data-audit-scan-model-photo>{t("modelPhoto")}</span>
+    </span>
   )
 }
 

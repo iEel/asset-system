@@ -4,7 +4,7 @@ import path from "path"
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
-import { requireAuth, requirePermission } from "@/lib/auth-utils"
+import { hasPermission, requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { appendPhotoEvidence } from "@/lib/audit-round-photos-rules"
@@ -105,7 +105,9 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     })
 
     let auditLinked = false
-    if (auditItemId) {
+    // Only a user who may edit audits links a photo to an audit item (final review F10). Closed rounds stay linkable;
+    // only a cancelled round is refused (spec §2). Without audit:edit the photo saves as before, unlinked.
+    if (auditItemId && hasPermission(user, "audit", "edit")) {
       try {
         auditLinked = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
           const item = await tx.auditItem.findFirst({
@@ -118,7 +120,12 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
           })
           if (!item || item.assetId !== asset.id || !item.auditRound.isActive || item.auditRound.status === "cancelled") return false
           const evidence = appendPhotoEvidence(item.photoEvidence, [attachment.id])
-          if (!evidence.linked.includes(attachment.id)) return false
+          if (!evidence.linked.includes(attachment.id)) {
+            // The cap or the length guard refused the link (final review F8). The item is still this asset's, so bump
+            // its updatedAt: the scan-status poll then returns the row with its new photo.
+            await tx.auditItem.update({ where: { id: item.id }, data: { updatedAt: new Date() } })
+            return false
+          }
           await tx.auditItem.update({ where: { id: item.id }, data: { photoEvidence: evidence.value } })
           return true
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }))

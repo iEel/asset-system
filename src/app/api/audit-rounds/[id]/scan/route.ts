@@ -170,6 +170,8 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             scanCount: 1,
             remark: input.remark,
             // Audit photos (spec 2026-11-10 §2): the evidence photos were taken for this find.
+            // Ids past the 12-id cap stay unlinked and, uploaded before this scan, belong to no round (rare: the
+            // schema allows 20). Spec §2, final review F9.
             photoEvidence: appendPhotoEvidence(null, evidenceAttachmentIds).value,
           },
         })

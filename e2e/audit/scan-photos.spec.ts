@@ -140,8 +140,9 @@ test("the scan page shows the asset's photo, the model's as the fallback, the co
   })
   expect(opened.status(), await opened.text()).toBe(201)
   const round = (await opened.json()) as { id: string; auditNo: string; generatedItems: number }
-  expect(round.generatedItems, "the room's five assets").toBe(5)
   try {
+    // Inside the try, so a round that generates the wrong items is still cancelled (final review F2).
+    expect(round.generatedItems, "the room's five assets").toBe(5)
     await measure.visit(`/th/audit/rounds/${round.id}/scan`, "scan page, a round with photos")
     await scan.pickRoom(page, { code: roomCode, name: roomName })
     await expect(scan.roomRows(page)).toHaveCount(5)

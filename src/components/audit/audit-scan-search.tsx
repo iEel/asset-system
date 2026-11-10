@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
+import { AuditScanModelPhotoLabel, AuditScanPhotoThumb } from "@/components/audit/audit-scan-photo"
 import {
   getAuditItemBadge,
   splitSearchHighlight,
@@ -129,7 +129,6 @@ export function AuditScanSearchResults({
   lookupAfterMatches: boolean
 }) {
   const t = useTranslations("auditScan")
-  const tAsset = useTranslations("asset")
   const matches = search.matches
   const shown = matches.slice(0, limit)
   const resultLine = scope === "room"
@@ -177,13 +176,16 @@ export function AuditScanSearchResults({
                   >
                     <AuditScanPhotoThumb photo={match.item.photo} emptyFrame={canSeePhotos} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-foreground">
-                        <span className="tag font-medium">{match.field === "assetTag" ? highlight(match.item.assetTag) : match.item.assetTag}</span>
+                      {/* The model label sits beside the tag and never shrinks: a long tag truncates, the label stays (F5). */}
+                      <span className="flex min-w-0 items-baseline gap-1">
+                        <span className="min-w-0 truncate text-sm text-foreground">
+                          <span className="tag font-medium">{match.field === "assetTag" ? highlight(match.item.assetTag) : match.item.assetTag}</span>
+                        </span>
+                        <AuditScanModelPhotoLabel photo={match.item.photo} className="text-meta text-muted-foreground" />
                       </span>
                       <span className="block truncate text-meta text-muted-foreground">
                         {line.prefix}
                         {match.field === "assetTag" ? line.value : highlight(line.value)}
-                        {match.item.photo?.fromModel ? <> · <span data-audit-scan-model-photo>{tAsset("modelPhoto")}</span></> : null}
                       </span>
                       {place ? <span data-audit-scan-result-room className={cn("block break-words text-meta", elsewhere ? "font-medium text-warning" : "text-muted-foreground")}>{elsewhere ? t("inLocation", { location: place }) : place}</span> : null}
                     </span>

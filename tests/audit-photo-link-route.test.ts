@@ -8,17 +8,51 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const uploadRoute = () => read("src/app/api/assets/[id]/attachments/route.ts")
 const scanRoute = () => read("src/app/api/audit-rounds/[id]/scan/route.ts")
 const workspace = () => read("src/components/audit/audit-scan-workspace.tsx")
+// The link transaction: from the item lookup to the end of the transaction.
+const linkStep = (source: string) => {
+  const start = source.indexOf("tx.auditItem.findFirst(")
+  const end = source.indexOf("isolationLevel: Prisma.TransactionIsolationLevel.Serializable", start)
+  assert.ok(start > 0 && end > start, "the link transaction is found")
+  return source.slice(start, end)
+}
 
 test("the upload links a photo to its audit item only for the same asset and a round that is not cancelled", () => {
   const source = uploadRoute()
   assert.match(source, /formData\.get\("auditItemId"\)/)
-  assert.match(source, /assetId: asset\.id/)
-  assert.match(source, /auditRound: \{ isActive: true/)
-  assert.match(source, /status: \{ not: "cancelled" \}/)
+  // Scoped to the link step (final review F1): attachment.create also carries `assetId: asset.id`.
+  const link = linkStep(source)
+  assert.match(link, /where: \{\s*id: auditItemId,\s*assetId: asset\.id,/)
+  assert.match(link, /item\.assetId !== asset\.id/)
+  assert.match(link, /auditRound: \{ isActive: true/)
+  assert.match(link, /status: \{ not: "cancelled" \}/)
+  assert.match(link, /item\.auditRound\.status === "cancelled"/)
+  // Closed rounds stay linkable: only cancelled is refused.
+  assert.doesNotMatch(link, /getAuditRoundReadOnlyError|"completed"|"closed"/)
   assert.match(source, /appendPhotoEvidence\(/)
   assert.match(source, /isolationLevel: Prisma\.TransactionIsolationLevel\.Serializable/)
   // A link counts only when the new id is in `linked`.
   assert.match(source, /\.linked\.includes\(attachment\.id\)/)
+})
+
+test("only a user with audit:edit links a photo; others save it unlinked (final review F10)", () => {
+  const source = uploadRoute()
+  assert.match(source, /import \{[^}]*\bhasPermission\b[^}]*\} from "@\/lib\/auth-utils"/)
+  assert.match(source, /if \(auditItemId && hasPermission\(user, "audit", "edit"\)\) \{/)
+  // The upload itself still needs only asset:edit.
+  assert.match(source, /requirePermission\(user, "asset", "edit"\)/)
+  assert.doesNotMatch(source, /requirePermission\(user, "audit"/)
+})
+
+test("a link refused by the cap or the length guard still bumps the item's updatedAt (final review F8)", () => {
+  const link = linkStep(uploadRoute())
+  const refusedAt = link.indexOf("if (!evidence.linked.includes(attachment.id)) {")
+  assert.ok(refusedAt > 0, "the refused-link branch is found")
+  const refused = link.slice(refusedAt)
+  const refusedBlock = refused.slice(0, refused.indexOf("return false") + "return false".length)
+  assert.match(refusedBlock, /await tx\.auditItem\.update\(\{ where: \{ id: item\.id \}, data: \{ updatedAt: new Date\(\) \} \}\)/)
+  // An item of another asset, an inactive or a cancelled round returns before any write.
+  const guardAt = link.indexOf("if (!item || item.assetId !== asset.id")
+  assert.ok(guardAt > 0 && guardAt < link.indexOf("tx.auditItem.update("), "the item guard comes before any write")
 })
 
 test("a refused link never refuses the photo", () => {
