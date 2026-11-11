@@ -6,6 +6,15 @@
 
 ## 2026-11-11
 
+### หน้ารายละเอียดทรัพย์สินบนมือถือ: ชื่อรูป ดูรูป ปุ่มย้อนกลับ และลูกศรแท็บ
+
+branch `fix/phone-detail-polish` (merged d07a7a6f) · ไม่มี migration · E2E asset-detail + scan-photos 30/30 (E2E-1111L) · unit 5,585/0
+
+- แท็บไฟล์: แถวชื่อรูปมีแค่ชื่อกับปุ่มลบ ชื่อขึ้นบรรทัดได้ 2 บรรทัด มี title ชื่อเต็ม · ป้าย รูปหลัก ย้ายไปแถวเดียวกับป้ายรอบ
+- ประวัติบนมือถือ: ดูรูป ชิดรายการ (ห่างบรรทัดบน ~6px) พื้นที่กด 44px ไม่ทับลิงก์ของรายการ
+- หัวหน้า: `PageHeader` มี prop `backBesideTitleOnMobile` (เปิดเฉพาะหน้ารายละเอียดทรัพย์สิน) มือถือวางปุ่มย้อนกลับข้างชื่อ จอ md ขึ้นไปเหมือนเดิม · ลิงก์ย้อนกลับให้โปรแกรมอ่านหน้าจอเจอแค่ 1 ลิงก์ในแต่ละขนาดจอ
+- แท็บรายละเอียด: ลูกศรขอบซ้ายเมื่อแท็บด้านซ้ายถูกเลื่อนออก (`hasHiddenHorizontalContentBefore`) ครอบช่องขอบจอ
+
 ### รูปกับการตรวจนับ (แผน 1–2): รูปบนหน้าตรวจนับ แท็บไฟล์กรองตามรอบ รูปในหน้ารอบ และ "ดูรูป" จากประวัติ
 
 spec `docs/superpowers/specs/2026-11-10-audit-photos-design.md` · plans `docs/superpowers/plans/2026-11-10-audit-photos-1-rule-scan.md`, `...-2-files-round-history.md` · branch `feat/audit-photos` (merged d5bb0fa9 · E2E ทั้งชุด E2E-1111F–I ผ่าน, approvals-inbox 1 ครั้งสะดุดที่ toast รันซ้ำ E2E-1111J ผ่าน) · ไม่มี migration (ใช้ช่อง `audit_items.photoEvidence` ที่มีอยู่) · **deploy ขึ้น Production 2026-11-11 04:02** (ubuntu-codex, `6566cf5a` → `2caf531e`, build ผ่านรอบแรก, ไม่ต้อง npm ci, build เดิมเก็บที่ `backup/standalone-6566cf5a-20261111`)
