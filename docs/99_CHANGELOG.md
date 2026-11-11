@@ -8,7 +8,7 @@
 
 ### หน้ารายละเอียดทรัพย์สินบนมือถือ: ชื่อรูป ดูรูป ปุ่มย้อนกลับ และลูกศรแท็บ
 
-branch `fix/phone-detail-polish` (merged d07a7a6f) · ไม่มี migration · E2E asset-detail + scan-photos 30/30 (E2E-1111L) · unit 5,585/0
+branch `fix/phone-detail-polish` (merged d07a7a6f) · **deploy ขึ้น Production 2026-11-11 09:12** (`2caf531e` → `20ac6d16`, build เดิมเก็บที่ `backup/standalone-2caf531e-20261111`) · ไม่มี migration · E2E asset-detail + scan-photos 30/30 (E2E-1111L) · unit 5,585/0
 
 - แท็บไฟล์: แถวชื่อรูปมีแค่ชื่อกับปุ่มลบ ชื่อขึ้นบรรทัดได้ 2 บรรทัด มี title ชื่อเต็ม · ป้าย รูปหลัก ย้ายไปแถวเดียวกับป้ายรอบ
 - ประวัติบนมือถือ: ดูรูป ชิดรายการ (ห่างบรรทัดบน ~6px) พื้นที่กด 44px ไม่ทับลิงก์ของรายการ
