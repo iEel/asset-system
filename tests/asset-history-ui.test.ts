@@ -90,11 +90,26 @@ test("an audit row's ดูรูป: a link beside the round code on the deskto
   assert.equal(source.match(/\{row\.photosHref \? \(/g)?.length, 2, "rows without photos show no link")
   assert.ok(source.includes(") : row.photosHref ? null : (\n                      <Nil />"), "a row with only ดูรูป shows no dash beside it")
   // On the phone the card itself may be the round's link, so ดูรูป sits after it, never inside it.
-  assert.match(source, /<\/Link>\n\s+\) : \(\n\s+<div className="min-h-14">\{card\}<\/div>\n\s+\)\}\n\s+\{row\.photosHref \? \(/)
+  assert.match(source, /<\/Link>\n\s+\) : \(\n\s+<div className=\{row\.photosHref \? undefined : "min-h-14"\}>\{card\}<\/div>\n\s+\)\}\n\s+\{row\.photosHref \? \(/)
   const th = assetWords("th")
   const en = assetWords("en")
   assert.equal(th.history.viewPhotos, "ดูรูป")
   assert.equal(th.history.viewPhotosLabel, "ดูรูป {auditNo}")
   assert.equal(en.history.viewPhotos, "View photos")
   assert.equal(en.history.viewPhotosLabel, "View photos {auditNo}")
+})
+
+// Phone polish 2: on the phone ดูรูป reads as part of its row (about 6px under the meta line), not 30px below it. The
+// card link above it stops at the meta line instead of reaching into the row's bottom padding, so the 44px ดูรูป target
+// starts right under it without overlapping it; the text sits at the top of that target and the target takes the row's
+// bottom padding (-mb-3). A row without a document gets the same: its plain card drops the min height when ดูรูป follows.
+test("the phone ดูรูป sits just under the meta line with a 44px target that does not overlap the card link (phone polish 2)", () => {
+  const source = read(PANEL)
+  assert.match(source, /const phoneCardLinkClasses =\n\s+"-mx-4 -my-3 block min-h-14 px-4 py-3 /, "a row without ดูรูป keeps its card link as before")
+  const abovePhotos = source.match(/const phoneCardLinkAbovePhotosClasses =\n\s+"([^"]+)"/)?.[1] ?? ""
+  assert.match(abovePhotos, /^-mx-4 -mt-3 block px-4 pt-3 /)
+  assert.doesNotMatch(abovePhotos, /-my-3|-mb-|pb-|py-|min-h-/)
+  assert.match(source, /<Link href=\{row\.document\.href\} className=\{row\.photosHref \? phoneCardLinkAbovePhotosClasses : phoneCardLinkClasses\}>/)
+  assert.match(source, /className=\{cn\(linkVariants\(\), "-mb-3 flex min-h-11 w-fit items-start pt-1\.5"\)\}/)
+  assert.doesNotMatch(source, /row\.document && "mt-3"/)
 })
