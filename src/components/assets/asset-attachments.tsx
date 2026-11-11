@@ -255,9 +255,11 @@ function PhotoTile({
       >
         <AssetPhotoFrame attachmentId={photo.id} alt={photo.originalName} canUpload={false} previewable={false} />
       </button>
-      <div className="mt-2 flex min-w-0 items-center gap-2">
+      {/* A 2-column phone tile leaves the name a few characters: it wraps to 2 lines with the full name as its title, and
+          the row aligns to the top so the delete button stays up when the name wraps (phone polish 1). */}
+      <div className="mt-2 flex min-w-0 items-start gap-2">
         {photo.primary ? <Chip>{t("filesTab.primaryPhoto")}</Chip> : null}
-        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
+        <span title={name} className="line-clamp-2 min-w-0 flex-1 break-words text-sm text-foreground">{name}</span>
         {onDelete ? (
           <Button
             variant="danger"

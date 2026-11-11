@@ -10,17 +10,20 @@ const TAB = "src/components/assets/detail/asset-files-tab.tsx"
 const LOADER = "src/lib/asset-files-data.ts"
 const PAGE = "src/app/[locale]/(dashboard)/assets/[id]/page.tsx"
 
-test("the tile keeps its name row as before and puts the round chip on its own line under it (final review F3)", () => {
+test("the tile keeps its name row and puts the round chip on its own line under it (final review F3); the name wraps to 2 lines on a phone tile (phone polish 1)", () => {
   const source = read(FILES)
   // The name row is the one before this plan: the primary chip, the name, the delete button; no round chip in it.
+  // Phone polish 1: the name wraps (at most 2 lines, the full name as its title) instead of being cut to "รูปห...", and
+  // the row aligns to the top so the delete button stays at the top when the name takes 2 lines.
   assert.match(
     source,
-    /<div className="mt-2 flex min-w-0 items-center gap-2">\n\s+\{photo\.primary \? <Chip>\{t\("filesTab\.primaryPhoto"\)\}<\/Chip> : null\}\n\s+<span className="min-w-0 flex-1 truncate text-sm text-foreground">\{name\}<\/span>\n\s+\{onDelete \? \(/,
+    /<div className="mt-2 flex min-w-0 items-start gap-2">\n\s+\{photo\.primary \? <Chip>\{t\("filesTab\.primaryPhoto"\)\}<\/Chip> : null\}\n\s+<span title=\{name\} className="line-clamp-2 min-w-0 flex-1 break-words text-sm text-foreground">\{name\}<\/span>\n\s+\{onDelete \? \(/,
   )
+  assert.doesNotMatch(source.slice(source.indexOf("function PhotoTile("), source.indexOf("function RoundLine(")), /\btruncate\b/)
   // The round chip: its own line after the name row, the whole round number as its title, tag on an inner span (Chip
   // sets text-meta, and globals.css keeps tag off an element with a text size).
   const tile = source.slice(source.indexOf("function PhotoTile("), source.indexOf("function RoundLine("))
-  const nameRowEnd = tile.indexOf("</div>", tile.indexOf('<div className="mt-2 flex min-w-0 items-center gap-2">'))
+  const nameRowEnd = tile.indexOf("</div>", tile.indexOf('<div className="mt-2 flex min-w-0 items-start gap-2">'))
   const roundLine = tile.indexOf("{photo.round ? (")
   assert.ok(nameRowEnd > 0 && roundLine > nameRowEnd, "the round chip comes after the name row closes")
   assert.match(
