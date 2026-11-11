@@ -1602,7 +1602,7 @@ npm run build
 - Every application on the shared SQL Server instance uses `sa`. Create a least-privilege login for the Production app before rotating the `sa` password.
 - Rotate the AD bind account password (it was exposed through the settings API and System Log before security round 1) and decide whether to purge old `system_logs` rows that contain it.
 - Confirm the Production `AUTH_SECRET` is not the placeholder value previously used in developer `.env` files.
-- Cancel the leftover Draft audit round `AUD-2026-0002 "Test"`; it inflates Work Center and audit coverage figures, and because disposal readiness blocks assets in any non-closed audit round it also blocks disposal of nearly every asset.
+- Done (cancelled in Production through the app, reported 2026-11-11): cancel the leftover Draft audit round `AUD-2026-0002 "Test"`; it inflates Work Center and audit coverage figures, and because disposal readiness blocks assets in any non-closed audit round it also blocks disposal of nearly every asset.
 - Apply `prisma/manual-migrations/2026-10-07-add-active-checkout-unique-index.sql` to Production after a verified backup (it stops without changes if an asset already has two active checkouts).
 - Apply `prisma/manual-migrations/2026-10-07-add-maintenance-outcome.sql` to Production after a verified backup and explicit approval, before deploying `feat/simple-repair-records` (the new code reads and writes `maintenance_tickets.outcome`).
 - Remove any server systemd timer or cron entry that still calls `pm:generate-due`, and drop `MAINTENANCE_PM_GENERATION_TOKEN` from the server environment file; the script and endpoint no longer exist.
