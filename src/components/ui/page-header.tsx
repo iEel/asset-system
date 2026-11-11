@@ -18,6 +18,10 @@ export type PageHeaderProps = {
   breadcrumbs?: BreadcrumbItem[]
   // The asset register only: below md the title and its button share one row and the meta row is hidden.
   compactOnMobile?: boolean
+  // The asset detail only: below md the back icon starts the title row (beside the h1, top-aligned) and the buttons row
+  // dissolves into the header column, so parts that are hidden, fixed or portalled on the phone leave no gap. From md
+  // nothing moves: the back link is first in the buttons row. One back link is exposed at each width.
+  backBesideTitleOnMobile?: boolean
   // Layout only. The header has no margin of its own; the gap below it belongs to the page.
   className?: string
 }
@@ -26,22 +30,36 @@ export type PageHeaderProps = {
 // Title and buttons stack below md and share a row from md, where buttons and fields change size. Flex, not the
 // mockup's grid, so five buttons wrap to a new line instead of squeezing the title to nothing.
 // No client directive and no hooks, like Button: server pages and client forms both render it.
-export function PageHeader({ title, meta, actions, back, breadcrumbs, compactOnMobile = false, className }: PageHeaderProps) {
+export function PageHeader({ title, meta, actions, back, breadcrumbs, compactOnMobile = false, backBesideTitleOnMobile = false, className }: PageHeaderProps) {
+  const backBeside = Boolean(back) && backBesideTitleOnMobile
+  const heading = (
+    <>
+      <h1 className={cn("text-2xl font-semibold text-balance break-words text-foreground", compactOnMobile && "max-md:text-xl")}>{title}</h1>
+      {meta ? (
+        <div data-slot="page-header-meta" className={cn("mt-1 flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground", compactOnMobile && "max-md:hidden")}>
+          {meta}
+        </div>
+      ) : null}
+    </>
+  )
+
   return (
     <header data-slot="page-header" className={cn("min-w-0", className)}>
       {breadcrumbs ? <Breadcrumbs items={breadcrumbs} className="mb-1" /> : null}
       <div className={compactOnMobile ? "flex items-center justify-between gap-3 md:items-start md:gap-x-6" : "flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-x-6"}>
-        <div className="min-w-0">
-          <h1 className={cn("text-2xl font-semibold text-balance break-words text-foreground", compactOnMobile && "max-md:text-xl")}>{title}</h1>
-          {meta ? (
-            <div data-slot="page-header-meta" className={cn("mt-1 flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground", compactOnMobile && "max-md:hidden")}>
-              {meta}
-            </div>
-          ) : null}
+        <div className={cn("min-w-0", backBeside && "flex items-start gap-3 md:block")}>
+          {backBeside ? (
+            <>
+              <div className="shrink-0 md:hidden">{back}</div>
+              <div className="min-w-0 grow">{heading}</div>
+            </>
+          ) : (
+            heading
+          )}
         </div>
         {back || actions ? (
-          <div data-slot="page-header-actions" className={cn("flex flex-wrap items-center gap-2 md:justify-end", compactOnMobile && "shrink-0")}>
-            {back}
+          <div data-slot="page-header-actions" className={cn("flex flex-wrap items-center gap-2 md:justify-end", compactOnMobile && "shrink-0", backBeside && "max-md:contents")}>
+            {backBeside ? <span className="contents max-md:hidden">{back}</span> : back}
             {actions}
           </div>
         ) : null}

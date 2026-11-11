@@ -75,6 +75,8 @@ test("asset detail header is PageHeader with the trail, the name, the back link 
   assert.match(header, /import \{ PageBackLink, PageHeader \} from "@\/components\/ui\/page-header"/)
   assert.match(header, /breadcrumbs=\{\[\s*\{ label: tAsset\("title"\), href: returnToHref \},\s*\.\.\.\(crumbLabel \? \[\{ label: crumbLabel \}\] : \[\]\),\s*\{ label: asset\.assetTag, code: true \},\s*\]\}\s*title=\{asset\.name\}/)
   assert.match(header, /back=\{<PageBackLink href=\{returnToHref\} label=\{backLabel\} \/>\}/)
+  // Phone polish 3: below md the back icon sits beside the name instead of alone on a buttons row.
+  assert.match(header, /\n\s+backBesideTitleOnMobile\n\s+back=\{<PageBackLink /)
   assert.doesNotMatch(source + header, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70|hidden md:inline-flex/)
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
   assert.doesNotMatch(source, /<DataTable framed=\{false\} caption=/)
