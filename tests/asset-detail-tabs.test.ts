@@ -34,7 +34,7 @@ test("asset detail tabs show a leading cue while tabs are hidden on the left, co
   assert.match(source, /function handleScroll\(event: UIEvent<HTMLElement>\) \{\n\s+const container = event\.currentTarget\n\s+setShowOverflowCue\(hasRemainingHorizontalContent\(container\)\)\n\s+setShowLeadingCue\(hasHiddenHorizontalContentBefore\(container\)\)\n\s+\}/)
   assert.match(
     source,
-    /\{showLeadingCue \? \(\n\s+<span\n\s+aria-hidden="true"\n\s+className="pointer-events-none absolute inset-y-0 left-0 flex w-9 items-center justify-start border-l border-border bg-canvas\/95 pl-1 text-muted-foreground sm:hidden"\n\s+>\n\s+<ChevronLeft className="h-5 w-5" \/>\n\s+<\/span>\n\s+\) : null\}/,
+    /\{showLeadingCue \? \(\n\s+<span\n\s+aria-hidden="true"\n\s+\/\/ [^\n]*\n\s+className="pointer-events-none absolute inset-y-0 -left-4 flex w-13 items-center justify-start border-r border-border bg-canvas\/95 pl-4 text-muted-foreground sm:hidden"\n\s+>\n\s+<ChevronLeft className="h-5 w-5" \/>\n\s+<\/span>\n\s+\) : null\}/,
   )
 })
 

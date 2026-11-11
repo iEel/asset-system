@@ -90,7 +90,8 @@ export function AssetDetailTabs({
       {showLeadingCue ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 flex w-9 items-center justify-start border-l border-border bg-canvas/95 pl-1 text-muted-foreground sm:hidden"
+          // The row reaches into the page gutter below sm (-mx-4): the cue covers the gutter too, so no tab peeks past it.
+          className="pointer-events-none absolute inset-y-0 -left-4 flex w-13 items-center justify-start border-r border-border bg-canvas/95 pl-4 text-muted-foreground sm:hidden"
         >
           <ChevronLeft className="h-5 w-5" />
         </span>
