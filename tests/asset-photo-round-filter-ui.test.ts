@@ -12,26 +12,26 @@ const PAGE = "src/app/[locale]/(dashboard)/assets/[id]/page.tsx"
 
 test("the tile keeps its name row and puts the round chip on its own line under it (final review F3); the name wraps to 2 lines on a phone tile (phone polish 1)", () => {
   const source = read(FILES)
-  // The name row is the one before this plan: the primary chip, the name, the delete button; no round chip in it.
-  // Phone polish 1: the name wraps (at most 2 lines, the full name as its title) instead of being cut to "รูปห...", and
-  // the row aligns to the top so the delete button stays at the top when the name takes 2 lines.
+  // Phone polish 1: the name row holds only the name and the delete button; the name wraps (at most 2 lines, the full
+  // name as its title) instead of being cut to "รูปห...", and the row aligns to the top so the button stays at the top.
   assert.match(
     source,
-    /<div className="mt-2 flex min-w-0 items-start gap-2">\n\s+\{photo\.primary \? <Chip>\{t\("filesTab\.primaryPhoto"\)\}<\/Chip> : null\}\n\s+<span title=\{name\} className="line-clamp-2 min-w-0 flex-1 break-words text-sm text-foreground">\{name\}<\/span>\n\s+\{onDelete \? \(/,
+    /<div className="mt-2 flex min-w-0 items-start gap-2">\n\s+<span title=\{name\} className="line-clamp-2 min-w-0 flex-1 break-words text-sm text-foreground">\{name\}<\/span>\n\s+\{onDelete \? \(/,
   )
   assert.doesNotMatch(source.slice(source.indexOf("function PhotoTile("), source.indexOf("function RoundLine(")), /\btruncate\b/)
   // The round chip: its own line after the name row, the whole round number as its title, tag on an inner span (Chip
   // sets text-meta, and globals.css keeps tag off an element with a text size).
   const tile = source.slice(source.indexOf("function PhotoTile("), source.indexOf("function RoundLine("))
   const nameRowEnd = tile.indexOf("</div>", tile.indexOf('<div className="mt-2 flex min-w-0 items-start gap-2">'))
-  const roundLine = tile.indexOf("{photo.round ? (")
-  assert.ok(nameRowEnd > 0 && roundLine > nameRowEnd, "the round chip comes after the name row closes")
+  const roundLine = tile.indexOf("{photo.primary || photo.round ? (")
+  assert.ok(nameRowEnd > 0 && roundLine > nameRowEnd, "the chip line comes after the name row closes")
   assert.match(
     tile,
-    /\{photo\.round \? \(\n\s+<div className="mt-1 flex min-w-0">\n\s+<Chip title=\{photo\.round\.auditNo\}>\n\s+<span className="tag">\{photo\.round\.auditNo\}<\/span>\n\s+<\/Chip>\n\s+<\/div>\n\s+\) : null\}/,
+    /\{photo\.primary \|\| photo\.round \? \(\n\s+<div className="mt-1 flex min-w-0 flex-wrap gap-1">\n\s+\{photo\.primary \? <Chip>\{t\("filesTab\.primaryPhoto"\)\}<\/Chip> : null\}\n\s+\{photo\.round \? \(\n\s+<Chip title=\{photo\.round\.auditNo\}>\n\s+<span className="tag">\{photo\.round\.auditNo\}<\/span>\n\s+<\/Chip>\n\s+\) : null\}\n\s+<\/div>\n\s+\) : null\}/,
   )
   assert.doesNotMatch(source, /<Chip className="tag"/)
   assert.equal(tile.match(/photo\.round\.auditNo/g)?.length, 2)
+  assert.equal(tile.match(/filesTab\.primaryPhoto/g)?.length, 1, "one primary chip, on the chip line")
 })
 
 test("the chip row is the shared TabNav, its links in the URL with a count on each chip", () => {
