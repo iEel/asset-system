@@ -255,9 +255,10 @@ function PhotoTile({
       >
         <AssetPhotoFrame attachmentId={photo.id} alt={photo.originalName} canUpload={false} previewable={false} />
       </button>
-      <div className="mt-2 flex min-w-0 items-center gap-2">
-        {photo.primary ? <Chip>{t("filesTab.primaryPhoto")}</Chip> : null}
-        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
+      {/* A 2-column phone tile is narrow: the name row holds only the name and the delete button, the name wraps to 2 lines
+          with the full name as its title, and the row aligns to the top so the button stays up (phone polish 1). */}
+      <div className="mt-2 flex min-w-0 items-start gap-2">
+        <span title={name} className="line-clamp-2 min-w-0 flex-1 break-words text-sm text-foreground">{name}</span>
         {onDelete ? (
           <Button
             variant="danger"
@@ -271,12 +272,15 @@ function PhotoTile({
           </Button>
         ) : null}
       </div>
-      {/* The round chip on its own line, so the name row stays as it was on a narrow tile (plan 2 final review F3). */}
-      {photo.round ? (
-        <div className="mt-1 flex min-w-0">
-          <Chip title={photo.round.auditNo}>
-            <span className="tag">{photo.round.auditNo}</span>
-          </Chip>
+      {/* The chips under the name row: รูปหลัก and the round (plan 2 final review F3; phone polish 1 moved รูปหลัก here). */}
+      {photo.primary || photo.round ? (
+        <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+          {photo.primary ? <Chip>{t("filesTab.primaryPhoto")}</Chip> : null}
+          {photo.round ? (
+            <Chip title={photo.round.auditNo}>
+              <span className="tag">{photo.round.auditNo}</span>
+            </Chip>
+          ) : null}
         </div>
       ) : null}
     </li>

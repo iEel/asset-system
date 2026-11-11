@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type UIEvent } from "react"
-import { AlertTriangle, ChevronRight } from "lucide-react"
+import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import { TabNav } from "@/components/ui/tab-nav"
 import {
   assetDetailViews,
@@ -9,7 +9,7 @@ import {
   type AssetDetailView,
 } from "@/lib/asset-detail-view"
 import { formatCount } from "@/lib/display-format"
-import { hasRemainingHorizontalContent } from "@/lib/horizontal-scroll"
+import { hasHiddenHorizontalContentBefore, hasRemainingHorizontalContent } from "@/lib/horizontal-scroll"
 
 type AssetDetailTabIndicator = {
   count?: number
@@ -17,7 +17,8 @@ type AssetDetailTabIndicator = {
 }
 
 // The client wrapper that owns the scrolling of the shared TabNav (spec 2B I9): it snaps the row, centres the
-// current tab when the view changes and shows the phone overflow cue until the user reaches the end.
+// current tab when the view changes and shows the phone overflow cues: the right one until the user reaches the end, the
+// left one while tabs are scrolled out on the left (phone polish 4).
 export function AssetDetailTabs({
   locale,
   assetId,
@@ -39,14 +40,24 @@ export function AssetDetailTabs({
 }) {
   const navRef = useRef<HTMLElement>(null)
   const [showOverflowCue, setShowOverflowCue] = useState(true)
+  const [showLeadingCue, setShowLeadingCue] = useState(false)
 
   useEffect(() => {
     navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "center" })
+    // Both cues read the row again after the first centring, not only on a user scroll, so the first paint is right.
+    const frame = requestAnimationFrame(() => {
+      const nav = navRef.current
+      if (!nav) return
+      setShowOverflowCue(hasRemainingHorizontalContent(nav))
+      setShowLeadingCue(hasHiddenHorizontalContentBefore(nav))
+    })
+    return () => cancelAnimationFrame(frame)
   }, [view])
 
   function handleScroll(event: UIEvent<HTMLElement>) {
     const container = event.currentTarget
     setShowOverflowCue(hasRemainingHorizontalContent(container))
+    setShowLeadingCue(hasHiddenHorizontalContentBefore(container))
   }
 
   return (
@@ -76,6 +87,15 @@ export function AssetDetailTabs({
           }
         })}
       />
+      {showLeadingCue ? (
+        <span
+          aria-hidden="true"
+          // The row reaches into the page gutter below sm (-mx-4): the cue covers the gutter too, so no tab peeks past it.
+          className="pointer-events-none absolute inset-y-0 -left-4 flex w-13 items-center justify-start border-r border-border bg-canvas/95 pl-4 text-muted-foreground sm:hidden"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </span>
+      ) : null}
       {showOverflowCue ? (
         <span
           aria-hidden="true"

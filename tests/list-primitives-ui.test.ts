@@ -32,8 +32,8 @@ test("the 2B list primitives keep to the shared class rules", () => {
 
 test("PageHeader: one h1 at 600, breadcrumbs 4px above it, a meta row, and buttons that share the title row from md (I1)", () => {
   const source = read(`${UI}page-header.tsx`)
-  assert.match(source, /export function PageHeader\(\{ title, meta, actions, back, breadcrumbs, compactOnMobile = false, className \}: PageHeaderProps\)/)
-  for (const prop of ["title: ReactNode", "meta\\?: ReactNode", "actions\\?: ReactNode", "back\\?: ReactNode", "breadcrumbs\\?: BreadcrumbItem\\[\\]", "compactOnMobile\\?: boolean", "className\\?: string"]) {
+  assert.match(source, /export function PageHeader\(\{ title, meta, actions, back, breadcrumbs, compactOnMobile = false, backBesideTitleOnMobile = false, className \}: PageHeaderProps\)/)
+  for (const prop of ["title: ReactNode", "meta\\?: ReactNode", "actions\\?: ReactNode", "back\\?: ReactNode", "breadcrumbs\\?: BreadcrumbItem\\[\\]", "compactOnMobile\\?: boolean", "backBesideTitleOnMobile\\?: boolean", "className\\?: string"]) {
     assert.match(source, new RegExp(`\\n  ${prop}\\n`), prop)
   }
   assert.match(source, /<header data-slot="page-header" className=\{cn\("min-w-0", className\)\}>/)
@@ -47,8 +47,27 @@ test("PageHeader: one h1 at 600, breadcrumbs 4px above it, a meta row, and butto
   assert.match(source, /<h1 className=\{cn\("text-2xl font-semibold text-balance break-words text-foreground", compactOnMobile && "max-md:text-xl"\)\}>\{title\}<\/h1>/)
   assert.equal(source.match(/<h1\b/g)?.length, 1)
   assert.match(source, /data-slot="page-header-meta" className=\{cn\("mt-1 flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground", compactOnMobile && "max-md:hidden"\)\}/)
-  assert.match(source, /data-slot="page-header-actions" className=\{cn\("flex flex-wrap items-center gap-2 md:justify-end", compactOnMobile && "shrink-0"\)\}>\n\s+\{back\}\n\s+\{actions\}\n/)
+  assert.match(source, /data-slot="page-header-actions" className=\{cn\("flex flex-wrap items-center gap-2 md:justify-end", compactOnMobile && "shrink-0", backBeside && "max-md:contents"\)\}>\n\s+\{backBeside \? <span className="contents max-md:hidden">\{back\}<\/span> : back\}\n\s+\{actions\}\n/)
   assert.doesNotMatch(source, /\bfont-bold\b|\buseTranslations\b|\bdescription\b|\bflex-1\b/)
+})
+
+// Phone polish 3 (asset detail only, opt-in): below md the back icon starts the title row and the buttons row dissolves
+// into the header column (display: contents), so a row holding only hidden, fixed (the phone ActionBar) or portalled
+// parts leaves no gap. From md the title block is a plain block again and the back link sits first in the buttons row.
+// Exactly one back link is in the accessibility tree at any width: each copy is display:none (md:hidden / max-md:hidden)
+// where the other shows.
+test("PageHeader backBesideTitleOnMobile: the back icon beside the h1 below md, one back link exposed at every width (phone polish 3)", () => {
+  const source = read(`${UI}page-header.tsx`)
+  assert.match(source, /const backBeside = Boolean\(back\) && backBesideTitleOnMobile/)
+  assert.match(source, /<div className=\{cn\("min-w-0", backBeside && "flex items-start gap-3 md:block"\)\}>/)
+  assert.match(
+    source,
+    /\{backBeside \? \(\n\s+<>\n\s+<div className="shrink-0 md:hidden">\{back\}<\/div>\n\s+<div className="min-w-0 grow">\{heading\}<\/div>\n\s+<\/>\n\s+\) : \(\n\s+heading\n\s+\)\}/,
+  )
+  assert.equal(source.match(/\{back\}/g)?.length, 2, "the phone copy and the md copy, each display:none where the other shows")
+  assert.match(source, /<span className="contents max-md:hidden">\{back\}<\/span>/)
+  // The h1 and the meta row are written once and placed by the const, so every other page keeps its DOM.
+  assert.match(source, /const heading = \(\n\s+<>\n\s+<h1 /)
 })
 
 test("PageBackLink: outline md with a left arrow, a 44px icon button below md whose name is the visible words (I1, B2)", () => {

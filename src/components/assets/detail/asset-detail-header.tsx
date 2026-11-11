@@ -59,6 +59,7 @@ export function AssetDetailHeader({
           ) : null}
         </span>
       }
+      backBesideTitleOnMobile
       back={<PageBackLink href={returnToHref} label={backLabel} />}
       actions={
         <>

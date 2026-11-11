@@ -38,6 +38,10 @@ import {
 // A phone card the person may open is one link to the event's document: the row hover, the inset focus ring, 56px.
 const phoneCardLinkClasses =
   "-mx-4 -my-3 block min-h-14 px-4 py-3 transition-colors hover:bg-row-hover hover:duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+// The same card when ดูรูป follows it: it stops at the meta line, so ดูรูป's own 44px target starts right under it
+// without overlapping it and its words read as part of the row (phone polish 2).
+const phoneCardLinkAbovePhotosClasses =
+  "-mx-4 -mt-3 block px-4 pt-3 transition-colors hover:bg-row-hover hover:duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 
 // The asset page's history (group 1 spec §7.6): radio chips with counts and the period filter the rows in place
 // (choosing does not navigate), the desktop table groups them by month, the phone lists them as cards, and
@@ -223,18 +227,19 @@ export function AssetHistoryPanel({
                   return (
                     <li key={row.id}>
                       {row.document ? (
-                        <Link href={row.document.href} className={phoneCardLinkClasses}>
+                        <Link href={row.document.href} className={row.photosHref ? phoneCardLinkAbovePhotosClasses : phoneCardLinkClasses}>
                           {card}
                         </Link>
                       ) : (
-                        <div className="min-h-14">{card}</div>
+                        <div className={row.photosHref ? undefined : "min-h-14"}>{card}</div>
                       )}
                       {row.photosHref ? (
                         <Link
                           href={row.photosHref}
                           aria-label={t("history.viewPhotosLabel", { auditNo: row.photosAuditNo ?? "" })}
-                          // The round's card link reaches into the row's padding (-my-3); start below it.
-                          className={cn(linkVariants(), "flex min-h-11 w-fit items-center", row.document && "mt-3")}
+                          // Right under the card (which then stops at the meta line): the words 6px below it at the top of a
+                          // 44px target that takes the row's bottom padding.
+                          className={cn(linkVariants(), "-mb-3 flex min-h-11 w-fit items-start pt-1.5")}
                         >
                           {t("history.viewPhotos")}
                         </Link>
